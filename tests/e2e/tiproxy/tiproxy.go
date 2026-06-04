@@ -308,6 +308,103 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			}),
 		)
 
+		ginkgo.It("syncs graceful shutdown delay before same-patch rolling restart", label.Update, func(ctx context.Context) {
+			o := desc.DefaultOptions()
+			const replicas int32 = 2
+			const deleteDelaySeconds = "0"
+
+			pdg := action.MustCreatePD(ctx, f, o)
+			kvg := action.MustCreateTiKV(ctx, f, o)
+			dbg := action.MustCreateTiDB(ctx, f, o)
+			proxyg := action.MustCreateTiProxy(ctx, f, o,
+				data.WithReplicas[scope.TiProxyGroup](replicas),
+				data.WithTiProxyMaxSurge(replicas),
+			)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiProxyGroupReady(ctx, proxyg)
+
+			listTiProxies := func() (*v1alpha1.TiProxyList, error) {
+				tiproxies := &v1alpha1.TiProxyList{}
+				if err := f.Client.List(ctx, tiproxies, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
+					v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
+					v1alpha1.LabelKeyGroup:     proxyg.Name,
+					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
+				}); err != nil {
+					return nil, err
+				}
+				return tiproxies, nil
+			}
+
+			initialTiProxies, err := listTiProxies()
+			f.Must(err)
+			gomega.Expect(initialTiProxies.Items).To(gomega.HaveLen(int(replicas)))
+			outdatedTiProxies := map[string]struct{}{}
+			for i := range initialTiProxies.Items {
+				tiproxy := &initialTiProxies.Items[i]
+				outdatedTiProxies[tiproxy.Name] = struct{}{}
+				gomega.Expect(tiproxy.Annotations).ToNot(gomega.HaveKey(v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds))
+			}
+
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
+			f.Must(err)
+
+			ginkgo.By("Patch TiProxyGroup to trigger rolling restart and add graceful shutdown delay at the same time")
+			patch := client.MergeFrom(proxyg.DeepCopy())
+			proxyg.Spec.Template.Spec.Config = changedConfig
+			if proxyg.Spec.Template.Annotations == nil {
+				proxyg.Spec.Template.Annotations = map[string]string{}
+			}
+			proxyg.Spec.Template.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = deleteDelaySeconds
+			f.Must(f.Client.Patch(ctx, proxyg, patch))
+
+			var violated error
+			ginkgo.By("Ensure outdated TiProxy instances get graceful shutdown delay before defer deletion")
+			gomega.Eventually(func() error {
+				if violated != nil {
+					return violated
+				}
+
+				tiproxies, err := listTiProxies()
+				if err != nil {
+					return err
+				}
+
+				outdatedSeen := 0
+				outdatedWithDelay := 0
+				for i := range tiproxies.Items {
+					tiproxy := &tiproxies.Items[i]
+					if _, ok := outdatedTiProxies[tiproxy.Name]; !ok {
+						continue
+					}
+
+					outdatedSeen++
+					delay := tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
+					isDeferredDelete := tiproxy.Annotations[v1alpha1.AnnoKeyDeferDelete] == v1alpha1.AnnoValTrue || !tiproxy.DeletionTimestamp.IsZero()
+					if isDeferredDelete && delay != deleteDelaySeconds {
+						violated = fmt.Errorf("outdated TiProxy %s/%s entered deletion before graceful shutdown delay was synced", tiproxy.Namespace, tiproxy.Name)
+						return violated
+					}
+					if delay == deleteDelaySeconds {
+						outdatedWithDelay++
+					}
+				}
+
+				if outdatedSeen != len(outdatedTiProxies) {
+					return fmt.Errorf("observed %d outdated TiProxy instances, want %d", outdatedSeen, len(outdatedTiProxies))
+				}
+				if outdatedWithDelay != len(outdatedTiProxies) {
+					return fmt.Errorf("observed %d outdated TiProxy instances with graceful shutdown delay, want %d", outdatedWithDelay, len(outdatedTiProxies))
+				}
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
+			f.WaitForTiProxyGroupReady(ctx, proxyg)
+		})
+
 		ginkgo.It("support scale in from 4 to 2 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)

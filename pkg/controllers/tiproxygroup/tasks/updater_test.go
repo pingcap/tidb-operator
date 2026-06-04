@@ -286,6 +286,113 @@ func TestTaskUpdater(t *testing.T) {
 	}
 }
 
+func TestTaskUpdaterSyncsGracefulShutdownDeleteDelayBeforeRollingRestart(t *testing.T) {
+	const deleteDelaySeconds = "86400"
+
+	cases := []struct {
+		desc                   string
+		groupAnnotation        map[string]string
+		oldProxyAnnotation     map[string]string
+		includeUpdatedTiProxy  bool
+		expectedDelayByTiProxy map[string]struct {
+			value  string
+			exists bool
+		}
+	}{
+		{
+			desc: "sets delay annotation before deleting old instances",
+			groupAnnotation: map[string]string{
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: deleteDelaySeconds,
+			},
+			includeUpdatedTiProxy: true,
+			expectedDelayByTiProxy: map[string]struct {
+				value  string
+				exists bool
+			}{
+				"aaa-old-1": {value: deleteDelaySeconds, exists: true},
+				"aaa-old-2": {value: deleteDelaySeconds, exists: true},
+				"aaa-new":   {exists: false},
+			},
+		},
+		{
+			desc: "removes stale delay annotation before deleting old instances",
+			oldProxyAnnotation: map[string]string{
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: deleteDelaySeconds,
+			},
+			expectedDelayByTiProxy: map[string]struct {
+				value  string
+				exists bool
+			}{
+				"aaa-old-1": {exists: false},
+				"aaa-old-2": {exists: false},
+			},
+		},
+	}
+
+	for i := range cases {
+		c := cases[i]
+		t.Run(c.desc, func(t *testing.T) {
+			t.Parallel()
+
+			proxyg := fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				obj.Spec.MaxSurge = ptr.To[int32](2)
+				obj.Spec.Template.Annotations = c.groupAnnotation
+				obj.Spec.Template.Spec.Image = ptr.To("pingcap/tiproxy:v8.1.1")
+				return obj
+			})
+			proxies := []*v1alpha1.TiProxy{
+				fakeAvailableTiProxy("aaa-old-1", fake.FakeObj[v1alpha1.TiProxyGroup]("aaa"), oldRevision),
+				fakeAvailableTiProxy("aaa-old-2", fake.FakeObj[v1alpha1.TiProxyGroup]("aaa"), oldRevision),
+			}
+			for _, proxy := range proxies {
+				proxy.Annotations = c.oldProxyAnnotation
+			}
+			if c.includeUpdatedTiProxy {
+				proxies = append(proxies, fakeAvailableTiProxy("aaa-new", fake.FakeObj[v1alpha1.TiProxyGroup]("aaa"), newRevision))
+			}
+
+			s := &state{
+				proxyg:         proxyg,
+				cluster:        fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				proxies:        proxies,
+				updateRevision: newRevision,
+			}
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiProxyGroup](s)
+			state := &ReconcileContext{State: s}
+
+			ctx := context.Background()
+			fc := client.NewFakeClient(state.TiProxyGroup(), state.Cluster())
+			for _, proxy := range state.TiProxySlice() {
+				require.NoError(t, fc.Apply(ctx, proxy.DeepCopy()))
+				require.NoError(t, fc.Status().Update(ctx, proxy.DeepCopy()))
+			}
+
+			af := tracker.New().AllocateFactory("tiproxy")
+			res, _ := task.RunTask(ctx, TaskUpdater(state, fc, af))
+			require.Equal(t, task.SWait.String(), res.Status().String())
+
+			var tiproxies v1alpha1.TiProxyList
+			require.NoError(t, fc.List(ctx, &tiproxies))
+			require.Len(t, tiproxies.Items, len(c.expectedDelayByTiProxy))
+			for i := range tiproxies.Items {
+				tiproxy := &tiproxies.Items[i]
+				expected, ok := c.expectedDelayByTiProxy[tiproxy.Name]
+				require.True(t, ok, "unexpected TiProxy %s", tiproxy.Name)
+
+				got, ok := tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
+				require.Equal(t, expected.exists, ok)
+				if expected.exists {
+					require.Equal(t, expected.value, got)
+				}
+				if tiproxy.Name != "aaa-new" {
+					require.NotContains(t, tiproxy.Annotations, v1alpha1.AnnoKeyDeferDelete)
+				}
+			}
+		})
+	}
+}
+
 func fakeAvailableTiProxy(name string, proxyg *v1alpha1.TiProxyGroup, rev string) *v1alpha1.TiProxy {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
 		tiproxy := runtime.ToTiProxy(TiProxyNewer(proxyg, rev, features.NewFromFeatures(nil)).New())

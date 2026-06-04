@@ -77,7 +77,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		needUpdate, needRestart := precheckInstances(proxyg, runtime.ToTiProxySlice(proxies), updateRevision)
+		tiproxies := runtime.ToTiProxySlice(proxies)
+		needUpdate, needRestart := precheckInstances(proxyg, tiproxies, updateRevision)
 		if !needUpdate {
 			return task.Complete().With("all instances are synced")
 		}
@@ -85,6 +86,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		maxSurge, maxUnavailable := 0, 1
 		noUpdate := false
 		if needRestart {
+			updated, err := syncGracefulShutdownDeleteDelayForOutdatedTiProxies(ctx, c, proxyg, tiproxies, updateRevision)
+			if err != nil {
+				return task.Fail().With("cannot sync graceful shutdown delete delay before rolling restart: %w", err)
+			}
+			if updated {
+				return task.Wait().With("wait for graceful shutdown delete delay to be synced before rolling restart")
+			}
+
 			maxSurge, maxUnavailable = 1, 0
 			if proxyg.Spec.MaxSurge != nil {
 				maxSurge = int(*proxyg.Spec.MaxSurge)
@@ -153,6 +162,45 @@ func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProx
 	}
 
 	return needUpdate, needRestart
+}
+
+func syncGracefulShutdownDeleteDelayForOutdatedTiProxies(
+	ctx context.Context,
+	c client.Client,
+	proxyg *v1alpha1.TiProxyGroup,
+	proxies []*v1alpha1.TiProxy,
+	updateRevision string,
+) (bool, error) {
+	expected, expectedExists := proxyg.Spec.Template.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
+	updated := false
+
+	for _, proxy := range proxies {
+		if coreutil.UpdateRevision[scope.TiProxy](proxy) == updateRevision {
+			continue
+		}
+
+		current, currentExists := proxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
+		if currentExists == expectedExists && current == expected {
+			continue
+		}
+
+		newProxy := proxy.DeepCopy()
+		if newProxy.Annotations == nil {
+			newProxy.Annotations = map[string]string{}
+		}
+		if expectedExists {
+			newProxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = expected
+		} else {
+			delete(newProxy.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds)
+		}
+
+		if err := c.Patch(ctx, newProxy, client.MergeFrom(proxy)); err != nil {
+			return false, err
+		}
+		updated = true
+	}
+
+	return updated, nil
 }
 
 func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.TiProxy] {
