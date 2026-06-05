@@ -85,10 +85,10 @@ func TestMakeCompactJobUsesCompactBackupLabels(t *testing.T) {
 	}
 
 	expectedLabels := map[string]string{
-		"app.kubernetes.io/name":       "compact-backup",
+		"app.kubernetes.io/name":       "compactbackup",
 		"app.kubernetes.io/managed-by": "compact-backup-operator",
 		"app.kubernetes.io/instance":   "daily-log-backup",
-		"app.kubernetes.io/component":  "compact-backup",
+		"app.kubernetes.io/component":  "compactbackup",
 		"tidb.pingcap.com/compact":     compact.Name,
 	}
 	for k, v := range expectedLabels {

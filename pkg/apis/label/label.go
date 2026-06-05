@@ -228,7 +228,7 @@ const (
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
 	// CompactJobLabelVal is compact backup job label value
-	CompactJobLabelVal string = "compact-backup"
+	CompactJobLabelVal string = "compactbackup"
 	// BackupScheduleJobLabelVal is backup schedule job label value
 	BackupScheduleJobLabelVal string = "backup-schedule"
 	// InitJobLabelVal is TiDB initializer job label value
