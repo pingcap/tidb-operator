@@ -61,6 +61,9 @@ func ParseCompactOptions(compact *v1alpha1.CompactBackup, opts *CompactOpts) err
 	opts.Name = strings.TrimSpace(compact.Spec.Name)
 	opts.Concurrency = uint64(compact.Spec.Concurrency)
 	opts.PhysicalFileCacheCapacity = strings.TrimSpace(compact.Spec.PhysicalFileCacheCapacity)
+	if opts.PhysicalFileCacheCapacity == "" {
+		opts.PhysicalFileCacheCapacity = "0"
+	}
 	opts.Sharded = compact.Spec.Mode == v1alpha1.CompactModeSharded
 	opts.ShardIndex = 0
 	opts.ShardCount = 0
@@ -99,15 +102,16 @@ func (c *CompactOpts) Verify() error {
 		return errors.Errorf("concurrency %d must be greater than 0", c.Concurrency)
 	}
 	if c.Sharded {
+		c.PhysicalFileCacheCapacity = strings.TrimSpace(c.PhysicalFileCacheCapacity)
 		if c.PhysicalFileCacheCapacity == "" {
-			return errors.New("physicalFileCacheCapacity must be set when mode is sharded")
+			c.PhysicalFileCacheCapacity = "0"
 		}
 		capacity, err := resource.ParseQuantity(c.PhysicalFileCacheCapacity)
 		if err != nil {
 			return errors.Annotatef(err, "invalid physicalFileCacheCapacity %q", c.PhysicalFileCacheCapacity)
 		}
-		if capacity.Sign() <= 0 {
-			return errors.New("physicalFileCacheCapacity must be greater than 0")
+		if capacity.Sign() < 0 {
+			return errors.New("physicalFileCacheCapacity must be greater than or equal to 0")
 		}
 		if c.ShardCount <= 0 {
 			return errors.Errorf("shard-count %d must be greater than 0", c.ShardCount)

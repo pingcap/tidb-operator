@@ -1616,7 +1616,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 					},
 					"physicalFileCacheCapacity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as --physical-file-cache-capacity. It uses Kubernetes quantity format, e.g. \"150G\" or \"150Gi\", and is required when mode is sharded.",
+							Description: "PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as --physical-file-cache-capacity. It uses Kubernetes quantity format, e.g. \"150G\" or \"150Gi\", and defaults to \"0\" when omitted.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

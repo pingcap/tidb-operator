@@ -156,7 +156,7 @@ func TestValidateShardedModeRequiresPositiveShardCount(t *testing.T) {
 	}
 }
 
-func TestValidateShardedModeRequiresPhysicalFileCacheCapacity(t *testing.T) {
+func TestValidateShardedModeAllowsMissingPhysicalFileCacheCapacity(t *testing.T) {
 	c := newTestController(t)
 	compact := newCompactBackupForTest()
 	shardCount := int32(3)
@@ -164,11 +164,22 @@ func TestValidateShardedModeRequiresPhysicalFileCacheCapacity(t *testing.T) {
 	compact.Spec.ShardCount = &shardCount
 
 	err := c.validate(compact)
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
+	if err != nil {
+		t.Fatalf("expected no validation error, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "physicalFileCacheCapacity") {
-		t.Fatalf("expected physicalFileCacheCapacity validation error, got %v", err)
+}
+
+func TestValidateShardedModeAllowsZeroPhysicalFileCacheCapacity(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+	compact.Spec.PhysicalFileCacheCapacity = "0"
+
+	err := c.validate(compact)
+	if err != nil {
+		t.Fatalf("expected no validation error, got %v", err)
 	}
 }
 
@@ -184,14 +195,9 @@ func TestValidateShardedModeRejectsInvalidPhysicalFileCacheCapacity(t *testing.T
 			wantErr:  "invalid physicalFileCacheCapacity",
 		},
 		{
-			name:     "zero quantity",
-			capacity: "0",
-			wantErr:  "must be greater than 0",
-		},
-		{
 			name:     "negative quantity",
 			capacity: "-1G",
-			wantErr:  "must be greater than 0",
+			wantErr:  "must be greater than or equal to 0",
 		},
 	}
 

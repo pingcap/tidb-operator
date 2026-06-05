@@ -188,7 +188,7 @@ func TestParseCompactOptionsDefaultModeClearsShardedFields(t *testing.T) {
 	}
 }
 
-func TestParseCompactOptionsShardedRequiresPhysicalFileCacheCapacity(t *testing.T) {
+func TestParseCompactOptionsShardedDefaultsMissingPhysicalFileCacheCapacity(t *testing.T) {
 	shardCount := int32(4)
 	t.Setenv("JOB_COMPLETION_INDEX", "2")
 	opts := &CompactOpts{}
@@ -207,11 +207,27 @@ func TestParseCompactOptionsShardedRequiresPhysicalFileCacheCapacity(t *testing.
 	}
 
 	err := ParseCompactOptions(compact, opts)
-	if err == nil {
-		t.Fatal("expected ParseCompactOptions to fail without physicalFileCacheCapacity")
+	if err != nil {
+		t.Fatalf("expected ParseCompactOptions to succeed, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "physicalFileCacheCapacity") {
-		t.Fatalf("expected physicalFileCacheCapacity validation error, got %v", err)
+	if opts.PhysicalFileCacheCapacity != "0" {
+		t.Fatalf("expected physicalFileCacheCapacity to default to %q, got %q", "0", opts.PhysicalFileCacheCapacity)
+	}
+}
+
+func TestCompactOptsVerifyAllowsZeroPhysicalFileCacheCapacity(t *testing.T) {
+	opts := CompactOpts{
+		FromTS:                    1,
+		UntilTS:                   2,
+		Concurrency:               1,
+		PhysicalFileCacheCapacity: "0",
+		Sharded:                   true,
+		ShardIndex:                0,
+		ShardCount:                3,
+	}
+
+	if err := opts.Verify(); err != nil {
+		t.Fatalf("expected Verify to allow zero physicalFileCacheCapacity, got %v", err)
 	}
 }
 
@@ -227,14 +243,9 @@ func TestCompactOptsVerifyRejectsInvalidPhysicalFileCacheCapacity(t *testing.T) 
 			wantErr:  "invalid physicalFileCacheCapacity",
 		},
 		{
-			name:     "zero quantity",
-			capacity: "0",
-			wantErr:  "must be greater than 0",
-		},
-		{
 			name:     "negative quantity",
 			capacity: "-1G",
-			wantErr:  "must be greater than 0",
+			wantErr:  "must be greater than or equal to 0",
 		},
 	}
 

@@ -610,15 +610,14 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	}
 	if spec.Mode == v1alpha1.CompactModeSharded {
 		physicalFileCacheCapacity := strings.TrimSpace(spec.PhysicalFileCacheCapacity)
-		if physicalFileCacheCapacity == "" {
-			return perrors.NewNoStackError("physicalFileCacheCapacity must be set when mode is sharded")
-		}
-		capacity, err := resource.ParseQuantity(physicalFileCacheCapacity)
-		if err != nil {
-			return perrors.NewNoStackError(fmt.Sprintf("invalid physicalFileCacheCapacity %q: %v", physicalFileCacheCapacity, err))
-		}
-		if capacity.Sign() <= 0 {
-			return perrors.NewNoStackError("physicalFileCacheCapacity must be greater than 0")
+		if physicalFileCacheCapacity != "" {
+			capacity, err := resource.ParseQuantity(physicalFileCacheCapacity)
+			if err != nil {
+				return perrors.NewNoStackError(fmt.Sprintf("invalid physicalFileCacheCapacity %q: %v", physicalFileCacheCapacity, err))
+			}
+			if capacity.Sign() < 0 {
+				return perrors.NewNoStackError("physicalFileCacheCapacity must be greater than or equal to 0")
+			}
 		}
 	}
 	if spec.Mode != v1alpha1.CompactModeSharded && spec.ShardCount != nil {

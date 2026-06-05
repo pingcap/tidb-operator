@@ -3966,7 +3966,7 @@ type CompactSpec struct {
 	// +optional
 	ShardCount *int32 `json:"shardCount,omitempty"`
 	// PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as --physical-file-cache-capacity.
-	// It uses Kubernetes quantity format, e.g. "150G" or "150Gi", and is required when mode is sharded.
+	// It uses Kubernetes quantity format, e.g. "150G" or "150Gi", and defaults to "0" when omitted.
 	// +optional
 	PhysicalFileCacheCapacity string `json:"physicalFileCacheCapacity,omitempty"`
 	// Name is passed to tikv-ctl compact-log-backup as --name when configured.
