@@ -27,19 +27,22 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	tiproxycfg "github.com/pingcap/tidb-operator/v2/pkg/configs/tiproxy"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/toml"
 )
 
 const fakePDAddr = "any string, useless in test"
 
 func TestTaskConfigMap(t *testing.T) {
 	cases := []struct {
-		desc          string
-		state         *ReconcileContext
-		objs          []client.Object
-		unexpectedErr bool
-		invalidConfig bool
+		desc           string
+		state          *ReconcileContext
+		objs           []client.Object
+		unexpectedErr  bool
+		invalidConfig  bool
+		expectedLabels map[string]string
 
 		expectedStatus task.Status
 	}{
@@ -87,6 +90,29 @@ func TestTaskConfigMap(t *testing.T) {
 				},
 			},
 			expectedStatus: task.SFail,
+		},
+		{
+			desc: "server labels are rendered into config",
+			state: &ReconcileContext{
+				State: &state{
+					tiproxy: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
+						obj.Spec.Server.Labels = map[string]string{
+							"env":  "prod",
+							"rack": "rack-1",
+						}
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.Status.PD = fakePDAddr
+						return obj
+					}),
+				},
+			},
+			expectedLabels: map[string]string{
+				"env":  "prod",
+				"rack": "rack-1",
+			},
+			expectedStatus: task.SComplete,
 		},
 		{
 			desc: "has config map",
@@ -166,6 +192,12 @@ func TestTaskConfigMap(t *testing.T) {
 				}
 				require.NoError(tt, fc.Get(ctx, client.ObjectKeyFromObject(&cm), &cm), c.desc)
 				assert.NotEmpty(tt, cm.Data, c.desc)
+				if c.expectedLabels != nil {
+					cfg := tiproxycfg.Config{}
+					decoder, _ := toml.Codec[tiproxycfg.Config]()
+					require.NoError(tt, decoder.Decode([]byte(cm.Data[v1alpha1.FileNameConfig]), &cfg), c.desc)
+					assert.Equal(tt, c.expectedLabels, cfg.Labels, c.desc)
+				}
 			}
 		})
 	}

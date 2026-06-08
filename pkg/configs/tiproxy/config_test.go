@@ -284,3 +284,46 @@ func TestOverlay(t *testing.T) {
 		})
 	}
 }
+
+func TestOverlayLabels(t *testing.T) {
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns1",
+			Name:      "db",
+		},
+		Status: v1alpha1.ClusterStatus{
+			PD: "http://db-pd.ns1:2379",
+		},
+	}
+	tiproxy := &v1alpha1.TiProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns1",
+			Name:      "db-foo",
+		},
+		Spec: v1alpha1.TiProxySpec{
+			Subdomain: "db-tiproxy-peer",
+			TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
+				Server: v1alpha1.TiProxyServer{
+					Labels: map[string]string{
+						"zone": "from-server-labels",
+						"env":  "prod",
+					},
+				},
+			},
+		},
+	}
+
+	got := &Config{
+		Labels: map[string]string{
+			"rack": "rack-1",
+			"zone": "from-config",
+		},
+	}
+	err := got.Overlay(cluster, tiproxy)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{
+		"rack": "rack-1",
+		"zone": "from-server-labels",
+		"env":  "prod",
+	}, got.Labels)
+}
