@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
 	stringutil "github.com/pingcap/tidb-operator/v2/pkg/utils/string"
 )
 
@@ -74,6 +75,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 	c.Proxy.AdvertiseAddress = getAdvertiseAddress(cluster, tiproxy)
 	c.Proxy.PDAddress = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
 	c.API.Address = coreutil.ListenAddress(coreutil.TiProxyAPIPort(tiproxy))
+	if len(tiproxy.Spec.Server.Labels) > 0 {
+		c.Labels = maputil.Merge(c.Labels, tiproxy.Spec.Server.Labels)
+	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.ClusterTLS.CA = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.ServiceAccountRootCAKey)
