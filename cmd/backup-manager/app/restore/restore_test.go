@@ -33,8 +33,7 @@ func TestOptions_ReplicationPhase_DefaultsToZero(t *testing.T) {
 // TestReplicationBRFlags verifies the replication-specific BR flags
 // produced by replicationBRFlags. Phase 0 returns nil (allowing
 // `append(args, replicationBRFlags(0)...)` to be a no-op for standard
-// PiTR); phases 1 and 2 produce the flags spec §6 mandates,
-// with the constants for sub-prefix and concurrency wired in.
+// PiTR); phases 1 and 2 produce the flags spec §6 mandates.
 func TestReplicationBRFlags(t *testing.T) {
 	cases := []struct {
 		phase int
@@ -43,14 +42,12 @@ func TestReplicationBRFlags(t *testing.T) {
 		{phase: 0, want: nil},
 		{phase: 1, want: []string{
 			"--restore-phase=1",
-			"--replication-status-sub-prefix=crr-checkpoint",
 			"--pitr-concurrency=1024",
 			"--metadata-download-batch-size=512",
 			"--retain-latest-mvcc-version",
 		}},
 		{phase: 2, want: []string{
 			"--restore-phase=2",
-			"--replication-status-sub-prefix=crr-checkpoint",
 			"--pitr-concurrency=1024",
 			"--metadata-download-batch-size=512",
 			"--retain-latest-mvcc-version",

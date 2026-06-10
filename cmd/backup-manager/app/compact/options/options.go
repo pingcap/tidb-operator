@@ -88,10 +88,10 @@ func (c *CompactOpts) Verify() error {
 	if c.FromTS == fromTSUnset {
 		return errors.New("from-ts must be set")
 	}
-	// UntilTS unset is valid only in sharded CCR checkpoint mode: tikv-ctl
-	// reads the until-ts from the log-backup global checkpoint via
-	// --crr-checkpoint-prefix. Non-sharded compact keeps the existing
-	// requirement that EndTs/UntilTS must be set explicitly.
+	// UntilTS unset is valid only in sharded CCR checkpoint mode: tikv-ctl can
+	// read the until-ts from the log-backup global checkpoint. Non-sharded
+	// compact keeps the existing requirement that EndTs/UntilTS must be set
+	// explicitly.
 	if c.UntilTS == untilTSUnset && !c.Sharded {
 		return errors.New("until-ts must be set")
 	}

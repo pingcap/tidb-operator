@@ -77,6 +77,7 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity", "200G",
 		"--until", "22",
+		"--crr-checkpoint-prefix", "crr-checkpoint",
 		"--shard", "2/3",
 		"--minimal-compaction-size", "0",
 	}
