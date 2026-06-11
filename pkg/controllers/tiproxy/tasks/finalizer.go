@@ -161,7 +161,7 @@ func tiProxyConnectionsDrained(ctx context.Context, state State, c client.Client
 		return false
 	}
 	if connectionCount > 0 {
-		logger.V(2).Info(
+		logger.Info(
 			"TiProxy still has active connections, continue waiting",
 			"namespace", tiproxy.Namespace,
 			"name", tiproxy.Name,
