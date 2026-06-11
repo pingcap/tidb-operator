@@ -79,14 +79,19 @@ func drainOrDeletePod(ctx context.Context, c client.Client, state State, pod *co
 	}
 
 	remaining := time.Until(startAt.Add(time.Duration(seconds) * time.Second))
+	if remaining <= 0 {
+		return deleteTiProxyPod(ctx, c, pod)
+	}
+
+	if tiProxyConnectionsDrained(ctx, state, c, logger) {
+		return deleteTiProxyPod(ctx, c, pod)
+	}
+
 	if remaining > task.DefaultRequeueAfter {
 		remaining = task.DefaultRequeueAfter
 	}
-	if remaining > 0 {
-		return remaining, nil
-	}
 
-	return deleteTiProxyPod(ctx, c, pod)
+	return remaining, nil
 }
 
 func gracefulShutdownDeleteDelaySeconds(tiproxy *v1alpha1.TiProxy) (seconds int32, ok bool, err error) {
@@ -129,6 +134,48 @@ func deleteTiProxyPod(ctx context.Context, c client.Client, pod *corev1.Pod) (ti
 		return 0, err
 	}
 	return task.DefaultRequeueAfter, nil
+}
+
+func tiProxyConnectionsDrained(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {
+	tiproxy := state.Object()
+
+	tpClient, err := newTiProxyDeleteClient(ctx, state, c)
+	if err != nil {
+		logger.Info(
+			"failed to build TiProxy API client before checking connections, continue waiting",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+			"error", err,
+		)
+		return false
+	}
+
+	connectionCount, err := tpClient.ConnectionCount(ctx)
+	if err != nil {
+		logger.Info(
+			"failed to query TiProxy connections before graceful delete, continue waiting",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+			"error", err,
+		)
+		return false
+	}
+	if connectionCount > 0 {
+		logger.V(2).Info(
+			"TiProxy still has active connections, continue waiting",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+			"connectionCount", connectionCount,
+		)
+		return false
+	}
+
+	logger.Info(
+		"TiProxy has no active connections, delete pod without waiting for the remaining graceful delay",
+		"namespace", tiproxy.Namespace,
+		"name", tiproxy.Name,
+	)
+	return true
 }
 
 func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {

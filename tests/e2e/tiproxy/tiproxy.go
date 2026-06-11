@@ -16,11 +16,13 @@ package tiproxy
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	tiproxyapi "github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
@@ -81,6 +84,47 @@ func tiproxyHealthStatusCode(ctx context.Context, f *framework.Framework, pod *c
 	defer resp.Body.Close()
 
 	return resp.StatusCode, nil
+}
+
+func tiproxyConnectionCount(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (float64, error) {
+	probeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	ports := f.PortForwardPod(probeCtx, pod, []string{fmt.Sprintf(":%d", v1alpha1.DefaultTiProxyPortAPI)})
+	tpClient := tiproxyapi.NewTiProxyClient(fmt.Sprintf("127.0.0.1:%d", ports[0].Local), 10*time.Second, nil)
+	return tpClient.ConnectionCount(probeCtx)
+}
+
+func holdTiProxySQLConnection(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (func(), error) {
+	forwardCtx, cancel := context.WithCancel(ctx)
+	ports := f.PortForwardPod(forwardCtx, pod, []string{fmt.Sprintf(":%d", v1alpha1.DefaultTiProxyPortClient)})
+
+	db, err := sql.Open("mysql", fmt.Sprintf("root:@tcp(127.0.0.1:%d)/?timeout=10s", ports[0].Local))
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(1)
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		_ = db.Close()
+		cancel()
+		return nil, err
+	}
+	if err := conn.PingContext(ctx); err != nil {
+		_ = conn.Close()
+		_ = db.Close()
+		cancel()
+		return nil, err
+	}
+
+	return func() {
+		_ = conn.Close()
+		_ = db.Close()
+		cancel()
+	}, nil
 }
 
 func tiproxySupportsHealthOverrideAPI(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (bool, error) {
@@ -342,7 +386,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 		ginkgo.It("keep service backends during graceful rolling update with large maxSurge", label.Update, func(ctx context.Context) {
 			o := desc.DefaultOptions()
 			const replicas int32 = 3
-			const deleteDelaySeconds int32 = 20
+			const deleteDelaySeconds int32 = 3600
 
 			pdg := action.MustCreatePD(ctx, f, o)
 			kvg := action.MustCreateTiKV(ctx, f, o)
@@ -386,6 +430,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			initialPods, err := listTiProxyPods()
 			f.Must(err)
 			gomega.Expect(initialPods.Items).To(gomega.HaveLen(int(replicas)))
+			targetOldPod := initialPods.Items[0].DeepCopy()
 			initialPodUIDs := map[string]string{}
 			for i := range initialPods.Items {
 				initialPodUIDs[initialPods.Items[i].Name] = string(initialPods.Items[i].UID)
@@ -446,6 +491,25 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.Must(err)
 			manualTiProxyUnhealthyTrigger := !supportsHealthOverrideAPI
 
+			ginkgo.By("Hold one SQL connection on an old TiProxy pod")
+			releaseTargetOldPodConnection, err := holdTiProxySQLConnection(ctx, f, targetOldPod)
+			f.Must(err)
+			defer func() {
+				if releaseTargetOldPodConnection != nil {
+					releaseTargetOldPodConnection()
+				}
+			}()
+			gomega.Eventually(func() error {
+				connectionCount, err := tiproxyConnectionCount(ctx, f, targetOldPod)
+				if err != nil {
+					return err
+				}
+				if connectionCount <= 0 {
+					return fmt.Errorf("target old tiproxy pod %s/%s has %v connections, want > 0", targetOldPod.Namespace, targetOldPod.Name, connectionCount)
+				}
+				return nil
+			}).WithTimeout(waiter.ShortTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
 			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
 			f.Must(err)
 
@@ -456,7 +520,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 
 			var violated error
 			terminatedPods := map[string]struct{}{}
-			ginkgo.By("Ensure old pods are marked unhealthy only after enough new TiProxy backends are ready")
+			var targetDrainingPod *corev1.Pod
+			ginkgo.By("Ensure old pods start graceful shutdown only after enough new TiProxy backends are ready")
 			gomega.Eventually(func() error {
 				if violated != nil {
 					return violated
@@ -483,14 +548,21 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					return err
 				}
 
-				drained := 0
+				oldPodDraining := false
 				for i := range pods.Items {
 					pod := &pods.Items[i]
 					if _, ok := initialPodUIDs[pod.Name]; !ok {
 						continue
 					}
-					if pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
+					rawStartTime := pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]
+					if rawStartTime == "" {
 						continue
+					}
+					oldPodDraining = true
+
+					if backends < int(replicas) {
+						violated = fmt.Errorf("tiproxy service backends dropped below desired replicas after drain started: got %d, want >= %d", backends, replicas)
+						return violated
 					}
 
 					statusCode, err := tiproxyHealthStatusCode(ctx, f, pod)
@@ -500,31 +572,39 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					if statusCode == http.StatusOK {
 						return fmt.Errorf("draining tiproxy pod %s/%s is still healthy after graceful shutdown begins", pod.Namespace, pod.Name)
 					}
-					drained++
-				}
-				if drained == 0 {
-					if backends < int(replicas) {
-						return fmt.Errorf("only %d tiproxy service backends are ready before drain starts, want >= %d", backends, replicas)
+
+					if pod.Name != targetOldPod.Name {
+						continue
 					}
-					if len(pods.Items) < int(replicas)+2 {
-						return fmt.Errorf("only %d tiproxy pods exist during graceful rolling update, want at least %d", len(pods.Items), int(replicas)+2)
+
+					connectionCount, err := tiproxyConnectionCount(ctx, f, pod)
+					if err != nil {
+						return fmt.Errorf("cannot query connection count of target draining tiproxy pod %s/%s: %w", pod.Namespace, pod.Name, err)
 					}
-					if err := manuallyTriggerTiProxyUnhealthy(ctx, f, manualTiProxyUnhealthyTrigger, pods.Items, initialPodUIDs, deletingTiProxies, terminatedPods); err != nil {
-						return err
+					if connectionCount <= 0 {
+						return fmt.Errorf("target draining tiproxy pod %s/%s has %v connections before releasing the held connection, want > 0", pod.Namespace, pod.Name, connectionCount)
 					}
-					return fmt.Errorf("no unhealthy tiproxy pod observed yet")
+
+					targetDrainingPod = pod.DeepCopy()
+					return nil
 				}
 
-				if backends < int(replicas) {
-					violated = fmt.Errorf("tiproxy service backends dropped below desired replicas after drain started: got %d, want >= %d", backends, replicas)
-					return violated
+				if !oldPodDraining && backends < int(replicas) {
+					return fmt.Errorf("only %d tiproxy service backends are ready before drain starts, want >= %d", backends, replicas)
 				}
-				if len(pods.Items) < int(replicas)+2 {
-					return fmt.Errorf("only %d tiproxy pods exist during graceful rolling update, want at least %d", len(pods.Items), int(replicas)+2)
+				if err := manuallyTriggerTiProxyUnhealthy(ctx, f, manualTiProxyUnhealthyTrigger, pods.Items, initialPodUIDs, deletingTiProxies, terminatedPods); err != nil {
+					return err
 				}
 
-				return nil
+				return fmt.Errorf("target old tiproxy pod %s/%s has not started graceful shutdown yet", targetOldPod.Namespace, targetOldPod.Name)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			ginkgo.By("Release the held SQL connection and ensure the old TiProxy pod is deleted before the graceful delay limit")
+			releaseTargetOldPodConnection()
+			releaseTargetOldPodConnection = nil
+			const earlyDeleteTimeout = time.Minute
+			gomega.Expect(time.Duration(deleteDelaySeconds) * time.Second).To(gomega.BeNumerically(">", waiter.LongTaskTimeout+earlyDeleteTimeout))
+			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, targetDrainingPod, earlyDeleteTimeout))
 
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
