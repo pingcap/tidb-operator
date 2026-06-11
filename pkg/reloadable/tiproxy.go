@@ -112,7 +112,8 @@ func equalTiProxyTemplate(c, p *v1alpha1.TiProxyTemplate) bool {
 	p = convertTiProxyTemplate(p)
 	c = convertTiProxyTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart && p.Spec.Config != c.Spec.Config {
+	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart &&
+		p.Spec.Config != c.Spec.Config {
 		return false
 	}
 

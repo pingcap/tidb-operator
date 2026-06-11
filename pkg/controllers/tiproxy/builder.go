@@ -42,9 +42,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsDeleting(state),
 			common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, common.DefaultInstanceSubresourceLister),
 		),
-		// return if cluster's status is not updated
-		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
-
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiProxy](state),
 			tasks.TaskDrainPodForDelete(state, r.Client),
 			task.If(task.CondFunc(func() bool { return state.Pod() == nil }),
@@ -73,10 +70,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiProxy](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
-		common.TaskServerLabels[scope.TiProxy](state, r.Client, r.PDClientManager, func(ctx context.Context, labels map[string]string) error {
-			// TODO(liubo02): compare before setting
-			return state.TiProxyClient.SetLabels(ctx, labels)
-		}),
+		task.IfNot(common.CondClusterPDAddrIsNotRegistered(state),
+			common.TaskServerLabels[scope.TiProxy](state, r.Client, r.PDClientManager, func(ctx context.Context, labels map[string]string) error {
+				// TODO(liubo02): compare before setting
+				return state.TiProxyClient.SetLabels(ctx, labels)
+			}),
+		),
 		common.TaskInstanceConditionSynced[scope.TiProxy](state),
 		common.TaskInstanceConditionReady[scope.TiProxy](state),
 		common.TaskInstanceConditionRunning[scope.TiProxy](state),

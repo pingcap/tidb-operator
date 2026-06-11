@@ -27,13 +27,15 @@ import (
 )
 
 type Proxy struct {
-	Address          string `toml:"addr"`
-	AdvertiseAddress string `toml:"advertise-addr"`
-	PDAddress        string `toml:"pd-addrs"`
+	Address          string           `toml:"addr,omitempty" json:"addr,omitempty"`
+	AdvertiseAddress string           `toml:"advertise-addr,omitempty" json:"advertise-addr,omitempty"`
+	PDAddress        string           `toml:"pd-addrs,omitempty" json:"pd-addrs,omitempty"`
+	PortRange        []int            `toml:"port-range,omitempty" json:"port-range,omitempty"`
+	BackendClusters  []BackendCluster `toml:"backend-clusters,omitempty" json:"backend-clusters,omitempty"`
 }
 
 type API struct {
-	Address string `toml:"addr"`
+	Address string `toml:"addr,omitempty" json:"addr,omitempty"`
 }
 
 type TLSConfig struct {
@@ -52,6 +54,12 @@ type Security struct {
 	ClusterTLS TLSConfig `toml:"cluster-tls,omitempty"`
 	// SQLTLS is used to access TiDB SQL port.
 	SQLTLS TLSConfig `toml:"sql-tls,omitempty"`
+}
+
+type BackendCluster struct {
+	Name      string   `toml:"name,omitempty" json:"name,omitempty"`
+	PDAddrs   string   `toml:"pd-addrs,omitempty" json:"pd-addrs,omitempty"`
+	NSServers []string `toml:"ns-servers,omitempty" json:"ns-servers,omitempty"`
 }
 
 // Config is a subset config of TiProxy.
@@ -73,6 +81,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 	c.Proxy.Address = coreutil.ListenAddress(coreutil.TiProxyClientPort(tiproxy))
 	c.Proxy.AdvertiseAddress = getAdvertiseAddress(cluster, tiproxy)
 	c.Proxy.PDAddress = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
+	c.Proxy.PortRange = coreutil.TiProxyClientPortRange(tiproxy)
 	c.API.Address = coreutil.ListenAddress(coreutil.TiProxyAPIPort(tiproxy))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
@@ -126,6 +135,10 @@ func (c *Config) Validate() error {
 
 	if c.Proxy.PDAddress != "" {
 		fields = append(fields, "proxy.pd-address")
+	}
+
+	if len(c.Proxy.PortRange) > 0 {
+		fields = append(fields, "proxy.port-range")
 	}
 
 	if c.API.Address != "" {
