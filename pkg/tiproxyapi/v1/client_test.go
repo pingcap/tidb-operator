@@ -173,5 +173,5 @@ tiproxy_server_connections 7
 	client := NewTiProxyClient(addr, 5*time.Second, nil)
 	count, err := client.ConnectionCount(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, float64(7), count)
+	assert.InDelta(t, 7, count, 0)
 }
