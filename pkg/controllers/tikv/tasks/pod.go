@@ -89,6 +89,7 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) t
 		// See https://github.com/kubernetes/kubernetes/issues/83916.
 		// TODO(liubo02): support minimize the deletion grace period seconds
 		if !pod.GetDeletionTimestamp().IsZero() {
+			state.ShouldEvictLeader = true
 			// key will be requeued after the pod is changed
 			return task.Wait().With("pod is deleting")
 		}

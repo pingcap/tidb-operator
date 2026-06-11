@@ -121,7 +121,7 @@ func TestTaskPod(t *testing.T) {
 
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
-			expectedShouldEvict:      false,
+			expectedShouldEvict:      true,
 			pdClientReady:            false,
 		},
 		{
