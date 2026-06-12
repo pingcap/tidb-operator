@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -60,5 +61,50 @@ func TestCheckTiProxy(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			assert.Equal(t, c.reloadable, CheckTiProxy(c.proxyg, c.proxy), c.desc)
 		})
+	}
+}
+
+func TestCheckTiProxyPodWhenServerLabelsChange(t *testing.T) {
+	tests := []struct {
+		name      string
+		strategy  v1alpha1.ConfigUpdateStrategy
+		wantCheck bool
+	}{
+		{
+			name:      "restart strategy",
+			strategy:  v1alpha1.ConfigUpdateStrategyRestart,
+			wantCheck: false,
+		},
+		{
+			name:      "hot reload strategy",
+			strategy:  v1alpha1.ConfigUpdateStrategyHotReload,
+			wantCheck: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			previous := tiproxyWithServerLabels(tt.strategy, map[string]string{"zone": "z1"})
+			current := tiproxyWithServerLabels(tt.strategy, map[string]string{"zone": "z2"})
+			pod := &corev1.Pod{}
+			MustEncodeLastTiProxyTemplate(previous, pod)
+
+			assert.Equal(t, tt.wantCheck, CheckTiProxyPod(current, pod))
+		})
+	}
+}
+
+func tiproxyWithServerLabels(strategy v1alpha1.ConfigUpdateStrategy, labels map[string]string) *v1alpha1.TiProxy {
+	return &v1alpha1.TiProxy{
+		Spec: v1alpha1.TiProxySpec{
+			TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
+				Server: v1alpha1.TiProxyServer{
+					Labels: labels,
+				},
+				UpdateStrategy: v1alpha1.UpdateStrategy{
+					Config: strategy,
+				},
+			},
+		},
 	}
 }

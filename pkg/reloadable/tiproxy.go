@@ -99,9 +99,6 @@ func convertTiProxyTemplate(tmpl *v1alpha1.TiProxyTemplate) *v1alpha1.TiProxyTem
 	newTmpl.Labels = convertLabels(newTmpl.Labels)
 	newTmpl.Annotations = convertAnnotations(newTmpl.Annotations)
 
-	// server labels can be updated dynamically
-	newTmpl.Spec.Server.Labels = nil
-
 	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
 	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
@@ -111,14 +108,17 @@ func convertTiProxyTemplate(tmpl *v1alpha1.TiProxyTemplate) *v1alpha1.TiProxyTem
 func equalTiProxyTemplate(c, p *v1alpha1.TiProxyTemplate) bool {
 	p = convertTiProxyTemplate(p)
 	c = convertTiProxyTemplate(c)
+	serverLabelsChanged := !apiequality.Semantic.DeepEqual(p.Spec.Server.Labels, c.Spec.Server.Labels)
 	// not equal only when current strategy is Restart and config is changed
-	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart && p.Spec.Config != c.Spec.Config {
+	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart && (p.Spec.Config != c.Spec.Config || serverLabelsChanged) {
 		return false
 	}
 
 	// ignore these fields
 	p.Spec.Config = ""
 	c.Spec.Config = ""
+	p.Spec.Server.Labels = nil
+	c.Spec.Server.Labels = nil
 	p.Spec.UpdateStrategy.Config = ""
 	c.Spec.UpdateStrategy.Config = ""
 
