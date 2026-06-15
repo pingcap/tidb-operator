@@ -321,12 +321,8 @@ func TestQueryAllLogBackupKeysReturnsPartialStateWhenPauseQueryFails(t *testing.
 	}
 }
 
-func TestSyncLogBackupStateDoesNotStartQueryFailureCountdownWhenPauseQueryFails(t *testing.T) {
+func TestPauseQueryFailureSkipsKernelSyncButKeepsCheckpointUpdate(t *testing.T) {
 	queryErr := errors.New("pd etcd unavailable")
-	bt := &backupTracker{
-		logBackups: make(map[string]*trackDepends),
-	}
-
 	backup := &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-backup",
@@ -341,47 +337,93 @@ func TestSyncLogBackupStateDoesNotStartQueryFailureCountdownWhenPauseQueryFails(
 		},
 	}
 
-	logkey := genLogBackupKey("default", "test-backup")
-	bt.logBackups[logkey] = &trackDepends{
-		tc: &v1alpha1.TidbCluster{},
-		etcdClient: &mockPDEtcdClient{
-			getResponse: map[string][]*pdapi.KeyValue{
-				"/tidb/br-stream/info/test-backup": {
-					{Value: []byte("info")},
+	t.Run("sync skips kernel state update", func(t *testing.T) {
+		bt := &backupTracker{
+			logBackups: make(map[string]*trackDepends),
+		}
+
+		logkey := genLogBackupKey("default", "test-backup")
+		bt.logBackups[logkey] = &trackDepends{
+			tc: &v1alpha1.TidbCluster{},
+			etcdClient: &mockPDEtcdClient{
+				getResponse: map[string][]*pdapi.KeyValue{
+					"/tidb/br-stream/info/test-backup": {
+						{Value: []byte("info")},
+					},
+					"/tidb/br-stream/checkpoint/test-backup": {
+						{Value: encodeUint64(123)},
+					},
+				},
+				getErrors: map[string]error{
+					"/tidb/br-stream/pause/test-backup": queryErr,
 				},
 			},
-			getErrors: map[string]error{
-				"/tidb/br-stream/pause/test-backup": queryErr,
+		}
+
+		var updatedCondition *v1alpha1.BackupCondition
+		bt.statusUpdater = &mockStatusUpdater{
+			updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
+				updatedCondition = condition
+				return nil
 			},
-		},
-	}
+		}
 
-	var updatedCondition *v1alpha1.BackupCondition
-	bt.statusUpdater = &mockStatusUpdater{
-		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
-			updatedCondition = condition
-			return nil
-		},
-	}
+		canSkip, err := bt.SyncLogBackupState(backup)
+		if err != nil {
+			t.Fatalf("expected pause query failure to skip sync without error, got %v", err)
+		}
+		if !canSkip {
+			t.Error("expected sync to skip when pause state is unknown")
+		}
+		if updatedCondition != nil {
+			t.Fatalf("expected no status update for pause query failure, got %#v", updatedCondition)
+		}
 
-	canSkip, err := bt.SyncLogBackupState(backup)
-	if err != nil {
-		t.Fatalf("expected pause query failure to skip sync without error, got %v", err)
-	}
-	if !canSkip {
-		t.Error("expected sync to skip when pause state is unknown")
-	}
-	if updatedCondition != nil {
-		t.Fatalf("expected no status update for pause query failure, got %#v", updatedCondition)
-	}
+		dep := bt.logBackups[logkey]
+		dep.mutex.RLock()
+		failureStart := dep.stateQueryFailureStartTime
+		dep.mutex.RUnlock()
+		if !failureStart.IsZero() {
+			t.Fatalf("expected pause query failure not to start failure countdown, got %v", failureStart)
+		}
+	})
 
-	dep := bt.logBackups[logkey]
-	dep.mutex.RLock()
-	failureStart := dep.stateQueryFailureStartTime
-	dep.mutex.RUnlock()
-	if !failureStart.IsZero() {
-		t.Fatalf("expected pause query failure not to start failure countdown, got %v", failureStart)
-	}
+	t.Run("refresh keeps checkpoint update", func(t *testing.T) {
+		bt := &backupTracker{}
+		dep := &trackDepends{
+			tc: &v1alpha1.TidbCluster{},
+			etcdClient: &mockPDEtcdClient{
+				getResponse: map[string][]*pdapi.KeyValue{
+					"/tidb/br-stream/info/test-backup": {
+						{Value: []byte("info")},
+					},
+					"/tidb/br-stream/checkpoint/test-backup": {
+						{Value: encodeUint64(123)},
+					},
+					"/tidb/br-stream/last-error/test-backup": {},
+				},
+				getErrors: map[string]error{
+					"/tidb/br-stream/pause/test-backup": queryErr,
+				},
+			},
+		}
+
+		var updatedStatus *controller.BackupUpdateStatus
+		bt.statusUpdater = &mockStatusUpdater{
+			updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
+				updatedStatus = status
+				return nil
+			},
+		}
+
+		bt.doRefreshLogBackupState(backup, dep)
+		if updatedStatus == nil || updatedStatus.LogCheckpointTs == nil {
+			t.Fatal("expected checkpoint status update")
+		}
+		if *updatedStatus.LogCheckpointTs != "123" {
+			t.Errorf("expected checkpoint 123, got %s", *updatedStatus.LogCheckpointTs)
+		}
+	})
 }
 
 func TestGetLogBackupKernelState(t *testing.T) {
@@ -401,7 +443,7 @@ func TestGetLogBackupKernelState(t *testing.T) {
 	}
 }
 
-func TestSyncLogBackupStateMarksQueryFailureAfterLongStateQueryFailure(t *testing.T) {
+func TestSyncLogBackupStateReportsPersistentQueryFailureWithRetryAndLatch(t *testing.T) {
 	queryErr := errors.New("pd etcd unavailable")
 	bt := &backupTracker{
 		logBackups: make(map[string]*trackDepends),
@@ -433,118 +475,6 @@ func TestSyncLogBackupStateMarksQueryFailureAfterLongStateQueryFailure(t *testin
 	}
 
 	var updatedCondition *v1alpha1.BackupCondition
-	bt.statusUpdater = &mockStatusUpdater{
-		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
-			updatedCondition = condition
-			return nil
-		},
-	}
-
-	canSkip, err := bt.SyncLogBackupState(backup)
-	if err == nil {
-		t.Fatal("expected query failure error, got nil")
-	}
-	if canSkip {
-		t.Error("expected sync not to skip when query failure is confirmed")
-	}
-	if updatedCondition == nil {
-		t.Fatal("expected status update after persistent query failures")
-	}
-	if updatedCondition.Type != v1alpha1.BackupFailed {
-		t.Errorf("expected condition type %s, got %s", v1alpha1.BackupFailed, updatedCondition.Type)
-	}
-	if updatedCondition.Reason != "LogBackupStateQueryFailed" {
-		t.Errorf("expected reason LogBackupStateQueryFailed, got %s", updatedCondition.Reason)
-	}
-	if updatedCondition.Reason == "LogBackupTaskNotFound" {
-		t.Error("query failure must not be reported as task not found")
-	}
-}
-
-func TestSyncLogBackupStateReportsPersistentQueryFailureOnlyOnce(t *testing.T) {
-	queryErr := errors.New("pd etcd unavailable")
-	bt := &backupTracker{
-		logBackups: make(map[string]*trackDepends),
-	}
-
-	backup := &v1alpha1.Backup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-backup",
-			Namespace: "default",
-		},
-		Spec: v1alpha1.BackupSpec{
-			Mode:          v1alpha1.BackupModeLog,
-			LogSubcommand: v1alpha1.LogStartCommand,
-		},
-		Status: v1alpha1.BackupStatus{
-			Phase: v1alpha1.BackupRunning,
-		},
-	}
-
-	logkey := genLogBackupKey("default", "test-backup")
-	bt.logBackups[logkey] = &trackDepends{
-		tc: &v1alpha1.TidbCluster{},
-		etcdClient: &mockPDEtcdClient{
-			getErrors: map[string]error{
-				"/tidb/br-stream/info/test-backup": queryErr,
-			},
-		},
-		stateQueryFailureStartTime: time.Now().Add(-logBackupStateQueryFailureGracePeriod - time.Minute),
-	}
-
-	updateCalls := 0
-	bt.statusUpdater = &mockStatusUpdater{
-		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
-			updateCalls++
-			return nil
-		},
-	}
-
-	for i := 0; i < 2; i++ {
-		canSkip, err := bt.SyncLogBackupState(backup)
-		if err == nil {
-			t.Fatal("expected query failure error, got nil")
-		}
-		if canSkip {
-			t.Error("expected sync not to skip when query failure is confirmed")
-		}
-	}
-	if updateCalls != 1 {
-		t.Fatalf("expected persistent query failure status to be updated once, got %d", updateCalls)
-	}
-}
-
-func TestSyncLogBackupStateRetriesReportWhenPersistentQueryFailureUpdateFails(t *testing.T) {
-	queryErr := errors.New("pd etcd unavailable")
-	bt := &backupTracker{
-		logBackups: make(map[string]*trackDepends),
-	}
-
-	backup := &v1alpha1.Backup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-backup",
-			Namespace: "default",
-		},
-		Spec: v1alpha1.BackupSpec{
-			Mode:          v1alpha1.BackupModeLog,
-			LogSubcommand: v1alpha1.LogStartCommand,
-		},
-		Status: v1alpha1.BackupStatus{
-			Phase: v1alpha1.BackupRunning,
-		},
-	}
-
-	logkey := genLogBackupKey("default", "test-backup")
-	bt.logBackups[logkey] = &trackDepends{
-		tc: &v1alpha1.TidbCluster{},
-		etcdClient: &mockPDEtcdClient{
-			getErrors: map[string]error{
-				"/tidb/br-stream/info/test-backup": queryErr,
-			},
-		},
-		stateQueryFailureStartTime: time.Now().Add(-logBackupStateQueryFailureGracePeriod - time.Minute),
-	}
-
 	updateCalls := 0
 	bt.statusUpdater = &mockStatusUpdater{
 		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
@@ -552,6 +482,7 @@ func TestSyncLogBackupStateRetriesReportWhenPersistentQueryFailureUpdateFails(t 
 			if updateCalls == 1 {
 				return errors.New("update status failed")
 			}
+			updatedCondition = condition
 			return nil
 		},
 	}
@@ -566,7 +497,27 @@ func TestSyncLogBackupStateRetriesReportWhenPersistentQueryFailureUpdateFails(t 
 		}
 	}
 	if updateCalls != 2 {
-		t.Fatalf("expected status update to be retried after failure, got %d calls", updateCalls)
+		t.Fatalf("expected failed status update to be retried, got %d calls", updateCalls)
+	}
+	if updatedCondition == nil {
+		t.Fatal("expected successful retry to update status")
+	}
+	if updatedCondition.Type != v1alpha1.BackupFailed {
+		t.Errorf("expected condition type %s, got %s", v1alpha1.BackupFailed, updatedCondition.Type)
+	}
+	if updatedCondition.Reason != "LogBackupStateQueryFailed" {
+		t.Errorf("expected reason LogBackupStateQueryFailed, got %s", updatedCondition.Reason)
+	}
+
+	canSkip, err := bt.SyncLogBackupState(backup)
+	if err == nil {
+		t.Fatal("expected query failure error, got nil")
+	}
+	if canSkip {
+		t.Error("expected sync not to skip when query failure is confirmed")
+	}
+	if updateCalls != 2 {
+		t.Fatalf("expected successful query failure report to be latched, got %d calls", updateCalls)
 	}
 }
 
@@ -784,57 +735,6 @@ func TestDoRefreshLogBackupStateRecordsEtcdClientFailure(t *testing.T) {
 	dep.mutex.RUnlock()
 	if failureStart.IsZero() {
 		t.Fatal("expected etcd client failure to start query failure countdown")
-	}
-}
-
-func TestDoRefreshLogBackupStateUpdatesCheckpointWhenPauseQueryFails(t *testing.T) {
-	bt := &backupTracker{}
-	backup := &v1alpha1.Backup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-backup",
-			Namespace: "default",
-		},
-		Spec: v1alpha1.BackupSpec{
-			Mode:          v1alpha1.BackupModeLog,
-			LogSubcommand: v1alpha1.LogStartCommand,
-		},
-		Status: v1alpha1.BackupStatus{
-			Phase: v1alpha1.BackupRunning,
-		},
-	}
-
-	dep := &trackDepends{
-		tc: &v1alpha1.TidbCluster{},
-		etcdClient: &mockPDEtcdClient{
-			getResponse: map[string][]*pdapi.KeyValue{
-				"/tidb/br-stream/info/test-backup": {
-					{Value: []byte("info")},
-				},
-				"/tidb/br-stream/checkpoint/test-backup": {
-					{Value: encodeUint64(123)},
-				},
-				"/tidb/br-stream/last-error/test-backup": {},
-			},
-			getErrors: map[string]error{
-				"/tidb/br-stream/pause/test-backup": errors.New("pd etcd unavailable"),
-			},
-		},
-	}
-
-	var updatedStatus *controller.BackupUpdateStatus
-	bt.statusUpdater = &mockStatusUpdater{
-		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
-			updatedStatus = status
-			return nil
-		},
-	}
-
-	bt.doRefreshLogBackupState(backup, dep)
-	if updatedStatus == nil || updatedStatus.LogCheckpointTs == nil {
-		t.Fatal("expected checkpoint status update")
-	}
-	if *updatedStatus.LogCheckpointTs != "123" {
-		t.Errorf("expected checkpoint 123, got %s", *updatedStatus.LogCheckpointTs)
 	}
 }
 
