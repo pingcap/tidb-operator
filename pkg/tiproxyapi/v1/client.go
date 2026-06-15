@@ -20,18 +20,22 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/prometheus/common/expfmt"
 
 	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 )
 
 const (
-	healthPath = "api/debug/health"
-	configPath = "api/admin/config"
+	healthPath                   = "api/debug/health"
+	configPath                   = "api/admin/config"
+	metricsPath                  = "metrics"
+	tiproxyConnectionsMetricName = "tiproxy_server_connections"
 )
 
 type healthOverrideRequest struct {
@@ -45,6 +49,8 @@ type TiProxyClient interface {
 	IsHealthy(ctx context.Context) (bool, error)
 	// MarkUnhealthy makes the TiProxy health endpoint report unhealthy.
 	MarkUnhealthy(ctx context.Context) error
+	// ConnectionCount returns the current number of TiProxy SQL client connections.
+	ConnectionCount(ctx context.Context) (float64, error)
 	// SetLabels sets the labels for TiProxy.
 	SetLabels(ctx context.Context, labels map[string]string) error
 }
@@ -113,6 +119,55 @@ func (c *tiproxyClient) MarkUnhealthy(ctx context.Context) error {
 	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
 	_, err := httputil.PutBodyOK(ctx, c.httpClient, apiURL, &buffer)
 	return err
+}
+
+func (c *tiproxyClient) ConnectionCount(ctx context.Context) (float64, error) {
+	apiURL := fmt.Sprintf("%s/%s", c.url, metricsPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
+	if err != nil {
+		return 0, err
+	}
+
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: URL is constructed from trusted internal config
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer httputil.DeferClose(resp.Body)
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		return 0, fmt.Errorf("get TiProxy metrics failed: status %d", resp.StatusCode)
+	}
+
+	return parseConnectionCount(resp.Body)
+}
+
+func parseConnectionCount(metrics io.Reader) (float64, error) {
+	parser := expfmt.TextParser{}
+	metricFamilies, err := parser.TextToMetricFamilies(metrics)
+	if err != nil {
+		return 0, fmt.Errorf("parse TiProxy metrics failed: %w", err)
+	}
+
+	mf, ok := metricFamilies[tiproxyConnectionsMetricName]
+	if !ok {
+		return 0, fmt.Errorf("metric %s not found", tiproxyConnectionsMetricName)
+	}
+
+	var count float64
+	var found bool
+	for _, metric := range mf.GetMetric() {
+		if metric.Gauge == nil {
+			continue
+		}
+		count += metric.Gauge.GetValue()
+		found = true
+	}
+	if !found {
+		return 0, fmt.Errorf("metric %s has no gauge value", tiproxyConnectionsMetricName)
+	}
+
+	return count, nil
 }
 
 func (c *tiproxyClient) SetLabels(ctx context.Context, labels map[string]string) error {

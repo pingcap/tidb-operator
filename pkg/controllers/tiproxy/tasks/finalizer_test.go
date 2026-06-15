@@ -56,8 +56,11 @@ type testTiProxyHealthServer struct {
 	mu                  sync.Mutex
 	healthStatus        int
 	markUnhealthyStatus int
+	metricsStatus       int
+	connectionCount     int
 	healthCalls         int
 	markUnhealthyCalls  int
+	metricsCalls        int
 }
 
 func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus int) *testTiProxyHealthServer {
@@ -66,6 +69,8 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 	s := &testTiProxyHealthServer{
 		healthStatus:        healthStatus,
 		markUnhealthyStatus: markUnhealthyStatus,
+		metricsStatus:       http.StatusOK,
+		connectionCount:     1,
 	}
 
 	mux := http.NewServeMux()
@@ -84,11 +89,33 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 		w.WriteHeader(s.healthStatus)
 		_, _ = w.Write([]byte(`{"config_checksum":1}`))
 	})
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.metricsCalls++
+		w.WriteHeader(s.metricsStatus)
+		_, _ = w.Write([]byte(`# HELP tiproxy_server_connections Number of connections.
+# TYPE tiproxy_server_connections gauge
+tiproxy_server_connections ` + strconv.Itoa(s.connectionCount) + `
+`))
+	})
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 
 	s.server = server
 	return s
+}
+
+func (s *testTiProxyHealthServer) setConnectionCount(connectionCount int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.connectionCount = connectionCount
+}
+
+func (s *testTiProxyHealthServer) setMetricsStatus(status int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.metricsStatus = status
 }
 
 func (s *testTiProxyHealthServer) port(t *testing.T) int32 {
@@ -105,6 +132,12 @@ func (s *testTiProxyHealthServer) counts() (health, markUnhealthy int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.healthCalls, s.markUnhealthyCalls
+}
+
+func (s *testTiProxyHealthServer) metricsCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.metricsCalls
 }
 
 func runDrainPodForDeleteTask(t *testing.T, ctx context.Context, s State, c client.Client) (task.Result, bool) {
@@ -255,6 +288,55 @@ func TestTaskDrainPodForDeleteWaitForDeleteDelayAfterGracefulShutdownStarted(t *
 	healthCalls, markUnhealthyCalls := server.counts()
 	assert.Equal(t, 0, healthCalls)
 	assert.Equal(t, 0, markUnhealthyCalls)
+
+	actual := &corev1.Pod{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
+	assert.True(t, actual.GetDeletionTimestamp().IsZero())
+}
+
+func TestTaskDrainPodForDeleteDeletePodWhenConnectionsDropToZero(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusBadGateway, http.StatusOK)
+	server.setConnectionCount(0)
+	cluster := localTestCluster()
+	tiproxy := deletingTiProxyWithAPIAddress("3600", server.port(t))
+	pod := fakePod(cluster, tiproxy)
+	pod.Annotations = map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano),
+	}
+
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := runDrainPodForDeleteTask(t, ctx, &state{cluster: cluster, tiproxy: tiproxy}, fc)
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+	assert.Equal(t, 1, server.metricsCount())
+
+	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
+	assert.True(t, apierrors.IsNotFound(err))
+}
+
+func TestTaskDrainPodForDeleteContinueDeleteDelayWhenConnectionMetricFails(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusBadGateway, http.StatusOK)
+	server.setMetricsStatus(http.StatusInternalServerError)
+	cluster := localTestCluster()
+	tiproxy := deletingTiProxyWithAPIAddress("3600", server.port(t))
+	pod := fakePod(cluster, tiproxy)
+	pod.Annotations = map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano),
+	}
+
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := runDrainPodForDeleteTask(t, ctx, &state{cluster: cluster, tiproxy: tiproxy}, fc)
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+	assert.Equal(t, 1, server.metricsCount())
 
 	actual := &corev1.Pod{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))

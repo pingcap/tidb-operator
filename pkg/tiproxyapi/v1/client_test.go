@@ -156,3 +156,22 @@ func TestTiProxyClient_MarkUnhealthy(t *testing.T) {
 	err := client.MarkUnhealthy(context.Background())
 	require.NoError(t, err)
 }
+
+func TestTiProxyClient_ConnectionCount(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/metrics", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		_, err := w.Write([]byte(`# HELP tiproxy_server_connections Number of connections.
+# TYPE tiproxy_server_connections gauge
+tiproxy_server_connections 7
+`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	addr := stringutil.RemoveHTTPPrefix(server.URL)
+	client := NewTiProxyClient(addr, 5*time.Second, nil)
+	count, err := client.ConnectionCount(context.Background())
+	require.NoError(t, err)
+	assert.InDelta(t, 7, count, 0)
+}
