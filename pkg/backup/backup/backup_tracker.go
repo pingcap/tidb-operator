@@ -16,6 +16,7 @@ package backup
 import (
 	"context"
 	"encoding/binary"
+	stderrors "errors"
 	"fmt"
 	"os"
 	"path"
@@ -27,20 +28,23 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
 var (
-	refreshCheckpointTsPeriod = time.Minute * 1
-	streamKeyPrefix           = "/tidb/br-stream"
-	taskInfoPath              = "/info"
-	taskCheckpointPath        = "/checkpoint"
-	taskLastErrorPath         = "/last-error"
-	taskPausePath             = "/pause"
+	refreshCheckpointTsPeriod             = time.Minute * 1
+	logBackupStateQueryFailureGracePeriod = time.Minute * 10
+	streamKeyPrefix                       = "/tidb/br-stream"
+	taskInfoPath                          = "/info"
+	taskCheckpointPath                    = "/checkpoint"
+	taskLastErrorPath                     = "/last-error"
+	taskPausePath                         = "/pause"
 )
+
+var errLogBackupPauseKeyQueryFailed = stderrors.New("query log backup pause key failed")
 
 // LogBackupKernelState represents the actual state of log backup in the kernel (etcd)
 type LogBackupKernelState string
@@ -66,7 +70,7 @@ type LogBackupState struct {
 
 	// Metadata
 	LastQueryTime time.Time // last query timestamp
-	QueryError    error     // query error if any
+	QueryError    error     // non-fatal partial query error, currently used when pause state is unknown
 }
 
 // BackupTracker implements the logic for tracking log backup progress
@@ -95,13 +99,15 @@ type backupTracker struct {
 
 // trackDepends is the tracker depends, such as tidb cluster info.
 type trackDepends struct {
-	tc                    *v1alpha1.TidbCluster
-	state                 *LogBackupState            // cached state
-	etcdClient            pdapi.PDEtcdClient         // reused etcd client
-	lastRefresh           time.Time                  // last refresh timestamp
-	inconsistencyDetected bool                       // flag to track if inconsistency was detected in previous reconcile
-	lastCommand           v1alpha1.LogSubCommandType // last synced command to avoid cross-command interference
-	mutex                 sync.RWMutex               // protect concurrent access
+	tc                         *v1alpha1.TidbCluster
+	state                      *LogBackupState            // cached state
+	etcdClient                 pdapi.PDEtcdClient         // reused etcd client
+	lastRefresh                time.Time                  // last refresh timestamp
+	stateQueryFailureStartTime time.Time                  // timestamp when continuous state query failure starts
+	stateQueryFailureReported  bool                       // whether current continuous state query failure has been reported
+	inconsistencyDetected      bool                       // flag to track if inconsistency was detected in previous reconcile
+	lastCommand                v1alpha1.LogSubCommandType // last synced command to avoid cross-command interference
+	mutex                      sync.RWMutex               // protect concurrent access
 }
 
 // NewBackupTracker returns a BackupTracker
@@ -238,7 +244,7 @@ func (bt *backupTracker) refreshLogBackupProgress(ns, name string) {
 
 		// Get Backup CR
 		backup, err := bt.deps.BackupLister.Backups(ns).Get(name)
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			klog.Infof("log backup %s/%s has been deleted, will remove %s from tracker", ns, name, logkey)
 			bt.removeLogBackup(ns, name)
 			return
@@ -278,6 +284,7 @@ func (bt *backupTracker) doRefreshLogBackupState(backup *v1alpha1.Backup, dep *t
 			dep.tc.IsTLSClusterEnabled(), pdapi.ClusterRef(dep.tc.Spec.ClusterDomain))
 		if err != nil {
 			klog.Errorf("get log backup %s/%s etcd client error %v", ns, name, err)
+			bt.recordLogBackupStateQueryFailure(backup, dep, fmt.Errorf("get etcd client failed: %v", err))
 			return
 		}
 		dep.etcdClient = etcdCli
@@ -287,6 +294,7 @@ func (bt *backupTracker) doRefreshLogBackupState(backup *v1alpha1.Backup, dep *t
 	state, err := bt.queryAllLogBackupKeys(dep.etcdClient, name)
 	if err != nil {
 		klog.Errorf("refresh log backup %s/%s state failed: %v", ns, name, err)
+		bt.recordLogBackupStateQueryFailure(backup, dep, err)
 		return
 	}
 
@@ -294,9 +302,11 @@ func (bt *backupTracker) doRefreshLogBackupState(backup *v1alpha1.Backup, dep *t
 	dep.mutex.Lock()
 	dep.state = state
 	dep.lastRefresh = time.Now()
+	dep.stateQueryFailureStartTime = time.Time{}
+	dep.stateQueryFailureReported = false
 
 	// Check if previously marked inconsistency has been resolved
-	if dep.inconsistencyDetected && dep.lastCommand != "" {
+	if dep.inconsistencyDetected && dep.lastCommand != "" && !stderrors.Is(state.QueryError, errLogBackupPauseKeyQueryFailed) {
 		// Verify if current state is consistent with the recorded command
 		isConsistent := isCommandConsistentWithKernelState(dep.lastCommand, state.KernelState)
 		if isConsistent {
@@ -415,6 +425,8 @@ func (bt *backupTracker) RefreshLogBackupState(backup *v1alpha1.Backup) (*LogBac
 	dep.mutex.Lock()
 	dep.state = state
 	dep.lastRefresh = time.Now()
+	dep.stateQueryFailureStartTime = time.Time{}
+	dep.stateQueryFailureReported = false
 	dep.mutex.Unlock()
 
 	return state, nil
@@ -443,6 +455,7 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 	// Get the current state
 	state, err := bt.GetLogBackupState(backup, shouldForceRefresh)
 	if err != nil {
+		bt.recordLogBackupStateQueryFailure(backup, dep, err)
 		return false, err
 	}
 
@@ -463,6 +476,11 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 			Message: "Log backup task not found in TiKV, the task may have been deleted or cluster state is inconsistent",
 		}, nil)
 		return false, fmt.Errorf("log backup key not found")
+	}
+
+	if stderrors.Is(state.QueryError, errLogBackupPauseKeyQueryFailed) {
+		klog.Warningf("log backup %s/%s pause state is unknown, skip kernel state sync: %v", ns, name, state.QueryError)
+		return true, nil
 	}
 
 	// Handle error pause
@@ -541,6 +559,50 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 	return true, nil
 }
 
+func (bt *backupTracker) recordLogBackupStateQueryFailure(backup *v1alpha1.Backup, dep *trackDepends, err error) {
+	now := time.Now()
+
+	dep.mutex.Lock()
+	failureStart := dep.stateQueryFailureStartTime
+	if failureStart.IsZero() {
+		dep.stateQueryFailureStartTime = now
+		dep.stateQueryFailureReported = false
+		dep.mutex.Unlock()
+		return
+	}
+	if now.Sub(failureStart) < logBackupStateQueryFailureGracePeriod {
+		dep.mutex.Unlock()
+		return
+	}
+	if dep.stateQueryFailureReported {
+		dep.mutex.Unlock()
+		return
+	}
+	dep.stateQueryFailureReported = true
+	dep.mutex.Unlock()
+
+	ns := backup.Namespace
+	name := backup.Name
+	command := v1alpha1.ParseLogBackupSubcommand(backup)
+	klog.Errorf("log backup %s/%s state query has not succeeded for %s, marking as failed: %v",
+		ns, name, now.Sub(failureStart).Round(time.Second), err)
+	err = bt.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: command,
+		Type:    v1alpha1.BackupFailed,
+		Status:  corev1.ConditionTrue,
+		Reason:  "LogBackupStateQueryFailed",
+		Message: fmt.Sprintf("Failed to query log backup task state from PD etcd for the last %s; task existence is unknown: %v",
+			now.Sub(failureStart).Round(time.Second), err),
+	}, nil)
+	if err != nil {
+		klog.Errorf("update log backup %s/%s state query failure status failed: %v", ns, name, err)
+		dep.mutex.Lock()
+		dep.stateQueryFailureReported = false
+		dep.mutex.Unlock()
+		return
+	}
+}
+
 // StopTrackLogBackupProgress stops tracking a log backup
 func (bt *backupTracker) StopTrackLogBackupProgress(backup *v1alpha1.Backup) {
 	ns := backup.Namespace
@@ -605,10 +667,21 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 	wg.Wait()
 	close(resultCh)
 
+	var infoQueryErr error
+	var pauseQueryErr error
+
 	// Process query results
 	for result := range resultCh {
 		if result.err != nil {
 			klog.Warningf("query etcd key type %s failed: %v", result.key, result.err)
+			if result.key == "info" {
+				infoQueryErr = result.err
+				continue
+			}
+			if result.key == "pause" {
+				pauseQueryErr = result.err
+				continue
+			}
 			// Don't fail on individual key errors, continue processing
 			continue
 		}
@@ -623,7 +696,6 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 		case "pause":
 			if len(result.kvs) > 0 {
 				state.IsPaused = true
-				// Parse pause reason - this will need to be implemented based on pause info structure
 				state.PauseReason = bt.parsePauseReason(result.kvs[0].Value)
 			}
 		case "error":
@@ -631,6 +703,15 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 				state.LastError = string(result.kvs[0].Value)
 			}
 		}
+	}
+
+	if infoQueryErr != nil {
+		return nil, fmt.Errorf("query log backup info key failed: %v", infoQueryErr)
+	}
+
+	if pauseQueryErr != nil {
+		state.QueryError = fmt.Errorf("%w: %v", errLogBackupPauseKeyQueryFailed, pauseQueryErr)
+		return state, nil
 	}
 
 	// Derive kernel state
