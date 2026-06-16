@@ -188,6 +188,12 @@ type TidbMonitorSpec struct {
 
 	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
 	PreferIPv6 bool `json:"preferIPv6,omitempty"`
+
+	// AutomountServiceAccountToken indicates whether the service account token should be
+	// automatically mounted on monitor pods. When set to false, the operator mounts a
+	// projected token volume so containers can still reach the Kubernetes API.
+	// +optional
+	AutomountServiceAccountToken *bool `json:"automountServiceAccountToken,omitempty"`
 }
 
 // PrometheusReloaderSpec is the desired state of prometheus configuration reloader
