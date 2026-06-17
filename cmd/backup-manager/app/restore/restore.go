@@ -258,6 +258,7 @@ func (ro *Options) brRestoreCommandRunWithLogObserver(
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
 	}
+	go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
 
 	var errMsg string
 	stdOutLineCh := make(chan string)
@@ -310,7 +311,7 @@ func processBRRestoreCommandStdoutLine(
 	stdoutCallback func(line string),
 	logObserver func(line string),
 ) {
-	if !strings.Contains(line, "[ERROR]") && stdoutCallback != nil {
+	if !brlog.IsErrorLine(line) && stdoutCallback != nil {
 		stdoutCallback(line)
 	}
 	processBRRestoreCommandLogLine(line, errMsg, logObserver)
@@ -321,7 +322,7 @@ func processBRRestoreCommandLogLine(
 	errMsg *string,
 	logObserver func(line string),
 ) {
-	if strings.Contains(line, "[ERROR]") {
+	if brlog.IsErrorLine(line) {
 		*errMsg += line + "\n"
 	}
 	if logObserver != nil {

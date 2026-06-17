@@ -37,6 +37,7 @@ const (
 	fieldMsg           = "msg"
 	fieldMessageCompat = "Message"
 	fieldTime          = "time"
+	fieldLevel         = "level"
 
 	fieldOperationID        = "operation_id"
 	fieldOperationStartedAt = "operation_started_at"
@@ -109,6 +110,25 @@ func ParseLine(line string) Event {
 	}
 
 	return Event{}
+}
+
+// IsErrorLine reports whether a BR log line should be included in command error output.
+func IsErrorLine(line string) bool {
+	if strings.Contains(line, "[ERROR]") {
+		return true
+	}
+
+	fields := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(line), &fields); err != nil {
+		return false
+	}
+
+	switch strings.ToLower(getString(fields, fieldLevel)) {
+	case "error", "fatal":
+		return true
+	default:
+		return false
+	}
 }
 
 func logMessage(fields map[string]interface{}) string {

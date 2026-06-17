@@ -76,6 +76,48 @@ func TestParseLineIgnoresNonJSON(t *testing.T) {
 	}
 }
 
+func TestIsErrorLine(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+		want bool
+	}{
+		{
+			name: "legacy text error",
+			line: "2026-06-17 [ERROR] failed to truncate log",
+			want: true,
+		},
+		{
+			name: "json error level",
+			line: `{"level":"error","message":"failed to truncate log"}`,
+			want: true,
+		},
+		{
+			name: "json fatal level uppercase",
+			line: `{"level":"FATAL","message":"br crashed"}`,
+			want: true,
+		},
+		{
+			name: "json info level",
+			line: `{"level":"info","message":"restore progress"}`,
+			want: false,
+		},
+		{
+			name: "non json",
+			line: "plain warning",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsErrorLine(tt.line); got != tt.want {
+				t.Fatalf("expected %v, got %v", tt.want, got)
+			}
+		})
+	}
+}
+
 func TestParseLineIgnoresUnknownJSON(t *testing.T) {
 	event := ParseLine(`{"level":"info","time":"2026/06/17 10:00:00.000 +00:00","message":"unknown"}`)
 	if event.Type != EventNone || event.Operation != nil || event.LockBlocker != nil {

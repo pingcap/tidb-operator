@@ -456,7 +456,7 @@ func processBRCommandLogLine(
 	errMsg *string,
 	logObserver func(line string),
 ) {
-	if strings.Contains(line, "[ERROR]") {
+	if brlog.IsErrorLine(line) {
 		*errMsg += line + "\n"
 	}
 	if logObserver != nil {

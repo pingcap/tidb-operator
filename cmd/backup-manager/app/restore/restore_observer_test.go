@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -147,6 +148,27 @@ exit 0
 	}
 }
 
+func TestProcessBRRestoreCommandStdoutLineSkipsCallbackForJSONError(t *testing.T) {
+	var errMsg string
+	var callbackLines []string
+
+	processBRRestoreCommandStdoutLine(
+		`{"level":"ERROR","message":"json stdout failed [progress] [step=\"Full Restore\"] [progress=88%]"}`,
+		&errMsg,
+		func(line string) {
+			callbackLines = append(callbackLines, line)
+		},
+		nil,
+	)
+
+	if len(callbackLines) != 0 {
+		t.Fatalf("expected JSON error line to skip stdout callback, got %q", callbackLines)
+	}
+	if !strings.Contains(errMsg, "json stdout failed") {
+		t.Fatalf("expected JSON error line in errMsg, got %q", errMsg)
+	}
+}
+
 func TestRestoreDataFailureWritesLatestBlockerAndErrorMessageOnlyIncludesErrorLines(t *testing.T) {
 	dir := t.TempDir()
 	oldBRBinPath := brBinPath
@@ -158,9 +180,12 @@ func TestRestoreDataFailureWritesLatestBlockerAndErrorMessageOnlyIncludesErrorLi
 	script := `#!/bin/sh
 printf 'stdout ordinary log\n'
 printf 'stdout [ERROR] failed stdout\n'
+printf '{"level":"ERROR","message":"json stdout failed"}\n'
 printf '{"time":"2026-06-17T10:02:00Z","remote_owner_id":"remote-stderr","remote_lock_type":"restore-exclusive","path":"lock-stderr"}\n' >&2
 printf 'stderr ordinary log\n' >&2
 printf 'stderr [ERROR] failed stderr\n' >&2
+printf '{"level":"fatal","message":"json stderr failed"}\n' >&2
+printf '{"level":"info","message":"json stderr info"}\n' >&2
 exit 1
 `
 	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
@@ -173,12 +198,12 @@ exit 1
 		t.Fatal("expected restore to fail")
 	}
 	msg := err.Error()
-	for _, want := range []string{"stdout [ERROR] failed stdout", "stderr [ERROR] failed stderr"} {
+	for _, want := range []string{"stdout [ERROR] failed stdout", "json stdout failed", "stderr [ERROR] failed stderr", "json stderr failed"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("expected error message to contain %q, got %q", want, msg)
 		}
 	}
-	for _, unwanted := range []string{"stdout ordinary log", "stderr ordinary log"} {
+	for _, unwanted := range []string{"stdout ordinary log", "stderr ordinary log", "json stderr info"} {
 		if strings.Contains(msg, unwanted) {
 			t.Fatalf("expected error message to omit %q, got %q", unwanted, msg)
 		}
@@ -195,6 +220,38 @@ exit 1
 	}
 	if blocker.RemoteOperationID != "remote-stderr" || blocker.LockPath != "lock-stderr" {
 		t.Fatalf("expected stderr blocker to be latest, got %#v", blocker)
+	}
+}
+
+func TestRestoreCommandRunWithLogObserverGracefullyStopsOnContextCancel(t *testing.T) {
+	dir := t.TempDir()
+	oldBRBinPath := brBinPath
+	brBinPath = dir
+	t.Cleanup(func() {
+		brBinPath = oldBRBinPath
+	})
+
+	script := `#!/bin/sh
+exec sleep 1
+`
+	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
+		t.Fatalf("failed to write fake br: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err := (&Options{}).brRestoreCommandRunWithLogObserver(ctx, []string{"restore", "full"}, nil, nil)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected restore command to fail after context cancellation")
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("expected context cancellation to stop br quickly, took %s", elapsed)
 	}
 }
 
