@@ -57,7 +57,6 @@ type Manager struct {
 	options        options.CompactOpts
 }
 
-const crrCheckpointPrefix = "crr-checkpoint"
 const redactedCompactArgValue = "<redacted>"
 
 // NewManager return a Manager
@@ -214,13 +213,9 @@ func (cm *Manager) buildShardedCompactArgs(args []string) []string {
 		cm.options.PhysicalFileCacheCapacity,
 	)
 
-	// Always pass the checkpoint prefix in sharded mode so tikv-ctl can locate
-	// the replication checkpoint state. When EndTs is set, --until still acts
-	// as the explicit upper bound.
 	if cm.options.UntilTS != 0 {
 		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
 	}
-	args = append(args, "--crr-checkpoint-prefix", crrCheckpointPrefix)
 
 	// --shard tells tikv-ctl this pod's slice of the keyspace partition.
 	// --minimal-compaction-size=0 disables the small-segment skip so each
