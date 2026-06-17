@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -736,4 +737,32 @@ func TestGetSliceExcludeOneString(t *testing.T) {
 			g.Expect(strs).To(Equal(tt.expect))
 		})
 	}
+}
+
+func TestReadLinesToChannel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	lineCh := make(chan string)
+	errCh := make(chan error)
+
+	go ReadLinesToChannel(strings.NewReader("a\nb\n"), lineCh, errCh)
+
+	g.Expect(<-lineCh).To(Equal("a"))
+	g.Expect(<-lineCh).To(Equal("b"))
+	g.Expect(<-errCh).To(Succeed())
+	_, ok := <-lineCh
+	g.Expect(ok).To(BeFalse())
+}
+
+func TestReadLinesToChannelReadsLongLines(t *testing.T) {
+	g := NewGomegaWithT(t)
+	lineCh := make(chan string)
+	errCh := make(chan error)
+	longLine := strings.Repeat("x", 128*1024)
+
+	go ReadLinesToChannel(strings.NewReader(longLine+"\n"), lineCh, errCh)
+
+	g.Expect(<-lineCh).To(Equal(longLine))
+	g.Expect(<-errCh).To(Succeed())
+	_, ok := <-lineCh
+	g.Expect(ok).To(BeFalse())
 }

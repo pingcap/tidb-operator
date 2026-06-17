@@ -14,6 +14,7 @@
 package util
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -518,6 +519,20 @@ func ParseRestoreProgress(line string) (step, progress string) {
 	}
 	step, progress = matchs[1], matchs[2]
 	return
+}
+
+func ReadLinesToChannel(reader io.Reader, lineCh chan<- string, errCh chan<- error) {
+	defer close(lineCh)
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
+	for scanner.Scan() {
+		lineCh <- scanner.Text()
+	}
+	if err := scanner.Err(); err != nil {
+		errCh <- err
+		return
+	}
+	errCh <- nil
 }
 
 // ReadAllStdErrToChannel read the stdErr and send the output to channel
