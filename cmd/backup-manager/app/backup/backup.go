@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/brlog"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -36,7 +37,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 )
+
+var brBinPath = util.BRBinPath
 
 // Options contains the input arguments to the backup command
 type Options struct {
@@ -210,7 +214,11 @@ func (bo *Options) doPauseLogBackup(ctx context.Context, backup *v1alpha1.Backup
 }
 
 // doTruncateLogBackup generates br args about log backup truncate and runs br binary to do the real backup work.
-func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+func (bo *Options) doTruncateLogBackup(
+	ctx context.Context,
+	backup *v1alpha1.Backup,
+	statusUpdater controller.BackupConditionUpdaterInterface,
+) error {
 	specificArgs := []string{
 		"log",
 		"truncate",
@@ -224,7 +232,17 @@ func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Bac
 	if err != nil {
 		return err
 	}
-	return bo.brCommandRun(ctx, fullArgs)
+	fullArgs = append(fullArgs, "--log-format=json")
+
+	observer := newBackupLogTruncateObserver(backup, statusUpdater)
+	err = bo.brCommandRunWithLogObserver(ctx, fullArgs, observer.observeLine)
+	if err == nil {
+		observer.clearLockBlocker()
+		return nil
+	}
+
+	observer.updateLockBlockerAfterFailure()
+	return err
 }
 
 // doInitializeVolumeBackup generates br args to stop GC and PD schedules
@@ -295,7 +313,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
 	}
 	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := filepath.Join(util.BRBinPath, "br")
+	bin := filepath.Join(brBinPath, "br")
 	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
@@ -353,6 +371,154 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 
 	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
 	return nil
+}
+
+func (bo *Options) brCommandRunWithLogObserver(
+	ctx context.Context,
+	fullArgs []string,
+	logObserver func(line string),
+) error {
+	if len(fullArgs) == 0 {
+		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
+	}
+	klog.Infof("Running br command with args: %v", fullArgs)
+	bin := filepath.Join(brBinPath, "br")
+	cmd := exec.Command(bin, fullArgs...)
+
+	stdOut, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
+	}
+	stdErr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
+	}
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+	}
+
+	// only the initialization command of volume snapshot backup use gracefully shutting down
+	// because it should resume gc and pd scheduler immediately
+	if bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize {
+		go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
+	}
+
+	var errMsg string
+	stdOutLineCh := make(chan string)
+	stdOutErrCh := make(chan error, 1)
+	go backupUtil.ReadLinesToChannel(stdOut, stdOutLineCh, stdOutErrCh)
+
+	stdErrLineCh := make(chan string)
+	stdErrErrCh := make(chan error, 1)
+	go backupUtil.ReadLinesToChannel(stdErr, stdErrLineCh, stdErrErrCh)
+
+	stdOutOpen, stdErrOpen := true, true
+	for stdOutOpen || stdErrOpen {
+		select {
+		case line, ok := <-stdOutLineCh:
+			if !ok {
+				stdOutOpen = false
+				stdOutLineCh = nil
+				continue
+			}
+			processBRCommandLogLine(line, &errMsg, logObserver)
+		case line, ok := <-stdErrLineCh:
+			if !ok {
+				stdErrOpen = false
+				stdErrLineCh = nil
+				continue
+			}
+			processBRCommandLogLine(line, &errMsg, logObserver)
+		}
+	}
+
+	if err := <-stdOutErrCh; err != nil {
+		klog.Errorf("read stdout error: %s", err.Error())
+	}
+	if err := <-stdErrErrCh; err != nil {
+		klog.Errorf("read stderr error: %s", err.Error())
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+	}
+
+	e2eTestSimulate(bo)
+
+	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
+	return nil
+}
+
+func processBRCommandLogLine(
+	line string,
+	errMsg *string,
+	logObserver func(line string),
+) {
+	if strings.Contains(line, "[ERROR]") {
+		*errMsg += line + "\n"
+	}
+	if logObserver != nil {
+		logObserver(line)
+	}
+	klog.Info(line)
+}
+
+type backupLogTruncateObserver struct {
+	backup        *v1alpha1.Backup
+	statusUpdater controller.BackupConditionUpdaterInterface
+	lockBlocker   *v1alpha1.BRLockBlocker
+}
+
+func newBackupLogTruncateObserver(
+	backup *v1alpha1.Backup,
+	statusUpdater controller.BackupConditionUpdaterInterface,
+) *backupLogTruncateObserver {
+	return &backupLogTruncateObserver{
+		backup:        backup,
+		statusUpdater: statusUpdater,
+	}
+}
+
+func (o *backupLogTruncateObserver) observeLine(line string) {
+	event := brlog.ParseLine(line)
+	switch event.Type {
+	case brlog.EventOperationStarted:
+		if event.Operation == nil {
+			return
+		}
+		if event.Operation.ObservedAt.IsZero() {
+			event.Operation.ObservedAt = metav1.Now()
+		}
+		if err := o.statusUpdater.Update(o.backup, nil, &controller.BackupUpdateStatus{
+			BROperation: event.Operation,
+		}); err != nil {
+			klog.Errorf("Failed to update BR operation status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
+		}
+	case brlog.EventLockConflict:
+		o.lockBlocker = event.LockBlocker
+	}
+}
+
+func (o *backupLogTruncateObserver) updateLockBlockerAfterFailure() {
+	if o.lockBlocker != nil {
+		if err := o.statusUpdater.Update(o.backup, nil, &controller.BackupUpdateStatus{
+			LockBlocker: o.lockBlocker,
+		}); err != nil {
+			klog.Errorf("Failed to update BR lock blocker status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
+		}
+		return
+	}
+	o.clearLockBlocker()
+}
+
+func (o *backupLogTruncateObserver) clearLockBlocker() {
+	if err := o.statusUpdater.Update(o.backup, nil, &controller.BackupUpdateStatus{
+		ClearLockBlocker: ptr.To(true),
+	}); err != nil {
+		klog.Errorf("Failed to clear BR lock blocker status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
+	}
 }
 
 func (bo *Options) updateProgressFromFile(

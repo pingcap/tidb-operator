@@ -523,16 +523,23 @@ func ParseRestoreProgress(line string) (step, progress string) {
 
 func ReadLinesToChannel(reader io.Reader, lineCh chan<- string, errCh chan<- error) {
 	defer close(lineCh)
-	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
-	for scanner.Scan() {
-		lineCh <- scanner.Text()
+	bufReader := bufio.NewReader(reader)
+	for {
+		line, err := bufReader.ReadString('\n')
+		if len(line) > 0 {
+			line = strings.TrimSuffix(line, "\n")
+			line = strings.TrimSuffix(line, "\r")
+			lineCh <- line
+		}
+		if err != nil {
+			if err == io.EOF {
+				errCh <- nil
+				return
+			}
+			errCh <- err
+			return
+		}
 	}
-	if err := scanner.Err(); err != nil {
-		errCh <- err
-		return
-	}
-	errCh <- nil
 }
 
 // ReadAllStdErrToChannel read the stdErr and send the output to channel

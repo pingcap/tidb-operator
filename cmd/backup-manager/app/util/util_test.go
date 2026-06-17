@@ -757,7 +757,7 @@ func TestReadLinesToChannelReadsLongLines(t *testing.T) {
 	g := NewGomegaWithT(t)
 	lineCh := make(chan string)
 	errCh := make(chan error)
-	longLine := strings.Repeat("x", 128*1024)
+	longLine := strings.Repeat("x", 5*1024*1024)
 
 	go ReadLinesToChannel(strings.NewReader(longLine+"\n"), lineCh, errCh)
 
