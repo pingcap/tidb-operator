@@ -15,7 +15,6 @@ package brlog
 
 import (
 	"encoding/json"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -57,8 +56,6 @@ const (
 	fieldRemoteHint     = "remote_hint"
 )
 
-var bracketFieldPattern = regexp.MustCompile(`\[([A-Za-z0-9_]+)=((?:"(?:\\.|[^"\\])*")|[^\]]*)\]`)
-
 // Event is one parsed BR structured-log event.
 type Event struct {
 	Type        EventType
@@ -73,43 +70,24 @@ func ParseLine(line string) Event {
 		return Event{}
 	}
 
-	if logMessage(fields) == messageOperationStarted {
+	if operation, ok := parseOperationStarted(fields); ok {
 		return Event{
-			Type: EventOperationStarted,
-			Operation: &v1alpha1.BROperation{
-				OperationID: fields[fieldOperationID],
-				StartedAt:   parseOptionalMetav1Time(fields[fieldOperationStartedAt]),
-				Command:     fields[fieldCommand],
-				ObservedAt:  parseMetav1Time(fields[fieldTime]),
-			},
+			Type:      EventOperationStarted,
+			Operation: operation,
 		}
 	}
 
-	if remoteOperationID := fields[fieldRemoteBlocker0OwnerID]; remoteOperationID != "" {
-		hint := fields[fieldRemoteBlocker0Hint]
+	if blocker, ok := parseSampledLockBlocker(fields); ok {
 		return Event{
-			Type: EventLockConflict,
-			LockBlocker: &v1alpha1.BRLockBlocker{
-				LockPath:          firstNonEmpty(fields[fieldRemoteBlocker0Path], fields[fieldPath]),
-				RemoteOperationID: remoteOperationID,
-				RemoteStartedAt:   parseOperationStartedAtFromHint(hint),
-				ResourceType:      fields[fieldRemoteBlocker0LockType],
-				ObservedAt:        parseMetav1Time(fields[fieldTime]),
-			},
+			Type:        EventLockConflict,
+			LockBlocker: blocker,
 		}
 	}
 
-	if remoteOperationID := fields[fieldRemoteOwnerID]; remoteOperationID != "" {
-		hint := fields[fieldRemoteHint]
+	if blocker, ok := parseFallbackLockBlocker(fields); ok {
 		return Event{
-			Type: EventLockConflict,
-			LockBlocker: &v1alpha1.BRLockBlocker{
-				LockPath:          fields[fieldPath],
-				RemoteOperationID: remoteOperationID,
-				RemoteStartedAt:   parseOperationStartedAtFromHint(hint),
-				ResourceType:      fields[fieldRemoteLockType],
-				ObservedAt:        parseMetav1Time(fields[fieldTime]),
-			},
+			Type:        EventLockConflict,
+			LockBlocker: blocker,
 		}
 	}
 
@@ -118,7 +96,7 @@ func ParseLine(line string) Event {
 
 // IsErrorLine reports whether a BR log line should be included in command error output.
 func IsErrorLine(line string) bool {
-	if strings.Contains(line, "[ERROR]") {
+	if isTextErrorLine(line) {
 		return true
 	}
 
@@ -133,6 +111,50 @@ func IsErrorLine(line string) bool {
 	default:
 		return false
 	}
+}
+
+func parseOperationStarted(fields map[string]string) (*v1alpha1.BROperation, bool) {
+	operationID := fields[fieldOperationID]
+	if logMessage(fields) != messageOperationStarted || operationID == "" {
+		return nil, false
+	}
+
+	return &v1alpha1.BROperation{
+		OperationID: operationID,
+		StartedAt:   parseOptionalMetav1Time(fields[fieldOperationStartedAt]),
+		Command:     fields[fieldCommand],
+		ObservedAt:  parseMetav1Time(fields[fieldTime]),
+	}, true
+}
+
+func parseSampledLockBlocker(fields map[string]string) (*v1alpha1.BRLockBlocker, bool) {
+	remoteOperationID := fields[fieldRemoteBlocker0OwnerID]
+	if remoteOperationID == "" {
+		return nil, false
+	}
+
+	return &v1alpha1.BRLockBlocker{
+		LockPath:          firstNonEmpty(fields[fieldRemoteBlocker0Path], fields[fieldPath]),
+		RemoteOperationID: remoteOperationID,
+		RemoteStartedAt:   parseOperationStartedAtFromHint(fields[fieldRemoteBlocker0Hint]),
+		ResourceType:      fields[fieldRemoteBlocker0LockType],
+		ObservedAt:        parseMetav1Time(fields[fieldTime]),
+	}, true
+}
+
+func parseFallbackLockBlocker(fields map[string]string) (*v1alpha1.BRLockBlocker, bool) {
+	remoteOperationID := fields[fieldRemoteOwnerID]
+	if remoteOperationID == "" {
+		return nil, false
+	}
+
+	return &v1alpha1.BRLockBlocker{
+		LockPath:          fields[fieldPath],
+		RemoteOperationID: remoteOperationID,
+		RemoteStartedAt:   parseOperationStartedAtFromHint(fields[fieldRemoteHint]),
+		ResourceType:      fields[fieldRemoteLockType],
+		ObservedAt:        parseMetav1Time(fields[fieldTime]),
+	}, true
 }
 
 func parseFields(line string) map[string]string {
@@ -159,18 +181,18 @@ func parseJSONFields(line string) map[string]string {
 
 func parseTextFields(line string) map[string]string {
 	fields := map[string]string{}
-	for _, match := range bracketFieldPattern.FindAllStringSubmatch(line, -1) {
-		fields[match[1]] = unquoteLogValue(strings.TrimSpace(match[2]))
-	}
-
-	if strings.Contains(line, `"`+messageOperationStarted+`"`) || strings.Contains(line, messageOperationStarted) {
-		fields[fieldMessage] = messageOperationStarted
-	}
 
 	for _, token := range bracketTokens(line) {
+		if key, value, ok := strings.Cut(token, "="); ok && isFieldKey(key) {
+			fields[key] = unquoteLogValue(strings.TrimSpace(value))
+			continue
+		}
+		if message := unquoteLogValue(strings.TrimSpace(token)); message == messageOperationStarted {
+			fields[fieldMessage] = message
+			continue
+		}
 		if parsed := parseMetav1Time(token); !parsed.IsZero() {
 			fields[fieldTime] = token
-			break
 		}
 	}
 
@@ -185,13 +207,58 @@ func bracketTokens(line string) []string {
 			return tokens
 		}
 		line = line[start+1:]
-		end := strings.IndexByte(line, ']')
+		end := closingBracketIndex(line)
 		if end == -1 {
 			return tokens
 		}
 		tokens = append(tokens, line[:end])
 		line = line[end+1:]
 	}
+}
+
+func closingBracketIndex(value string) int {
+	quoted := false
+	escaped := false
+	for i, r := range value {
+		if escaped {
+			escaped = false
+			continue
+		}
+		switch r {
+		case '\\':
+			escaped = quoted
+		case '"':
+			quoted = !quoted
+		case ']':
+			if !quoted {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+func isFieldKey(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isTextErrorLine(line string) bool {
+	for _, token := range bracketTokens(line) {
+		switch strings.ToUpper(strings.TrimSpace(token)) {
+		case "ERROR", "FATAL", "PANIC":
+			return true
+		}
+	}
+	return false
 }
 
 func unquoteLogValue(value string) string {
@@ -247,7 +314,7 @@ func parseOperationStartedAtFromHint(hint string) *metav1.Time {
 		if !ok || key != fieldOperationStartedAt {
 			continue
 		}
-		return parseOptionalMetav1Time(value)
+		return parseOptionalMetav1Time(unquoteLogValue(value))
 	}
 	return nil
 }

@@ -469,7 +469,7 @@ In `backup.go`, build an observer before running BR:
 Update `brCommandRunWithLogCallback` or introduce `brCommandRunWithObserver` so both stdout and stderr lines:
 
 - are logged to klog
-- contribute `[ERROR]` lines to `errMsg`
+- contribute BR error/fatal terminal log lines to `errMsg`
 - invoke the existing volume snapshot callback when provided
 - invoke the new BR observability observer when provided
 

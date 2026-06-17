@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -146,6 +147,38 @@ exit 1
 	}
 	if strings.Contains(msg, "stdout two") || strings.Contains(msg, "stderr two") {
 		t.Fatalf("expected error message to include only ERROR lines from observed streams, got %q", msg)
+	}
+}
+
+func TestBRCommandRunWithLogObserverGracefullyStopsOnContextCancel(t *testing.T) {
+	dir := t.TempDir()
+	oldBRBinPath := brBinPath
+	brBinPath = dir
+	t.Cleanup(func() {
+		brBinPath = oldBRBinPath
+	})
+
+	script := `#!/bin/sh
+exec sleep 1
+`
+	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
+		t.Fatalf("failed to write fake br: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err := (&Options{}).brCommandRunWithLogObserver(ctx, []string{"log", "truncate"}, nil)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected br command to fail after context cancellation")
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("expected context cancellation to stop br quickly, took %s", elapsed)
 	}
 }
 

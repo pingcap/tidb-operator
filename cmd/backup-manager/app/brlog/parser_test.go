@@ -63,6 +63,35 @@ func TestParseLineTextOperationStarted(t *testing.T) {
 	assertTime(t, "observed at", event.Operation.ObservedAt.Time, "2026-06-17T10:00:00Z")
 }
 
+func TestParseLineIgnoresOperationStartedWithoutOperationID(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+	}{
+		{
+			name: "json missing operation id",
+			line: `{"level":"info","time":"2026/06/17 10:00:00.000 +00:00","message":"BR operation started","command":"log-restore"}`,
+		},
+		{
+			name: "text missing operation id",
+			line: `[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [command=log-restore]`,
+		},
+		{
+			name: "ordinary message contains marker",
+			line: `[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["ordinary log"] [detail="BR operation started"] [operation_id=op-a]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event := ParseLine(tt.line)
+			if event.Type != EventNone || event.Operation != nil || event.LockBlocker != nil {
+				t.Fatalf("expected empty event, got %#v", event)
+			}
+		})
+	}
+}
+
 func TestParseLineLockConflict(t *testing.T) {
 	line := `{"level":"warn","time":"2026/06/17 10:01:00.000 +00:00","caller":"stream/stream_metas.go:1497","message":"Failed to acquire log truncate lock","error":"locked","path":"truncating.lock","local_owner_id":"local-op","local_lock_type":"log-truncate-exclusive","local_hint":"operation_started_at=2026-06-17T10:00:00Z","remote_blocker_count":1,"remote_blocker_0_path":"truncating.lock","remote_blocker_0_owner_id":"remote-op","remote_blocker_0_lock_type":"log-truncate-exclusive","remote_blocker_0_hint":"operation_started_at=2026-06-17T09:00:00Z restore_id=123"}`
 
@@ -112,7 +141,20 @@ func TestParseLineTextLockConflict(t *testing.T) {
 	assertTime(t, "observed at", event.LockBlocker.ObservedAt.Time, "2026-06-17T10:01:00Z")
 }
 
-func TestParseLineIgnoresNonJSON(t *testing.T) {
+func TestParseLineLockConflictQuotedStartedAtHint(t *testing.T) {
+	line := `[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Failed to acquire log truncate lock"] [remote_blocker_0_path=truncating.lock] [remote_blocker_0_owner_id=remote-op] [remote_blocker_0_lock_type=log-truncate-exclusive] [remote_blocker_0_hint="operation_started_at=\"2026-06-17T09:00:00Z\" restore_id=123"]`
+
+	event := ParseLine(line)
+	if event.Type != EventLockConflict {
+		t.Fatalf("expected event type %q, got %q", EventLockConflict, event.Type)
+	}
+	if event.LockBlocker == nil {
+		t.Fatal("expected lock blocker")
+	}
+	assertOptionalTime(t, "remote started at", event.LockBlocker.RemoteStartedAt, "2026-06-17T09:00:00Z")
+}
+
+func TestParseLineIgnoresPlainTextWithoutBRFields(t *testing.T) {
 	event := ParseLine("plain text")
 	if event.Type != EventNone || event.Operation != nil || event.LockBlocker != nil {
 		t.Fatalf("expected empty event, got %#v", event)
@@ -128,6 +170,16 @@ func TestIsErrorLine(t *testing.T) {
 		{
 			name: "legacy text error",
 			line: "2026-06-17 [ERROR] failed to truncate log",
+			want: true,
+		},
+		{
+			name: "legacy text fatal",
+			line: "2026-06-17 [FATAL] br crashed",
+			want: true,
+		},
+		{
+			name: "legacy text panic",
+			line: "2026-06-17 [PANIC] br panicked",
 			want: true,
 		},
 		{
@@ -189,6 +241,57 @@ func TestParseLineLockConflictFallbackRemoteFields(t *testing.T) {
 	}
 	assertOptionalTime(t, "remote started at", event.LockBlocker.RemoteStartedAt, "2026-06-17T09:30:00Z")
 	assertTime(t, "observed at", event.LockBlocker.ObservedAt.Time, "2026-06-17T10:02:00Z")
+}
+
+func TestParseLineTextLockConflictFallbackRemoteFields(t *testing.T) {
+	line := `[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock, will retry"] [path=truncating.lock] [remote_owner_id=remote-op] [remote_lock_type=log-truncate-exclusive] [remote_hint="operation_started_at=2026-06-17T09:30:00Z restore_id=456"]`
+
+	event := ParseLine(line)
+	if event.Type != EventLockConflict {
+		t.Fatalf("expected event type %q, got %q", EventLockConflict, event.Type)
+	}
+	if event.LockBlocker == nil {
+		t.Fatal("expected lock blocker")
+	}
+	if event.LockBlocker.LockPath != "truncating.lock" {
+		t.Fatalf("unexpected lock path: %q", event.LockBlocker.LockPath)
+	}
+	if event.LockBlocker.RemoteOperationID != "remote-op" {
+		t.Fatalf("unexpected remote operation id: %q", event.LockBlocker.RemoteOperationID)
+	}
+	if event.LockBlocker.ResourceType != "log-truncate-exclusive" {
+		t.Fatalf("unexpected resource type: %q", event.LockBlocker.ResourceType)
+	}
+	assertOptionalTime(t, "remote started at", event.LockBlocker.RemoteStartedAt, "2026-06-17T09:30:00Z")
+	assertTime(t, "observed at", event.LockBlocker.ObservedAt.Time, "2026-06-17T10:02:00Z")
+}
+
+func TestParseLineOperationStartedMessageFallbacks(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+	}{
+		{
+			name: "msg",
+			line: `{"level":"info","time":"2026/06/17 10:00:00.000 +00:00","msg":"BR operation started","operation_id":"op-a","command":"log-restore"}`,
+		},
+		{
+			name: "Message",
+			line: `{"level":"info","time":"2026/06/17 10:00:00.000 +00:00","Message":"BR operation started","operation_id":"op-a","command":"log-restore"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event := ParseLine(tt.line)
+			if event.Type != EventOperationStarted {
+				t.Fatalf("expected event type %q, got %q", EventOperationStarted, event.Type)
+			}
+			if event.Operation == nil || event.Operation.OperationID != "op-a" {
+				t.Fatalf("unexpected operation: %#v", event.Operation)
+			}
+		})
+	}
 }
 
 func TestParseLineIgnoresLockConflictWithoutRemoteOperationID(t *testing.T) {
