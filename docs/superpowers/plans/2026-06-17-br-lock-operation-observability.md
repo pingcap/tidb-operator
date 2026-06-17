@@ -103,8 +103,9 @@ parser fields in operator.
 Task 1 result: `pingcap/tidb#69231` head `955eb2b94928a5920fcca0a53308dbf2ba957e7e`
 exposes `BR operation started` and lock-conflict metadata through `pkg/objstore.LockConflictLogFields`.
 Execution notes in the design doc record the exact markers and fields. BR defaults to
-`--log-format=text`, so in-scope backup-manager BR commands must force JSON log output before the
-JSON parser can be reliable.
+`--log-format=text`, and backup-manager should preserve that existing log behavior. The parser must
+read operation and lock-conflict fields from default terminal text logs, with JSON accepted only as a
+compatibility input.
 
 ---
 
@@ -347,15 +348,18 @@ type Event struct {
 }
 ```
 
-- [ ] **Step 2: Implement JSON structured log parsing**
+- [ ] **Step 2: Implement BR terminal log parsing**
 
-Implement `ParseLine(line string) Event` using `encoding/json` into `map[string]interface{}`. It must:
+Implement `ParseLine(line string) Event` for BR stdout/stderr lines. It must:
 
-- ignore non-JSON lines
+- parse default BR text logs with bracket fields such as `["BR operation started"]` and
+  `[operation_id=...]`
+- keep compatibility with JSON log lines if BR emits them
+- ignore unrelated lines
 - match the operation started marker recorded in Task 1 `Execution Notes`
 - match the lock conflict marker recorded in Task 1 `Execution Notes`
-- use the `message` field as the canonical PingCAP log JSON message key, with `msg` and `Message`
-  accepted only as compatibility fallbacks
+- use the `message` field as the canonical PingCAP log JSON message key for JSON compatibility, with
+  `msg` and `Message` accepted only as compatibility fallbacks
 - parse RFC3339 timestamps into `metav1.Time`
 - parse `operation_started_at` from lock metadata `hint` strings when present and use it as
   `BRLockBlocker.RemoteStartedAt`
@@ -447,8 +451,8 @@ backupErr := bm.doTruncateLogBackup(ctx, backup, bm.StatusUpdater)
 
 Keep other log subcommands unchanged unless Task 1 proves they expose the same BR lock conflict metadata.
 
-Ensure the log-truncate BR command emits terminal JSON logs by appending `--log-format=json` to the
-BR args used by this path. The Job already sets `BR_LOG_TO_TERM`; do not add local log-file parsing.
+Do not override the user's BR log format options. The Job already sets `BR_LOG_TO_TERM`; parse the
+terminal logs that backup-manager already reads and do not add local log-file parsing.
 
 - [ ] **Step 2: Add a BR log observer for Backup**
 
@@ -506,9 +510,8 @@ In `restoreData`, create the same observer shape as Backup:
 - lock-conflict failure writes latest blocker
 - non-lock failure clears stale blocker
 
-Ensure in-scope restore/log-restore BR commands emit terminal JSON logs by appending
-`--log-format=json` to the BR args used by this path. The Job already sets `BR_LOG_TO_TERM`; do not
-add local log-file parsing.
+Do not override the user's BR log format options. The Job already sets `BR_LOG_TO_TERM`; parse the
+terminal logs that backup-manager already reads and do not add local log-file parsing.
 
 - [ ] **Step 2: Preserve existing restore progress behavior**
 

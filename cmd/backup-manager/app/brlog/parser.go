@@ -15,6 +15,8 @@ package brlog
 
 import (
 	"encoding/json"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -55,6 +57,8 @@ const (
 	fieldRemoteHint     = "remote_hint"
 )
 
+var bracketFieldPattern = regexp.MustCompile(`\[([A-Za-z0-9_]+)=((?:"(?:\\.|[^"\\])*")|[^\]]*)\]`)
+
 // Event is one parsed BR structured-log event.
 type Event struct {
 	Type        EventType
@@ -62,10 +66,10 @@ type Event struct {
 	LockBlocker *v1alpha1.BRLockBlocker
 }
 
-// ParseLine extracts a BR operation or external-storage-lock event from one JSON log line.
+// ParseLine extracts a BR operation or external-storage-lock event from one BR log line.
 func ParseLine(line string) Event {
-	fields := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(line), &fields); err != nil {
+	fields := parseFields(line)
+	if len(fields) == 0 {
 		return Event{}
 	}
 
@@ -73,38 +77,38 @@ func ParseLine(line string) Event {
 		return Event{
 			Type: EventOperationStarted,
 			Operation: &v1alpha1.BROperation{
-				OperationID: getString(fields, fieldOperationID),
-				StartedAt:   parseOptionalMetav1Time(getString(fields, fieldOperationStartedAt)),
-				Command:     getString(fields, fieldCommand),
-				ObservedAt:  parseMetav1Time(getString(fields, fieldTime)),
+				OperationID: fields[fieldOperationID],
+				StartedAt:   parseOptionalMetav1Time(fields[fieldOperationStartedAt]),
+				Command:     fields[fieldCommand],
+				ObservedAt:  parseMetav1Time(fields[fieldTime]),
 			},
 		}
 	}
 
-	if remoteOperationID := getString(fields, fieldRemoteBlocker0OwnerID); remoteOperationID != "" {
-		hint := getString(fields, fieldRemoteBlocker0Hint)
+	if remoteOperationID := fields[fieldRemoteBlocker0OwnerID]; remoteOperationID != "" {
+		hint := fields[fieldRemoteBlocker0Hint]
 		return Event{
 			Type: EventLockConflict,
 			LockBlocker: &v1alpha1.BRLockBlocker{
-				LockPath:          firstNonEmpty(getString(fields, fieldRemoteBlocker0Path), getString(fields, fieldPath)),
+				LockPath:          firstNonEmpty(fields[fieldRemoteBlocker0Path], fields[fieldPath]),
 				RemoteOperationID: remoteOperationID,
 				RemoteStartedAt:   parseOperationStartedAtFromHint(hint),
-				ResourceType:      getString(fields, fieldRemoteBlocker0LockType),
-				ObservedAt:        parseMetav1Time(getString(fields, fieldTime)),
+				ResourceType:      fields[fieldRemoteBlocker0LockType],
+				ObservedAt:        parseMetav1Time(fields[fieldTime]),
 			},
 		}
 	}
 
-	if remoteOperationID := getString(fields, fieldRemoteOwnerID); remoteOperationID != "" {
-		hint := getString(fields, fieldRemoteHint)
+	if remoteOperationID := fields[fieldRemoteOwnerID]; remoteOperationID != "" {
+		hint := fields[fieldRemoteHint]
 		return Event{
 			Type: EventLockConflict,
 			LockBlocker: &v1alpha1.BRLockBlocker{
-				LockPath:          getString(fields, fieldPath),
+				LockPath:          fields[fieldPath],
 				RemoteOperationID: remoteOperationID,
 				RemoteStartedAt:   parseOperationStartedAtFromHint(hint),
-				ResourceType:      getString(fields, fieldRemoteLockType),
-				ObservedAt:        parseMetav1Time(getString(fields, fieldTime)),
+				ResourceType:      fields[fieldRemoteLockType],
+				ObservedAt:        parseMetav1Time(fields[fieldTime]),
 			},
 		}
 	}
@@ -118,12 +122,12 @@ func IsErrorLine(line string) bool {
 		return true
 	}
 
-	fields := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(line), &fields); err != nil {
+	fields := parseJSONFields(line)
+	if len(fields) == 0 {
 		return false
 	}
 
-	switch strings.ToLower(getString(fields, fieldLevel)) {
+	switch strings.ToLower(fields[fieldLevel]) {
 	case "error", "fatal":
 		return true
 	default:
@@ -131,26 +135,80 @@ func IsErrorLine(line string) bool {
 	}
 }
 
-func logMessage(fields map[string]interface{}) string {
-	if message := getString(fields, fieldMessage); message != "" {
-		return message
+func parseFields(line string) map[string]string {
+	if fields := parseJSONFields(line); len(fields) > 0 {
+		return fields
 	}
-	if message := getString(fields, fieldMsg); message != "" {
-		return message
-	}
-	return getString(fields, fieldMessageCompat)
+	return parseTextFields(line)
 }
 
-func getString(fields map[string]interface{}, key string) string {
-	value, ok := fields[key]
-	if !ok {
-		return ""
+func parseJSONFields(line string) map[string]string {
+	rawFields := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(line), &rawFields); err != nil {
+		return nil
 	}
-	str, ok := value.(string)
-	if !ok {
-		return ""
+
+	fields := make(map[string]string, len(rawFields))
+	for key, value := range rawFields {
+		if str, ok := value.(string); ok {
+			fields[key] = str
+		}
 	}
-	return str
+	return fields
+}
+
+func parseTextFields(line string) map[string]string {
+	fields := map[string]string{}
+	for _, match := range bracketFieldPattern.FindAllStringSubmatch(line, -1) {
+		fields[match[1]] = unquoteLogValue(strings.TrimSpace(match[2]))
+	}
+
+	if strings.Contains(line, `"`+messageOperationStarted+`"`) || strings.Contains(line, messageOperationStarted) {
+		fields[fieldMessage] = messageOperationStarted
+	}
+
+	for _, token := range bracketTokens(line) {
+		if parsed := parseMetav1Time(token); !parsed.IsZero() {
+			fields[fieldTime] = token
+			break
+		}
+	}
+
+	return fields
+}
+
+func bracketTokens(line string) []string {
+	var tokens []string
+	for {
+		start := strings.IndexByte(line, '[')
+		if start == -1 {
+			return tokens
+		}
+		line = line[start+1:]
+		end := strings.IndexByte(line, ']')
+		if end == -1 {
+			return tokens
+		}
+		tokens = append(tokens, line[:end])
+		line = line[end+1:]
+	}
+}
+
+func unquoteLogValue(value string) string {
+	if unquoted, err := strconv.Unquote(value); err == nil {
+		return unquoted
+	}
+	return value
+}
+
+func logMessage(fields map[string]string) string {
+	if message := fields[fieldMessage]; message != "" {
+		return message
+	}
+	if message := fields[fieldMsg]; message != "" {
+		return message
+	}
+	return fields[fieldMessageCompat]
 }
 
 func firstNonEmpty(values ...string) string {

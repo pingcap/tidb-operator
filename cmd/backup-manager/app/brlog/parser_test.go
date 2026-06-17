@@ -43,6 +43,26 @@ func TestParseLineOperationStarted(t *testing.T) {
 	assertTime(t, "observed at", event.Operation.ObservedAt.Time, "2026-06-17T10:00:00Z")
 }
 
+func TestParseLineTextOperationStarted(t *testing.T) {
+	line := `[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=11111111-1111-1111-1111-111111111111] [operation_started_at=2026-06-17T10:00:00Z] [host=br-pod] [pid=123] [command=log-restore]`
+
+	event := ParseLine(line)
+	if event.Type != EventOperationStarted {
+		t.Fatalf("expected event type %q, got %q", EventOperationStarted, event.Type)
+	}
+	if event.Operation == nil {
+		t.Fatal("expected operation")
+	}
+	if event.Operation.OperationID != "11111111-1111-1111-1111-111111111111" {
+		t.Fatalf("unexpected operation id: %q", event.Operation.OperationID)
+	}
+	if event.Operation.Command != "log-restore" {
+		t.Fatalf("unexpected command: %q", event.Operation.Command)
+	}
+	assertOptionalTime(t, "started at", event.Operation.StartedAt, "2026-06-17T10:00:00Z")
+	assertTime(t, "observed at", event.Operation.ObservedAt.Time, "2026-06-17T10:00:00Z")
+}
+
 func TestParseLineLockConflict(t *testing.T) {
 	line := `{"level":"warn","time":"2026/06/17 10:01:00.000 +00:00","caller":"stream/stream_metas.go:1497","message":"Failed to acquire log truncate lock","error":"locked","path":"truncating.lock","local_owner_id":"local-op","local_lock_type":"log-truncate-exclusive","local_hint":"operation_started_at=2026-06-17T10:00:00Z","remote_blocker_count":1,"remote_blocker_0_path":"truncating.lock","remote_blocker_0_owner_id":"remote-op","remote_blocker_0_lock_type":"log-truncate-exclusive","remote_blocker_0_hint":"operation_started_at=2026-06-17T09:00:00Z restore_id=123"}`
 
@@ -55,6 +75,29 @@ func TestParseLineLockConflict(t *testing.T) {
 	}
 	if event.Operation != nil {
 		t.Fatalf("expected no operation, got %#v", event.Operation)
+	}
+	if event.LockBlocker.LockPath != "truncating.lock" {
+		t.Fatalf("unexpected lock path: %q", event.LockBlocker.LockPath)
+	}
+	if event.LockBlocker.RemoteOperationID != "remote-op" {
+		t.Fatalf("unexpected remote operation id: %q", event.LockBlocker.RemoteOperationID)
+	}
+	if event.LockBlocker.ResourceType != "log-truncate-exclusive" {
+		t.Fatalf("unexpected resource type: %q", event.LockBlocker.ResourceType)
+	}
+	assertOptionalTime(t, "remote started at", event.LockBlocker.RemoteStartedAt, "2026-06-17T09:00:00Z")
+	assertTime(t, "observed at", event.LockBlocker.ObservedAt.Time, "2026-06-17T10:01:00Z")
+}
+
+func TestParseLineTextLockConflict(t *testing.T) {
+	line := `[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Failed to acquire log truncate lock"] [error=locked] [path=truncating.lock] [local_owner_id=local-op] [local_lock_type=log-truncate-exclusive] [local_hint=operation_started_at=2026-06-17T10:00:00Z] [remote_blocker_count=1] [remote_blocker_0_path=truncating.lock] [remote_blocker_0_owner_id=remote-op] [remote_blocker_0_lock_type=log-truncate-exclusive] [remote_blocker_0_hint="operation_started_at=2026-06-17T09:00:00Z restore_id=123"]`
+
+	event := ParseLine(line)
+	if event.Type != EventLockConflict {
+		t.Fatalf("expected event type %q, got %q", EventLockConflict, event.Type)
+	}
+	if event.LockBlocker == nil {
+		t.Fatal("expected lock blocker")
 	}
 	if event.LockBlocker.LockPath != "truncating.lock" {
 		t.Fatalf("unexpected lock path: %q", event.LockBlocker.LockPath)

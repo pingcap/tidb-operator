@@ -33,7 +33,7 @@ func TestRestoreLogObserverUpdatesOperationAndCapturesLatestLockBlocker(t *testi
 	statusUpdater := &recordingRestoreStatusUpdater{}
 	observer := newRestoreLogObserver(restore, statusUpdater)
 
-	observer.observeLine(`{"message":"BR operation started","operation_id":"op-a","command":"restore full"}`)
+	observer.observeLine(`[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-a] [command="restore full"]`)
 
 	if len(statusUpdater.updates) != 1 {
 		t.Fatalf("expected one status update, got %d", len(statusUpdater.updates))
@@ -49,8 +49,8 @@ func TestRestoreLogObserverUpdatesOperationAndCapturesLatestLockBlocker(t *testi
 		t.Fatal("expected observer to fill zero ObservedAt")
 	}
 
-	observer.observeLine(`{"time":"2026-06-17T10:01:00Z","remote_owner_id":"remote-a","remote_lock_type":"restore-exclusive","remote_hint":"operation_started_at=2026-06-17T09:00:00Z","path":"lock-a"}`)
-	observer.observeLine(`{"time":"2026-06-17T10:02:00Z","remote_owner_id":"remote-b","remote_lock_type":"restore-exclusive","remote_hint":"operation_started_at=2026-06-17T09:01:00Z","path":"lock-b"}`)
+	observer.observeLine(`[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-a] [remote_lock_type=restore-exclusive] [remote_hint=operation_started_at=2026-06-17T09:00:00Z] [path=lock-a]`)
+	observer.observeLine(`[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-b] [remote_lock_type=restore-exclusive] [remote_hint=operation_started_at=2026-06-17T09:01:00Z] [path=lock-b]`)
 
 	blocker := observer.lockBlocker
 	if blocker == nil {
@@ -91,12 +91,12 @@ func TestRestoreDataObservesStdoutAndStderrAndClearsBlockerOnSuccess(t *testing.
 	argvFile := filepath.Join(dir, "argv")
 	script := `#!/bin/sh
 printf '%s\n' "$@" > "$BR_ARGV_FILE"
-printf '{"message":"BR operation started","operation_id":"op-stdout","command":"restore full"}\n'
+printf '[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-stdout] [command="restore full"]\n'
 printf 'stdout, [progress] [step="Full Restore"] [progress=42%%]\n'
-printf '{"time":"2026-06-17T10:01:00Z","remote_owner_id":"remote-stdout","remote_lock_type":"restore-exclusive","path":"lock-stdout"}\n'
-printf '{"message":"BR operation started","operation_id":"op-stderr","command":"restore full"}\n' >&2
+printf '[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-stdout] [remote_lock_type=restore-exclusive] [path=lock-stdout]\n'
+printf '[2026/06/17 10:00:01.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-stderr] [command="restore full"]\n' >&2
 printf 'stderr, [progress] [step="Full Restore"] [progress=99%%]\n' >&2
-printf '{"time":"2026-06-17T10:02:00Z","remote_owner_id":"remote-stderr","remote_lock_type":"restore-exclusive","path":"lock-stderr"}\n' >&2
+printf '[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-stderr] [remote_lock_type=restore-exclusive] [path=lock-stderr]\n' >&2
 exit 0
 `
 	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
@@ -115,8 +115,13 @@ exit 0
 		t.Fatalf("failed to read argv: %v", err)
 	}
 	argLines := strings.Split(strings.TrimSpace(string(args)), "\n")
-	if len(argLines) == 0 || argLines[len(argLines)-1] != "--log-format=json" {
-		t.Fatalf("expected --log-format=json to be the last br arg, got %q", argLines)
+	for _, arg := range argLines {
+		if arg == "--log-format=json" {
+			t.Fatalf("expected restore to preserve user log format instead of forcing json, got %q", argLines)
+		}
+	}
+	if !containsString(argLines, "--log-format=text") {
+		t.Fatalf("expected user log format option to be preserved, got %q", argLines)
 	}
 
 	var sawStdoutOperation, sawStderrOperation, sawClearBlocker bool
@@ -181,7 +186,7 @@ func TestRestoreDataFailureWritesLatestBlockerAndErrorMessageOnlyIncludesErrorLi
 printf 'stdout ordinary log\n'
 printf 'stdout [ERROR] failed stdout\n'
 printf '{"level":"ERROR","message":"json stdout failed"}\n'
-printf '{"time":"2026-06-17T10:02:00Z","remote_owner_id":"remote-stderr","remote_lock_type":"restore-exclusive","path":"lock-stderr"}\n' >&2
+printf '[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-stderr] [remote_lock_type=restore-exclusive] [path=lock-stderr]\n' >&2
 printf 'stderr ordinary log\n' >&2
 printf 'stderr [ERROR] failed stderr\n' >&2
 printf '{"level":"fatal","message":"json stderr failed"}\n' >&2
@@ -253,6 +258,15 @@ exec sleep 1
 	if elapsed > 500*time.Millisecond {
 		t.Fatalf("expected context cancellation to stop br quickly, took %s", elapsed)
 	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func newRestoreForObserverTest() *v1alpha1.Restore {

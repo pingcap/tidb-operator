@@ -329,10 +329,11 @@ blocker identity。
 
 - 目标 TiDB PR head：`955eb2b94928a5920fcca0a53308dbf2ba957e7e`。
 - BR root flag 当前默认：`--log-format=text`，`--log-file` 默认为时间戳文件；Job
-  侧已有 `BR_LOG_TO_TERM` 会让 BR log 打到 stdout/stderr。第一阶段 parser 若按 JSON
-  structured log 实现，backup-manager 必须在纳入范围的 BR 命令上显式追加
-  `--log-format=json`，不能依赖 BR 默认 text log。
-- `github.com/pingcap/log` JSON encoder 的 message key 是 `message`。
+  侧已有 `BR_LOG_TO_TERM` 会让 BR log 打到 stdout/stderr。第一阶段沿用既有终端日志
+  读取方式，不覆盖用户指定的 log format。Parser 需要从 BR 默认 text log 中的
+  bracket fields 解析 operation 和 lock conflict 字段；JSON log 仅作为兼容输入。
+- `github.com/pingcap/log` JSON encoder 的 message key 是 `message`；默认 text log
+  中 message 形如 `["BR operation started"]`，字段形如 `[operation_id=...]`。
 - operation started marker：`BR operation started`。
 - operation started fields：`operation_id`、`operation_started_at`、`command`，另有
   `host`、`pid` 可作为诊断补充但不是 CR status 必需字段。
@@ -359,7 +360,17 @@ blocker identity。
   第一阶段只从 hint 中解析 `operation_started_at`，作为 `remoteStartedAt`；`restore_id`
   暂不进入 CRD status。Operator 不能依赖远端 lock JSON。
 
-Parser fixture 形态应基于上述字段，而不是自行发明字段。例如：
+Parser fixture 形态应基于上述字段，而不是自行发明字段。例如默认 text log：
+
+```text
+[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=11111111-1111-1111-1111-111111111111] [operation_started_at=2026-06-17T10:00:00Z] [host=br-pod] [pid=123] [command=log-restore]
+```
+
+```text
+[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Failed to acquire log truncate lock"] [error=locked] [path=truncating.lock] [local_owner_id=local-op] [local_lock_type=log-truncate-exclusive] [local_hint=operation_started_at=2026-06-17T10:00:00Z] [remote_blocker_count=1] [remote_blocker_0_path=truncating.lock] [remote_blocker_0_owner_id=remote-op] [remote_blocker_0_lock_type=log-truncate-exclusive] [remote_blocker_0_hint="operation_started_at=2026-06-17T09:00:00Z restore_id=123"]
+```
+
+兼容的 JSON log 示例：
 
 ```json
 {"level":"info","time":"2026/06/17 10:00:00.000 +00:00","caller":"operation/context.go:122","message":"BR operation started","operation_id":"11111111-1111-1111-1111-111111111111","operation_started_at":"2026-06-17T10:00:00Z","host":"br-pod","pid":123,"command":"log-restore"}

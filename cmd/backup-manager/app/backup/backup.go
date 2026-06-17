@@ -232,7 +232,6 @@ func (bo *Options) doTruncateLogBackup(
 	if err != nil {
 		return err
 	}
-	fullArgs = append(fullArgs, "--log-format=json")
 
 	observer := newBackupLogTruncateObserver(backup, statusUpdater)
 	err = bo.brCommandRunWithLogObserver(ctx, fullArgs, observer.observeLine)

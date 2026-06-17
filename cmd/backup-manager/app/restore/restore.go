@@ -175,7 +175,6 @@ func (ro *Options) restoreData(
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	fullArgs = append(fullArgs, "--log-format=json")
 
 	var (
 		progressWg     sync.WaitGroup

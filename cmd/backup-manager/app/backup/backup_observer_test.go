@@ -29,7 +29,7 @@ func TestBackupLogTruncateObserverUpdatesOperationAndCapturesLatestLockBlocker(t
 	statusUpdater := &recordingBackupStatusUpdater{}
 	observer := newBackupLogTruncateObserver(backup, statusUpdater)
 
-	observer.observeLine(`{"message":"BR operation started","operation_id":"op-a","command":"log truncate"}`)
+	observer.observeLine(`[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-a] [command="log truncate"]`)
 
 	if len(statusUpdater.updates) != 1 {
 		t.Fatalf("expected one status update, got %d", len(statusUpdater.updates))
@@ -45,8 +45,8 @@ func TestBackupLogTruncateObserverUpdatesOperationAndCapturesLatestLockBlocker(t
 		t.Fatal("expected observer to fill zero ObservedAt")
 	}
 
-	observer.observeLine(`{"time":"2026-06-17T10:01:00Z","remote_owner_id":"remote-a","remote_lock_type":"log-truncate-exclusive","remote_hint":"operation_started_at=2026-06-17T09:00:00Z","path":"lock-a"}`)
-	observer.observeLine(`{"time":"2026-06-17T10:02:00Z","remote_owner_id":"remote-b","remote_lock_type":"log-truncate-exclusive","remote_hint":"operation_started_at=2026-06-17T09:01:00Z","path":"lock-b"}`)
+	observer.observeLine(`[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-a] [remote_lock_type=log-truncate-exclusive] [remote_hint=operation_started_at=2026-06-17T09:00:00Z] [path=lock-a]`)
+	observer.observeLine(`[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-b] [remote_lock_type=log-truncate-exclusive] [remote_hint=operation_started_at=2026-06-17T09:01:00Z] [path=lock-b]`)
 
 	blocker := observer.lockBlocker
 	if blocker == nil {
