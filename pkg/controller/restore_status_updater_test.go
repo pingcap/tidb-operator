@@ -30,30 +30,116 @@ func TestUpdateRestoreStatus(t *testing.T) {
 		status       *v1alpha1.RestoreStatus
 		updateStatus *RestoreUpdateStatus
 		expectStatus *v1alpha1.RestoreStatus
+		expectUpdate bool
 	}{
 		{
 			name:         "updateStatus is nil",
 			status:       newRestoreStatus(),
 			updateStatus: nil,
 			expectStatus: newRestoreStatus(),
+			expectUpdate: false,
 		},
 		{
 			name:         "fields are nil",
 			status:       newRestoreStatus(),
 			updateStatus: &RestoreUpdateStatus{},
 			expectStatus: newRestoreStatus(),
+			expectUpdate: false,
 		},
 		{
 			name:         "fields are not nil",
 			status:       newRestoreStatus(),
 			updateStatus: newUpdateRestoreStatus(),
 			expectStatus: newExpectRestoreStatus(),
+			expectUpdate: true,
+		},
+		{
+			name: "nil observability update changes nothing",
+			status: &v1alpha1.RestoreStatus{
+				BROperations: makeBROperations(0, 2),
+				LockBlocker:  newBRLockBlocker("lock-a", "op-a"),
+			},
+			updateStatus: &RestoreUpdateStatus{},
+			expectStatus: &v1alpha1.RestoreStatus{
+				BROperations: makeBROperations(0, 2),
+				LockBlocker:  newBRLockBlocker("lock-a", "op-a"),
+			},
+			expectUpdate: false,
+		},
+		{
+			name: "new operation is prepended",
+			status: &v1alpha1.RestoreStatus{
+				BROperations: makeBROperations(0, 2),
+			},
+			updateStatus: &RestoreUpdateStatus{
+				BROperation: newBROperation("op-new", "restore"),
+			},
+			expectStatus: &v1alpha1.RestoreStatus{
+				BROperations: append([]v1alpha1.BROperation{*newBROperation("op-new", "restore")}, makeBROperations(0, 2)...),
+			},
+			expectUpdate: true,
+		},
+		{
+			name: "duplicate operation ID refreshes existing entry",
+			status: &v1alpha1.RestoreStatus{
+				BROperations: []v1alpha1.BROperation{
+					*newBROperation("op-a", "old-restore"),
+					*newBROperation("op-b", "restore"),
+				},
+			},
+			updateStatus: &RestoreUpdateStatus{
+				BROperation: newBROperation("op-a", "refreshed-restore"),
+			},
+			expectStatus: &v1alpha1.RestoreStatus{
+				BROperations: []v1alpha1.BROperation{
+					*newBROperation("op-a", "refreshed-restore"),
+					*newBROperation("op-b", "restore"),
+				},
+			},
+			expectUpdate: true,
+		},
+		{
+			name: "operation list is capped at 10",
+			status: &v1alpha1.RestoreStatus{
+				BROperations: makeBROperations(0, 10),
+			},
+			updateStatus: &RestoreUpdateStatus{
+				BROperation: newBROperation("op-new", "restore"),
+			},
+			expectStatus: &v1alpha1.RestoreStatus{
+				BROperations: append([]v1alpha1.BROperation{*newBROperation("op-new", "restore")}, makeBROperations(0, 9)...),
+			},
+			expectUpdate: true,
+		},
+		{
+			name:   "blocker is set",
+			status: &v1alpha1.RestoreStatus{},
+			updateStatus: &RestoreUpdateStatus{
+				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
+			},
+			expectStatus: &v1alpha1.RestoreStatus{
+				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
+			},
+			expectUpdate: true,
+		},
+		{
+			name: "blocker is cleared",
+			status: &v1alpha1.RestoreStatus{
+				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
+			},
+			updateStatus: &RestoreUpdateStatus{
+				LockBlocker:      newBRLockBlocker("lock-b", "remote-b"),
+				ClearLockBlocker: boolPtr(true),
+			},
+			expectStatus: &v1alpha1.RestoreStatus{},
+			expectUpdate: true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Logf("test: %+v", test.name)
-		updateRestoreStatus(test.status, test.updateStatus)
+		updated := updateRestoreStatus(test.status, test.updateStatus)
+		g.Expect(updated).Should(Equal(test.expectUpdate))
 		g.Expect(*test.status).Should(Equal(*test.expectStatus))
 	}
 }
