@@ -14,10 +14,8 @@
 package restore
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -27,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/brlog"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -36,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -51,6 +51,8 @@ const (
 
 	replicationMetadataDownloadBatchSize = 512
 )
+
+var brBinPath = util.BRBinPath
 
 // replicationBRFlags returns the BR command-line flags that are
 // specific to replication restore phases. Returns nil for phase 0
@@ -173,22 +175,7 @@ func (ro *Options) restoreData(
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := path.Join(util.BRBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
-
-	stdOut, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
-	}
-	stdErr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
-	}
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
-	}
+	fullArgs = append(fullArgs, "--log-format=json")
 
 	var (
 		progressWg     sync.WaitGroup
@@ -206,39 +193,18 @@ func (ro *Options) restoreData(
 		}()
 	}
 
-	stdErrCh := make(chan []byte, 1)
-	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
-
-	var errMsg string
-	reader := bufio.NewReader(stdOut)
-	for {
-		line, err := reader.ReadString('\n')
-		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
-		} else {
-			if !useProgressFile {
-				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
-			}
-			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
+	observer := newRestoreLogObserver(restore, statusUpdater)
+	err = ro.brRestoreCommandRunWithLogObserver(ctx, fullArgs, func(line string) {
+		if !useProgressFile {
+			ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
 		}
-		klog.Info(strings.ReplaceAll(line, "\n", ""))
-		if err != nil {
-			if err != io.EOF {
-				klog.Errorf("read stdout error: %s", err.Error())
-			}
-			break
-		}
-	}
-	tmpErr := <-stdErrCh
-	if len(tmpErr) > 0 {
-		klog.Info(string(tmpErr))
-		errMsg += string(tmpErr)
-	}
-
-	err = cmd.Wait()
+		ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
+	}, observer.observeLine)
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+		observer.updateLockBlockerAfterFailure()
+		return err
 	}
+	observer.clearLockBlocker()
 
 	if csbPath != "" {
 		err = ro.processCloudSnapBackup(ctx, restore, csbPath, restoreControl)
@@ -265,6 +231,159 @@ func (ro *Options) restoreData(
 
 	klog.Infof("Restore data for cluster %s successfully", ro)
 	return nil
+}
+
+func (ro *Options) brRestoreCommandRunWithLogObserver(
+	ctx context.Context,
+	fullArgs []string,
+	stdoutCallback func(line string),
+	logObserver func(line string),
+) error {
+	if len(fullArgs) == 0 {
+		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
+	}
+	klog.Infof("Running br command with args: %v", fullArgs)
+	bin := path.Join(brBinPath, "br")
+	cmd := exec.Command(bin, fullArgs...)
+
+	stdOut, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
+	}
+	stdErr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
+	}
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
+	}
+
+	var errMsg string
+	stdOutLineCh := make(chan string)
+	stdOutErrCh := make(chan error, 1)
+	go backupUtil.ReadLinesToChannel(stdOut, stdOutLineCh, stdOutErrCh)
+
+	stdErrLineCh := make(chan string)
+	stdErrErrCh := make(chan error, 1)
+	go backupUtil.ReadLinesToChannel(stdErr, stdErrLineCh, stdErrErrCh)
+
+	stdOutOpen, stdErrOpen := true, true
+	for stdOutOpen || stdErrOpen {
+		select {
+		case line, ok := <-stdOutLineCh:
+			if !ok {
+				stdOutOpen = false
+				stdOutLineCh = nil
+				continue
+			}
+			processBRRestoreCommandStdoutLine(line, &errMsg, stdoutCallback, logObserver)
+		case line, ok := <-stdErrLineCh:
+			if !ok {
+				stdErrOpen = false
+				stdErrLineCh = nil
+				continue
+			}
+			processBRRestoreCommandLogLine(line, &errMsg, logObserver)
+		}
+	}
+
+	if err := <-stdOutErrCh; err != nil {
+		klog.Errorf("read stdout error: %s", err.Error())
+	}
+	if err := <-stdErrErrCh; err != nil {
+		klog.Errorf("read stderr error: %s", err.Error())
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+	}
+
+	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, ro)
+	return nil
+}
+
+func processBRRestoreCommandStdoutLine(
+	line string,
+	errMsg *string,
+	stdoutCallback func(line string),
+	logObserver func(line string),
+) {
+	if !strings.Contains(line, "[ERROR]") && stdoutCallback != nil {
+		stdoutCallback(line)
+	}
+	processBRRestoreCommandLogLine(line, errMsg, logObserver)
+}
+
+func processBRRestoreCommandLogLine(
+	line string,
+	errMsg *string,
+	logObserver func(line string),
+) {
+	if strings.Contains(line, "[ERROR]") {
+		*errMsg += line + "\n"
+	}
+	if logObserver != nil {
+		logObserver(line)
+	}
+	klog.Info(line)
+}
+
+type restoreLogObserver struct {
+	restore       *v1alpha1.Restore
+	statusUpdater controller.RestoreConditionUpdaterInterface
+	lockBlocker   *v1alpha1.BRLockBlocker
+}
+
+func newRestoreLogObserver(
+	restore *v1alpha1.Restore,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+) *restoreLogObserver {
+	return &restoreLogObserver{
+		restore:       restore,
+		statusUpdater: statusUpdater,
+	}
+}
+
+func (o *restoreLogObserver) observeLine(line string) {
+	event := brlog.ParseLine(line)
+	switch event.Type {
+	case brlog.EventOperationStarted:
+		if event.Operation == nil {
+			return
+		}
+		if event.Operation.ObservedAt.IsZero() {
+			event.Operation.ObservedAt = metav1.Now()
+		}
+		if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
+			BROperation: event.Operation,
+		}); err != nil {
+			klog.Errorf("Failed to update BR operation status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
+		}
+	case brlog.EventLockConflict:
+		o.lockBlocker = event.LockBlocker
+	}
+}
+
+func (o *restoreLogObserver) updateLockBlockerAfterFailure() {
+	if o.lockBlocker != nil {
+		if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
+			LockBlocker: o.lockBlocker,
+		}); err != nil {
+			klog.Errorf("Failed to update BR lock blocker status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
+		}
+		return
+	}
+	o.clearLockBlocker()
+}
+
+func (o *restoreLogObserver) clearLockBlocker() {
+	if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
+		ClearLockBlocker: ptr.To(true),
+	}); err != nil {
+		klog.Errorf("Failed to clear BR lock blocker status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
+	}
 }
 
 // copy the restore meta to remote storage since k8s has limit to handle massive data pass between pods
