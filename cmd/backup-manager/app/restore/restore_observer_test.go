@@ -93,9 +93,12 @@ func TestRestoreDataObservesStdoutAndStderrAndClearsBlockerOnSuccess(t *testing.
 printf '%s\n' "$@" > "$BR_ARGV_FILE"
 printf '[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-stdout] [command="restore full"]\n'
 printf 'stdout, [progress] [step="Full Restore"] [progress=42%%]\n'
+printf '{"level":"ERROR","message":"json stdout failed [progress] [step=\\"Full Restore\\"] [progress=88%%]"}\n'
+printf 'EBS restore success resolved_ts=123456\n'
 printf '[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-stdout] [remote_lock_type=restore-exclusive] [path=lock-stdout]\n'
 printf '[2026/06/17 10:00:01.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-stderr] [command="restore full"]\n' >&2
 printf 'stderr, [progress] [step="Full Restore"] [progress=99%%]\n' >&2
+printf 'EBS restore success resolved_ts=999999\n' >&2
 printf '[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-stderr] [remote_lock_type=restore-exclusive] [path=lock-stderr]\n' >&2
 exit 0
 `
@@ -126,6 +129,7 @@ exit 0
 
 	var sawStdoutOperation, sawStderrOperation, sawClearBlocker bool
 	var progressValues []float64
+	var commitTsValues []string
 	for _, update := range statusUpdater.updates {
 		if update.BROperation != nil {
 			switch update.BROperation.OperationID {
@@ -138,6 +142,9 @@ exit 0
 		if update.Progress != nil {
 			progressValues = append(progressValues, *update.Progress)
 		}
+		if update.CommitTs != nil {
+			commitTsValues = append(commitTsValues, *update.CommitTs)
+		}
 		if update.ClearLockBlocker != nil && *update.ClearLockBlocker {
 			sawClearBlocker = true
 		}
@@ -145,32 +152,57 @@ exit 0
 	if !sawStdoutOperation || !sawStderrOperation {
 		t.Fatalf("expected operations from stdout and stderr, got %#v", statusUpdater.updates)
 	}
-	if len(progressValues) != 1 || progressValues[0] != 42 {
-		t.Fatalf("expected only stdout progress update 42, got %v", progressValues)
+	if len(progressValues) != 2 || progressValues[0] != 42 || progressValues[1] != 100 {
+		t.Fatalf("expected only stdout non-error progress updates 42 and resolved-ts 100, got %v", progressValues)
+	}
+	if len(commitTsValues) != 1 || commitTsValues[0] != "123456" {
+		t.Fatalf("expected only stdout resolved-ts commit ts 123456, got %v", commitTsValues)
 	}
 	if !sawClearBlocker {
 		t.Fatalf("expected successful restore to clear lock blocker, got %#v", statusUpdater.updates)
 	}
 }
 
-func TestProcessBRRestoreCommandStdoutLineSkipsCallbackForJSONError(t *testing.T) {
+func TestProcessBRRestoreCommandStdoutLinePassesJSONErrorToHandlerAndErrMsg(t *testing.T) {
 	var errMsg string
-	var callbackLines []string
+	var handled []brLogStream
 
 	processBRRestoreCommandStdoutLine(
 		`{"level":"ERROR","message":"json stdout failed [progress] [step=\"Full Restore\"] [progress=88%]"}`,
 		&errMsg,
-		func(line string) {
-			callbackLines = append(callbackLines, line)
+		func(stream brLogStream, line string) {
+			handled = append(handled, stream)
 		},
-		nil,
 	)
 
-	if len(callbackLines) != 0 {
-		t.Fatalf("expected JSON error line to skip stdout callback, got %q", callbackLines)
+	if len(handled) != 1 || handled[0] != brLogStreamStdout {
+		t.Fatalf("expected JSON error line to still reach stdout handler, got %q", handled)
 	}
 	if !strings.Contains(errMsg, "json stdout failed") {
 		t.Fatalf("expected JSON error line in errMsg, got %q", errMsg)
+	}
+}
+
+func TestProcessBRRestoreCommandLinesPassStreamToSingleHandler(t *testing.T) {
+	var errMsg string
+	var streams []brLogStream
+	var lines []string
+	handler := func(stream brLogStream, line string) {
+		streams = append(streams, stream)
+		lines = append(lines, line)
+	}
+
+	processBRRestoreCommandStdoutLine("stdout progress", &errMsg, handler)
+	processBRRestoreCommandLogLine("stderr ordinary", &errMsg, brLogStreamStderr, handler)
+
+	if len(streams) != 2 {
+		t.Fatalf("expected two handled lines, got streams=%q lines=%q", streams, lines)
+	}
+	if streams[0] != brLogStreamStdout || lines[0] != "stdout progress" {
+		t.Fatalf("expected first line from stdout, got stream=%q line=%q", streams[0], lines[0])
+	}
+	if streams[1] != brLogStreamStderr || lines[1] != "stderr ordinary" {
+		t.Fatalf("expected second line from stderr, got stream=%q line=%q", streams[1], lines[1])
 	}
 }
 
@@ -250,7 +282,7 @@ exec sleep 1
 	}()
 
 	start := time.Now()
-	err := (&Options{}).brRestoreCommandRunWithLogObserver(ctx, []string{"restore", "full"}, nil, nil)
+	err := (&Options{}).brRestoreCommandRunWithLogObserver(ctx, []string{"restore", "full"}, nil)
 	elapsed := time.Since(start)
 	if err == nil {
 		t.Fatal("expected restore command to fail after context cancellation")

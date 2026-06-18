@@ -54,6 +54,15 @@ const (
 
 var brBinPath = util.BRBinPath
 
+type brLogStream string
+
+const (
+	brLogStreamStdout brLogStream = "stdout"
+	brLogStreamStderr brLogStream = "stderr"
+)
+
+type brLogLineHandler func(stream brLogStream, line string)
+
 // replicationBRFlags returns the BR command-line flags that are
 // specific to replication restore phases. Returns nil for phase 0
 // (= not a replication restore), in which case the caller's
@@ -193,12 +202,15 @@ func (ro *Options) restoreData(
 	}
 
 	observer := newRestoreLogObserver(restore, statusUpdater)
-	err = ro.brRestoreCommandRunWithLogObserver(ctx, fullArgs, func(line string) {
-		if !useProgressFile {
-			ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+	err = ro.brRestoreCommandRunWithLogObserver(ctx, fullArgs, func(stream brLogStream, line string) {
+		if stream == brLogStreamStdout && !brlog.IsErrorLine(line) {
+			if !useProgressFile {
+				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+			}
+			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 		}
-		ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
-	}, observer.observeLine)
+		observer.observeLine(line)
+	})
 	if err != nil {
 		observer.updateLockBlockerAfterFailure()
 		return err
@@ -235,8 +247,7 @@ func (ro *Options) restoreData(
 func (ro *Options) brRestoreCommandRunWithLogObserver(
 	ctx context.Context,
 	fullArgs []string,
-	stdoutCallback func(line string),
-	logObserver func(line string),
+	logHandler brLogLineHandler,
 ) error {
 	if len(fullArgs) == 0 {
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
@@ -277,14 +288,14 @@ func (ro *Options) brRestoreCommandRunWithLogObserver(
 				stdOutLineCh = nil
 				continue
 			}
-			processBRRestoreCommandStdoutLine(line, &errMsg, stdoutCallback, logObserver)
+			processBRRestoreCommandStdoutLine(line, &errMsg, logHandler)
 		case line, ok := <-stdErrLineCh:
 			if !ok {
 				stdErrOpen = false
 				stdErrLineCh = nil
 				continue
 			}
-			processBRRestoreCommandLogLine(line, &errMsg, logObserver)
+			processBRRestoreCommandLogLine(line, &errMsg, brLogStreamStderr, logHandler)
 		}
 	}
 
@@ -307,25 +318,22 @@ func (ro *Options) brRestoreCommandRunWithLogObserver(
 func processBRRestoreCommandStdoutLine(
 	line string,
 	errMsg *string,
-	stdoutCallback func(line string),
-	logObserver func(line string),
+	logHandler brLogLineHandler,
 ) {
-	if !brlog.IsErrorLine(line) && stdoutCallback != nil {
-		stdoutCallback(line)
-	}
-	processBRRestoreCommandLogLine(line, errMsg, logObserver)
+	processBRRestoreCommandLogLine(line, errMsg, brLogStreamStdout, logHandler)
 }
 
 func processBRRestoreCommandLogLine(
 	line string,
 	errMsg *string,
-	logObserver func(line string),
+	stream brLogStream,
+	logHandler brLogLineHandler,
 ) {
 	if brlog.IsErrorLine(line) {
 		*errMsg += line + "\n"
 	}
-	if logObserver != nil {
-		logObserver(line)
+	if logHandler != nil {
+		logHandler(stream, line)
 	}
 	klog.Info(line)
 }
