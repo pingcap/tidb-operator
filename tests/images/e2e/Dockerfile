@@ -20,12 +20,13 @@ RUN for i in 1 2 3 4 5; do \
         sleep 5; \
     done && \
     chmod +x /usr/local/bin/kubectl && \
-    for i in 1 2 3 4 5; do \
-        curl ${CURL_RETRY_OPTS} https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz \
-            -o helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz && break; \
-        if [ "$i" = "5" ]; then exit 1; fi; \
-        sleep 5; \
+    for url in https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz https://mirrors.huaweicloud.com/helm/${HELM_VERSION}/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz; do \
+        for i in 1 2 3; do \
+            curl ${CURL_RETRY_OPTS} "$url" -o helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz && helm_downloaded=1 && break 2; \
+            sleep 5; \
+        done; \
     done && \
+    test "${helm_downloaded:-}" = "1" && \
     tar -zxvf helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz && \
     mv linux-${TARGETARCH}/helm /usr/local/bin/helm && \
     rm -rf linux-${TARGETARCH} && \
