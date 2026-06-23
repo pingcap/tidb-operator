@@ -25,7 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
-func TestBackupLogTruncateObserverUpdatesOperationAndCapturesLatestLockBlocker(t *testing.T) {
+func TestBackupLogTruncateObserverUpdatesOperationOnly(t *testing.T) {
 	backup := &v1alpha1.Backup{}
 	statusUpdater := &recordingBackupStatusUpdater{}
 	observer := newBackupLogTruncateObserver(backup, statusUpdater)
@@ -48,16 +48,8 @@ func TestBackupLogTruncateObserverUpdatesOperationAndCapturesLatestLockBlocker(t
 
 	observer.observeLine(`[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-a] [remote_lock_type=log-truncate-exclusive] [remote_hint=operation_started_at=2026-06-17T09:00:00Z] [path=lock-a]`)
 	observer.observeLine(`[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-b] [remote_lock_type=log-truncate-exclusive] [remote_hint=operation_started_at=2026-06-17T09:01:00Z] [path=lock-b]`)
-
-	blocker := observer.lockBlocker
-	if blocker == nil {
-		t.Fatal("expected lock blocker candidate")
-	}
-	if blocker.RemoteOperationID != "remote-b" {
-		t.Fatalf("expected latest lock blocker to win, got %q", blocker.RemoteOperationID)
-	}
-	if blocker.LockPath != "lock-b" {
-		t.Fatalf("unexpected lock path: %q", blocker.LockPath)
+	if len(statusUpdater.updates) != 1 {
+		t.Fatalf("expected lock conflict logs to stay in BR logs only, got updates %#v", statusUpdater.updates)
 	}
 }
 

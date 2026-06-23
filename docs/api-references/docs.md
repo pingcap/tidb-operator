@@ -3608,6 +3608,69 @@ bool
 </tr>
 </tbody>
 </table>
+<h3 id="broperation">BROperation</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>,
+<a href="#restorestatus">RestoreStatus</a>)
+</p>
+<p>
+<p>BROperation records one observed BR process execution for this CR.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>operationID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>startedAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>command</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="backoffretrypolicy">BackoffRetryPolicy</h3>
 <p>
 (<em>Appears on:</em>
@@ -4890,6 +4953,19 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 </td>
 <td>
 <p>Progresses is the progress of backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>brOperations</code></br>
+<em>
+<a href="#broperation">
+[]BROperation
+</a>
+</em>
+</td>
+<td>
+<p>BROperations records recently observed BR process executions owned by this Backup.</p>
 </td>
 </tr>
 <tr>
@@ -16044,6 +16120,19 @@ RestoreConditionType
 </td>
 <td>
 <p>Progresses is the progress of restore.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>brOperations</code></br>
+<em>
+<a href="#broperation">
+[]BROperation
+</a>
+</em>
+</td>
+<td>
+<p>BROperations records recently observed BR process executions owned by this Restore.</p>
 </td>
 </tr>
 <tr>

@@ -57,12 +57,10 @@ func TestUpdateRestoreStatus(t *testing.T) {
 			name: "nil observability update changes nothing",
 			status: &v1alpha1.RestoreStatus{
 				BROperations: makeBROperations(0, 2),
-				LockBlocker:  newBRLockBlocker("lock-a", "op-a"),
 			},
 			updateStatus: &RestoreUpdateStatus{},
 			expectStatus: &v1alpha1.RestoreStatus{
 				BROperations: makeBROperations(0, 2),
-				LockBlocker:  newBRLockBlocker("lock-a", "op-a"),
 			},
 			expectUpdate: false,
 		},
@@ -109,29 +107,6 @@ func TestUpdateRestoreStatus(t *testing.T) {
 			expectStatus: &v1alpha1.RestoreStatus{
 				BROperations: append([]v1alpha1.BROperation{*newBROperation("op-new", "restore")}, makeBROperations(0, 9)...),
 			},
-			expectUpdate: true,
-		},
-		{
-			name:   "blocker is set",
-			status: &v1alpha1.RestoreStatus{},
-			updateStatus: &RestoreUpdateStatus{
-				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
-			},
-			expectStatus: &v1alpha1.RestoreStatus{
-				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
-			},
-			expectUpdate: true,
-		},
-		{
-			name: "blocker is cleared",
-			status: &v1alpha1.RestoreStatus{
-				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
-			},
-			updateStatus: &RestoreUpdateStatus{
-				LockBlocker:      newBRLockBlocker("lock-b", "remote-b"),
-				ClearLockBlocker: boolPtr(true),
-			},
-			expectStatus: &v1alpha1.RestoreStatus{},
 			expectUpdate: true,
 		},
 	}

@@ -3226,22 +3226,6 @@ spec:
                   type: object
                 nullable: true
                 type: array
-              lockBlocker:
-                nullable: true
-                properties:
-                  lockPath:
-                    type: string
-                  observedAt:
-                    format: date-time
-                    type: string
-                  remoteOperationID:
-                    type: string
-                  remoteStartedAt:
-                    format: date-time
-                    type: string
-                  resourceType:
-                    type: string
-                type: object
               phase:
                 type: string
               progresses:

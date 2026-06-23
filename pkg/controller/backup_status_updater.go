@@ -81,10 +81,6 @@ type BackupUpdateStatus struct {
 	OriginalReason *string
 	// BROperation appends or refreshes one observed BR operation.
 	BROperation *v1alpha1.BROperation
-	// LockBlocker sets the latest lock blocker diagnosis when non-nil.
-	LockBlocker *v1alpha1.BRLockBlocker
-	// ClearLockBlocker clears stale lock blocker diagnosis when true.
-	ClearLockBlocker *bool
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -211,10 +207,6 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	}
 	if operations, updated := updateBROperations(status.BROperations, newStatus.BROperation); updated {
 		status.BROperations = operations
-		isUpdate = true
-	}
-	if blocker, updated := updateBRLockBlocker(status.LockBlocker, newStatus.LockBlocker, newStatus.ClearLockBlocker); updated {
-		status.LockBlocker = blocker
 		isUpdate = true
 	}
 

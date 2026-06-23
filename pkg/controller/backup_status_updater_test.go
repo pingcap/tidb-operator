@@ -81,12 +81,10 @@ func TestUpdateBackupStatus(t *testing.T) {
 			name: "nil observability update changes nothing",
 			status: &v1alpha1.BackupStatus{
 				BROperations: makeBROperations(0, 2),
-				LockBlocker:  newBRLockBlocker("lock-a", "op-a"),
 			},
 			updateStatus: &BackupUpdateStatus{},
 			expectStatus: &v1alpha1.BackupStatus{
 				BROperations: makeBROperations(0, 2),
-				LockBlocker:  newBRLockBlocker("lock-a", "op-a"),
 			},
 			expectUpdate: false,
 		},
@@ -135,29 +133,6 @@ func TestUpdateBackupStatus(t *testing.T) {
 			},
 			expectUpdate: true,
 		},
-		{
-			name:   "blocker is set",
-			status: &v1alpha1.BackupStatus{},
-			updateStatus: &BackupUpdateStatus{
-				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
-			},
-			expectStatus: &v1alpha1.BackupStatus{
-				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
-			},
-			expectUpdate: true,
-		},
-		{
-			name: "blocker is cleared",
-			status: &v1alpha1.BackupStatus{
-				LockBlocker: newBRLockBlocker("lock-a", "remote-a"),
-			},
-			updateStatus: &BackupUpdateStatus{
-				LockBlocker:      newBRLockBlocker("lock-b", "remote-b"),
-				ClearLockBlocker: boolPtr(true),
-			},
-			expectStatus: &v1alpha1.BackupStatus{},
-			expectUpdate: true,
-		},
 	}
 
 	for _, test := range tests {
@@ -196,27 +171,6 @@ func TestUpdateBROperations(t *testing.T) {
 	originalStartedAt := observed.StartedAt.Time
 	observed.StartedAt.Time = observed.StartedAt.Time.Add(time.Hour)
 	g.Expect(operations[0].StartedAt.Time).Should(Equal(originalStartedAt))
-}
-
-func TestUpdateBRLockBlocker(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	existing := newBRLockBlocker("lock-a", "remote-a")
-	blocker, updated := updateBRLockBlocker(existing, newBRLockBlocker("lock-b", "remote-b"), nil)
-	g.Expect(updated).Should(BeTrue())
-	g.Expect(blocker).Should(Equal(newBRLockBlocker("lock-b", "remote-b")))
-
-	blocker, updated = updateBRLockBlocker(existing, newBRLockBlocker("lock-a", "remote-a"), nil)
-	g.Expect(updated).Should(BeFalse())
-	g.Expect(blocker).Should(Equal(existing))
-
-	blocker, updated = updateBRLockBlocker(existing, newBRLockBlocker("lock-b", "remote-b"), boolPtr(true))
-	g.Expect(updated).Should(BeTrue())
-	g.Expect(blocker).Should(BeNil())
-
-	blocker, updated = updateBRLockBlocker(nil, nil, boolPtr(true))
-	g.Expect(updated).Should(BeFalse())
-	g.Expect(blocker).Should(BeNil())
 }
 
 func newUpdateBackupStatus() *BackupUpdateStatus {
@@ -301,21 +255,6 @@ func makeBROperations(start, count int) []v1alpha1.BROperation {
 		operations = append(operations, *newBROperation(fmt.Sprintf("op-%02d", i), "backup"))
 	}
 	return operations
-}
-
-func newBRLockBlocker(lockPath, remoteOperationID string) *v1alpha1.BRLockBlocker {
-	remoteStartedAt := metav1.Time{Time: time.Date(2026, 6, 17, 9, 0, 0, 0, time.UTC)}
-	return &v1alpha1.BRLockBlocker{
-		LockPath:          lockPath,
-		RemoteOperationID: remoteOperationID,
-		RemoteStartedAt:   &remoteStartedAt,
-		ResourceType:      "Backup",
-		ObservedAt:        metav1.Time{Time: time.Date(2026, 6, 17, 10, 2, 0, 0, time.UTC)},
-	}
-}
-
-func boolPtr(value bool) *bool {
-	return &value
 }
 
 func intPtr(value int) *int {

@@ -50,10 +50,6 @@ type RestoreUpdateStatus struct {
 	ReplicationStep *string
 	// BROperation appends or refreshes one observed BR operation.
 	BROperation *v1alpha1.BROperation
-	// LockBlocker sets the latest lock blocker diagnosis when non-nil.
-	LockBlocker *v1alpha1.BRLockBlocker
-	// ClearLockBlocker clears stale lock blocker diagnosis when true.
-	ClearLockBlocker *bool
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -143,10 +139,6 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 	}
 	if operations, updated := updateBROperations(status.BROperations, newStatus.BROperation); updated {
 		status.BROperations = operations
-		isUpdate = true
-	}
-	if blocker, updated := updateBRLockBlocker(status.LockBlocker, newStatus.LockBlocker, newStatus.ClearLockBlocker); updated {
-		status.LockBlocker = blocker
 		isUpdate = true
 	}
 

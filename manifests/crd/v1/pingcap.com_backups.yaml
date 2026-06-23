@@ -2497,22 +2497,6 @@ spec:
                 type: integer
               incrementalBackupSizeReadable:
                 type: string
-              lockBlocker:
-                nullable: true
-                properties:
-                  lockPath:
-                    type: string
-                  observedAt:
-                    format: date-time
-                    type: string
-                  remoteOperationID:
-                    type: string
-                  remoteStartedAt:
-                    format: date-time
-                    type: string
-                  resourceType:
-                    type: string
-                type: object
               logCheckpointTs:
                 type: string
               logSubCommandStatuses:

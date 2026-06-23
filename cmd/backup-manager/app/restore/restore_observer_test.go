@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestRestoreLogObserverUpdatesOperationAndCapturesLatestLockBlocker(t *testing.T) {
+func TestRestoreLogObserverUpdatesOperationOnly(t *testing.T) {
 	restore := newRestoreForObserverTest()
 	statusUpdater := &recordingRestoreStatusUpdater{}
 	observer := newRestoreLogObserver(restore, statusUpdater)
@@ -51,36 +51,12 @@ func TestRestoreLogObserverUpdatesOperationAndCapturesLatestLockBlocker(t *testi
 
 	observer.observeLine(`[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-a] [remote_lock_type=restore-exclusive] [remote_hint=operation_started_at=2026-06-17T09:00:00Z] [path=lock-a]`)
 	observer.observeLine(`[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-b] [remote_lock_type=restore-exclusive] [remote_hint=operation_started_at=2026-06-17T09:01:00Z] [path=lock-b]`)
-
-	blocker := observer.lockBlocker
-	if blocker == nil {
-		t.Fatal("expected lock blocker candidate")
-	}
-	if blocker.RemoteOperationID != "remote-b" {
-		t.Fatalf("expected latest lock blocker to win, got %q", blocker.RemoteOperationID)
-	}
-	if blocker.LockPath != "lock-b" {
-		t.Fatalf("unexpected lock path: %q", blocker.LockPath)
-	}
-}
-
-func TestRestoreLogObserverClearsBlockerWhenFailureHasNoCandidate(t *testing.T) {
-	restore := newRestoreForObserverTest()
-	statusUpdater := &recordingRestoreStatusUpdater{}
-	observer := newRestoreLogObserver(restore, statusUpdater)
-
-	observer.updateLockBlockerAfterFailure()
-
 	if len(statusUpdater.updates) != 1 {
-		t.Fatalf("expected one status update, got %d", len(statusUpdater.updates))
-	}
-	clear := statusUpdater.updates[0].ClearLockBlocker
-	if clear == nil || !*clear {
-		t.Fatalf("expected clear lock blocker update, got %#v", statusUpdater.updates[0])
+		t.Fatalf("expected lock conflict logs to stay in BR logs only, got updates %#v", statusUpdater.updates)
 	}
 }
 
-func TestRestoreDataObservesStdoutAndStderrAndClearsBlockerOnSuccess(t *testing.T) {
+func TestRestoreDataObservesStdoutAndStderrOperationsOnSuccess(t *testing.T) {
 	dir := t.TempDir()
 	oldBRBinPath := brBinPath
 	brBinPath = dir
@@ -127,7 +103,7 @@ exit 0
 		t.Fatalf("expected user log format option to be preserved, got %q", argLines)
 	}
 
-	var sawStdoutOperation, sawStderrOperation, sawClearBlocker bool
+	var sawStdoutOperation, sawStderrOperation bool
 	var progressValues []float64
 	var commitTsValues []string
 	for _, update := range statusUpdater.updates {
@@ -145,9 +121,6 @@ exit 0
 		if update.CommitTs != nil {
 			commitTsValues = append(commitTsValues, *update.CommitTs)
 		}
-		if update.ClearLockBlocker != nil && *update.ClearLockBlocker {
-			sawClearBlocker = true
-		}
 	}
 	if !sawStdoutOperation || !sawStderrOperation {
 		t.Fatalf("expected operations from stdout and stderr, got %#v", statusUpdater.updates)
@@ -157,9 +130,6 @@ exit 0
 	}
 	if len(commitTsValues) != 1 || commitTsValues[0] != "123456" {
 		t.Fatalf("expected only stdout resolved-ts commit ts 123456, got %v", commitTsValues)
-	}
-	if !sawClearBlocker {
-		t.Fatalf("expected successful restore to clear lock blocker, got %#v", statusUpdater.updates)
 	}
 }
 
@@ -206,7 +176,7 @@ func TestProcessBRRestoreCommandLinesPassStreamToSingleHandler(t *testing.T) {
 	}
 }
 
-func TestRestoreDataFailureWritesLatestBlockerAndErrorMessageOnlyIncludesErrorLines(t *testing.T) {
+func TestRestoreDataFailureKeepsLockConflictInLogsAndErrorMessageOnlyIncludesErrorLines(t *testing.T) {
 	dir := t.TempDir()
 	oldBRBinPath := brBinPath
 	brBinPath = dir
@@ -246,17 +216,10 @@ exit 1
 		}
 	}
 
-	var blocker *v1alpha1.BRLockBlocker
 	for _, update := range statusUpdater.updates {
-		if update.LockBlocker != nil {
-			blocker = update.LockBlocker
+		if update.BROperation == nil && update.Progress == nil && update.CommitTs == nil {
+			t.Fatalf("expected restore failure not to write lock blocker status, got %#v", statusUpdater.updates)
 		}
-	}
-	if blocker == nil {
-		t.Fatalf("expected failed restore to write latest lock blocker, got %#v", statusUpdater.updates)
-	}
-	if blocker.RemoteOperationID != "remote-stderr" || blocker.LockPath != "lock-stderr" {
-		t.Fatalf("expected stderr blocker to be latest, got %#v", blocker)
 	}
 }
 

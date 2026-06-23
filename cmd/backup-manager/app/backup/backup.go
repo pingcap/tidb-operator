@@ -37,7 +37,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/ptr"
 )
 
 var brBinPath = util.BRBinPath
@@ -235,12 +234,6 @@ func (bo *Options) doTruncateLogBackup(
 
 	observer := newBackupLogTruncateObserver(backup, statusUpdater)
 	err = bo.brCommandRunWithLogObserver(ctx, fullArgs, observer.observeLine)
-	if err == nil {
-		observer.clearLockBlocker()
-		return nil
-	}
-
-	observer.updateLockBlockerAfterFailure()
 	return err
 }
 
@@ -462,7 +455,6 @@ func processBRCommandLogLine(
 type backupLogTruncateObserver struct {
 	backup        *v1alpha1.Backup
 	statusUpdater controller.BackupConditionUpdaterInterface
-	lockBlocker   *v1alpha1.BRLockBlocker
 }
 
 func newBackupLogTruncateObserver(
@@ -490,28 +482,6 @@ func (o *backupLogTruncateObserver) observeLine(line string) {
 		}); err != nil {
 			klog.Errorf("Failed to update BR operation status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
 		}
-	case brlog.EventLockConflict:
-		o.lockBlocker = event.LockBlocker
-	}
-}
-
-func (o *backupLogTruncateObserver) updateLockBlockerAfterFailure() {
-	if o.lockBlocker != nil {
-		if err := o.statusUpdater.Update(o.backup, nil, &controller.BackupUpdateStatus{
-			LockBlocker: o.lockBlocker,
-		}); err != nil {
-			klog.Errorf("Failed to update BR lock blocker status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
-		}
-		return
-	}
-	o.clearLockBlocker()
-}
-
-func (o *backupLogTruncateObserver) clearLockBlocker() {
-	if err := o.statusUpdater.Update(o.backup, nil, &controller.BackupUpdateStatus{
-		ClearLockBlocker: ptr.To(true),
-	}); err != nil {
-		klog.Errorf("Failed to clear BR lock blocker status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
 	}
 }
 

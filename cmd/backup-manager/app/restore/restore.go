@@ -35,7 +35,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -212,10 +211,8 @@ func (ro *Options) restoreData(
 		observer.observeLine(line)
 	})
 	if err != nil {
-		observer.updateLockBlockerAfterFailure()
 		return err
 	}
-	observer.clearLockBlocker()
 
 	if csbPath != "" {
 		err = ro.processCloudSnapBackup(ctx, restore, csbPath, restoreControl)
@@ -341,7 +338,6 @@ func processBRRestoreCommandLogLine(
 type restoreLogObserver struct {
 	restore       *v1alpha1.Restore
 	statusUpdater controller.RestoreConditionUpdaterInterface
-	lockBlocker   *v1alpha1.BRLockBlocker
 }
 
 func newRestoreLogObserver(
@@ -369,28 +365,6 @@ func (o *restoreLogObserver) observeLine(line string) {
 		}); err != nil {
 			klog.Errorf("Failed to update BR operation status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
 		}
-	case brlog.EventLockConflict:
-		o.lockBlocker = event.LockBlocker
-	}
-}
-
-func (o *restoreLogObserver) updateLockBlockerAfterFailure() {
-	if o.lockBlocker != nil {
-		if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
-			LockBlocker: o.lockBlocker,
-		}); err != nil {
-			klog.Errorf("Failed to update BR lock blocker status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
-		}
-		return
-	}
-	o.clearLockBlocker()
-}
-
-func (o *restoreLogObserver) clearLockBlocker() {
-	if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
-		ClearLockBlocker: ptr.To(true),
-	}); err != nil {
-		klog.Errorf("Failed to clear BR lock blocker status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
 	}
 }
 

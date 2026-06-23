@@ -28,7 +28,6 @@ type EventType string
 const (
 	EventNone             EventType = ""
 	EventOperationStarted EventType = "operation-started"
-	EventLockConflict     EventType = "lock-conflict"
 )
 
 const (
@@ -43,24 +42,12 @@ const (
 	fieldOperationID        = "operation_id"
 	fieldOperationStartedAt = "operation_started_at"
 	fieldCommand            = "command"
-
-	fieldPath = "path"
-
-	fieldRemoteBlocker0Path     = "remote_blocker_0_path"
-	fieldRemoteBlocker0OwnerID  = "remote_blocker_0_owner_id"
-	fieldRemoteBlocker0LockType = "remote_blocker_0_lock_type"
-	fieldRemoteBlocker0Hint     = "remote_blocker_0_hint"
-
-	fieldRemoteOwnerID  = "remote_owner_id"
-	fieldRemoteLockType = "remote_lock_type"
-	fieldRemoteHint     = "remote_hint"
 )
 
 // Event is one parsed BR structured-log event.
 type Event struct {
-	Type        EventType
-	Operation   *v1alpha1.BROperation
-	LockBlocker *v1alpha1.BRLockBlocker
+	Type      EventType
+	Operation *v1alpha1.BROperation
 }
 
 // ParseLine extracts a BR operation or external-storage-lock event from one BR log line.
@@ -74,20 +61,6 @@ func ParseLine(line string) Event {
 		return Event{
 			Type:      EventOperationStarted,
 			Operation: operation,
-		}
-	}
-
-	if blocker, ok := parseSampledLockBlocker(fields); ok {
-		return Event{
-			Type:        EventLockConflict,
-			LockBlocker: blocker,
-		}
-	}
-
-	if blocker, ok := parseFallbackLockBlocker(fields); ok {
-		return Event{
-			Type:        EventLockConflict,
-			LockBlocker: blocker,
 		}
 	}
 
@@ -124,36 +97,6 @@ func parseOperationStarted(fields map[string]string) (*v1alpha1.BROperation, boo
 		StartedAt:   parseOptionalMetav1Time(fields[fieldOperationStartedAt]),
 		Command:     fields[fieldCommand],
 		ObservedAt:  parseMetav1Time(fields[fieldTime]),
-	}, true
-}
-
-func parseSampledLockBlocker(fields map[string]string) (*v1alpha1.BRLockBlocker, bool) {
-	remoteOperationID := fields[fieldRemoteBlocker0OwnerID]
-	if remoteOperationID == "" {
-		return nil, false
-	}
-
-	return &v1alpha1.BRLockBlocker{
-		LockPath:          firstNonEmpty(fields[fieldRemoteBlocker0Path], fields[fieldPath]),
-		RemoteOperationID: remoteOperationID,
-		RemoteStartedAt:   parseOperationStartedAtFromHint(fields[fieldRemoteBlocker0Hint]),
-		ResourceType:      fields[fieldRemoteBlocker0LockType],
-		ObservedAt:        parseMetav1Time(fields[fieldTime]),
-	}, true
-}
-
-func parseFallbackLockBlocker(fields map[string]string) (*v1alpha1.BRLockBlocker, bool) {
-	remoteOperationID := fields[fieldRemoteOwnerID]
-	if remoteOperationID == "" {
-		return nil, false
-	}
-
-	return &v1alpha1.BRLockBlocker{
-		LockPath:          fields[fieldPath],
-		RemoteOperationID: remoteOperationID,
-		RemoteStartedAt:   parseOperationStartedAtFromHint(fields[fieldRemoteHint]),
-		ResourceType:      fields[fieldRemoteLockType],
-		ObservedAt:        parseMetav1Time(fields[fieldTime]),
 	}, true
 }
 
@@ -278,15 +221,6 @@ func logMessage(fields map[string]string) string {
 	return fields[fieldMessageCompat]
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
 func parseOptionalMetav1Time(value string) *metav1.Time {
 	parsed := parseMetav1Time(value)
 	if parsed.IsZero() {
@@ -306,15 +240,4 @@ func parseMetav1Time(value string) metav1.Time {
 		}
 	}
 	return metav1.Time{}
-}
-
-func parseOperationStartedAtFromHint(hint string) *metav1.Time {
-	for _, token := range strings.Fields(hint) {
-		key, value, ok := strings.Cut(token, "=")
-		if !ok || key != fieldOperationStartedAt {
-			continue
-		}
-		return parseOptionalMetav1Time(unquoteLogValue(value))
-	}
-	return nil
 }

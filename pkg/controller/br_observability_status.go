@@ -40,19 +40,3 @@ func updateBROperations(existing []v1alpha1.BROperation, observed *v1alpha1.BROp
 
 	return next, !reflect.DeepEqual(existing, next)
 }
-
-func updateBRLockBlocker(existing *v1alpha1.BRLockBlocker, blocker *v1alpha1.BRLockBlocker, clear *bool) (*v1alpha1.BRLockBlocker, bool) {
-	if clear != nil && *clear {
-		if existing == nil {
-			return nil, false
-		}
-		return nil, true
-	}
-	if blocker == nil {
-		return existing, false
-	}
-	if reflect.DeepEqual(existing, blocker) {
-		return existing, false
-	}
-	return blocker.DeepCopy(), true
-}
