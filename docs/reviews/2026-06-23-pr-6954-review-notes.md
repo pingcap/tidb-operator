@@ -63,7 +63,7 @@ stable terminal lock-conflict signal or machine-readable report file.
 
 ### 2. New BR command runners drop ordinary stderr from returned errors
 
-Status: undecided
+Status: fixed
 
 Severity: medium-high
 
@@ -88,12 +88,12 @@ diagnostic text to stderr without using `[ERROR]`, `[FATAL]`, `[PANIC]`, or JSON
 `level=error/fatal`. Those failures would now become harder to diagnose from
 the CR condition or backup-manager error path.
 
-Possible directions:
+Resolution:
 
-- Preserve a bounded stderr tail in `errMsg` while still streaming lines to the
-  observer.
-- Preserve all stderr in `errMsg` for compatibility, with a size cap if needed.
-- Keep stdout filtered but treat stderr as diagnostic output by default.
+The streaming runners now preserve the old stderr behavior: every stderr line is
+included in the returned `errMsg`, while stdout remains filtered to BR
+error/fatal/panic lines. The observer still receives both streams in real time,
+so operation parsing is unaffected.
 
 ### 3. `BROperation.Command` needs a stronger safety contract
 

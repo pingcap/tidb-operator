@@ -409,14 +409,14 @@ func (bo *Options) brCommandRunWithLogObserver(
 				stdOutLineCh = nil
 				continue
 			}
-			processBRCommandLogLine(line, &errMsg, logObserver)
+			processBRCommandLogLine(line, &errMsg, logObserver, false)
 		case line, ok := <-stdErrLineCh:
 			if !ok {
 				stdErrOpen = false
 				stdErrLineCh = nil
 				continue
 			}
-			processBRCommandLogLine(line, &errMsg, logObserver)
+			processBRCommandLogLine(line, &errMsg, logObserver, true)
 		}
 	}
 
@@ -442,8 +442,9 @@ func processBRCommandLogLine(
 	line string,
 	errMsg *string,
 	logObserver func(line string),
+	includeInErrMsg bool,
 ) {
-	if brlog.IsErrorLine(line) {
+	if includeInErrMsg || brlog.IsErrorLine(line) {
 		*errMsg += line + "\n"
 	}
 	if logObserver != nil {

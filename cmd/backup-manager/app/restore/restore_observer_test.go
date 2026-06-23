@@ -176,7 +176,7 @@ func TestProcessBRRestoreCommandLinesPassStreamToSingleHandler(t *testing.T) {
 	}
 }
 
-func TestRestoreDataFailureKeepsLockConflictInLogsAndErrorMessageOnlyIncludesErrorLines(t *testing.T) {
+func TestRestoreDataFailureKeepsStderrInReturnedErrorMessage(t *testing.T) {
 	dir := t.TempDir()
 	oldBRBinPath := brBinPath
 	brBinPath = dir
@@ -205,12 +205,12 @@ exit 1
 		t.Fatal("expected restore to fail")
 	}
 	msg := err.Error()
-	for _, want := range []string{"stdout [ERROR] failed stdout", "json stdout failed", "stderr [ERROR] failed stderr", "json stderr failed"} {
+	for _, want := range []string{"stdout [ERROR] failed stdout", "json stdout failed", "stderr ordinary log", "stderr [ERROR] failed stderr", "json stderr failed", "json stderr info"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("expected error message to contain %q, got %q", want, msg)
 		}
 	}
-	for _, unwanted := range []string{"stdout ordinary log", "stderr ordinary log", "json stderr info"} {
+	for _, unwanted := range []string{"stdout ordinary log"} {
 		if strings.Contains(msg, unwanted) {
 			t.Fatalf("expected error message to omit %q, got %q", unwanted, msg)
 		}

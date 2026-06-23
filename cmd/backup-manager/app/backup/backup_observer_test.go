@@ -132,13 +132,13 @@ exit 1
 		}
 	}
 	msg := err.Error()
-	for _, want := range []string{"stdout [ERROR] one", "json stdout failed", "stderr [ERROR] one", "json stderr failed"} {
+	for _, want := range []string{"stdout [ERROR] one", "json stdout failed", "stderr [ERROR] one", "json stderr failed", "stderr two"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("expected error message to contain %q, got %q", want, msg)
 		}
 	}
-	if strings.Contains(msg, "stdout two") || strings.Contains(msg, "stderr two") {
-		t.Fatalf("expected error message to include only ERROR lines from observed streams, got %q", msg)
+	if strings.Contains(msg, "stdout two") {
+		t.Fatalf("expected error message to omit ordinary stdout, got %q", msg)
 	}
 }
 

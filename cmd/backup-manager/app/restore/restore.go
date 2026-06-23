@@ -326,7 +326,7 @@ func processBRRestoreCommandLogLine(
 	stream brLogStream,
 	logHandler brLogLineHandler,
 ) {
-	if brlog.IsErrorLine(line) {
+	if stream == brLogStreamStderr || brlog.IsErrorLine(line) {
 		*errMsg += line + "\n"
 	}
 	if logHandler != nil {
