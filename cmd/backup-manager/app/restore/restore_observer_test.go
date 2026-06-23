@@ -19,7 +19,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -133,49 +132,6 @@ exit 0
 	}
 }
 
-func TestProcessBRRestoreCommandStdoutLinePassesJSONErrorToHandlerAndErrMsg(t *testing.T) {
-	var errMsg string
-	var handled []brLogStream
-
-	processBRRestoreCommandStdoutLine(
-		`{"level":"ERROR","message":"json stdout failed [progress] [step=\"Full Restore\"] [progress=88%]"}`,
-		&errMsg,
-		func(stream brLogStream, line string) {
-			handled = append(handled, stream)
-		},
-	)
-
-	if len(handled) != 1 || handled[0] != brLogStreamStdout {
-		t.Fatalf("expected JSON error line to still reach stdout handler, got %q", handled)
-	}
-	if !strings.Contains(errMsg, "json stdout failed") {
-		t.Fatalf("expected JSON error line in errMsg, got %q", errMsg)
-	}
-}
-
-func TestProcessBRRestoreCommandLinesPassStreamToSingleHandler(t *testing.T) {
-	var errMsg string
-	var streams []brLogStream
-	var lines []string
-	handler := func(stream brLogStream, line string) {
-		streams = append(streams, stream)
-		lines = append(lines, line)
-	}
-
-	processBRRestoreCommandStdoutLine("stdout progress", &errMsg, handler)
-	processBRRestoreCommandLogLine("stderr ordinary", &errMsg, brLogStreamStderr, handler)
-
-	if len(streams) != 2 {
-		t.Fatalf("expected two handled lines, got streams=%q lines=%q", streams, lines)
-	}
-	if streams[0] != brLogStreamStdout || lines[0] != "stdout progress" {
-		t.Fatalf("expected first line from stdout, got stream=%q line=%q", streams[0], lines[0])
-	}
-	if streams[1] != brLogStreamStderr || lines[1] != "stderr ordinary" {
-		t.Fatalf("expected second line from stderr, got stream=%q line=%q", streams[1], lines[1])
-	}
-}
-
 func TestRestoreDataFailureKeepsStderrInReturnedErrorMessage(t *testing.T) {
 	dir := t.TempDir()
 	oldBRBinPath := brBinPath
@@ -220,38 +176,6 @@ exit 1
 		if update.BROperation == nil && update.Progress == nil && update.CommitTs == nil {
 			t.Fatalf("expected restore failure not to write lock blocker status, got %#v", statusUpdater.updates)
 		}
-	}
-}
-
-func TestRestoreCommandRunWithLogObserverGracefullyStopsOnContextCancel(t *testing.T) {
-	dir := t.TempDir()
-	oldBRBinPath := brBinPath
-	brBinPath = dir
-	t.Cleanup(func() {
-		brBinPath = oldBRBinPath
-	})
-
-	script := `#!/bin/sh
-exec sleep 1
-`
-	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
-		t.Fatalf("failed to write fake br: %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		cancel()
-	}()
-
-	start := time.Now()
-	err := (&Options{}).brRestoreCommandRunWithLogObserver(ctx, []string{"restore", "full"}, nil)
-	elapsed := time.Since(start)
-	if err == nil {
-		t.Fatal("expected restore command to fail after context cancellation")
-	}
-	if elapsed > 500*time.Millisecond {
-		t.Fatalf("expected context cancellation to stop br quickly, took %s", elapsed)
 	}
 }
 

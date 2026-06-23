@@ -766,3 +766,59 @@ func TestReadLinesToChannelReadsLongLines(t *testing.T) {
 	_, ok := <-lineCh
 	g.Expect(ok).To(BeFalse())
 }
+
+func TestRunBRCommandWithLineHandlerStreamsBothOutputsAndPreservesErrMsg(t *testing.T) {
+	g := NewGomegaWithT(t)
+	dir := t.TempDir()
+
+	script := `#!/bin/sh
+printf 'stdout [ERROR] one\n'
+printf 'stdout ordinary\n'
+printf 'stderr ordinary\n' >&2
+printf '{"level":"info","message":"stderr info"}\n' >&2
+exit 1
+`
+	err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755)
+	g.Expect(err).To(Succeed())
+
+	var observed []string
+	err = RunBRCommandWithLineHandler(context.Background(), dir, "test-cluster", []string{"log", "truncate"}, func(stream BRLogStream, line string) {
+		observed = append(observed, string(stream)+":"+line)
+	})
+
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(observed).To(ConsistOf(
+		`stdout:stdout [ERROR] one`,
+		`stdout:stdout ordinary`,
+		`stderr:stderr ordinary`,
+		`stderr:{"level":"info","message":"stderr info"}`,
+	))
+	g.Expect(err.Error()).To(ContainSubstring("stdout [ERROR] one"))
+	g.Expect(err.Error()).To(ContainSubstring("stderr ordinary"))
+	g.Expect(err.Error()).To(ContainSubstring(`{"level":"info","message":"stderr info"}`))
+	g.Expect(err.Error()).NotTo(ContainSubstring("stdout ordinary"))
+}
+
+func TestRunBRCommandWithLineHandlerGracefullyStopsOnContextCancel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	dir := t.TempDir()
+
+	script := `#!/bin/sh
+exec sleep 1
+`
+	err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755)
+	g.Expect(err).To(Succeed())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err = RunBRCommandWithLineHandler(ctx, dir, "test-cluster", []string{"restore", "full"}, nil)
+	elapsed := time.Since(start)
+
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(elapsed).To(BeNumerically("<", 500*time.Millisecond))
+}

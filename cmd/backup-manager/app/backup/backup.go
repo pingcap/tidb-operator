@@ -370,87 +370,19 @@ func (bo *Options) brCommandRunWithLogObserver(
 	fullArgs []string,
 	logObserver func(line string),
 ) error {
-	if len(fullArgs) == 0 {
-		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
-	}
-	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := filepath.Join(brBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
-
-	stdOut, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
-	}
-	stdErr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
-	}
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
-	}
-	go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
-
-	var errMsg string
-	stdOutLineCh := make(chan string)
-	stdOutErrCh := make(chan error, 1)
-	go backupUtil.ReadLinesToChannel(stdOut, stdOutLineCh, stdOutErrCh)
-
-	stdErrLineCh := make(chan string)
-	stdErrErrCh := make(chan error, 1)
-	go backupUtil.ReadLinesToChannel(stdErr, stdErrLineCh, stdErrErrCh)
-
-	stdOutOpen, stdErrOpen := true, true
-	for stdOutOpen || stdErrOpen {
-		select {
-		case line, ok := <-stdOutLineCh:
-			if !ok {
-				stdOutOpen = false
-				stdOutLineCh = nil
-				continue
-			}
-			processBRCommandLogLine(line, &errMsg, logObserver, false)
-		case line, ok := <-stdErrLineCh:
-			if !ok {
-				stdErrOpen = false
-				stdErrLineCh = nil
-				continue
-			}
-			processBRCommandLogLine(line, &errMsg, logObserver, true)
+	err := backupUtil.RunBRCommandWithLineHandler(ctx, brBinPath, fmt.Sprint(bo), fullArgs, func(_ backupUtil.BRLogStream, line string) {
+		if logObserver != nil {
+			logObserver(line)
 		}
-	}
-
-	if err := <-stdOutErrCh; err != nil {
-		klog.Errorf("read stdout error: %s", err.Error())
-	}
-	if err := <-stdErrErrCh; err != nil {
-		klog.Errorf("read stderr error: %s", err.Error())
-	}
-
-	err = cmd.Wait()
+	})
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+		return err
 	}
 
 	e2eTestSimulate(bo)
 
 	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
 	return nil
-}
-
-func processBRCommandLogLine(
-	line string,
-	errMsg *string,
-	logObserver func(line string),
-	includeInErrMsg bool,
-) {
-	if includeInErrMsg || brlog.IsErrorLine(line) {
-		*errMsg += line + "\n"
-	}
-	if logObserver != nil {
-		logObserver(line)
-	}
-	klog.Info(line)
 }
 
 type backupLogTruncateObserver struct {

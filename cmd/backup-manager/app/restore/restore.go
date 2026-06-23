@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -52,15 +51,6 @@ const (
 )
 
 var brBinPath = util.BRBinPath
-
-type brLogStream string
-
-const (
-	brLogStreamStdout brLogStream = "stdout"
-	brLogStreamStderr brLogStream = "stderr"
-)
-
-type brLogLineHandler func(stream brLogStream, line string)
 
 // replicationBRFlags returns the BR command-line flags that are
 // specific to replication restore phases. Returns nil for phase 0
@@ -201,8 +191,8 @@ func (ro *Options) restoreData(
 	}
 
 	observer := newRestoreLogObserver(restore, statusUpdater)
-	err = ro.brRestoreCommandRunWithLogObserver(ctx, fullArgs, func(stream brLogStream, line string) {
-		if stream == brLogStreamStdout && !brlog.IsErrorLine(line) {
+	err = backupUtil.RunBRCommandWithLineHandler(ctx, brBinPath, fmt.Sprint(ro), fullArgs, func(stream backupUtil.BRLogStream, line string) {
+		if stream == backupUtil.BRLogStreamStdout && !brlog.IsErrorLine(line) {
 			if !useProgressFile {
 				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
 			}
@@ -239,100 +229,6 @@ func (ro *Options) restoreData(
 
 	klog.Infof("Restore data for cluster %s successfully", ro)
 	return nil
-}
-
-func (ro *Options) brRestoreCommandRunWithLogObserver(
-	ctx context.Context,
-	fullArgs []string,
-	logHandler brLogLineHandler,
-) error {
-	if len(fullArgs) == 0 {
-		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
-	}
-	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := path.Join(brBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
-
-	stdOut, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
-	}
-	stdErr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
-	}
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
-	}
-	go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
-
-	var errMsg string
-	stdOutLineCh := make(chan string)
-	stdOutErrCh := make(chan error, 1)
-	go backupUtil.ReadLinesToChannel(stdOut, stdOutLineCh, stdOutErrCh)
-
-	stdErrLineCh := make(chan string)
-	stdErrErrCh := make(chan error, 1)
-	go backupUtil.ReadLinesToChannel(stdErr, stdErrLineCh, stdErrErrCh)
-
-	stdOutOpen, stdErrOpen := true, true
-	for stdOutOpen || stdErrOpen {
-		select {
-		case line, ok := <-stdOutLineCh:
-			if !ok {
-				stdOutOpen = false
-				stdOutLineCh = nil
-				continue
-			}
-			processBRRestoreCommandStdoutLine(line, &errMsg, logHandler)
-		case line, ok := <-stdErrLineCh:
-			if !ok {
-				stdErrOpen = false
-				stdErrLineCh = nil
-				continue
-			}
-			processBRRestoreCommandLogLine(line, &errMsg, brLogStreamStderr, logHandler)
-		}
-	}
-
-	if err := <-stdOutErrCh; err != nil {
-		klog.Errorf("read stdout error: %s", err.Error())
-	}
-	if err := <-stdErrErrCh; err != nil {
-		klog.Errorf("read stderr error: %s", err.Error())
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
-	}
-
-	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, ro)
-	return nil
-}
-
-func processBRRestoreCommandStdoutLine(
-	line string,
-	errMsg *string,
-	logHandler brLogLineHandler,
-) {
-	processBRRestoreCommandLogLine(line, errMsg, brLogStreamStdout, logHandler)
-}
-
-func processBRRestoreCommandLogLine(
-	line string,
-	errMsg *string,
-	stream brLogStream,
-	logHandler brLogLineHandler,
-) {
-	if stream == brLogStreamStderr || brlog.IsErrorLine(line) {
-		*errMsg += line + "\n"
-	}
-	if logHandler != nil {
-		logHandler(stream, line)
-	}
-	klog.Info(line)
 }
 
 type restoreLogObserver struct {
