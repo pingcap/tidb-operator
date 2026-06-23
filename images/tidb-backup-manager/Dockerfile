@@ -2,15 +2,16 @@ FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.1@sha256:24ecefceae6b114e11f6ae
 ARG TARGETARCH
 ARG RCLONE_VERSION=v1.71.2
 ARG SHUSH_VERSION=v1.5.5
+ARG WGET_RETRY_OPTS="--tries=5 --timeout=60 --waitretry=5 --retry-connrefused"
 RUN dnf install -y ca-certificates bind-utils wget nc unzip && dnf clean all
 
-RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
+RUN wget -nv ${WGET_RETRY_OPTS} https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
     && unzip rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
     && mv rclone-${RCLONE_VERSION}-linux-${TARGETARCH}/rclone /usr/local/bin \
     && chmod 755 /usr/local/bin/rclone \
     && rm -rf rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip rclone-${RCLONE_VERSION}-linux-${TARGETARCH}
 
-RUN wget -nv https://github.com/realestate-com-au/shush/releases/download/${SHUSH_VERSION}/shush_linux_${TARGETARCH} \
+RUN wget -nv ${WGET_RETRY_OPTS} https://github.com/realestate-com-au/shush/releases/download/${SHUSH_VERSION}/shush_linux_${TARGETARCH} \
     && mv shush_linux_${TARGETARCH} /usr/local/bin/shush \
     && chmod 755 /usr/local/bin/shush
 

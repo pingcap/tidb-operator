@@ -5456,6 +5456,31 @@ int32
 </tr>
 <tr>
 <td>
+<code>physicalFileCacheCapacity</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as &ndash;physical-file-cache-capacity.
+It uses Kubernetes quantity format, e.g. &ldquo;150G&rdquo; or &ldquo;150Gi&rdquo;, and defaults to &ldquo;0&rdquo; when omitted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Name is passed to tikv-ctl compact-log-backup as &ndash;name when configured.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>env</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#envvar-v1-core">
@@ -5850,6 +5875,31 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>physicalFileCacheCapacity</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as &ndash;physical-file-cache-capacity.
+It uses Kubernetes quantity format, e.g. &ldquo;150G&rdquo; or &ldquo;150Gi&rdquo;, and defaults to &ldquo;0&rdquo; when omitted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Name is passed to tikv-ctl compact-log-backup as &ndash;name when configured.</p>
 </td>
 </tr>
 <tr>

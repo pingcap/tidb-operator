@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -30,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -400,8 +402,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 	}
 	klog.Infof("compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 
-	//TODO: (Ris)What is the instance here?
-	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), compact.Labels)
+	jobLabels := util.CombineStringMap(label.NewCompactBackup().Instance(compact.GetInstanceName()).CompactJob().Compact(name), compact.Labels)
 	podLabels := jobLabels
 	jobAnnotations := compact.Annotations
 	podAnnotations := jobAnnotations
@@ -606,6 +607,18 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	}
 	if spec.Mode == v1alpha1.CompactModeSharded && (spec.ShardCount == nil || *spec.ShardCount < 1) {
 		return perrors.NewNoStackError("shardCount must be greater than or equal to 1 when mode is sharded")
+	}
+	if spec.Mode == v1alpha1.CompactModeSharded {
+		physicalFileCacheCapacity := strings.TrimSpace(spec.PhysicalFileCacheCapacity)
+		if physicalFileCacheCapacity != "" {
+			capacity, err := resource.ParseQuantity(physicalFileCacheCapacity)
+			if err != nil {
+				return perrors.NewNoStackError(fmt.Sprintf("invalid physicalFileCacheCapacity %q: %v", physicalFileCacheCapacity, err))
+			}
+			if capacity.Sign() < 0 {
+				return perrors.NewNoStackError("physicalFileCacheCapacity must be greater than or equal to 0")
+			}
+		}
 	}
 	if spec.Mode != v1alpha1.CompactModeSharded && spec.ShardCount != nil {
 		return perrors.NewNoStackError("shardCount can only be set when mode is sharded")

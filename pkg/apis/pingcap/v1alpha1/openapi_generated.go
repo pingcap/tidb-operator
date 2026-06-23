@@ -1614,6 +1614,20 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 							Format: "int32",
 						},
 					},
+					"physicalFileCacheCapacity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as --physical-file-cache-capacity. It uses Kubernetes quantity format, e.g. \"150G\" or \"150Gi\", and defaults to \"0\" when omitted.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is passed to tikv-ctl compact-log-backup as --name when configured.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
 							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following builtin env vars will be overwritten by values set here - S3_PROVIDER - S3_ENDPOINT - AWS_REGION - AWS_ACL - AWS_STORAGE_CLASS - AWS_DEFAULT_REGION - AWS_ACCESS_KEY_ID - AWS_SECRET_ACCESS_KEY - GCS_PROJECT_ID - GCS_OBJECT_ACL - GCS_BUCKET_ACL - GCS_LOCATION - GCS_STORAGE_CLASS - GCS_SERVICE_ACCOUNT_JSON_KEY - BR_LOG_TO_TERM",
