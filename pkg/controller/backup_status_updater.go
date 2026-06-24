@@ -400,6 +400,10 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 	if status != nil && status.LogCheckpointTs != nil {
 		return doUpdateStatusAndCondition(nil, status)
 	}
+	// BR operation observations update whole Backup status without a subcommand condition.
+	if status != nil && status.BROperation != nil {
+		return doUpdateStatusAndCondition(nil, status)
+	}
 
 	// subcommand type should be set in condition, if not, will not update status info according to these condion and status.
 	if condition == nil || condition.Command == "" {

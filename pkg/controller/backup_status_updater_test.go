@@ -173,6 +173,26 @@ func TestUpdateBROperations(t *testing.T) {
 	g.Expect(operations[0].StartedAt.Time).Should(Equal(originalStartedAt))
 }
 
+func TestUpdateLogBackupStatusUpdatesBROperationWithoutCondition(t *testing.T) {
+	g := NewGomegaWithT(t)
+	backup := &v1alpha1.Backup{
+		Spec: v1alpha1.BackupSpec{
+			Mode: v1alpha1.BackupModeLog,
+		},
+		Status: v1alpha1.BackupStatus{
+			BROperations: makeBROperations(0, 1),
+		},
+	}
+	operation := newBROperation("op-log-truncate", "log truncate")
+
+	updated := updateLogBackupStatus(backup, nil, &BackupUpdateStatus{
+		BROperation: operation,
+	})
+
+	g.Expect(updated).Should(BeTrue())
+	g.Expect(backup.Status.BROperations).Should(Equal(append([]v1alpha1.BROperation{*operation}, makeBROperations(0, 1)...)))
+}
+
 func newUpdateBackupStatus() *BackupUpdateStatus {
 	ts := "421762809912885269"
 	start, _ := time.Parse(time.RFC3339, "2020-12-25T21:46:59Z")
