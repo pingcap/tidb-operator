@@ -106,10 +106,8 @@ func TestBRCommandRunWithLogObserverStreamsStdoutAndStderr(t *testing.T) {
 
 	script := `#!/bin/sh
 printf 'stdout [ERROR] one\n'
-printf '{"level":"error","message":"json stdout failed"}\n'
 printf 'stdout two\n'
 printf 'stderr [ERROR] one\n' >&2
-printf '{"level":"fatal","message":"json stderr failed"}\n' >&2
 printf 'stderr two\n' >&2
 exit 1
 `
@@ -126,13 +124,13 @@ exit 1
 		t.Fatal("expected br command failure")
 	}
 	observed := strings.Join(observedLines, "\n")
-	for _, want := range []string{"stdout [ERROR] one", "json stdout failed", "stdout two", "stderr [ERROR] one", "json stderr failed", "stderr two"} {
+	for _, want := range []string{"stdout [ERROR] one", "stdout two", "stderr [ERROR] one", "stderr two"} {
 		if !strings.Contains(observed, want) {
 			t.Fatalf("expected observer to receive %q, got %q", want, observedLines)
 		}
 	}
 	msg := err.Error()
-	for _, want := range []string{"stdout [ERROR] one", "json stdout failed", "stderr [ERROR] one", "json stderr failed", "stderr two"} {
+	for _, want := range []string{"stdout [ERROR] one", "stderr [ERROR] one", "stderr two"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("expected error message to contain %q, got %q", want, msg)
 		}

@@ -14,7 +14,6 @@
 package brlog
 
 import (
-	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -33,11 +32,8 @@ const (
 const (
 	messageOperationStarted = "BR operation started"
 
-	fieldMessage       = "message"
-	fieldMsg           = "msg"
-	fieldMessageCompat = "Message"
-	fieldTime          = "time"
-	fieldLevel         = "level"
+	fieldMessage = "message"
+	fieldTime    = "time"
 
 	fieldOperationID        = "operation_id"
 	fieldOperationStartedAt = "operation_started_at"
@@ -50,7 +46,7 @@ type Event struct {
 	Operation *v1alpha1.BROperation
 }
 
-// ParseLine extracts a BR operation or external-storage-lock event from one BR log line.
+// ParseLine extracts a BR operation event from one BR log line.
 func ParseLine(line string) Event {
 	fields := parseFields(line)
 	if len(fields) == 0 {
@@ -69,26 +65,12 @@ func ParseLine(line string) Event {
 
 // IsErrorLine reports whether a BR log line should be included in command error output.
 func IsErrorLine(line string) bool {
-	if isTextErrorLine(line) {
-		return true
-	}
-
-	fields := parseJSONFields(line)
-	if len(fields) == 0 {
-		return false
-	}
-
-	switch strings.ToLower(fields[fieldLevel]) {
-	case "error", "fatal":
-		return true
-	default:
-		return false
-	}
+	return isTextErrorLine(line)
 }
 
 func parseOperationStarted(fields map[string]string) (*v1alpha1.BROperation, bool) {
 	operationID := fields[fieldOperationID]
-	if logMessage(fields) != messageOperationStarted || operationID == "" {
+	if fields[fieldMessage] != messageOperationStarted || operationID == "" {
 		return nil, false
 	}
 
@@ -101,25 +83,7 @@ func parseOperationStarted(fields map[string]string) (*v1alpha1.BROperation, boo
 }
 
 func parseFields(line string) map[string]string {
-	if fields := parseJSONFields(line); len(fields) > 0 {
-		return fields
-	}
 	return parseTextFields(line)
-}
-
-func parseJSONFields(line string) map[string]string {
-	rawFields := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(line), &rawFields); err != nil {
-		return nil
-	}
-
-	fields := make(map[string]string, len(rawFields))
-	for key, value := range rawFields {
-		if str, ok := value.(string); ok {
-			fields[key] = str
-		}
-	}
-	return fields
 }
 
 func parseTextFields(line string) map[string]string {
@@ -209,16 +173,6 @@ func unquoteLogValue(value string) string {
 		return unquoted
 	}
 	return value
-}
-
-func logMessage(fields map[string]string) string {
-	if message := fields[fieldMessage]; message != "" {
-		return message
-	}
-	if message := fields[fieldMsg]; message != "" {
-		return message
-	}
-	return fields[fieldMessageCompat]
 }
 
 func parseOptionalMetav1Time(value string) *metav1.Time {

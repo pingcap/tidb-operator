@@ -68,7 +68,6 @@ func TestRestoreDataObservesStdoutAndStderrOperationsOnSuccess(t *testing.T) {
 printf '%s\n' "$@" > "$BR_ARGV_FILE"
 printf '[2026/06/17 10:00:00.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-stdout] [command="restore full"]\n'
 printf 'stdout, [progress] [step="Full Restore"] [progress=42%%]\n'
-printf '{"level":"ERROR","message":"json stdout failed [progress] [step=\\"Full Restore\\"] [progress=88%%]"}\n'
 printf 'EBS restore success resolved_ts=123456\n'
 printf '[2026/06/17 10:01:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-stdout] [remote_lock_type=restore-exclusive] [path=lock-stdout]\n'
 printf '[2026/06/17 10:00:01.000 +00:00] [INFO] [context.go:122] ["BR operation started"] [operation_id=op-stderr] [command="restore full"]\n' >&2
@@ -143,12 +142,9 @@ func TestRestoreDataFailureKeepsStderrInReturnedErrorMessage(t *testing.T) {
 	script := `#!/bin/sh
 printf 'stdout ordinary log\n'
 printf 'stdout [ERROR] failed stdout\n'
-printf '{"level":"ERROR","message":"json stdout failed"}\n'
 printf '[2026/06/17 10:02:00.000 +00:00] [WARN] [stream_metas.go:1497] ["Encountered lock"] [remote_owner_id=remote-stderr] [remote_lock_type=restore-exclusive] [path=lock-stderr]\n' >&2
 printf 'stderr ordinary log\n' >&2
 printf 'stderr [ERROR] failed stderr\n' >&2
-printf '{"level":"fatal","message":"json stderr failed"}\n' >&2
-printf '{"level":"info","message":"json stderr info"}\n' >&2
 exit 1
 `
 	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
@@ -161,7 +157,7 @@ exit 1
 		t.Fatal("expected restore to fail")
 	}
 	msg := err.Error()
-	for _, want := range []string{"stdout [ERROR] failed stdout", "json stdout failed", "stderr ordinary log", "stderr [ERROR] failed stderr", "json stderr failed", "json stderr info"} {
+	for _, want := range []string{"stdout [ERROR] failed stdout", "stderr ordinary log", "stderr [ERROR] failed stderr"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("expected error message to contain %q, got %q", want, msg)
 		}
