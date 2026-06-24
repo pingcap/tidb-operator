@@ -6036,6 +6036,11 @@ func (in *TiProxySpec) DeepCopyInto(out *TiProxySpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.Offline != nil {
+		in, out := &in.Offline, &out.Offline
+		*out = new(bool)
+		**out = **in
+	}
 	in.TiProxyTemplateSpec.DeepCopyInto(&out.TiProxyTemplateSpec)
 	return
 }

@@ -100,6 +100,8 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		scaleInSelector: NewSelector(scaleInPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
+
+		rev: b.rev,
 	}
 	return NewExecutor(
 		actor,

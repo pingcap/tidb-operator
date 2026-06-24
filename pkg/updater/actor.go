@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -100,6 +101,8 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	scaleInSelector Selector[R]
 	updateSelector  Selector[R]
 
+	rev string
+
 	actions []action
 }
 
@@ -140,6 +143,17 @@ func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error 
 	)
 	act.actions = append(act.actions, actionCancelOffline)
 
+	if obj.IsOffline() {
+		if err := act.clearOffline(ctx, obj); err != nil {
+			return fmt.Errorf("failed to clear offline for instance %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+		}
+	}
+
+	if obj.GetUpdateRevision() == act.rev {
+		act.update.Add(obj)
+		return nil
+	}
+
 	return act.updateOutdated(ctx, obj)
 }
 
@@ -147,11 +161,13 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		// TODO: could implement more sophisticated selection logic
-		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
-			return err
+		chosen, ok := chooseBeingOfflineToRevive(act.beingOffline.List(), time.Now())
+		if ok {
+			if err := act.cancelOneOfflining(ctx, chosen); err != nil {
+				return err
+			}
+			return nil
 		}
-		return nil
 	}
 
 	obj, unlock, exists := act.f.Adopt()
@@ -392,6 +408,14 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 		return nil
 	}
 
+	if needsGracefulOfflineScaleIn(obj) && !obj.IsOffline() {
+		if err := act.setOffline(ctx, obj); err != nil {
+			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
+		}
+		act.beingOffline.Add(obj)
+		return nil
+	}
+
 	opts := []client.DeleteOption{
 		client.Preconditions{
 			UID:             ptr.To(obj.GetUID()),
@@ -419,6 +443,28 @@ func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R) error {
 		},
 		Spec: &Spec{
 			Offline: true,
+		},
+	}
+
+	data, err := json.Marshal(&p)
+	if err != nil {
+		return fmt.Errorf("invalid patch: %w", err)
+	}
+
+	return act.c.Patch(ctx, act.converter.To(obj), client.RawPatch(types.MergePatchType, data))
+}
+
+func (act *actor[T, O, R]) clearOffline(ctx context.Context, obj R) error {
+	p := Patch{
+		Metadata: Metadata{
+			ResourceVersion: obj.GetResourceVersion(),
+			Annotations: map[string]*string{
+				// Scale-out revival cancels an in-progress scale-in drain.
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained: nil,
+			},
+		},
+		Spec: &Spec{
+			Offline: false,
 		},
 	}
 

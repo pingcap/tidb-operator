@@ -305,7 +305,8 @@ func (in *$.|pub$) ClusterCASecretName() string {
 }
 `, t)
 
-	// Generate Store interface methods for TiKV and TiFlash
+	// Generate Store interface methods for TiKV and TiFlash.
+	// TiProxy uses offline for graceful scale-in but is not a store.
 	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
 		sw.Do(`
 func (in *$.|pub$) IsOffline() bool {
@@ -314,6 +315,16 @@ func (in *$.|pub$) IsOffline() bool {
 
 func (in *$.|pub$) IsStore() bool {
 	return true
+}
+`, t)
+	} else if strings.EqualFold(t.Name.Name, "TiProxy") {
+		sw.Do(`
+func (in *$.|pub$) IsOffline() bool {
+	return in.Spec.Offline != nil && *in.Spec.Offline
+}
+
+func (in *$.|pub$) IsStore() bool {
+	return false
 }
 `, t)
 	} else {

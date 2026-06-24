@@ -242,7 +242,7 @@ func (in *TiProxy) ClusterCASecretName() string {
 }
 
 func (in *TiProxy) IsOffline() bool {
-	return false
+	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
 func (in *TiProxy) IsStore() bool {

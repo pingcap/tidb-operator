@@ -95,6 +95,7 @@ type TiProxyList struct {
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Offline",type=boolean,JSONPath=`.spec.offline`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiProxy defines a TiProxy instance.
@@ -257,6 +258,10 @@ type TiProxyTLSConfig struct {
 type TiProxyGroupStatus struct {
 	CommonStatus `json:",inline"`
 	GroupStatus  `json:",inline"`
+
+	// DrainingReplicas is the number of TiProxy instances in graceful scale-in drain.
+	// +optional
+	DrainingReplicas int32 `json:"drainingReplicas,omitempty"`
 }
 
 // TiProxySpec defines the spec of tiproxy
@@ -283,6 +288,12 @@ type TiProxySpec struct {
 	// +default:value=1
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Offline marks the TiProxy instance for graceful scale-in.
+	// When true, the instance stops accepting new connections and waits for the graceful shutdown delay
+	// before being deleted. Setting it back to false revives the instance during scale-out.
+	// +optional
+	Offline *bool `json:"offline,omitempty"`
 
 	// TiProxyTemplateSpec embeded some fields managed by TiProxyGroup.
 	TiProxyTemplateSpec `json:",inline"`

@@ -43,6 +43,19 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
+		task.IfBreak(tasks.CondOfflineScaleInDrainComplete(state),
+			tasks.TaskDeleteOfflinedTiProxy(state, r.Client),
+		),
+
+		task.IfBreak(tasks.CondObjectIsOfflineForGracefulScaleIn(state),
+			tasks.TaskContextInfoFromTiProxy(state, r.Client),
+			tasks.TaskOfflineScaleInDrain(state, r.Client),
+			common.TaskInstanceConditionSynced[scope.TiProxy](state),
+			common.TaskInstanceConditionReady[scope.TiProxy](state),
+			common.TaskInstanceConditionRunning[scope.TiProxy](state),
+			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
+		),
+
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiProxy](state),
 			tasks.TaskDrainPodForDelete(state, r.Client),
 			task.If(task.CondFunc(func() bool { return state.Pod() == nil }),
@@ -68,6 +81,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// normal process
 		tasks.TaskContextInfoFromTiProxy(state, r.Client),
+		tasks.TaskReviveFromScaleIn(state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiProxy](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
