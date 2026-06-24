@@ -69,6 +69,41 @@ func TestMakeCompactJobDefaultModeUnchanged(t *testing.T) {
 	}
 }
 
+func TestMakeCompactJobUsesCompactBackupLabels(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	compact.Labels = map[string]string{
+		"app.kubernetes.io/instance": "daily-log-backup",
+	}
+
+	job, reason, err := c.makeCompactJob(compact)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if reason != "" {
+		t.Fatalf("expected empty reason, got %q", reason)
+	}
+
+	expectedLabels := map[string]string{
+		"app.kubernetes.io/name":       "compactbackup",
+		"app.kubernetes.io/managed-by": "compact-backup-operator",
+		"app.kubernetes.io/instance":   "daily-log-backup",
+		"app.kubernetes.io/component":  "compactbackup",
+		"tidb.pingcap.com/compact":     compact.Name,
+	}
+	for k, v := range expectedLabels {
+		if job.Labels[k] != v {
+			t.Fatalf("expected job label %s=%q, got %q", k, v, job.Labels[k])
+		}
+		if job.Spec.Template.Labels[k] != v {
+			t.Fatalf("expected pod template label %s=%q, got %q", k, v, job.Spec.Template.Labels[k])
+		}
+	}
+	if _, ok := job.Labels["tidb.pingcap.com/backup"]; ok {
+		t.Fatalf("compact job should not use backup label key, got labels %v", job.Labels)
+	}
+}
+
 func TestMakeCompactJobShardedMode(t *testing.T) {
 	c := newTestController(t)
 	compact := newCompactBackupForTest()
@@ -110,6 +145,7 @@ func TestValidateShardedModeRequiresPositiveShardCount(t *testing.T) {
 	c := newTestController(t)
 	compact := newCompactBackupForTest()
 	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.PhysicalFileCacheCapacity = "200G"
 
 	err := c.validate(compact)
 	if err == nil {
@@ -117,6 +153,71 @@ func TestValidateShardedModeRequiresPositiveShardCount(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "shardCount") {
 		t.Fatalf("expected shardCount validation error, got %v", err)
+	}
+}
+
+func TestValidateShardedModeAllowsMissingPhysicalFileCacheCapacity(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+
+	err := c.validate(compact)
+	if err != nil {
+		t.Fatalf("expected no validation error, got %v", err)
+	}
+}
+
+func TestValidateShardedModeAllowsZeroPhysicalFileCacheCapacity(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+	compact.Spec.PhysicalFileCacheCapacity = "0"
+
+	err := c.validate(compact)
+	if err != nil {
+		t.Fatalf("expected no validation error, got %v", err)
+	}
+}
+
+func TestValidateShardedModeRejectsInvalidPhysicalFileCacheCapacity(t *testing.T) {
+	testCases := []struct {
+		name     string
+		capacity string
+		wantErr  string
+	}{
+		{
+			name:     "invalid quantity",
+			capacity: "150GB",
+			wantErr:  "invalid physicalFileCacheCapacity",
+		},
+		{
+			name:     "negative quantity",
+			capacity: "-1G",
+			wantErr:  "must be greater than or equal to 0",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := newTestController(t)
+			compact := newCompactBackupForTest()
+			shardCount := int32(3)
+			compact.Spec.Mode = v1alpha1.CompactModeSharded
+			compact.Spec.ShardCount = &shardCount
+			compact.Spec.PhysicalFileCacheCapacity = tc.capacity
+
+			err := c.validate(compact)
+			if err == nil {
+				t.Fatal("expected validation error, got nil")
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("expected error containing %q, got %v", tc.wantErr, err)
+			}
+		})
 	}
 }
 
@@ -142,6 +243,7 @@ func TestValidateAllowsEmptyEndTsOnlyForShardedCCRCheckpointMode(t *testing.T) {
 	shardCount := int32(3)
 	compact.Spec.Mode = v1alpha1.CompactModeSharded
 	compact.Spec.ShardCount = &shardCount
+	compact.Spec.PhysicalFileCacheCapacity = "200G"
 	compact.Spec.EndTs = ""
 
 	err := c.validate(compact)
@@ -172,6 +274,7 @@ func TestSyncShardedModeRequiresSupportedK8sVersion(t *testing.T) {
 	shardCount := int32(2)
 	compact.Spec.Mode = v1alpha1.CompactModeSharded
 	compact.Spec.ShardCount = &shardCount
+	compact.Spec.PhysicalFileCacheCapacity = "200G"
 
 	fakeDiscovery := c.deps.KubeClientset.Discovery().(*fakediscovery.FakeDiscovery)
 	fakeDiscovery.FakedServerVersion = &version.Info{Major: "1", Minor: "28"}
@@ -215,6 +318,7 @@ func TestSyncShardedModeRequeuesOnDiscoveryError(t *testing.T) {
 	shardCount := int32(2)
 	compact.Spec.Mode = v1alpha1.CompactModeSharded
 	compact.Spec.ShardCount = &shardCount
+	compact.Spec.PhysicalFileCacheCapacity = "200G"
 
 	fakeDiscovery := c.deps.KubeClientset.Discovery().(*fakediscovery.FakeDiscovery)
 	fakeDiscovery.PrependReactor("get", "version", func(action k8stesting.Action) (bool, runtime.Object, error) {

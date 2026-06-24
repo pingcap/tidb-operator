@@ -37,12 +37,6 @@ import (
 )
 
 const (
-	// replicationStatusSubPrefix is the fixed sub-prefix BR uses to
-	// lay out replication status under the log-backup storage.
-	// Hardcoded here (not exposed via API) per spec §6: this is a BR
-	// call detail and shouldn't leak into the CRD.
-	replicationStatusSubPrefix = "crr-checkpoint"
-
 	// replicationPiTRConcurrency is the parallelism BR uses when
 	// applying compacted log files. Spec §6.
 	replicationPiTRConcurrency = 1024
@@ -63,7 +57,6 @@ func replicationBRFlags(phase int) []string {
 	}
 	return []string{
 		fmt.Sprintf("--restore-phase=%d", phase),
-		fmt.Sprintf("--replication-status-sub-prefix=%s", replicationStatusSubPrefix),
 		fmt.Sprintf("--pitr-concurrency=%d", replicationPiTRConcurrency),
 		fmt.Sprintf("--metadata-download-batch-size=%d", replicationMetadataDownloadBatchSize),
 		"--retain-latest-mvcc-version",

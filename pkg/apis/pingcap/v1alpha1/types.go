@@ -3979,6 +3979,13 @@ type CompactSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +optional
 	ShardCount *int32 `json:"shardCount,omitempty"`
+	// PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as --physical-file-cache-capacity.
+	// It uses Kubernetes quantity format, e.g. "150G" or "150Gi", and defaults to "0" when omitted.
+	// +optional
+	PhysicalFileCacheCapacity string `json:"physicalFileCacheCapacity,omitempty"`
+	// Name is passed to tikv-ctl compact-log-backup as --name when configured.
+	// +optional
+	Name string `json:"name,omitempty"`
 	// List of environment variables to set in the container, like v1.Container.Env.
 	// Note that the following builtin env vars will be overwritten by values set here
 	// - S3_PROVIDER

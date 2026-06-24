@@ -28,107 +28,110 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func TestBuildCompactArgsDefaultMode(t *testing.T) {
-	manager := &Manager{
-		compact: &v1alpha1.CompactBackup{},
-		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     22,
-			Concurrency: 4,
+func TestBuildCompactArgs(t *testing.T) {
+	testCases := []struct {
+		name string
+		opts options.CompactOpts
+		want []string
+	}{
+		{
+			name: "default mode",
+			opts: options.CompactOpts{
+				FromTS:      11,
+				UntilTS:     22,
+				Concurrency: 4,
+			},
+			want: []string{
+				"--log-level", "INFO",
+				"--log-format", "json",
+				"compact-log-backup",
+				"--storage-base64", "storage-base64",
+				"--from", "11",
+				"-N", "4",
+				"--until", "22",
+			},
+		},
+		{
+			name: "default mode with name",
+			opts: options.CompactOpts{
+				FromTS:      11,
+				UntilTS:     22,
+				Name:        "compact-task-a",
+				Concurrency: 4,
+			},
+			want: []string{
+				"--log-level", "INFO",
+				"--log-format", "json",
+				"compact-log-backup",
+				"--storage-base64", "storage-base64",
+				"--from", "11",
+				"-N", "4",
+				"--name", "compact-task-a",
+				"--until", "22",
+			},
+		},
+		{
+			name: "sharded mode",
+			opts: options.CompactOpts{
+				FromTS:                    11,
+				UntilTS:                   22,
+				Concurrency:               4,
+				PhysicalFileCacheCapacity: "200G",
+				Sharded:                   true,
+				ShardIndex:                0,
+				ShardCount:                3,
+			},
+			want: []string{
+				"--log-level", "INFO",
+				"--log-format", "json",
+				"compact-log-backup",
+				"--storage-base64", "storage-base64",
+				"--from", "11",
+				"-N", "4",
+				"--cal-shift-ts",
+				"--physical-file-cache-capacity", "200G",
+				"--until", "22",
+				"--shard", "1/3",
+				"--minimal-compaction-size", "0",
+			},
+		},
+		{
+			name: "sharded mode without until",
+			opts: options.CompactOpts{
+				FromTS:                    11,
+				UntilTS:                   0,
+				Concurrency:               4,
+				PhysicalFileCacheCapacity: "200G",
+				Sharded:                   true,
+				ShardIndex:                1,
+				ShardCount:                3,
+			},
+			want: []string{
+				"--log-level", "INFO",
+				"--log-format", "json",
+				"compact-log-backup",
+				"--storage-base64", "storage-base64",
+				"--from", "11",
+				"-N", "4",
+				"--cal-shift-ts",
+				"--physical-file-cache-capacity", "200G",
+				"--shard", "2/3",
+				"--minimal-compaction-size", "0",
+			},
 		},
 	}
 
-	args := manager.buildCompactArgs("storage-base64")
-	want := []string{
-		"--log-level", "INFO",
-		"--log-format", "json",
-		"compact-log-backup",
-		"--storage-base64", "storage-base64",
-		"--from", "11",
-		"-N", "4",
-		"--until", "22",
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			manager := &Manager{
+				compact: &v1alpha1.CompactBackup{},
+				options: tc.opts,
+			}
+
+			args := manager.buildCompactArgs("storage-base64")
+			assertStringSliceEqual(t, args, tc.want)
+		})
 	}
-
-	assertStringSliceEqual(t, args, want)
-}
-
-func TestBuildCompactArgsShardedMode(t *testing.T) {
-	manager := &Manager{
-		compact: &v1alpha1.CompactBackup{},
-		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     22,
-			Concurrency: 4,
-			Sharded:     true,
-			ShardIndex:  1,
-			ShardCount:  3,
-		},
-	}
-
-	args := manager.buildCompactArgs("storage-base64")
-	want := []string{
-		"--log-level", "INFO",
-		"--log-format", "json",
-		"compact-log-backup",
-		"--storage-base64", "storage-base64",
-		"--from", "11",
-		"-N", "4",
-		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "150G",
-		"--until", "22",
-		"--shard", "2/3",
-		"--minimal-compaction-size", "0",
-	}
-
-	assertStringSliceEqual(t, args, want)
-}
-
-func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
-	manager := &Manager{
-		compact: &v1alpha1.CompactBackup{},
-		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     0,
-			Concurrency: 4,
-			Sharded:     true,
-			ShardIndex:  1,
-			ShardCount:  3,
-		},
-	}
-
-	args := manager.buildCompactArgs("storage-base64")
-	want := []string{
-		"--log-level", "INFO",
-		"--log-format", "json",
-		"compact-log-backup",
-		"--storage-base64", "storage-base64",
-		"--from", "11",
-		"-N", "4",
-		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "150G",
-		"--crr-checkpoint-prefix", "crr-checkpoint",
-		"--shard", "2/3",
-		"--minimal-compaction-size", "0",
-	}
-
-	assertStringSliceEqual(t, args, want)
-}
-
-func TestBuildCompactArgsShardedModeConvertsKubernetesIndexToOneBasedShard(t *testing.T) {
-	manager := &Manager{
-		compact: &v1alpha1.CompactBackup{},
-		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     22,
-			Concurrency: 4,
-			Sharded:     true,
-			ShardIndex:  0,
-			ShardCount:  3,
-		},
-	}
-
-	args := manager.buildCompactArgs("storage-base64")
-	assertStringSliceContainsPair(t, args, "--shard", "1/3")
 }
 
 func TestSanitizeCompactCommandArgsRedactsStorageBase64Value(t *testing.T) {
@@ -231,16 +234,6 @@ func assertStringSliceEqual(t *testing.T, got, want []string) {
 	}
 }
 
-func assertStringSliceContainsPair(t *testing.T, got []string, key, value string) {
-	t.Helper()
-	for i := 0; i+1 < len(got); i++ {
-		if got[i] == key && got[i+1] == value {
-			return
-		}
-	}
-	t.Fatalf("expected args to contain %q %q, got %#v", key, value, got)
-}
-
 func newManagerForProcessCompactTest(t *testing.T, compact *v1alpha1.CompactBackup) *Manager {
 	t.Helper()
 
@@ -271,11 +264,12 @@ func newShardedCompactBackupForManagerTest() *v1alpha1.CompactBackup {
 			Namespace: "default",
 		},
 		Spec: v1alpha1.CompactSpec{
-			StartTs:     "400036290571534337",
-			EndTs:       "400036290571534338",
-			Concurrency: 4,
-			Mode:        v1alpha1.CompactModeSharded,
-			ShardCount:  &shardCount,
+			StartTs:                   "400036290571534337",
+			EndTs:                     "400036290571534338",
+			Concurrency:               4,
+			Mode:                      v1alpha1.CompactModeSharded,
+			ShardCount:                &shardCount,
+			PhysicalFileCacheCapacity: "200G",
 		},
 	}
 }

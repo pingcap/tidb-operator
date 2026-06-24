@@ -57,7 +57,6 @@ type Manager struct {
 	options        options.CompactOpts
 }
 
-const crrCheckpointPrefix = "crr-checkpoint"
 const redactedCompactArgValue = "<redacted>"
 
 // NewManager return a Manager
@@ -190,6 +189,9 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
 	}
+	if cm.options.Name != "" {
+		args = append(args, "--name", cm.options.Name)
+	}
 
 	if cm.options.Sharded {
 		return cm.buildShardedCompactArgs(args)
@@ -208,16 +210,11 @@ func (cm *Manager) buildShardedCompactArgs(args []string) []string {
 	args = append(args,
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity",
-		"150G",
+		cm.options.PhysicalFileCacheCapacity,
 	)
 
-	// When the CR sets EndTs explicitly, honor it as a hard upper bound via
-	// --until. Otherwise let tikv-ctl resolve until-ts from the replication
-	// checkpoint stored under the fixed crr-checkpoint sub-prefix.
 	if cm.options.UntilTS != 0 {
 		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
-	} else {
-		args = append(args, "--crr-checkpoint-prefix", crrCheckpointPrefix)
 	}
 
 	// --shard tells tikv-ctl this pod's slice of the keyspace partition.
