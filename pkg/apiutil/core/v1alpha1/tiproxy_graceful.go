@@ -1,4 +1,4 @@
-// Copyright 2026 PingCAP, Inc.
+// Copyright 2024 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -142,7 +142,7 @@ func RevivableForGracefulScaleOutFromSources(now time.Time, sources ...map[strin
 	for _, annotations := range sources {
 		if GracefulShutdownConnectionsDrained(annotations) {
 			// TiProxy controller already observed zero connections during scale-in drain. Scale-in
-			// should delete the pod/CR instead of being cancelled by scale-out revival.
+			// should delete the pod/CR instead of being canceled by scale-out revival.
 			return false, nil
 		}
 	}

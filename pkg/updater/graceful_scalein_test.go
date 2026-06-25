@@ -1,4 +1,4 @@
-// Copyright 2026 PingCAP, Inc.
+// Copyright 2024 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -125,11 +125,11 @@ func TestCancelOneOffliningSkipsUpdateAtCurrentRevision(t *testing.T) {
 	rev := "2"
 	proxy := &runtime.TiProxy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              "proxy-0",
-			Namespace:         metav1.NamespaceDefault,
-			ResourceVersion:   "10",
-			Labels:            map[string]string{v1alpha1.LabelKeyInstanceRevisionHash: rev},
-			Generation:        2,
+			Name:            "proxy-0",
+			Namespace:       metav1.NamespaceDefault,
+			ResourceVersion: "10",
+			Labels:          map[string]string{v1alpha1.LabelKeyInstanceRevisionHash: rev},
+			Generation:      2,
 		},
 		Spec: v1alpha1.TiProxySpec{
 			Offline: ptr.To(true),
@@ -173,11 +173,11 @@ func TestRevivableForScaleOutUsesMinRemainingConstant(t *testing.T) {
 
 	annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = now.Add(-delay + time.Minute).Format(time.RFC3339Nano)
 	ok, err := coreutil.RevivableForGracefulScaleOutFromSources(now, annotations)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, ok)
 
 	annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = now.Add(-delay + coreutil.MinRemainingToReviveBeforeDelete).Format(time.RFC3339Nano)
 	ok, err = coreutil.RevivableForGracefulScaleOutFromSources(now, annotations)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, ok)
 }

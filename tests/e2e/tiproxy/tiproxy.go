@@ -614,6 +614,203 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.Must(err)
 			gomega.Expect(pods.Items).To(gomega.HaveLen(int(replicas)))
 		})
+
+		ginkgo.It("revive draining TiProxy pods on scale-out instead of creating new ones", label.Scale, func(ctx context.Context) {
+			o := desc.DefaultOptions()
+			const initialReplicas int32 = 3
+			const scaledInReplicas int32 = 1
+			const deleteDelaySeconds int32 = 3600
+
+			pdg := action.MustCreatePD(ctx, f, o)
+			kvg := action.MustCreateTiKV(ctx, f, o)
+			dbg := action.MustCreateTiDB(ctx, f, o)
+			// Create with the graceful shutdown delay already set so every instance takes the
+			// graceful scale-in (offline) path instead of being deleted immediately.
+			proxyg := action.MustCreateTiProxy(ctx, f, o,
+				data.WithReplicas[scope.TiProxyGroup](initialReplicas),
+				data.GroupPatchFunc[*v1alpha1.TiProxyGroup](func(obj *v1alpha1.TiProxyGroup) {
+					if obj.Spec.Template.Annotations == nil {
+						obj.Spec.Template.Annotations = map[string]string{}
+					}
+					obj.Spec.Template.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = strconv.Itoa(int(deleteDelaySeconds))
+				}),
+			)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiProxyGroupReady(ctx, proxyg)
+
+			listTiProxyPods := func() (*corev1.PodList, error) {
+				pods := &corev1.PodList{}
+				if err := f.Client.List(ctx, pods, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
+					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+					v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
+					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
+				}); err != nil {
+					return nil, err
+				}
+				return pods, nil
+			}
+
+			listTiProxies := func() (*v1alpha1.TiProxyList, error) {
+				tiproxies := &v1alpha1.TiProxyList{}
+				if err := f.Client.List(ctx, tiproxies, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
+					v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
+					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
+				}); err != nil {
+					return nil, err
+				}
+				return tiproxies, nil
+			}
+
+			initialPods, err := listTiProxyPods()
+			f.Must(err)
+			gomega.Expect(initialPods.Items).To(gomega.HaveLen(int(initialReplicas)))
+
+			ginkgo.By("Probe whether TiProxy supports the health override API")
+			supportsHealthOverrideAPI, err := tiproxySupportsHealthOverrideAPI(ctx, f, &initialPods.Items[0])
+			f.Must(err)
+			if !supportsHealthOverrideAPI {
+				ginkgo.Skip("TiProxy does not support the health override API required for graceful scale-in revive")
+			}
+
+			initialPodUIDs := map[string]string{}
+			for i := range initialPods.Items {
+				initialPodUIDs[initialPods.Items[i].Name] = string(initialPods.Items[i].UID)
+			}
+
+			ginkgo.By("Hold a SQL connection on every TiProxy pod so drained instances keep connections and stay revivable")
+			var releaseFuncs []func()
+			defer func() {
+				for _, release := range releaseFuncs {
+					release()
+				}
+			}()
+			for i := range initialPods.Items {
+				release, err := holdTiProxySQLConnection(ctx, f, &initialPods.Items[i])
+				f.Must(err)
+				releaseFuncs = append(releaseFuncs, release)
+			}
+
+			ginkgo.By("Scale in TiProxy and wait for the removed instances to enter graceful scale-in drain")
+			patch := client.MergeFrom(proxyg.DeepCopy())
+			proxyg.Spec.Replicas = ptr.To(scaledInReplicas)
+			f.Must(f.Client.Patch(ctx, proxyg, patch))
+
+			expectedDraining := int(initialReplicas - scaledInReplicas)
+			gomega.Eventually(func() error {
+				// No pod may be deleted/recreated while draining: held connections must keep them alive.
+				pods, err := listTiProxyPods()
+				if err != nil {
+					return err
+				}
+				if len(pods.Items) != int(initialReplicas) {
+					return fmt.Errorf("got %d tiproxy pods during drain, want %d", len(pods.Items), initialReplicas)
+				}
+				for i := range pods.Items {
+					pod := &pods.Items[i]
+					uid, ok := initialPodUIDs[pod.Name]
+					if !ok || string(pod.UID) != uid {
+						return fmt.Errorf("tiproxy pod %s/%s was recreated during drain", pod.Namespace, pod.Name)
+					}
+					if !pod.DeletionTimestamp.IsZero() {
+						return fmt.Errorf("tiproxy pod %s/%s is being deleted during drain", pod.Namespace, pod.Name)
+					}
+				}
+
+				tiproxies, err := listTiProxies()
+				if err != nil {
+					return err
+				}
+				draining := 0
+				for i := range tiproxies.Items {
+					tp := &tiproxies.Items[i]
+					offline := tp.Spec.Offline != nil && *tp.Spec.Offline
+					if !offline || !tp.DeletionTimestamp.IsZero() {
+						continue
+					}
+					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
+						return fmt.Errorf("tiproxy %s/%s is offline but graceful shutdown has not begun yet", tp.Namespace, tp.Name)
+					}
+					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] != "" {
+						return fmt.Errorf("tiproxy %s/%s already drained its connections and is no longer revivable", tp.Namespace, tp.Name)
+					}
+					draining++
+				}
+				if draining != expectedDraining {
+					return fmt.Errorf("got %d draining tiproxy instances, want %d", draining, expectedDraining)
+				}
+				group := &v1alpha1.TiProxyGroup{}
+				if err := f.Client.Get(ctx, client.ObjectKeyFromObject(proxyg), group); err != nil {
+					return err
+				}
+				if group.Status.DrainingReplicas != int32(expectedDraining) {
+					return fmt.Errorf("TiProxyGroup status.drainingReplicas = %d, want %d", group.Status.DrainingReplicas, expectedDraining)
+				}
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			ginkgo.By("Scale out TiProxy and expect draining pods to be revived and reused (no new pods)")
+			f.Must(f.Client.Get(ctx, client.ObjectKeyFromObject(proxyg), proxyg))
+			patch = client.MergeFrom(proxyg.DeepCopy())
+			proxyg.Spec.Replicas = ptr.To(initialReplicas)
+			f.Must(f.Client.Patch(ctx, proxyg, patch))
+
+			gomega.Eventually(func() error {
+				pods, err := listTiProxyPods()
+				if err != nil {
+					return err
+				}
+				if len(pods.Items) != int(initialReplicas) {
+					return fmt.Errorf("got %d tiproxy pods after scale-out, want %d", len(pods.Items), initialReplicas)
+				}
+				for i := range pods.Items {
+					pod := &pods.Items[i]
+					uid, ok := initialPodUIDs[pod.Name]
+					if !ok {
+						return fmt.Errorf("tiproxy pod %s/%s was newly created instead of reviving a draining pod", pod.Namespace, pod.Name)
+					}
+					if string(pod.UID) != uid {
+						return fmt.Errorf("tiproxy pod %s/%s was recreated (uid %s -> %s) instead of revived", pod.Namespace, pod.Name, uid, pod.UID)
+					}
+				}
+
+				tiproxies, err := listTiProxies()
+				if err != nil {
+					return err
+				}
+				if len(tiproxies.Items) != int(initialReplicas) {
+					return fmt.Errorf("got %d tiproxy instances after scale-out, want %d", len(tiproxies.Items), initialReplicas)
+				}
+				for i := range tiproxies.Items {
+					tp := &tiproxies.Items[i]
+					if tp.Spec.Offline != nil && *tp.Spec.Offline {
+						return fmt.Errorf("tiproxy %s/%s is still offline after scale-out revive", tp.Namespace, tp.Name)
+					}
+					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != "" {
+						return fmt.Errorf("tiproxy %s/%s still has graceful shutdown begin time after revive", tp.Namespace, tp.Name)
+					}
+					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] != "" {
+						return fmt.Errorf("tiproxy %s/%s still has connections-drained annotation after revive", tp.Namespace, tp.Name)
+					}
+				}
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			f.WaitForTiProxyGroupReady(ctx, proxyg)
+
+			ginkgo.By("Ensure revived TiProxy pods report healthy again")
+			revivedPods, err := listTiProxyPods()
+			f.Must(err)
+			for i := range revivedPods.Items {
+				pod := &revivedPods.Items[i]
+				statusCode, err := tiproxyHealthStatusCode(ctx, f, pod)
+				f.Must(err)
+				f.True(statusCode == http.StatusOK,
+					fmt.Sprintf("revived tiproxy pod %s/%s should be healthy after revive, got status code %d", pod.Namespace, pod.Name, statusCode))
+			}
+		})
 	})
 
 	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
