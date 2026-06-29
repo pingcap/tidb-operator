@@ -1,0 +1,70 @@
+name: CI Base Images
+
+on:
+  pull_request:
+    branches:
+      - release-1.*
+    paths:
+      - 'build/ci-images/**'
+      - '.github/workflows/ci-base-images.yaml'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Immutable tag to publish for the pre-baked CI base images'
+        required: true
+        type: string
+      push:
+        description: 'Push images to GHCR'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - name: backup-manager-base
+            context: build/ci-images/backup-manager-base
+          - name: e2e-base
+            context: build/ci-images/e2e-base
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.image.context }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'workflow_dispatch' && inputs.push }}
+          tags: ghcr.io/pingcap/tidb-operator/${{ matrix.image.name }}:${{ steps.meta.outputs.tag }}
