@@ -31,8 +31,10 @@ jobs:
       matrix:
         image:
           - name: backup-manager-base
+            package: tidb-operator%2Fbackup-manager-base
             context: build/ci-images/backup-manager-base
           - name: e2e-base
+            package: tidb-operator%2Fe2e-base
             context: build/ci-images/e2e-base
     steps:
       - name: Check out code
@@ -68,3 +70,13 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'workflow_dispatch' && inputs.push }}
           tags: ghcr.io/pingcap/tidb-operator/${{ matrix.image.name }}:${{ steps.meta.outputs.tag }}
+
+      - name: Make package public
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.push }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api \
+            --method PUT \
+            "/orgs/${{ github.repository_owner }}/packages/container/${{ matrix.image.package }}/visibility" \
+            -f visibility=public

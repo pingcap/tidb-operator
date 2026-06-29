@@ -45,6 +45,8 @@ ghcr.io/pingcap/tidb-operator/backup-manager-base:<tag>
 ghcr.io/pingcap/tidb-operator/e2e-base:<tag>
 ```
 
+The workflow also marks the generated GHCR packages public so GitHub Actions and Prow can pull them without registry credentials.
+
 Before updating consuming Dockerfiles, verify the images are pullable by CI/Prow and record the resulting digest.
 
 ## Update policy
