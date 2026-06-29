@@ -34,7 +34,7 @@ func TestPDMSProtection(t *testing.T) {
 
 	t.Run("replicas zero is clamped when PD involves ms", func(t *testing.T) {
 		tg := fakeTSOGroupForPDMSProtection("tso", 0)
-		pdg := fakePDGroupForPDMSProtection("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForPDMSProtection()
 		fc := client.NewFakeClient(tg, pdg)
 
 		desired, protected, err := effectiveReplicas(ctx, fc, tg)
@@ -45,7 +45,7 @@ func TestPDMSProtection(t *testing.T) {
 
 	t.Run("condition is true only for destructive protected state", func(t *testing.T) {
 		tg := fakeTSOGroupForPDMSProtection("tso", 0)
-		pdg := fakePDGroupForPDMSProtection("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForPDMSProtection()
 		state := &ReconcileContext{State: &state{tg: tg}}
 		fc := client.NewFakeClient(tg, pdg)
 
@@ -61,7 +61,7 @@ func TestPDMSProtection(t *testing.T) {
 		tg := fakeTSOGroupForPDMSProtection("tso-extra", 0)
 		markDeleting(tg)
 		otherTG := fakeTSOGroupForPDMSProtection("tso", 1)
-		pdg := fakePDGroupForPDMSProtection("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForPDMSProtection()
 		state := &ReconcileContext{State: &state{tg: tg}}
 		fc := client.NewFakeClient(tg, otherTG, pdg)
 
@@ -78,7 +78,7 @@ func TestPDMSProtection(t *testing.T) {
 		markDeleting(tg)
 		otherTG := fakeTSOGroupForPDMSProtection("tso-1", 1)
 		markDeleting(otherTG)
-		pdg := fakePDGroupForPDMSProtection("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForPDMSProtection()
 		state := &ReconcileContext{State: &state{tg: tg}}
 		fc := client.NewFakeClient(tg, otherTG, pdg)
 
@@ -113,13 +113,13 @@ func markDeleting(tg *v1alpha1.TSOGroup) {
 	tg.Finalizers = []string{"test.finalizer"}
 }
 
-func fakePDGroupForPDMSProtection(name string, mode v1alpha1.PDMode) *v1alpha1.PDGroup {
-	return fake.FakeObj(name,
+func fakePDGroupForPDMSProtection() *v1alpha1.PDGroup {
+	return fake.FakeObj("pd",
 		fake.SetNamespace[v1alpha1.PDGroup]("ns"),
 		func(pdg *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 			pdg.Spec.Cluster.Name = "cluster"
 			pdg.Spec.Replicas = ptr.To[int32](1)
-			pdg.Spec.Template.Spec.Mode = mode
+			pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeMS
 			return pdg
 		})
 }

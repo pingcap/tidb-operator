@@ -35,7 +35,7 @@ func TestTaskModeSwitch(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("initial ms create is not treated as mode switch", func(t *testing.T) {
-		pdg := fakePDGroupForModeSwitch("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForModeSwitch()
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		state := newModeSwitchState(pdg, cluster, nil)
 		fc := client.NewFakeClient(pdg, cluster)
@@ -47,7 +47,7 @@ func TestTaskModeSwitch(t *testing.T) {
 	})
 
 	t.Run("normal to ms waits for single TSOGroup", func(t *testing.T) {
-		pdg := fakePDGroupForModeSwitch("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		pd := fakeSyncedPD("pd-0", pdg, v1alpha1.PDModeNormal)
@@ -62,7 +62,7 @@ func TestTaskModeSwitch(t *testing.T) {
 	})
 
 	t.Run("same blocked state does not mark status changed again", func(t *testing.T) {
-		pdg := fakePDGroupForModeSwitch("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		pdg.Status.ModeTransition = &v1alpha1.PDModeTransition{
 			Phase:              modeTransitionPhasePreparing,
@@ -89,7 +89,7 @@ func TestTaskModeSwitch(t *testing.T) {
 	})
 
 	t.Run("all instances at target completes mode switch", func(t *testing.T) {
-		pdg := fakePDGroupForModeSwitch("pd", v1alpha1.PDModeMS)
+		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		pd := fakeSyncedPD("pd-0", pdg, v1alpha1.PDModeMS)
@@ -115,14 +115,14 @@ func newModeSwitchState(pdg *v1alpha1.PDGroup, cluster *v1alpha1.Cluster, pds []
 	return &ReconcileContext{State: s}
 }
 
-func fakePDGroupForModeSwitch(name string, mode v1alpha1.PDMode) *v1alpha1.PDGroup {
-	return fake.FakeObj(name,
+func fakePDGroupForModeSwitch() *v1alpha1.PDGroup {
+	return fake.FakeObj("pd",
 		fake.SetNamespace[v1alpha1.PDGroup]("ns"),
 		func(pdg *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 			pdg.Spec.Cluster.Name = "cluster"
 			pdg.Spec.Replicas = ptr.To[int32](1)
 			pdg.Spec.Template.Spec.Version = "v8.3.0"
-			pdg.Spec.Template.Spec.Mode = mode
+			pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeMS
 			return pdg
 		})
 }

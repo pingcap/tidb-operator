@@ -76,7 +76,7 @@ func TaskModeSwitch(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if target == v1alpha1.PDModeMS {
-			if blocked, reason, msg := checkTSODependency(ctx, state, info); blocked {
+			if blocked, reason, msg := checkTSODependency(state, info); blocked {
 				blockModeSwitch(state, reason, msg)
 				return task.Retry(defaultUpdateWaitTime).With(msg)
 			}
@@ -112,7 +112,7 @@ func modeSwitchActive(pdg *v1alpha1.PDGroup, pds []*v1alpha1.PD, target v1alpha1
 }
 
 func pdInstancesAtTarget(pds []*v1alpha1.PD, target v1alpha1.PDMode, updateRevision string, replicas int32) bool {
-	if int32(len(pds)) != replicas {
+	if replicas < 0 || len(pds) != int(replicas) {
 		return false
 	}
 	for _, pd := range pds {
@@ -173,7 +173,7 @@ func setModeTransition(pdg *v1alpha1.PDGroup, phase, reason, msg string) bool {
 	return true
 }
 
-func unsupportedTopology(s *pdms.State) (bool, string, string) {
+func unsupportedTopology(s *pdms.State) (blocked bool, reason, message string) {
 	if len(s.PDGroups) != 1 {
 		return true, v1alpha1.ReasonWaitingForSinglePDGroup, fmt.Sprintf("waiting for exactly one PDGroup, got %d", len(s.PDGroups))
 	}
@@ -184,12 +184,16 @@ func unsupportedTopology(s *pdms.State) (bool, string, string) {
 		return true, v1alpha1.ReasonUnsupportedSchedulingGroupCount, fmt.Sprintf("unsupported SchedulingGroup count %d", len(s.SchedulingGroups))
 	}
 	if len(s.ResourceManagerGroups) > 1 {
-		return true, v1alpha1.ReasonUnsupportedResourceManagerGroupCount, fmt.Sprintf("unsupported ResourceManagerGroup count %d", len(s.ResourceManagerGroups))
+		return true, v1alpha1.ReasonUnsupportedResourceManagerGroupCount,
+			fmt.Sprintf("unsupported ResourceManagerGroup count %d", len(s.ResourceManagerGroups))
 	}
 	return false, "", ""
 }
 
-func checkTSODependency(ctx context.Context, state *ReconcileContext, s *pdms.State) (bool, string, string) {
+func checkTSODependency(
+	state *ReconcileContext,
+	s *pdms.State,
+) (blocked bool, reason, message string) {
 	if len(s.TSOGroups) != 1 {
 		return true, v1alpha1.ReasonWaitingForSingleTSOGroup, fmt.Sprintf("waiting for exactly one TSOGroup, got %d", len(s.TSOGroups))
 	}

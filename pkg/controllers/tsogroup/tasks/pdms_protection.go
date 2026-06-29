@@ -86,9 +86,9 @@ func TaskPDMSProtectedRetry() task.Task {
 	})
 }
 
-func effectiveReplicas(ctx context.Context, c client.Client, tg *v1alpha1.TSOGroup) (int32, bool, error) {
-	replicas := coreutil.Replicas[scope.TSOGroup](tg)
-	protected, err := pdms.TSOGroupProtected(ctx, c, tg)
+func effectiveReplicas(ctx context.Context, c client.Client, tg *v1alpha1.TSOGroup) (replicas int32, protected bool, err error) {
+	replicas = coreutil.Replicas[scope.TSOGroup](tg)
+	protected, err = pdms.TSOGroupProtected(ctx, c, tg)
 	if err != nil {
 		return replicas, false, err
 	}
