@@ -630,6 +630,77 @@ func TestSyncLogBackupStateStartsQueryFailureCountdownBeforeGracePeriod(t *testi
 	}
 }
 
+func TestLogBackupStateQueryFailureGracePeriodUsesAnnotation(t *testing.T) {
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-backup",
+			Namespace: "default",
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyLogBackupStateQueryFailureGracePeriod: "30m",
+			},
+		},
+	}
+
+	gracePeriod := getLogBackupStateQueryFailureGracePeriod(backup)
+	if gracePeriod != 30*time.Minute {
+		t.Fatalf("expected annotation grace period 30m, got %s", gracePeriod)
+	}
+}
+
+func TestSyncLogBackupStateUsesAnnotatedQueryFailureGracePeriod(t *testing.T) {
+	queryErr := errors.New("pd etcd unavailable")
+	bt := &backupTracker{
+		logBackups: make(map[string]*trackDepends),
+	}
+
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-backup",
+			Namespace: "default",
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyLogBackupStateQueryFailureGracePeriod: "336h",
+			},
+		},
+		Spec: v1alpha1.BackupSpec{
+			Mode:          v1alpha1.BackupModeLog,
+			LogSubcommand: v1alpha1.LogStartCommand,
+		},
+		Status: v1alpha1.BackupStatus{
+			Phase: v1alpha1.BackupRunning,
+		},
+	}
+
+	logkey := genLogBackupKey("default", "test-backup")
+	bt.logBackups[logkey] = &trackDepends{
+		tc: &v1alpha1.TidbCluster{},
+		etcdClient: &mockPDEtcdClient{
+			getErrors: map[string]error{
+				"/tidb/br-stream/info/test-backup": queryErr,
+			},
+		},
+		stateQueryFailureStartTime: time.Now().Add(-logBackupStateQueryFailureGracePeriod - time.Hour),
+	}
+
+	var updatedCondition *v1alpha1.BackupCondition
+	bt.statusUpdater = &mockStatusUpdater{
+		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
+			updatedCondition = condition
+			return nil
+		},
+	}
+
+	canSkip, err := bt.SyncLogBackupState(backup)
+	if err == nil {
+		t.Fatal("expected query failure error, got nil")
+	}
+	if canSkip {
+		t.Error("expected sync not to skip when query fails")
+	}
+	if updatedCondition != nil {
+		t.Fatalf("expected no status update before annotated grace period, got %#v", updatedCondition)
+	}
+}
+
 func TestSyncLogBackupStateMarksInfoMissingAsTaskNotFound(t *testing.T) {
 	bt := &backupTracker{
 		logBackups: make(map[string]*trackDepends),

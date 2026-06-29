@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,7 +37,7 @@ import (
 
 var (
 	refreshCheckpointTsPeriod             = time.Minute * 1
-	logBackupStateQueryFailureGracePeriod = time.Minute * 10
+	logBackupStateQueryFailureGracePeriod = 168 * time.Hour
 	streamKeyPrefix                       = "/tidb/br-stream"
 	taskInfoPath                          = "/info"
 	taskCheckpointPath                    = "/checkpoint"
@@ -561,6 +562,7 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 
 func (bt *backupTracker) recordLogBackupStateQueryFailure(backup *v1alpha1.Backup, dep *trackDepends, err error) {
 	now := time.Now()
+	gracePeriod := getLogBackupStateQueryFailureGracePeriod(backup)
 
 	dep.mutex.Lock()
 	failureStart := dep.stateQueryFailureStartTime
@@ -570,7 +572,7 @@ func (bt *backupTracker) recordLogBackupStateQueryFailure(backup *v1alpha1.Backu
 		dep.mutex.Unlock()
 		return
 	}
-	if now.Sub(failureStart) < logBackupStateQueryFailureGracePeriod {
+	if now.Sub(failureStart) < gracePeriod {
 		dep.mutex.Unlock()
 		return
 	}
@@ -601,6 +603,27 @@ func (bt *backupTracker) recordLogBackupStateQueryFailure(backup *v1alpha1.Backu
 		dep.mutex.Unlock()
 		return
 	}
+}
+
+func getLogBackupStateQueryFailureGracePeriod(backup *v1alpha1.Backup) time.Duration {
+	if backup == nil || backup.Annotations == nil {
+		return logBackupStateQueryFailureGracePeriod
+	}
+
+	value := strings.TrimSpace(backup.Annotations[v1alpha1.AnnoKeyLogBackupStateQueryFailureGracePeriod])
+	if value == "" {
+		return logBackupStateQueryFailureGracePeriod
+	}
+
+	gracePeriod, err := time.ParseDuration(value)
+	if err != nil || gracePeriod <= 0 {
+		klog.Warningf("invalid annotation %s=%q on log backup %s/%s, using default grace period %s",
+			v1alpha1.AnnoKeyLogBackupStateQueryFailureGracePeriod, value, backup.Namespace, backup.Name,
+			logBackupStateQueryFailureGracePeriod)
+		return logBackupStateQueryFailureGracePeriod
+	}
+
+	return gracePeriod
 }
 
 // StopTrackLogBackupProgress stops tracking a log backup
