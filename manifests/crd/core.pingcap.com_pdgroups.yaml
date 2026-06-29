@@ -223,13 +223,8 @@ spec:
                           Default is pingcap/pd
                         type: string
                       mode:
-                        description: |-
-                          Mode of pd, default is normal
-                          Now it cannot be changed after creation. It may be supported in the future.
+                        description: Mode of pd, default is normal
                         type: string
-                        x-kubernetes-validations:
-                        - message: pd mode is immutable now, it may be supported later
-                          rule: self == oldSelf
                       overlay:
                         description: |-
                           Overlay defines a k8s native resource template patch
@@ -8796,10 +8791,6 @@ spec:
                     - volumes
                     type: object
                     x-kubernetes-validations:
-                    - fieldPath: .mode
-                      message: pd mode can only be set when creating now
-                      rule: (!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode)
-                        && has(self.mode))
                     - message: overlay volumeClaims names must exist in volumes
                       rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
                         || (has(self.volumes) && self.overlay.volumeClaims.all(vc,
@@ -8896,6 +8887,30 @@ spec:
                 description: CurrentRevision is the revision of the Controller that
                   created the resource.
                 type: string
+              mode:
+                description: Mode is the actual PD mode after all desired PD instances
+                  have converged.
+                type: string
+              modeTransition:
+                description: ModeTransition describes an active PD mode switch.
+                properties:
+                  message:
+                    description: Message is a human-readable detail for the current
+                      phase.
+                    type: string
+                  observedGeneration:
+                    description: ObservedGeneration is the PDGroup generation observed
+                      by this transition state.
+                    format: int64
+                    type: integer
+                  phase:
+                    description: Phase is the current phase of the mode switch.
+                    type: string
+                  reason:
+                    description: Reason is a short machine-readable reason for the
+                      current phase.
+                    type: string
+                type: object
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.

@@ -149,6 +149,51 @@ func Unsynced(reason string) *metav1.Condition {
 	}
 }
 
+func ModeSwitching(reason, msg string) *metav1.Condition {
+	return &metav1.Condition{
+		Type:    v1alpha1.CondModeSwitching,
+		Status:  metav1.ConditionTrue,
+		Reason:  reason,
+		Message: msg,
+	}
+}
+
+func ModeSwitchComplete() *metav1.Condition {
+	return &metav1.Condition{
+		Type:    v1alpha1.CondModeSwitching,
+		Status:  metav1.ConditionFalse,
+		Reason:  v1alpha1.ReasonModeSwitchComplete,
+		Message: "PD mode switch is complete",
+	}
+}
+
+func ModeSwitchNotNeeded() *metav1.Condition {
+	return &metav1.Condition{
+		Type:    v1alpha1.CondModeSwitching,
+		Status:  metav1.ConditionFalse,
+		Reason:  v1alpha1.ReasonModeSwitchNotNeeded,
+		Message: "PD mode switch is not needed",
+	}
+}
+
+func PDMSProtected(msg string) *metav1.Condition {
+	return &metav1.Condition{
+		Type:    v1alpha1.CondPDMSProtected,
+		Status:  metav1.ConditionTrue,
+		Reason:  v1alpha1.ReasonBlockedByPDMSMode,
+		Message: msg,
+	}
+}
+
+func PDMSProtectionNotNeeded() *metav1.Condition {
+	return &metav1.Condition{
+		Type:    v1alpha1.CondPDMSProtected,
+		Status:  metav1.ConditionFalse,
+		Reason:  v1alpha1.ReasonPDMSProtectionNotNeeded,
+		Message: "PD microservice mode protection is not needed",
+	}
+}
+
 func SprintCondition(cond *metav1.Condition) string {
 	return fmt.Sprintf("%s: %v, reason: %s, message: %s, last transition time: %v, generation: %d",
 		cond.Type,

@@ -216,31 +216,19 @@ func PDMode() []Case {
 			desc:    "mode is changed to ms",
 			old:     "",
 			current: "ms",
-			wantErrs: []string{
-				`spec.mode: Invalid value: "string": pd mode is immutable now, it may be supported later`,
-			},
 		},
 		{
 			desc:    "mode is set to ms",
 			current: "ms",
-			wantErrs: []string{
-				`spec.mode: Invalid value: "object": pd mode can only be set when creating now`,
-			},
 		},
 		{
 			desc:    "mode is changed to normal",
 			old:     "ms",
 			current: "",
-			wantErrs: []string{
-				`spec.mode: Invalid value: "string": pd mode is immutable now, it may be supported later`,
-			},
 		},
 		{
 			desc: "mode is unset",
 			old:  "ms",
-			wantErrs: []string{
-				`spec.mode: Invalid value: "object": pd mode can only be set when creating now`,
-			},
 		},
 	}
 

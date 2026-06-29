@@ -84,9 +84,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		}
 
 		allocator := af.New(obj.Namespace, obj.Name, instances...)
+		desired, _, err := effectiveReplicas(ctx, c, obj)
+		if err != nil {
+			return task.Fail().With("cannot calculate effective replicas: %w", err)
+		}
+
 		wait, err := updater.New[runtime.TSOTuple]().
 			WithInstances(is...).
-			WithDesired(int(state.Group().Replicas())).
+			WithDesired(int(desired)).
 			WithClient(c).
 			// TODO(liubo02): recheck it
 			WithMaxSurge(0).

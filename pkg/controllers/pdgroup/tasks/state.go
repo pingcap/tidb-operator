@@ -35,7 +35,8 @@ type state struct {
 	currentRevision string
 	collisionCount  int32
 
-	statusChanged bool
+	statusChanged     bool
+	modeSwitchBlocked bool
 
 	stateutil.IFeatureGates
 }
@@ -62,6 +63,9 @@ type State interface {
 	common.StatusPersister[*v1alpha1.PDGroup]
 
 	stateutil.IFeatureGates
+
+	SetModeSwitchBlocked(bool)
+	ModeSwitchBlocked() bool
 }
 
 func NewState(key types.NamespacedName) State {
@@ -122,6 +126,14 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
+}
+
+func (s *state) SetModeSwitchBlocked(blocked bool) {
+	s.modeSwitchBlocked = blocked
+}
+
+func (s *state) ModeSwitchBlocked() bool {
+	return s.modeSwitchBlocked
 }
 
 func (s *state) PDSliceInitializer() common.PDSliceInitializer {

@@ -59,10 +59,41 @@ func Setup(mgr manager.Manager, c client.Client, tsocm tsom.TSOClientManager, af
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TSOGroup{}).
 		Owns(&v1alpha1.TSO{}).
+		Watches(&v1alpha1.PDGroup{}, handler.EnqueueRequestsFromMapFunc(r.EnqueueTSOGroupsForPDGroup())).
 		// Only care about the generation change (i.e. spec update)
 		Watches(&v1alpha1.Cluster{}, r.ClusterEventHandler(), builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
+}
+
+func (r *Reconciler) EnqueueTSOGroupsForPDGroup() handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		pdg, ok := obj.(*v1alpha1.PDGroup)
+		if !ok {
+			return nil
+		}
+
+		var list v1alpha1.TSOGroupList
+		if err := r.Client.List(ctx, &list, client.InNamespace(pdg.Namespace),
+			client.MatchingFields{"spec.cluster.name": pdg.Spec.Cluster.Name}); err != nil {
+			if !errors.IsNotFound(err) {
+				r.Logger.Error(err, "cannot list all tso groups", "ns", pdg.Namespace, "cluster", pdg.Spec.Cluster.Name)
+			}
+			return nil
+		}
+
+		requests := make([]reconcile.Request, 0, len(list.Items))
+		for i := range list.Items {
+			tsog := &list.Items[i]
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      tsog.Name,
+					Namespace: tsog.Namespace,
+				},
+			})
+		}
+		return requests
+	}
 }
 
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {

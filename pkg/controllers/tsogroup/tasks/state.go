@@ -36,6 +36,7 @@ type state struct {
 	collisionCount  int32
 
 	statusChanged bool
+	pdmsProtected bool
 
 	stateutil.IFeatureGates
 }
@@ -58,6 +59,9 @@ type State interface {
 	common.StatusPersister[*v1alpha1.TSOGroup]
 
 	stateutil.IFeatureGates
+
+	SetPDMSProtected(bool)
+	PDMSProtected() bool
 }
 
 func NewState(key types.NamespacedName) State {
@@ -118,6 +122,14 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
+}
+
+func (s *state) SetPDMSProtected(protected bool) {
+	s.pdmsProtected = protected
+}
+
+func (s *state) PDMSProtected() bool {
+	return s.pdmsProtected
 }
 
 func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.TSOGroup] {

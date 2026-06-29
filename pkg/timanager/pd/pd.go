@@ -28,7 +28,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdms"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 )
@@ -147,22 +147,19 @@ func CacheKeysFunc(c client.Client) func(cluster *v1alpha1.Cluster) ([]string, e
 	}
 }
 
-// If there are any PD in ms mode, use ms mode client
+// If PD desired mode, actual mode, transition, or instances involve ms, use ms mode client.
 func getPDMode(c client.Client, cluster *v1alpha1.Cluster) (v1alpha1.PDMode, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
 	mode := v1alpha1.PDModeNormal
 
-	pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, cluster.Namespace, cluster.Name)
+	s, err := pdms.GetState(ctx, c, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return mode, fmt.Errorf("cannot list pd groups: %w", err)
+		return mode, fmt.Errorf("cannot inspect PDMS state: %w", err)
 	}
-
-	for _, pdg := range pdgs {
-		if pdg.Spec.Template.Spec.Mode == v1alpha1.PDModeMS {
-			mode = v1alpha1.PDModeMS
-		}
+	if s.InvolvesMS() {
+		mode = v1alpha1.PDModeMS
 	}
 
 	return mode, nil

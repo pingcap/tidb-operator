@@ -29,7 +29,8 @@ import (
 type ReconcileContext struct {
 	State
 
-	Members []Member
+	Members  []Member
+	PDClient pdm.PDClient
 
 	// mark pdgroup is bootstrapped if cache of pd is synced
 	IsBootstrapped bool
@@ -55,6 +56,7 @@ func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Ta
 		}
 
 		state.IsBootstrapped = true
+		state.PDClient = pc
 
 		ms, err := pc.Members().List(labels.Everything())
 		if err != nil {
