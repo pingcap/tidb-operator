@@ -3,7 +3,7 @@ name: CI Base Images
 on:
   pull_request:
     branches:
-      - release-1.*
+      - release-1.x
     paths:
       - 'build/ci-images/**'
       - '.github/workflows/ci-base-images.yaml'
