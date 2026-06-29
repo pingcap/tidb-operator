@@ -71,7 +71,7 @@ jobs:
           push: ${{ github.event_name == 'workflow_dispatch' && inputs.push }}
           tags: ghcr.io/pingcap/tidb-operator/${{ matrix.image.name }}:${{ steps.meta.outputs.tag }}
 
-      - name: Make package public
+      - name: Try to make package public
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.push }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,4 +79,5 @@ jobs:
           gh api \
             --method PUT \
             "/orgs/${{ github.repository_owner }}/packages/container/${{ matrix.image.package }}/visibility" \
-            -f visibility=public
+            -f visibility=public || \
+          echo "::warning::Could not make GHCR package public automatically. If anonymous pulls fail, make ghcr.io/${{ github.repository_owner }}/tidb-operator/${{ matrix.image.name }} public in the package settings before using it from Prow."
