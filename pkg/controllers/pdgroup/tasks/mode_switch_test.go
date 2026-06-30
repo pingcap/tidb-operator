@@ -88,6 +88,23 @@ func TestTaskModeSwitch(t *testing.T) {
 		assert.False(t, state.IsStatusChanged())
 	})
 
+	t.Run("normal to ms starts switching after TSOGroup is ready", func(t *testing.T) {
+		pdg := fakePDGroupForModeSwitch()
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
+		pd := fakeSyncedPD("pd-0", pdg, v1alpha1.PDModeNormal)
+		tg := fakeReadyTSOGroup("tso", cluster, 1)
+		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
+		fc := client.NewFakeClient(pdg, cluster, pd, tg)
+
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.False(t, state.ModeSwitchBlocked())
+		require.NotNil(t, pdg.Status.ModeTransition)
+		assert.Equal(t, modeTransitionPhaseSwitching, pdg.Status.ModeTransition.Phase)
+		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, pdg.Status.ModeTransition.Reason)
+	})
+
 	t.Run("all instances at target completes mode switch", func(t *testing.T) {
 		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
@@ -135,4 +152,21 @@ func fakeSyncedPD(name string, pdg *v1alpha1.PDGroup, mode v1alpha1.PDMode) *v1a
 		Status: metav1.ConditionTrue,
 	})
 	return pd
+}
+
+func fakeReadyTSOGroup(name string, cluster *v1alpha1.Cluster, replicas int32) *v1alpha1.TSOGroup {
+	return fake.FakeObj(name,
+		fake.SetNamespace[v1alpha1.TSOGroup](cluster.Namespace),
+		func(tg *v1alpha1.TSOGroup) *v1alpha1.TSOGroup {
+			tg.Spec.Cluster.Name = cluster.Name
+			tg.Spec.Replicas = ptr.To(replicas)
+			tg.Status.ObservedGeneration = tg.Generation
+			tg.Status.CurrentRevision = newRevision
+			tg.Status.UpdateRevision = newRevision
+			tg.Status.Replicas = replicas
+			tg.Status.ReadyReplicas = replicas
+			tg.Status.CurrentReplicas = replicas
+			tg.Status.UpdatedReplicas = replicas
+			return tg
+		})
 }

@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -76,7 +75,7 @@ func TaskModeSwitch(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if target == v1alpha1.PDModeMS {
-			if blocked, reason, msg := checkTSODependency(state, info); blocked {
+			if blocked, reason, msg := checkTSODependency(info); blocked {
 				blockModeSwitch(state, reason, msg)
 				return task.Retry(defaultUpdateWaitTime).With(msg)
 			}
@@ -190,10 +189,7 @@ func unsupportedTopology(s *pdms.State) (blocked bool, reason, message string) {
 	return false, "", ""
 }
 
-func checkTSODependency(
-	state *ReconcileContext,
-	s *pdms.State,
-) (blocked bool, reason, message string) {
+func checkTSODependency(s *pdms.State) (blocked bool, reason, message string) {
 	if len(s.TSOGroups) != 1 {
 		return true, v1alpha1.ReasonWaitingForSingleTSOGroup, fmt.Sprintf("waiting for exactly one TSOGroup, got %d", len(s.TSOGroups))
 	}
@@ -203,24 +199,9 @@ func checkTSODependency(
 		return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s to be ready and up-to-date", tg.Name)
 	}
 
-	pc := state.PDClient
-	if pc == nil || pc.TSOMembers() == nil || !pc.HasSynced() {
-		return true, v1alpha1.ReasonWaitingForTSOPrimary, "waiting for PD client TSO member cache to sync"
-	}
-
-	members, err := pc.TSOMembers().List(labels.Everything())
-	if err != nil {
-		return true, v1alpha1.ReasonWaitingForTSOPrimary, fmt.Sprintf("cannot list TSO members: %v", err)
-	}
-	if len(members) == 0 {
-		pc.TSOMembers().Refresh()
-		return true, v1alpha1.ReasonWaitingForTSOPrimary, "waiting for TSO members to register to PD"
-	}
-	for _, member := range members {
-		if member.IsLeader {
-			return false, "", ""
-		}
-	}
-	pc.TSOMembers().Refresh()
-	return true, v1alpha1.ReasonWaitingForTSOPrimary, "waiting for TSO primary"
+	// Do not wait for TSO members or the TSO primary here. They are exposed by
+	// PD's MS APIs, which may be unavailable while PD is still running in normal
+	// mode. Waiting for them before rolling PD to MS would deadlock the mode
+	// switch: PD must enter MS mode before the MS member registry is reliable.
+	return false, "", ""
 }
