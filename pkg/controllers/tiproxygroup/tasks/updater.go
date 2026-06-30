@@ -138,10 +138,16 @@ func needVersionUpgrade(proxyg *v1alpha1.TiProxyGroup) bool {
 }
 
 func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProxy, updateRevision string) (needUpdate, needRestart bool) {
-	if len(proxies) != int(coreutil.Replicas[scope.TiProxyGroup](proxyg)) {
+	desired := int(coreutil.Replicas[scope.TiProxyGroup](proxyg))
+	if len(proxies) != desired {
 		needUpdate = true
 	}
+
+	available := 0
 	for _, proxy := range proxies {
+		if proxy.GetDeletionTimestamp().IsZero() && !coreutil.IsOffline[scope.TiProxy](proxy) {
+			available++
+		}
 		if coreutil.UpdateRevision[scope.TiProxy](proxy) == updateRevision {
 			continue
 		}
@@ -150,6 +156,11 @@ func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProx
 		if !reloadable.CheckTiProxy(proxyg, proxy) {
 			needRestart = true
 		}
+	}
+	// Scale-out may revive draining offline instances instead of creating new ones.
+	// Instance count can already match desired while some replicas are still offline.
+	if available < desired {
+		needUpdate = true
 	}
 
 	return needUpdate, needRestart
