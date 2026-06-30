@@ -1051,43 +1051,51 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				if err != nil {
 					return err
 				}
-				offline := offlineTiProxyNames(tiproxies)
-				if len(offline) != int(initialReplicas-scaledInReplicas) {
-					return fmt.Errorf("got %d offline tiproxy instances, want %d", len(offline), initialReplicas-scaledInReplicas)
-				}
-
 				pods, err := listTiProxyPods(ctx, f, proxyg)
 				if err != nil {
 					return err
 				}
-				if err := sendSIGINTToOfflineTiProxyPods(ctx, f, pods.Items, offline, signaledPods); err != nil {
-					return err
-				}
 
-				for name := range offline {
-					var tp *v1alpha1.TiProxy
-					for i := range tiproxies.Items {
-						if tiproxies.Items[i].Name == name {
-							tp = &tiproxies.Items[i]
-							break
+				scaleInDone := len(pods.Items) == int(scaledInReplicas) && len(tiproxies.Items) == int(scaledInReplicas)
+				if !scaleInDone {
+					// While all pods are still present, verify graceful scale-in has started on the
+					// offline instances and drive shutdown via SIGINT (no health override API).
+					// Later, pods/CRs are removed one by one; transitional counts (e.g. 2 pods + 3 CRs)
+					// should keep polling instead of failing or re-checking offline==2.
+					if len(pods.Items) == int(initialReplicas) {
+						offline := offlineTiProxyNames(tiproxies)
+						if len(offline) != int(initialReplicas-scaledInReplicas) {
+							return fmt.Errorf("got %d offline tiproxy instances, want %d", len(offline), initialReplicas-scaledInReplicas)
 						}
+						if err := sendSIGINTToOfflineTiProxyPods(ctx, f, pods.Items, offline, signaledPods); err != nil {
+							return err
+						}
+
+						for name := range offline {
+							var tp *v1alpha1.TiProxy
+							for i := range tiproxies.Items {
+								if tiproxies.Items[i].Name == name {
+									tp = &tiproxies.Items[i]
+									break
+								}
+							}
+							if tp == nil {
+								return fmt.Errorf("offline tiproxy %s not found", name)
+							}
+							if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
+								return fmt.Errorf("tiproxy %s/%s graceful shutdown has not started yet", tp.Namespace, tp.Name)
+							}
+						}
+
+						return fmt.Errorf("waiting for operator delete-delay to expire and remove %d offline tiproxy pods", initialReplicas-scaledInReplicas)
 					}
-					if tp == nil {
-						return fmt.Errorf("offline tiproxy %s not found", name)
-					}
-					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
-						return fmt.Errorf("tiproxy %s/%s graceful shutdown has not started yet", tp.Namespace, tp.Name)
-					}
+
+					return fmt.Errorf("waiting for scale-in to complete: %d pods, %d tiproxies", len(pods.Items), len(tiproxies.Items))
 				}
 
-				if len(pods.Items) == int(initialReplicas) {
-					return fmt.Errorf("waiting for operator delete-delay to expire and remove %d offline tiproxy pods", initialReplicas-scaledInReplicas)
-				}
-				if len(pods.Items) != int(scaledInReplicas) {
-					return fmt.Errorf("got %d tiproxy pods after scale-in, want %d", len(pods.Items), scaledInReplicas)
-				}
-				if len(tiproxies.Items) != int(scaledInReplicas) {
-					return fmt.Errorf("got %d tiproxy instances after scale-in, want %d", len(tiproxies.Items), scaledInReplicas)
+				offline := offlineTiProxyNames(tiproxies)
+				if len(offline) != 0 {
+					return fmt.Errorf("got %d offline tiproxy instances after scale-in completes, want 0", len(offline))
 				}
 
 				for i := range pods.Items {
