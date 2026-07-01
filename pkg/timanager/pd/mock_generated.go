@@ -67,20 +67,6 @@ func (mr *MockPDClientMockRecorder) HasSynced() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasSynced", reflect.TypeOf((*MockPDClient)(nil).HasSynced))
 }
 
-// MembersSynced mocks base method.
-func (m *MockPDClient) MembersSynced() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MembersSynced")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// MembersSynced indicates an expected call of MembersSynced.
-func (mr *MockPDClientMockRecorder) MembersSynced() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MembersSynced", reflect.TypeOf((*MockPDClient)(nil).MembersSynced))
-}
-
 // Members mocks base method.
 func (m *MockPDClient) Members() MemberCache {
 	m.ctrl.T.Helper()
@@ -93,6 +79,20 @@ func (m *MockPDClient) Members() MemberCache {
 func (mr *MockPDClientMockRecorder) Members() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Members", reflect.TypeOf((*MockPDClient)(nil).Members))
+}
+
+// MembersSynced mocks base method.
+func (m *MockPDClient) MembersSynced() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MembersSynced")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// MembersSynced indicates an expected call of MembersSynced.
+func (mr *MockPDClientMockRecorder) MembersSynced() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MembersSynced", reflect.TypeOf((*MockPDClient)(nil).MembersSynced))
 }
 
 // Stores mocks base method.
