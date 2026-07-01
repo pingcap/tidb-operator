@@ -218,19 +218,6 @@ type PDGroupStatus struct {
 
 	// Mode is the actual PD mode after all desired PD instances have converged.
 	Mode PDMode `json:"mode,omitempty"`
-	// ModeTransition describes an active PD mode switch.
-	ModeTransition *PDModeTransition `json:"modeTransition,omitempty"`
-}
-
-type PDModeTransition struct {
-	// Phase is the current phase of the mode switch.
-	Phase string `json:"phase,omitempty"`
-	// ObservedGeneration is the PDGroup generation observed by this transition state.
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-	// Reason is a short machine-readable reason for the current phase.
-	Reason string `json:"reason,omitempty"`
-	// Message is a human-readable detail for the current phase.
-	Message string `json:"message,omitempty"`
 }
 
 // PDSpec describes the common attributes of a PD instance

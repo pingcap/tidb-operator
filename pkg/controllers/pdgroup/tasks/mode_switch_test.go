@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -46,7 +47,9 @@ func TestTaskModeSwitch(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.False(t, state.ModeSwitchBlocked())
-		assert.Nil(t, pdg.Status.ModeTransition)
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionFalse, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonModeSwitchNotNeeded, cond.Reason)
 	})
 
 	t.Run("normal to ms waits for single TSOGroup", func(t *testing.T) {
@@ -60,19 +63,14 @@ func TestTaskModeSwitch(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SRetry.String(), res.Status().String())
 		assert.True(t, state.ModeSwitchBlocked())
-		require.NotNil(t, pdg.Status.ModeTransition)
-		assert.Equal(t, v1alpha1.ReasonWaitingForSingleTSOGroup, pdg.Status.ModeTransition.Reason)
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonWaitingForSingleTSOGroup, cond.Reason)
 	})
 
 	t.Run("same blocked state does not mark status changed again", func(t *testing.T) {
 		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
-		pdg.Status.ModeTransition = &v1alpha1.PDModeTransition{
-			Phase:              modeTransitionPhasePreparing,
-			ObservedGeneration: pdg.Generation,
-			Reason:             v1alpha1.ReasonWaitingForSingleTSOGroup,
-			Message:            "waiting for exactly one TSOGroup, got 0",
-		}
 		pdg.Status.Conditions = append(pdg.Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.CondModeSwitching,
 			Status:             metav1.ConditionTrue,
@@ -103,9 +101,9 @@ func TestTaskModeSwitch(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.False(t, state.ModeSwitchBlocked())
-		require.NotNil(t, pdg.Status.ModeTransition)
-		assert.Equal(t, modeTransitionPhaseSwitching, pdg.Status.ModeTransition.Phase)
-		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, pdg.Status.ModeTransition.Reason)
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, cond.Reason)
 	})
 
 	t.Run("normal to ms waits for TSO health API", func(t *testing.T) {
@@ -120,10 +118,10 @@ func TestTaskModeSwitch(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, failingTSOClientGetter(errors.New("connection refused"))))
 		assert.Equal(t, task.SRetry.String(), res.Status().String())
 		assert.True(t, state.ModeSwitchBlocked())
-		require.NotNil(t, pdg.Status.ModeTransition)
-		assert.Equal(t, modeTransitionPhasePreparing, pdg.Status.ModeTransition.Phase)
-		assert.Equal(t, v1alpha1.ReasonWaitingForTSOGroupReady, pdg.Status.ModeTransition.Reason)
-		assert.Contains(t, pdg.Status.ModeTransition.Message, "health API")
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonWaitingForTSOGroupReady, cond.Reason)
+		assert.Contains(t, cond.Message, "health API")
 	})
 
 	t.Run("normal to ms waits for TSO health check client", func(t *testing.T) {
@@ -138,10 +136,52 @@ func TestTaskModeSwitch(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, missingTSOClientGetter()))
 		assert.Equal(t, task.SRetry.String(), res.Status().String())
 		assert.True(t, state.ModeSwitchBlocked())
-		require.NotNil(t, pdg.Status.ModeTransition)
-		assert.Equal(t, modeTransitionPhasePreparing, pdg.Status.ModeTransition.Phase)
-		assert.Equal(t, v1alpha1.ReasonWaitingForTSOGroupReady, pdg.Status.ModeTransition.Reason)
-		assert.Contains(t, pdg.Status.ModeTransition.Message, "health check client")
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonWaitingForTSOGroupReady, cond.Reason)
+		assert.Contains(t, cond.Message, "health check client")
+	})
+
+	t.Run("target changed back to normal while instance is still ms", func(t *testing.T) {
+		pdg := fakePDGroupForModeSwitch()
+		pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeNormal
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeMS)
+		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
+		fc := client.NewFakeClient(pdg, cluster, pd)
+
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.False(t, state.ModeSwitchBlocked())
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, cond.Reason)
+	})
+
+	t.Run("switching condition keeps target reversal active until instance is up to date", func(t *testing.T) {
+		pdg := fakePDGroupForModeSwitch()
+		pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeNormal
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		pdg.Status.Conditions = append(pdg.Status.Conditions, metav1.Condition{
+			Type:               v1alpha1.CondModeSwitching,
+			Status:             metav1.ConditionTrue,
+			Reason:             v1alpha1.ReasonSwitchingPDInstances,
+			Message:            "switching PD instances to mode \"\"",
+			ObservedGeneration: pdg.Generation,
+		})
+		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
+		pd.Status.CurrentRevision = oldRevision
+		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
+		fc := client.NewFakeClient(pdg, cluster, pd)
+
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.False(t, state.ModeSwitchBlocked())
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, cond.Reason)
 	})
 
 	t.Run("all instances at target completes mode switch", func(t *testing.T) {
@@ -156,8 +196,17 @@ func TestTaskModeSwitch(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskModeSwitch(rctx, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.Equal(t, v1alpha1.PDModeMS, pdg.Status.Mode)
-		assert.Nil(t, pdg.Status.ModeTransition)
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionFalse, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonModeSwitchComplete, cond.Reason)
 	})
+}
+
+func modeSwitchingCondition(t *testing.T, pdg *v1alpha1.PDGroup) *metav1.Condition {
+	t.Helper()
+	cond := apimeta.FindStatusCondition(pdg.Status.Conditions, v1alpha1.CondModeSwitching)
+	require.NotNil(t, cond)
+	return cond
 }
 
 func newModeSwitchState(pdg *v1alpha1.PDGroup, cluster *v1alpha1.Cluster, pds []*v1alpha1.PD) *ReconcileContext {

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -28,11 +29,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
-)
-
-const (
-	modeTransitionPhasePreparing = "Preparing"
-	modeTransitionPhaseSwitching = "Switching"
 )
 
 type ModeSwitchState interface {
@@ -88,8 +84,7 @@ func TaskModeSwitch(state *ReconcileContext, c client.Client, tsocm tsoClientGet
 		}
 
 		msg := fmt.Sprintf("switching PD instances to mode %q", target)
-		changed := setModeTransition(pdg, modeTransitionPhaseSwitching, v1alpha1.ReasonSwitchingPDInstances, msg)
-		changed = coreutil.SetStatusCondition[scope.PDGroup](pdg, *coreutil.ModeSwitching(v1alpha1.ReasonSwitchingPDInstances, msg)) || changed
+		changed := coreutil.SetStatusCondition[scope.PDGroup](pdg, *coreutil.ModeSwitching(v1alpha1.ReasonSwitchingPDInstances, msg))
 		if changed {
 			state.SetStatusChanged()
 		}
@@ -102,10 +97,13 @@ func CondModeSwitchBlocked(state ModeSwitchState) task.Condition {
 }
 
 func modeSwitchActive(pdg *v1alpha1.PDGroup, pds []*v1alpha1.PD, target v1alpha1.PDMode) bool {
-	if len(pds) == 0 && pdg.Status.Mode == v1alpha1.PDModeNormal && !pdms.ModeTransitionActive(pdg) {
+	if modeSwitchingConditionActive(pdg) {
+		return true
+	}
+	if len(pds) == 0 && pdg.Status.Mode == v1alpha1.PDModeNormal {
 		return false
 	}
-	if pdg.Status.Mode != target || pdms.ModeTransitionActive(pdg) {
+	if pdg.Status.Mode != target {
 		return true
 	}
 	for _, pd := range pds {
@@ -114,6 +112,11 @@ func modeSwitchActive(pdg *v1alpha1.PDGroup, pds []*v1alpha1.PD, target v1alpha1
 		}
 	}
 	return false
+}
+
+func modeSwitchingConditionActive(pdg *v1alpha1.PDGroup) bool {
+	cond := meta.FindStatusCondition(pdg.Status.Conditions, v1alpha1.CondModeSwitching)
+	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
 func pdInstancesAtTarget(pds []*v1alpha1.PD, target v1alpha1.PDMode, updateRevision string, replicas int32) bool {
@@ -143,39 +146,16 @@ func setModeSwitchComplete(pdg *v1alpha1.PDGroup, mode v1alpha1.PDMode) bool {
 		pdg.Status.Mode = mode
 		changed = true
 	}
-	if pdg.Status.ModeTransition != nil {
-		pdg.Status.ModeTransition = nil
-		changed = true
-	}
 	return coreutil.SetStatusCondition[scope.PDGroup](pdg, *coreutil.ModeSwitchComplete()) || changed
 }
 
 func blockModeSwitch(state *ReconcileContext, reason, msg string) {
 	pdg := state.PDGroup()
 	state.SetModeSwitchBlocked(true)
-	changed := setModeTransition(pdg, modeTransitionPhasePreparing, reason, msg)
-	changed = coreutil.SetStatusCondition[scope.PDGroup](pdg, *coreutil.ModeSwitching(reason, msg)) || changed
+	changed := coreutil.SetStatusCondition[scope.PDGroup](pdg, *coreutil.ModeSwitching(reason, msg))
 	if changed {
 		state.SetStatusChanged()
 	}
-}
-
-func setModeTransition(pdg *v1alpha1.PDGroup, phase, reason, msg string) bool {
-	next := &v1alpha1.PDModeTransition{
-		Phase:              phase,
-		ObservedGeneration: pdg.Generation,
-		Reason:             reason,
-		Message:            msg,
-	}
-	if pdg.Status.ModeTransition != nil &&
-		pdg.Status.ModeTransition.Phase == next.Phase &&
-		pdg.Status.ModeTransition.ObservedGeneration == next.ObservedGeneration &&
-		pdg.Status.ModeTransition.Reason == next.Reason &&
-		pdg.Status.ModeTransition.Message == next.Message {
-		return false
-	}
-	pdg.Status.ModeTransition = next
-	return true
 }
 
 func unsupportedTopology(s *pdms.State) (blocked bool, reason, message string) {

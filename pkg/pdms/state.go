@@ -17,6 +17,8 @@ package pdms
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -80,11 +82,12 @@ func (s *State) InvolvesMS() bool {
 func PDGroupInvolvesMS(pdg *v1alpha1.PDGroup) bool {
 	return pdg.Spec.Template.Spec.Mode == v1alpha1.PDModeMS ||
 		pdg.Status.Mode == v1alpha1.PDModeMS ||
-		ModeTransitionActive(pdg)
+		modeSwitchingConditionActive(pdg)
 }
 
-func ModeTransitionActive(pdg *v1alpha1.PDGroup) bool {
-	return pdg.Status.ModeTransition != nil && pdg.Status.ModeTransition.Phase != ""
+func modeSwitchingConditionActive(pdg *v1alpha1.PDGroup) bool {
+	cond := meta.FindStatusCondition(pdg.Status.Conditions, v1alpha1.CondModeSwitching)
+	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
 func TSOGroupProtected(ctx context.Context, c client.Client, tg *v1alpha1.TSOGroup) (bool, error) {

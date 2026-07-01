@@ -8891,26 +8891,6 @@ spec:
                 description: Mode is the actual PD mode after all desired PD instances
                   have converged.
                 type: string
-              modeTransition:
-                description: ModeTransition describes an active PD mode switch.
-                properties:
-                  message:
-                    description: Message is a human-readable detail for the current
-                      phase.
-                    type: string
-                  observedGeneration:
-                    description: ObservedGeneration is the PDGroup generation observed
-                      by this transition state.
-                    format: int64
-                    type: integer
-                  phase:
-                    description: Phase is the current phase of the mode switch.
-                    type: string
-                  reason:
-                    description: Reason is a short machine-readable reason for the
-                      current phase.
-                    type: string
-                type: object
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.

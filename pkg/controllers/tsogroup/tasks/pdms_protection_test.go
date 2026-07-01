@@ -123,6 +123,42 @@ func TestPDMSProtection(t *testing.T) {
 		assert.Equal(t, metav1.ConditionTrue, tg.Status.Conditions[0].Status)
 	})
 
+	t.Run("child PD in ms keeps protection even when PDGroup is normal", func(t *testing.T) {
+		tg := fakeTSOGroupForPDMSProtection("tso", 0)
+		pdg := fakePDGroupForPDMSProtection()
+		pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeNormal
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		pd := fakePDInstanceForPDMSProtection("pd-0", v1alpha1.PDModeMS)
+		fc := client.NewFakeClient(tg, pdg, pd)
+
+		desired, protected, err := effectiveReplicas(ctx, fc, tg)
+		require.NoError(t, err)
+		assert.True(t, protected)
+		assert.Equal(t, int32(1), desired)
+	})
+
+	t.Run("mode switching condition keeps protection regardless of generation", func(t *testing.T) {
+		tg := fakeTSOGroupForPDMSProtection("tso", 0)
+		pdg := fakePDGroupForPDMSProtection()
+		pdg.Generation = 2
+		pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeNormal
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		pdg.Status.Conditions = []metav1.Condition{
+			{
+				Type:               v1alpha1.CondModeSwitching,
+				Status:             metav1.ConditionTrue,
+				Reason:             v1alpha1.ReasonSwitchingPDInstances,
+				ObservedGeneration: 1,
+			},
+		}
+		fc := client.NewFakeClient(tg, pdg)
+
+		desired, protected, err := effectiveReplicas(ctx, fc, tg)
+		require.NoError(t, err)
+		assert.True(t, protected)
+		assert.Equal(t, int32(1), desired)
+	})
+
 	t.Run("protected deletion asks runner to retry", func(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskPDMSProtectedRetry())
 		assert.Equal(t, task.SRetry.String(), res.Status().String())
@@ -137,6 +173,21 @@ func fakeTSOGroupForPDMSProtection(name string, replicas int32) *v1alpha1.TSOGro
 			tg.Spec.Cluster.Name = "cluster"
 			tg.Spec.Replicas = ptr.To(replicas)
 			return tg
+		})
+}
+
+func fakePDInstanceForPDMSProtection(name string, mode v1alpha1.PDMode) *v1alpha1.PD {
+	return fake.FakeObj(name,
+		fake.SetNamespace[v1alpha1.PD]("ns"),
+		func(pd *v1alpha1.PD) *v1alpha1.PD {
+			pd.Labels = map[string]string{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyCluster:   "cluster",
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+			}
+			pd.Spec.Cluster.Name = "cluster"
+			pd.Spec.Mode = mode
+			return pd
 		})
 }
 
