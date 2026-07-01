@@ -397,6 +397,37 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 	return act.actions
 }
 
+// shouldGracefulOfflineScaleInBeforeDelete reports whether deleteInstance should mark a
+// TiProxy offline instead of deleting its CR immediately.
+//
+// Offline scale-in keeps the TiProxy CR and Pod running while connections drain. The instance
+// is tracked in beingOffline so a later ScaleOut can revive it (cancel offline, clear graceful
+// drain state, reuse the same Pod) instead of creating a new one. That revive path is only
+// intended for scale-in: rolling restart should delete the CR and drain via the finalizer
+// (TaskDrainPodForDelete), without entering spec.offline or beingOffline.
+//
+// An instance is eligible to be marked offline here only when it may later be revived:
+//   - graceful scale-in delay is configured on the instance;
+//   - it is already on the group's target revision (not an outdated rolling-replace victim);
+//   - it is not a defer-delete cleanup target from an in-progress rolling update;
+//   - no outdated instances remain, so we are not in the middle of rolling replace.
+//
+// Whether ScaleOut actually revives a beingOffline instance is decided separately by
+// chooseBeingOfflineToRevive and RevivableForGracefulScaleOutFromSources (for example,
+// connections-drained or near the end of the delete delay makes it non-revivable).
+func (act *actor[T, O, R]) shouldGracefulOfflineScaleInBeforeDelete(obj R) bool {
+	if !needsGracefulOfflineScaleIn(obj) || obj.IsOffline() {
+		return false
+	}
+	if obj.GetUpdateRevision() != act.rev {
+		return false
+	}
+	if _, ok := obj.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
+		return false
+	}
+	return act.outdated.Len() == 0
+}
+
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 	if obj.IsStore() &&
 		!obj.IsOffline() &&
@@ -408,7 +439,7 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 		return nil
 	}
 
-	if needsGracefulOfflineScaleIn(obj) && !obj.IsOffline() {
+	if act.shouldGracefulOfflineScaleInBeforeDelete(obj) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}

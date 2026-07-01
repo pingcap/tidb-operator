@@ -230,13 +230,36 @@ func controllerTiProxyOwnerName(pod *corev1.Pod) (string, bool) {
 	return "", false
 }
 
+func tiproxyByName(tiproxies *v1alpha1.TiProxyList) map[string]*v1alpha1.TiProxy {
+	byName := make(map[string]*v1alpha1.TiProxy, len(tiproxies.Items))
+	for i := range tiproxies.Items {
+		byName[tiproxies.Items[i].Name] = &tiproxies.Items[i]
+	}
+	return byName
+}
+
+func gracefulShutdownBeginTime(pod *corev1.Pod, tiproxy *v1alpha1.TiProxy) string {
+	if pod != nil {
+		if raw := pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]; raw != "" {
+			return raw
+		}
+	}
+	if tiproxy != nil {
+		return tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]
+	}
+	return ""
+}
+
+// manuallyTriggerTiProxyUnhealthy sends SIGTERM to TiProxy in pods owned by the given
+// instances. Legacy TiProxy versions without health override PUT/DELETE rely on in-process
+// graceful shutdown during rolling restart or scale-in drain.
 func manuallyTriggerTiProxyUnhealthy(
 	ctx context.Context,
 	f *framework.Framework,
 	enabled bool,
 	pods []corev1.Pod,
 	initialPodUIDs map[string]string,
-	deletingTiProxies map[string]struct{},
+	targetTiProxyNames map[string]struct{},
 	terminated map[string]struct{},
 ) error {
 	if !enabled {
@@ -255,7 +278,7 @@ func manuallyTriggerTiProxyUnhealthy(
 		if !ok {
 			continue
 		}
-		if _, ok := deletingTiProxies[ownerName]; !ok {
+		if _, ok := targetTiProxyNames[ownerName]; !ok {
 			continue
 		}
 
@@ -264,38 +287,6 @@ func manuallyTriggerTiProxyUnhealthy(
 			return fmt.Errorf("cannot exec kill TiProxy pod %s/%s: %w, stdout: %s, stderr: %s", pod.Namespace, pod.Name, err, stdout, stderr)
 		}
 		terminated[pod.Name] = struct{}{}
-	}
-
-	return nil
-}
-
-// sendSIGINTToOfflineTiProxyPods sends SIGINT to TiProxy in pods owned by offline instances.
-// Legacy TiProxy versions without health override PUT/DELETE rely on in-process graceful shutdown.
-func sendSIGINTToOfflineTiProxyPods(
-	ctx context.Context,
-	f *framework.Framework,
-	pods []corev1.Pod,
-	offlineTiProxies map[string]struct{},
-	signaled map[string]struct{},
-) error {
-	for i := range pods {
-		pod := &pods[i]
-		if _, ok := signaled[pod.Name]; ok {
-			continue
-		}
-		ownerName, ok := controllerTiProxyOwnerName(pod)
-		if !ok {
-			continue
-		}
-		if _, ok := offlineTiProxies[ownerName]; !ok {
-			continue
-		}
-
-		stdout, stderr, err := f.ExecPod(ctx, pod, v1alpha1.ContainerNameTiProxy, "/bin/sh", "-c", "kill -INT 1")
-		if err != nil {
-			return fmt.Errorf("cannot send SIGINT to TiProxy pod %s/%s: %w, stdout: %s, stderr: %s", pod.Namespace, pod.Name, err, stdout, stderr)
-		}
-		signaled[pod.Name] = struct{}{}
 	}
 
 	return nil
@@ -588,6 +579,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			ginkgo.By("Patch TiProxyGroup to trigger a rolling restart")
 			patch = client.MergeFrom(proxyg.DeepCopy())
 			proxyg.Spec.Template.Spec.Config = changedConfig
+			proxyg.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
 			f.Must(f.Client.Patch(ctx, proxyg, patch))
 
 			var violated error
@@ -620,14 +612,19 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					return err
 				}
 
+				tiproxiesByName := tiproxyByName(tiproxies)
+
 				oldPodDraining := false
 				for i := range pods.Items {
 					pod := &pods.Items[i]
 					if _, ok := initialPodUIDs[pod.Name]; !ok {
 						continue
 					}
-					rawStartTime := pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]
-					if rawStartTime == "" {
+					var tiproxy *v1alpha1.TiProxy
+					if ownerName, ok := controllerTiProxyOwnerName(pod); ok {
+						tiproxy = tiproxiesByName[ownerName]
+					}
+					if gracefulShutdownBeginTime(pod, tiproxy) == "" {
 						continue
 					}
 					oldPodDraining = true
@@ -1059,7 +1056,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				scaleInDone := len(pods.Items) == int(scaledInReplicas) && len(tiproxies.Items) == int(scaledInReplicas)
 				if !scaleInDone {
 					// While all pods are still present, verify graceful scale-in has started on the
-					// offline instances and drive shutdown via SIGINT (no health override API).
+					// offline instances and drive shutdown via SIGTERM (no health override API).
 					// Later, pods/CRs are removed one by one; transitional counts (e.g. 2 pods + 3 CRs)
 					// should keep polling instead of failing or re-checking offline==2.
 					if len(pods.Items) == int(initialReplicas) {
@@ -1067,7 +1064,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 						if len(offline) != int(initialReplicas-scaledInReplicas) {
 							return fmt.Errorf("got %d offline tiproxy instances, want %d", len(offline), initialReplicas-scaledInReplicas)
 						}
-						if err := sendSIGINTToOfflineTiProxyPods(ctx, f, pods.Items, offline, signaledPods); err != nil {
+						if err := manuallyTriggerTiProxyUnhealthy(ctx, f, true, pods.Items, initialPodUIDs, offline, signaledPods); err != nil {
 							return err
 						}
 
