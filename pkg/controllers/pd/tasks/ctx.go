@@ -53,7 +53,9 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 
 		state.PDClient = pc
 
-		if !pc.HasSynced() {
+		// PD status only needs the member cache here. Store and TSO member
+		// caches can still be unavailable during topology or mode transitions.
+		if !pc.MembersSynced() {
 			return task.Complete().With("context without member info is completed, cache of pd info is not synced")
 		}
 
@@ -98,8 +100,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 
 func CondPDClientIsNotRegisterred(state *ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
-		// TODO: do not use HasSynced twice, it may return different results
-		return state.PDClient == nil || !state.PDClient.HasSynced()
+		// TODO: do not use MembersSynced twice, it may return different results
+		return state.PDClient == nil || !state.PDClient.MembersSynced()
 	})
 }
 

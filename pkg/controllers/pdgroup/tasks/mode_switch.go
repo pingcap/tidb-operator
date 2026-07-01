@@ -25,6 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdms"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -39,7 +41,11 @@ type ModeSwitchState interface {
 	ModeSwitchBlocked() bool
 }
 
-func TaskModeSwitch(state *ReconcileContext, c client.Client) task.Task {
+type tsoClientGetter interface {
+	Get(key string) (tsom.TSOClient, bool)
+}
+
+func TaskModeSwitch(state *ReconcileContext, c client.Client, tsocm tsoClientGetter) task.Task {
 	return task.NameTaskFunc("ModeSwitch", func(ctx context.Context) task.Result {
 		state.SetModeSwitchBlocked(false)
 
@@ -75,7 +81,7 @@ func TaskModeSwitch(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if target == v1alpha1.PDModeMS {
-			if blocked, reason, msg := checkTSODependency(info); blocked {
+			if blocked, reason, msg := checkTSODependency(ctx, info, tsocm); blocked {
 				blockModeSwitch(state, reason, msg)
 				return task.Retry(defaultUpdateWaitTime).With(msg)
 			}
@@ -189,7 +195,7 @@ func unsupportedTopology(s *pdms.State) (blocked bool, reason, message string) {
 	return false, "", ""
 }
 
-func checkTSODependency(s *pdms.State) (blocked bool, reason, message string) {
+func checkTSODependency(ctx context.Context, s *pdms.State, tsocm tsoClientGetter) (blocked bool, reason, message string) {
 	if len(s.TSOGroups) != 1 {
 		return true, v1alpha1.ReasonWaitingForSingleTSOGroup, fmt.Sprintf("waiting for exactly one TSOGroup, got %d", len(s.TSOGroups))
 	}
@@ -198,6 +204,22 @@ func checkTSODependency(s *pdms.State) (blocked bool, reason, message string) {
 	if tg.Spec.Replicas == nil || *tg.Spec.Replicas == 0 || !coreutil.IsGroupHealthyAndUpToDate[scope.TSOGroup](tg) {
 		return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s to be ready and up-to-date", tg.Name)
 	}
+
+	tsoc, ok := tsocm.Get(timanager.PrimaryKey(tg.Namespace, tg.Spec.Cluster.Name))
+	if !ok {
+		return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s health check client", tg.Name)
+	}
+	healthy, err := tsoc.Underlay().IsHealthy(ctx)
+	if err != nil {
+		return true, v1alpha1.ReasonWaitingForTSOGroupReady,
+			fmt.Sprintf("waiting for TSOGroup %s health API to be ready: %v", tg.Name, err)
+	}
+	if !healthy {
+		return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s health API to be ready", tg.Name)
+	}
+
+	// The TSO health API is served by TSO itself and is safe to use before PD
+	// rolls to MS. It only proves that the TSO service is accepting requests.
 
 	// Do not wait for TSO members or the TSO primary here. They are exposed by
 	// PD's MS APIs, which may be unavailable while PD is still running in normal

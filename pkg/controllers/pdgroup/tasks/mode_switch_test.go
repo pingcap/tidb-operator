@@ -16,6 +16,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +28,8 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	stateutil "github.com/pingcap/tidb-operator/v2/pkg/state"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
+	"github.com/pingcap/tidb-operator/v2/pkg/tsoapi"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -40,7 +43,7 @@ func TestTaskModeSwitch(t *testing.T) {
 		state := newModeSwitchState(pdg, cluster, nil)
 		fc := client.NewFakeClient(pdg, cluster)
 
-		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc))
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.False(t, state.ModeSwitchBlocked())
 		assert.Nil(t, pdg.Status.ModeTransition)
@@ -50,11 +53,11 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
-		pd := fakeSyncedPD("pd-0", pdg, v1alpha1.PDModeNormal)
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
 		fc := client.NewFakeClient(pdg, cluster, pd)
 
-		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc))
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SRetry.String(), res.Status().String())
 		assert.True(t, state.ModeSwitchBlocked())
 		require.NotNil(t, pdg.Status.ModeTransition)
@@ -78,11 +81,11 @@ func TestTaskModeSwitch(t *testing.T) {
 			ObservedGeneration: pdg.Generation,
 		})
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
-		pd := fakeSyncedPD("pd-0", pdg, v1alpha1.PDModeNormal)
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
 		fc := client.NewFakeClient(pdg, cluster, pd)
 
-		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc))
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SRetry.String(), res.Status().String())
 		assert.True(t, state.ModeSwitchBlocked())
 		assert.False(t, state.IsStatusChanged())
@@ -92,12 +95,12 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
-		pd := fakeSyncedPD("pd-0", pdg, v1alpha1.PDModeNormal)
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
 		tg := fakeReadyTSOGroup("tso", cluster, 1)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
 		fc := client.NewFakeClient(pdg, cluster, pd, tg)
 
-		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc))
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.False(t, state.ModeSwitchBlocked())
 		require.NotNil(t, pdg.Status.ModeTransition)
@@ -105,16 +108,52 @@ func TestTaskModeSwitch(t *testing.T) {
 		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, pdg.Status.ModeTransition.Reason)
 	})
 
+	t.Run("normal to ms waits for TSO health API", func(t *testing.T) {
+		pdg := fakePDGroupForModeSwitch()
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
+		tg := fakeReadyTSOGroup("tso", cluster, 1)
+		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
+		fc := client.NewFakeClient(pdg, cluster, pd, tg)
+
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, failingTSOClientGetter(errors.New("connection refused"))))
+		assert.Equal(t, task.SRetry.String(), res.Status().String())
+		assert.True(t, state.ModeSwitchBlocked())
+		require.NotNil(t, pdg.Status.ModeTransition)
+		assert.Equal(t, modeTransitionPhasePreparing, pdg.Status.ModeTransition.Phase)
+		assert.Equal(t, v1alpha1.ReasonWaitingForTSOGroupReady, pdg.Status.ModeTransition.Reason)
+		assert.Contains(t, pdg.Status.ModeTransition.Message, "health API")
+	})
+
+	t.Run("normal to ms waits for TSO health check client", func(t *testing.T) {
+		pdg := fakePDGroupForModeSwitch()
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
+		tg := fakeReadyTSOGroup("tso", cluster, 1)
+		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
+		fc := client.NewFakeClient(pdg, cluster, pd, tg)
+
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, fc, missingTSOClientGetter()))
+		assert.Equal(t, task.SRetry.String(), res.Status().String())
+		assert.True(t, state.ModeSwitchBlocked())
+		require.NotNil(t, pdg.Status.ModeTransition)
+		assert.Equal(t, modeTransitionPhasePreparing, pdg.Status.ModeTransition.Phase)
+		assert.Equal(t, v1alpha1.ReasonWaitingForTSOGroupReady, pdg.Status.ModeTransition.Reason)
+		assert.Contains(t, pdg.Status.ModeTransition.Message, "health check client")
+	})
+
 	t.Run("all instances at target completes mode switch", func(t *testing.T) {
 		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
-		pd := fakeSyncedPD("pd-0", pdg, v1alpha1.PDModeMS)
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeMS)
 		rctx := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd})
 		rctx.State.(*state).updateRevision = newRevision
 		fc := client.NewFakeClient(pdg, cluster, pd)
 
-		res, _ := task.RunTask(ctx, TaskModeSwitch(rctx, fc))
+		res, _ := task.RunTask(ctx, TaskModeSwitch(rctx, fc, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.Equal(t, v1alpha1.PDModeMS, pdg.Status.Mode)
 		assert.Nil(t, pdg.Status.ModeTransition)
@@ -144,8 +183,8 @@ func fakePDGroupForModeSwitch() *v1alpha1.PDGroup {
 		})
 }
 
-func fakeSyncedPD(name string, pdg *v1alpha1.PDGroup, mode v1alpha1.PDMode) *v1alpha1.PD {
-	pd := fakeAvailablePD(name, pdg, newRevision)
+func fakeSyncedPD(pdg *v1alpha1.PDGroup, mode v1alpha1.PDMode) *v1alpha1.PD {
+	pd := fakeAvailablePD("pd-0", pdg, newRevision)
 	pd.Spec.Mode = mode
 	pd.Status.Conditions = append(pd.Status.Conditions, metav1.Condition{
 		Type:   v1alpha1.CondSynced,
@@ -169,4 +208,52 @@ func fakeReadyTSOGroup(name string, cluster *v1alpha1.Cluster, replicas int32) *
 			tg.Status.UpdatedReplicas = replicas
 			return tg
 		})
+}
+
+type fakeTSOClientGetter struct {
+	client tsom.TSOClient
+	ok     bool
+}
+
+func (f fakeTSOClientGetter) Get(string) (tsom.TSOClient, bool) {
+	return f.client, f.ok
+}
+
+type fakeTSOClient struct {
+	underlay tsoapi.TSOClient
+}
+
+func (f fakeTSOClient) Underlay() tsoapi.TSOClient {
+	return f.underlay
+}
+
+type fakeTSOUnderlay struct {
+	healthy bool
+	err     error
+}
+
+func (f fakeTSOUnderlay) IsHealthy(context.Context) (bool, error) {
+	return f.healthy, f.err
+}
+
+func (f fakeTSOUnderlay) TransferTSOLeader(context.Context, string) error {
+	return nil
+}
+
+func healthyTSOClientGetter() fakeTSOClientGetter {
+	return fakeTSOClientGetter{
+		client: fakeTSOClient{underlay: fakeTSOUnderlay{healthy: true}},
+		ok:     true,
+	}
+}
+
+func failingTSOClientGetter(err error) fakeTSOClientGetter {
+	return fakeTSOClientGetter{
+		client: fakeTSOClient{underlay: fakeTSOUnderlay{err: err}},
+		ok:     true,
+	}
+}
+
+func missingTSOClientGetter() fakeTSOClientGetter {
+	return fakeTSOClientGetter{}
 }

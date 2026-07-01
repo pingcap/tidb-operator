@@ -32,7 +32,7 @@ type ReconcileContext struct {
 	Members  []Member
 	PDClient pdm.PDClient
 
-	// mark pdgroup is bootstrapped if cache of pd is synced
+	// mark pdgroup is bootstrapped if the PD member cache is synced
 	IsBootstrapped bool
 }
 
@@ -51,7 +51,9 @@ func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Ta
 			return task.Complete().With("context without pd client is completed, pd cannot be visited")
 		}
 
-		if !pc.HasSynced() {
+		// PDGroup only needs the member list. Do not wait for Store or TSO
+		// member caches, which are unrelated to bootstrapping and scale/update.
+		if !pc.MembersSynced() {
 			return task.Complete().With("context without pd client is completed, cache of pd info is not synced")
 		}
 

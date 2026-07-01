@@ -37,24 +37,33 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pdgroup/tasks"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
 )
 
 type Reconciler struct {
-	Logger          logr.Logger
-	Client          client.Client
-	PDClientManager pdm.PDClientManager
-	AllocateFactory tracker.AllocateFactory
+	Logger           logr.Logger
+	Client           client.Client
+	PDClientManager  pdm.PDClientManager
+	TSOClientManager tsom.TSOClientManager
+	AllocateFactory  tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, af tracker.AllocateFactory) error {
+func Setup(
+	mgr manager.Manager,
+	c client.Client,
+	pdcm pdm.PDClientManager,
+	tsocm tsom.TSOClientManager,
+	af tracker.AllocateFactory,
+) error {
 	r := &Reconciler{
-		Logger:          mgr.GetLogger().WithName("PDGroup"),
-		Client:          c,
-		PDClientManager: pdcm,
-		AllocateFactory: af,
+		Logger:           mgr.GetLogger().WithName("PDGroup"),
+		Client:           c,
+		PDClientManager:  pdcm,
+		TSOClientManager: tsocm,
+		AllocateFactory:  af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.PDGroup{}).

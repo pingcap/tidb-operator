@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
@@ -33,8 +34,8 @@ type Primary struct {
 
 // TSOClient provides tso api
 type TSOClient interface {
-	// GetHealth returns ping result
-	// GetHealth() error
+	// IsHealthy returns whether the TSO health endpoint is ready.
+	IsHealthy(ctx context.Context) (bool, error)
 
 	// NOTE: this only transfer the leader of the default keyspace group
 	TransferTSOLeader(ctx context.Context, transferee string) error
@@ -42,6 +43,8 @@ type TSOClient interface {
 
 const (
 	apiPrefix = "/tso/api/v1"
+	// check tso health
+	tsoHealthPrefix = apiPrefix + "/health"
 	// transfer tso leaders
 	tsoLeaderTransferPrefix = apiPrefix + "/primary/transfer"
 )
@@ -62,6 +65,19 @@ func NewTSOClient(url string, timeout time.Duration, tlsConfig *tls.Config) TSOC
 		},
 		tlsConfig: tlsConfig,
 	}
+}
+
+func (c *client) IsHealthy(ctx context.Context) (bool, error) {
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, c.url+tsoHealthPrefix)
+	if err != nil {
+		return false, err
+	}
+
+	resp := strings.TrimSpace(string(body))
+	if resp != "ok" && resp != `"ok"` {
+		return false, fmt.Errorf("unexpected tso health response %q", resp)
+	}
+	return true, nil
 }
 
 func (c *client) TransferTSOLeader(ctx context.Context, name string) error {

@@ -40,7 +40,14 @@ const (
 type PDClientManager = timanager.Manager[*v1alpha1.Cluster, PDClient]
 
 type PDClient interface {
+	// HasSynced reports whether all caches owned by this PD client are ready.
+	// In normal mode this includes Store and Member caches; in MS mode it also
+	// includes the TSO member cache.
 	HasSynced() bool
+	// MembersSynced reports whether the PD member cache is ready. Prefer this
+	// when the caller only reads Members(), so store or TSO member cache failures
+	// do not block PD/PDGroup reconciliation.
+	MembersSynced() bool
 	Stores() StoreCache
 	Members() MemberCache
 	TSOMembers() TSOMemberCache
@@ -55,7 +62,8 @@ type pdClient struct {
 	members    MemberCache
 	tsoMembers TSOMemberCache
 
-	hasSynced []func() bool
+	memberSynced func() bool
+	hasSynced    []func() bool
 }
 
 func (c *pdClient) Stores() StoreCache {
@@ -84,6 +92,10 @@ func (c *pdClient) HasSynced() bool {
 	return true
 }
 
+func (c *pdClient) MembersSynced() bool {
+	return c.memberSynced != nil && c.memberSynced()
+}
+
 func NewClientFunc(c client.Client) timanager.NewClientFunc[*v1alpha1.Cluster, pdapi.PDClient, PDClient] {
 	return func(
 		cluster *v1alpha1.Cluster,
@@ -103,9 +115,10 @@ func NewClientFunc(c client.Client) timanager.NewClientFunc[*v1alpha1.Cluster, p
 		members := NewMemberCache(key, informerFactory)
 
 		pdc := &pdClient{
-			underlay: underlay,
-			stores:   stores,
-			members:  members,
+			underlay:     underlay,
+			stores:       stores,
+			members:      members,
+			memberSynced: memberInformer.HasSynced,
 			hasSynced: []func() bool{
 				storeInformer.HasSynced,
 				memberInformer.HasSynced,

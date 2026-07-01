@@ -52,6 +52,10 @@ func (f *fakePDClient) HasSynced() bool {
 	return true
 }
 
+func (f *fakePDClient) MembersSynced() bool {
+	return true
+}
+
 func (f *fakePDClient) Stores() pdm.StoreCache {
 	return nil
 }
