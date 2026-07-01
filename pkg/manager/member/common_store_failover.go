@@ -181,7 +181,7 @@ func (sf *commonStoreFailover) invokeDeleteFailureStore(tc *v1alpha1.TidbCluster
 			}
 			msg := fmt.Sprintf("Invoked delete on %s store '%s' in cluster %s/%s", sf.storeAccess.GetMemberType(), failureStore.StoreID, ns, tcName)
 			sf.deps.Recorder.Event(tc, corev1.EventTypeWarning, recoveryEventReason, msg)
-			return controller.RequeueErrorf(msg)
+			return controller.RequeueErrorf("%s", msg)
 		}
 	}
 	return nil

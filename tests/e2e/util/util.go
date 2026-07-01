@@ -114,25 +114,27 @@ func WaitForCRDNotFound(client apiextensionsclientset.Interface, name string) er
 }
 
 // PollImmediateWithReason calls 'wait.PollImmediate' and return last reason
-func PollImmediateWithReason(interval, timeout time.Duration, cond func() (bool, error, string /*reason*/)) (error, string) {
-	lastReason := ""
-	err := wait.PollImmediate(interval, timeout, func() (done bool, err error) {
-		done, err, reason := cond()
-		lastReason = reason
+func PollImmediateWithReason(interval, timeout time.Duration, cond func() (bool, string /*reason*/, error)) (string, error) {
+	var lastReason string
+	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+		var err error
+		var done bool
+		done, lastReason, err = cond()
 		return done, err
 	})
-	return err, lastReason
+	return lastReason, err
 }
 
 // PollWithReason calls 'wait.Poll' and return last reason
-func PollWithReason(interval, timeout time.Duration, cond func() (bool, error, string /*reason*/)) (error, string) {
-	lastReason := ""
-	err := wait.Poll(interval, timeout, func() (done bool, err error) {
-		done, err, reason := cond()
-		lastReason = reason
+func PollWithReason(interval, timeout time.Duration, cond func() (bool, string /*reason*/, error)) (string, error) {
+	var lastReason string
+	err := wait.Poll(interval, timeout, func() (bool, error) {
+		var err error
+		var done bool
+		done, lastReason, err = cond()
 		return done, err
 	})
-	return err, lastReason
+	return lastReason, err
 }
 
 func IntPtr(i int) *int {

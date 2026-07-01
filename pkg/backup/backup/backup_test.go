@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
@@ -243,9 +242,9 @@ func TestBackupManagerDumpling(t *testing.T) {
 		Name:  "S3_PROVIDER",
 		Value: "",
 	}
-	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
-	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
-	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env1))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env2Yes))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(ContainElement(env2No))
 }
 
 func TestBackupManagerBR(t *testing.T) {
@@ -299,9 +298,9 @@ func TestBackupManagerBR(t *testing.T) {
 			Name:  "BR_LOG_TO_TERM",
 			Value: string(rune(1)),
 		}
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(ContainElement(env2No))
 	}
 }
 

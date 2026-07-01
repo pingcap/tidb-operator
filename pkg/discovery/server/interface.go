@@ -15,4 +15,5 @@ package server
 
 type Server interface {
 	ListenAndServe(addr string)
+	ListenAndServeTLS(addr, certFile, keyFile, caFile string)
 }

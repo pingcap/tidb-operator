@@ -93,6 +93,7 @@ func main() {
 	if tlsEnabled == strconv.FormatBool(true) {
 		tcTls = true
 	}
+	discoveryMTLS := os.Getenv("DISCOVERY_MTLS_ENABLED") == strconv.FormatBool(true)
 	// informers
 	options := []kubeinformers.SharedInformerOption{
 		kubeinformers.WithNamespace(os.Getenv("MY_POD_NAMESPACE")),
@@ -113,7 +114,16 @@ func main() {
 		klog.Infof("starting TiDB Discovery server, listening on %s", addr)
 		lister := kubeInformerFactory.Core().V1().Secrets().Lister()
 		discoveryServer := server.NewServer(pdapi.NewDefaultPDControl(lister), dmapi.NewDefaultMasterControl(lister), cli, kubeCli)
-		discoveryServer.ListenAndServe(addr)
+		if discoveryMTLS {
+			klog.Infof("mTLS enabled for discovery server")
+			discoveryServer.ListenAndServeTLS(addr,
+				"/var/lib/discovery-tls/tls.crt",
+				"/var/lib/discovery-tls/tls.key",
+				"/var/lib/discovery-tls/ca.crt",
+			)
+		} else {
+			discoveryServer.ListenAndServe(addr)
+		}
 	}, 5*time.Second)
 	go wait.Forever(func() {
 		addr := fmt.Sprintf("0.0.0.0:%d", proxyPort)

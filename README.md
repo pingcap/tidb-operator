@@ -6,8 +6,8 @@
 - **Mailing list**: [Google Group](https://groups.google.com/forum/#!forum/tidb-user)
 - [**For support, please contact PingCAP**](http://bit.ly/contact_us_via_github)
 
-[![codecov](https://codecov.io/gh/pingcap/tidb-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/pingcap/tidb-operator)
-[![LICENSE](https://img.shields.io/github/license/pingcap/tidb-operator.svg)](https://github.com/pingcap/tidb-operator/blob/master/LICENSE)
+[![codecov](https://codecov.io/gh/pingcap/tidb-operator/branch/release-1.x/graph/badge.svg)](https://codecov.io/gh/pingcap/tidb-operator)
+[![LICENSE](https://img.shields.io/github/license/pingcap/tidb-operator.svg)](https://github.com/pingcap/tidb-operator/blob/release-1.x/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pingcap/tidb-operator)](https://goreportcard.com/report/github.com/pingcap/tidb-operator)
 [![GitHub release](https://img.shields.io/github/tag/pingcap/tidb-operator.svg?label=release)](https://github.com/pingcap/tidb-operator/releases)
@@ -42,7 +42,7 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
 - __Automatically monitoring TiDB cluster at creating__
 
     Automatically deploy Prometheus, Grafana for TiDB cluster monitoring, support the following features:
-     
+
     - Monitoring multiple clusters across multiple namespaces.
     - Multiple replicas.
     - Targets sharding.
@@ -64,7 +64,7 @@ You can see our documentation at PingCAP website for more in-depth installation 
 - [English](https://docs.pingcap.com/tidb-in-kubernetes/stable)
 - [简体中文](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable)
 
-All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator). 
+All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator).
 
 ## Blog
 

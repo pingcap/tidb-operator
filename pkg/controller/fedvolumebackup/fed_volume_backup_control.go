@@ -16,7 +16,6 @@ package fedvolumebackup
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -127,7 +126,7 @@ func (c *defaultBackupControl) updateVolumeBackupMetrics(volumeBackup *v1alpha1.
 		Add(volumeBackup.Status.TimeCompleted.Sub(volumeBackup.Status.TimeStarted.Time).Seconds())
 	if volumeBackup.Status.BackupSize > 0 {
 		metrics.FedVolumeBackupTotalSizeCounterVec.WithLabelValues(ns, tcName).Add(
-			float64(volumeBackup.Status.BackupSize) / math.Pow(1024, 3))
+			float64(volumeBackup.Status.BackupSize) / float64(1024*1024*1024))
 	}
 }
 
@@ -135,11 +134,11 @@ func (c *defaultBackupControl) updateVolumeBackupMetrics(volumeBackup *v1alpha1.
 func (c *defaultBackupControl) initBackupStatusMetrics(volumeBackup *v1alpha1.VolumeBackup) {
 	ns := volumeBackup.Namespace
 	tcName := volumeBackup.GetCombinedTCName()
-	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupRunning))
-	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupSnapshotsCreated))
-	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupComplete))
-	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupFailed))
-	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupCleaned))
+	_, _ = metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupRunning))
+	_, _ = metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupSnapshotsCreated))
+	_, _ = metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupComplete))
+	_, _ = metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupFailed))
+	_, _ = metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupCleaned))
 }
 
 func (c *defaultBackupControl) updateVolumeBackupCleanupMetrics(volumeBackup *v1alpha1.VolumeBackup) {
@@ -177,7 +176,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(volumeBackup *v1alpha1.
 			return fmt.Errorf("remove VolumeBackup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
 		klog.Infof("remove VolumeBackup %s/%s protection finalizers success", ns, name)
-		return controller.RequeueErrorf(fmt.Sprintf("VolumeBackup %s/%s has been cleaned up", ns, name))
+		return controller.RequeueErrorf("VolumeBackup %s/%s has been cleaned up", ns, name)
 	}
 	return nil
 }

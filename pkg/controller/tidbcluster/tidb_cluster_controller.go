@@ -69,6 +69,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			mm.NewPumpMemberManager(deps, mm.NewPumpScaler(deps), suspender, podVolumeModifier),
 			mm.NewTiFlashMemberManager(deps, mm.NewTiFlashFailover(deps), mm.NewTiFlashScaler(deps), mm.NewTiFlashUpgrader(deps), suspender, podVolumeModifier),
 			mm.NewTiCDCMemberManager(deps, mm.NewTiCDCScaler(deps), mm.NewTiCDCUpgrader(deps), suspender, podVolumeModifier),
+			mm.NewTiCIMemberManager(deps, mm.NewTiCIScaler(deps), suspender, podVolumeModifier),
 			mm.NewTidbDiscoveryManager(deps),
 			mm.NewTidbClusterStatusManager(deps),
 			&tidbClusterConditionUpdater{},
@@ -193,7 +194,7 @@ func (c *Controller) syncTidbCluster(tc *v1alpha1.TidbCluster) error {
 func (c *Controller) enqueueTidbCluster(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
 	}
 	c.queue.Add(key)

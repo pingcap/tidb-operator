@@ -148,7 +148,7 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 
 func (fa *faultTriggerActions) CheckAndRecoverEnvOrDie() {
 	if err := fa.CheckAndRecoverEnv(); err != nil {
-		log.Failf(err.Error())
+		log.Failf("%s", err.Error())
 	}
 }
 
@@ -617,7 +617,7 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 		}
 	}
 
-	if filterNodes == nil || len(filterNodes) < 1 {
+	if len(filterNodes) < 1 {
 		return "", fmt.Errorf("no nodes filtered after selecting nodes and filter the tiller and stabiltiy pod")
 	}
 

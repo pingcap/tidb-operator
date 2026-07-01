@@ -24,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
-	v1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
@@ -428,8 +427,8 @@ func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMClu
 		if svcSpec.Type != "" {
 			masterSvc.Spec.Type = svcSpec.Type
 		}
-		masterSvc.ObjectMeta.Annotations = util.CopyStringMap(svcSpec.Annotations)
-		masterSvc.ObjectMeta.Labels = util.CombineStringMap(masterSvc.ObjectMeta.Labels, svcSpec.Labels)
+		masterSvc.Annotations = util.CopyStringMap(svcSpec.Annotations)
+		masterSvc.Labels = util.CombineStringMap(masterSvc.Labels, svcSpec.Labels)
 		masterSvc.Spec.Ports[0].NodePort = svcSpec.GetMasterNodePort()
 		if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
 			if svcSpec.LoadBalancerIP != nil {
@@ -615,7 +614,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for dm-master, dmcluster %s/%s, error: %v", dc.Namespace, dc.Name, err)
 	}
-	storageRequest := corev1.ResourceRequirements{
+	storageRequest := corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: rs,
 		},
@@ -741,8 +740,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: dc.Spec.Master.StorageClassName,
-						Resources:        storageRequest,
+						StorageClassName:          dc.Spec.Master.StorageClassName,
+						VolumeAttributesClassName: dc.Spec.Master.VolumeAttributesClassName,
+						Resources:                 storageRequest,
 					},
 				},
 			},
@@ -778,7 +778,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		DataDir: filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
 	}
 	if dc.Spec.Master.StartUpScriptVersion == "v1" {
-		model.CheckDomainScript = v1.DMMasterCheckDNSV1
+		model.CheckDomainScript = startscriptv1.DMMasterCheckDNSV1
 	}
 	startScript, err := startscriptv1.RenderDMMasterStartScript(model)
 	if err != nil {

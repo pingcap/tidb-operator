@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/sethvargo/go-password/password"
-	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -47,18 +46,78 @@ var (
 	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
 	ClusterAssetsTLSPath   = "/var/lib/cluster-assets-tls"
 	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
+	DiscoveryTLSPath       = "/var/lib/discovery-tls"
 	BRBinPath              = "/var/lib/br-bin"
 	KVCTLBinPath           = "/var/lib/kvctl-bin"
 	DumplingBinPath        = "/var/lib/dumpling-bin"
 	LightningBinPath       = "/var/lib/lightning-bin"
 	ClusterClientVolName   = "cluster-client-tls"
 	DMClusterClientVolName = "dm-cluster-client-tls"
+	DiscoveryTLSVolName    = "discovery-tls"
 )
 
 const (
 	// LastAppliedConfigAnnotation is annotation key of last applied configuration
 	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
+
+	// SATokenProjectionVolumeName is the name of the projected service account token volume.
+	SATokenProjectionVolumeName = "kube-api-access"
+	// SATokenProjectionMountPath is the standard Kubernetes service account token mount path.
+	SATokenProjectionMountPath = "/var/run/secrets/kubernetes.io/serviceaccount" // nolint:gosec
 )
+
+// SATokenProjectionVolume returns a projected volume that replicates the three files
+// that rest.InClusterConfig() reads from /var/run/secrets/kubernetes.io/serviceaccount:
+// token, ca.crt, and namespace. Use this when automountServiceAccountToken is false
+// but the container still needs to call the Kubernetes API.
+func SATokenProjectionVolume() corev1.Volume {
+	expirationSeconds := int64(3607)
+	return corev1.Volume{
+		Name: SATokenProjectionVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{
+					{
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Path:              "token",
+							ExpirationSeconds: &expirationSeconds,
+						},
+					},
+					{
+						ConfigMap: &corev1.ConfigMapProjection{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "kube-root-ca.crt"},
+							Items: []corev1.KeyToPath{
+								{Key: "ca.crt", Path: "ca.crt"},
+							},
+						},
+					},
+					{
+						DownwardAPI: &corev1.DownwardAPIProjection{
+							Items: []corev1.DownwardAPIVolumeFile{
+								{
+									Path: "namespace",
+									FieldRef: &corev1.ObjectFieldSelector{
+										APIVersion: "v1",
+										FieldPath:  "metadata.namespace",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// SATokenProjectionVolumeMount returns the VolumeMount for SATokenProjectionVolume.
+func SATokenProjectionVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      SATokenProjectionVolumeName,
+		MountPath: SATokenProjectionMountPath,
+		ReadOnly:  true,
+	}
+}
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
@@ -134,6 +193,16 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	} else if memberType == v1alpha1.TiCDCMemberType {
 		ann = label.AnnTiCDCDeleteSlots
 		replicas = tc.Spec.TiCDC.Replicas
+	} else if memberType == v1alpha1.TiCIMetaMemberType {
+		ann = label.AnnTiCIMetaDeleteSlots
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+			replicas = tc.Spec.TiCI.Meta.Replicas
+		}
+	} else if memberType == v1alpha1.TiCIWorkerMemberType {
+		ann = label.AnnTiCIWorkerDeleteSlots
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+			replicas = tc.Spec.TiCI.Worker.Replicas
+		}
 	} else if memberType == v1alpha1.TiProxyMemberType {
 		ann = label.AnnTiProxyDeleteSlots
 		replicas = tc.Spec.TiProxy.Replicas
@@ -185,11 +254,11 @@ func GetPodName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordina
 }
 
 func IsStatefulSetUpgrading(set *appsv1.StatefulSet) bool {
-	return !(set.Status.CurrentRevision == set.Status.UpdateRevision)
+	return set.Status.CurrentRevision != set.Status.UpdateRevision
 }
 
 func IsStatefulSetScaling(set *appsv1.StatefulSet) bool {
-	return !(set.Status.Replicas == *set.Spec.Replicas)
+	return set.Status.Replicas != *set.Spec.Replicas
 }
 
 func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
@@ -214,6 +283,10 @@ func ClusterClientTLSSecretName(tcName string) string {
 
 func ClusterTLSSecretName(tcName, component string) string {
 	return fmt.Sprintf("%s-%s-cluster-secret", tcName, component)
+}
+
+func DiscoveryTLSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-discovery-cluster-secret", tcName)
 }
 
 func TiDBClientTLSSecretName(tcName string, secretName *string) string {
@@ -344,18 +417,18 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 }
 
 // BuildStorageVolumeAndVolumeMount builds VolumeMounts and PVCs for volumes declaired in spec.storageVolumes of ComponentSpec
-func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, defaultStorageClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
+func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, defaultStorageClassName, defaultVolumeAttributesClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
 	var volMounts []corev1.VolumeMount
 	var volumeClaims []corev1.PersistentVolumeClaim
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
-			var tmpStorageClass *string
+			var tmpStorageClass, tmpVolumeAttributesClassName *string
 			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
 			if err != nil {
 				klog.Errorf("Cannot parse storage size %v in StorageVolumes of %v, storageVolume Name %s, error: %v", storageVolume.StorageSize, memberType, storageVolume.Name, err)
 				continue
 			}
-			storageRequest := corev1.ResourceRequirements{
+			storageRequest := corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: quantity,
 				},
@@ -365,8 +438,13 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 			} else {
 				tmpStorageClass = defaultStorageClassName
 			}
+			if storageVolume.VolumeAttributesClassName != nil && len(*storageVolume.VolumeAttributesClassName) > 0 {
+				tmpVolumeAttributesClassName = storageVolume.VolumeAttributesClassName
+			} else {
+				tmpVolumeAttributesClassName = defaultVolumeAttributesClassName
+			}
 			pvcNameInVCT := string(v1alpha1.GetStorageVolumeName(storageVolume.Name, memberType))
-			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass))
+			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass, tmpVolumeAttributesClassName))
 			if storageVolume.MountPath != "" {
 				volMounts = append(volMounts, corev1.VolumeMount{
 					Name:      pvcNameInVCT,
@@ -378,15 +456,16 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 	return volMounts, volumeClaims
 }
 
-func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
+func VolumeClaimTemplate(r corev1.VolumeResourceRequirements, metaName string, storageClassName, volumeAttributesClassName *string) corev1.PersistentVolumeClaim {
 	return corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: metaName},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				corev1.ReadWriteOnce,
 			},
-			StorageClassName: storageClassName,
-			Resources:        r,
+			StorageClassName:          storageClassName,
+			VolumeAttributesClassName: volumeAttributesClassName,
+			Resources:                 r,
 		},
 	}
 }
@@ -403,7 +482,7 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 }
 
 // StatefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
-func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
+func StatefulSetEqual(new appsv1.StatefulSet, old appsv1.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}
 	for k, v := range old.Annotations {
@@ -414,7 +493,7 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, p
 	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
 		return false, false // pod tempate not checked, return false
 	}
-	oldConfig := apps.StatefulSetSpec{}
+	oldConfig := appsv1.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {

@@ -34,8 +34,10 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	if tc.AcrossK8s() {
 		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+			PDAddr:          fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+			DiscoveryAddr:   fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+			DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+			ClusterCertPath: "/var/lib/tiflash-tls",
 		}
 	}
 
@@ -44,12 +46,16 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 const (
 	// tiflashInitSubScript contains optional subscripts used in start script.
+	//
+	// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+	tiflashInitAcrossK8sDiscoveryFetchPrefix = `{{ if .AcrossK8s.DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .AcrossK8s.ClusterCertPath }}/ca.crt --cert {{ .AcrossK8s.ClusterCertPath }}/tls.crt --key {{ .AcrossK8s.ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}`
+
 	tiflashInitSubScript = `
 {{ define "AcrossK8sSubscript" }}
 pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
+until result=$(` + tiflashInitAcrossK8sDiscoveryFetchPrefix + `://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep 2
 done

@@ -51,17 +51,30 @@ const (
 	TiKVConfigGCThreshold = "gc.ratio-threshold"
 )
 
+// replicationHandlerInterface is the minimal surface restoreManager calls on
+// the replication handler. Allows injecting a fake in tests.
+type replicationHandlerInterface interface {
+	Sync(restore *v1alpha1.Restore) error
+}
+
 type restoreManager struct {
-	deps          *controller.Dependencies
-	statusUpdater controller.RestoreConditionUpdaterInterface
+	deps               *controller.Dependencies
+	statusUpdater      controller.RestoreConditionUpdaterInterface
+	replicationHandler replicationHandlerInterface
 }
 
 // NewRestoreManager return restoreManager
 func NewRestoreManager(deps *controller.Dependencies) backup.RestoreManager {
-	return &restoreManager{
+	statusUpdater := controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder)
+	rm := &restoreManager{
 		deps:          deps,
-		statusUpdater: controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder),
+		statusUpdater: statusUpdater,
 	}
+	// Two-step construction: replicationHandler needs a function-typed
+	// reference to rm.makeRestoreJobWithMode so it can build BR Jobs that
+	// inherit the full PiTR setup (image, init container, env, volumes).
+	rm.replicationHandler = newReplicationHandler(deps, statusUpdater, deps.Recorder, rm.makeRestoreJobWithMode)
+	return rm
 }
 
 func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
@@ -284,15 +297,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return nil
 	}
 
-	restoreJobName := restore.GetRestoreJobName()
-	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
-	if err == nil {
-		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
-		return nil
-	} else if !errors.IsNotFound(err) {
-		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
-	}
-
+	// pm.Enable is the GC-disabled gate shared by all PiTR restores
+	// (standard PiTR and replication restore alike). Run it BEFORE the
+	// replication interception so replication restores also wait for
+	// the TiKV ConfigMap override (gc.ratio-threshold = -1) to
+	// propagate before launching any BR Job. The override itself is
+	// written by tikvMemberManager.applyPiTRConfigOverride, which
+	// already covers replication because Mode == PiTR.
 	if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
 		// Note: perhaps better to reschedule here and wait the cluster config applied.
 		// But for now BR will also modify this configuration. This configuration map was
@@ -303,6 +314,23 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}
 			return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
 		}
+	}
+
+	// Replication restore: delegate to dedicated handler that owns the
+	// two-Job state machine and coordinates with CompactBackup. All logic
+	// below this line assumes a single-Job Restore (GetRestoreJobName etc.)
+	// which does not apply to replication restore.
+	if restore.Spec.Mode == v1alpha1.RestoreModePiTR && restore.Spec.ReplicationConfig != nil {
+		return rm.replicationHandler.Sync(restore)
+	}
+
+	restoreJobName := restore.GetRestoreJobName()
+	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
+	if err == nil {
+		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
+		return nil
+	} else if !errors.IsNotFound(err) {
+		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
 	}
 
 	var (
@@ -506,13 +534,13 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 	// tikv backup encryption is enabled
 	config := tc.Spec.TiKV.Config
 	if config == nil {
-		return fmt.Errorf("TiKV encryption config missmatched, backup configured TiKV encryption, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config. e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc.")
+		return fmt.Errorf("tikv encryption config mismatched, backup configured TiKV encryption, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config (e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc)")
 	}
 
 	restoreEncryptMethod := config.Get(TiKVConfigEncryptionMethod)
 	if backupEncryptMethod.Interface() != restoreEncryptMethod.Interface() {
 		// restore crd must contains data-encryption
-		return fmt.Errorf("TiKV encryption config missmatched, backup data enabled TiKV encryption, restore crd does not enabled TiKV encryption")
+		return fmt.Errorf("tikv encryption config mismatched, backup data enabled TiKV encryption, restore crd does not enabled TiKV encryption")
 	}
 
 	// if backup tikv configured encryption, restore require tc to have the same encryption configured.
@@ -521,11 +549,11 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 	if backupMasterKey != nil {
 		restoreMasterKey := config.Get(TiKVConfigEncryptionMasterKeyId)
 		if restoreMasterKey == nil {
-			return fmt.Errorf("TiKV encryption config missmatched, backup data has master key, restore crd have not one")
+			return fmt.Errorf("tikv encryption config mismatched, backup data has master key, restore crd have not one")
 		}
 
 		if backupMasterKey.Interface() != restoreMasterKey.Interface() {
-			return fmt.Errorf("TiKV encryption config master key missmatched")
+			return fmt.Errorf("tikv encryption config master key mismatched")
 		}
 	}
 	return nil
@@ -823,9 +851,10 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    restore.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
-			InitContainers:     initContainers,
+			SecurityContext:              restore.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: restore.Spec.AutomountServiceAccountToken,
+			InitContainers:               initContainers,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
@@ -855,6 +884,11 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			}, volumes...),
 			PriorityClassName: restore.Spec.PriorityClassName,
 		},
+	}
+
+	if restore.Spec.AutomountServiceAccountToken != nil && !*restore.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
 	}
 
 	job := &batchv1.Job{
@@ -1062,8 +1096,9 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    restore.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
+			SecurityContext:              restore.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: restore.Spec.AutomountServiceAccountToken,
 			InitContainers: []corev1.Container{
 				{
 					Name:            "br",
@@ -1093,6 +1128,11 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 			Volumes:           volumes,
 			PriorityClassName: restore.Spec.PriorityClassName,
 		},
+	}
+
+	if restore.Spec.AutomountServiceAccountToken != nil && !*restore.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
 	}
 
 	// Job name differs between restore and prune jobs
@@ -1589,12 +1629,13 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
-				Resources: corev1.ResourceRequirements{
+				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: rs,
 					},
 				},
-				StorageClassName: restore.Spec.StorageClassName,
+				StorageClassName:          restore.Spec.StorageClassName,
+				VolumeAttributesClassName: restore.Spec.VolumeAttributesClassName,
 			},
 		}
 		if err := rm.deps.GeneralPVCControl.CreatePVC(restore, pvc); err != nil {

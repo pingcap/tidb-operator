@@ -92,12 +92,8 @@ func Send(webhookURL string, proxy string, payload Payload) error {
 		return err
 	}
 	defer resp.Body.Close()
-
-	if err != nil {
-		return err
-	}
 	if resp.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("Error sending msg %+v. Status: %v", payload, resp.Status)
+		return fmt.Errorf("failed to send msg %+v: status: %v", payload, resp.Status)
 	}
 	return nil
 }

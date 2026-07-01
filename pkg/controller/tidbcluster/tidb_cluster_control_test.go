@@ -322,6 +322,7 @@ func newFakeTidbClusterControl() (
 	tiflashMemberManager := mm.NewFakeTiFlashMemberManager()
 	tiproxyMemberManager := mm.NewFakeTiProxyMemberManager()
 	ticdcMemberManager := mm.NewFakeTiCDCMemberManager()
+	ticiMemberManager := mm.NewFakeTiCIMemberManager()
 	discoveryManager := mm.NewFakeDiscoveryManger()
 	statusManager := mm.NewFakeTidbClusterStatusManager()
 	pvcResizer := mm.NewFakePVCResizer()
@@ -342,6 +343,7 @@ func newFakeTidbClusterControl() (
 		pumpMemberManager,
 		tiflashMemberManager,
 		ticdcMemberManager,
+		ticiMemberManager,
 		discoveryManager,
 		statusManager,
 		&tidbClusterConditionUpdater{},

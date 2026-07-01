@@ -132,9 +132,10 @@ func (h *helper) assertRestoreWarmUpStarted(volumeRestore *v1alpha1.VolumeRestor
 
 func (h *helper) assertRestoreWarmUpComplete(volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(v1alpha1.IsVolumeRestoreWarmUpComplete(volumeRestore)).To(gomega.Equal(true))
-	if volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeSync {
+	switch volumeRestore.Spec.Template.Warmup {
+	case pingcapv1alpha1.RestoreWarmupModeSync:
 		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
-	} else if volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync {
+	case pingcapv1alpha1.RestoreWarmupModeASync:
 		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(5))
 	}
 }

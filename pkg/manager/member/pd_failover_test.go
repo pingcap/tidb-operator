@@ -710,8 +710,8 @@ func TestPDFailoverFailover(t *testing.T) {
 					pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 				}
 				if test.hasPVC {
-					pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
-					pvc2.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc1.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc2.Labels[label.AnnPodNameKey] = pod.GetName()
 					pod.Spec.Volumes = append(pod.Spec.Volumes,
 						corev1.Volume{
 							VolumeSource: corev1.VolumeSource{

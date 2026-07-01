@@ -486,7 +486,7 @@ func NewFakeDependencies() *Dependencies {
 	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	recorder := record.NewFakeRecorder(100)
 
-	kubeCli.Fake.Resources = append(kubeCli.Fake.Resources, &metav1.APIResourceList{
+	kubeCli.Resources = append(kubeCli.Resources, &metav1.APIResourceList{
 		GroupVersion: "networking.k8s.io/v1",
 		APIResources: []metav1.APIResource{
 			{

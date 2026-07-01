@@ -25,11 +25,11 @@ source hack/lib.sh
 hack::ensure_golangci_lint
 
 # main module
-${OUTPUT_BIN}/golangci-lint run --timeout 20m -v $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
+${OUTPUT_BIN}/golangci-lint run --allow-parallel-runners --timeout 20m -v $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
 
 # sub modules
 for dir in ${GO_SUBMODULE_DIRS[@]}; do
     pushd "${ROOT}/${dir}" >/dev/null
-        ${OUTPUT_BIN}/golangci-lint run --timeout 20m -v
+        ${OUTPUT_BIN}/golangci-lint run --allow-parallel-runners --timeout 20m -v
     popd >/dev/null
 done

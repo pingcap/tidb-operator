@@ -76,7 +76,7 @@ func DoBodyOK(httpClient *http.Client, apiURL, method string, reqBody io.Reader)
 		return nil, err
 	}
 	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf("Error response %v URL %s,body response: %s", res.StatusCode, apiURL, string(body[:]))
+		errMsg := fmt.Errorf("error response %v URL %s, body response: %s", res.StatusCode, apiURL, string(body[:]))
 		return nil, errMsg
 	}
 	return body, err

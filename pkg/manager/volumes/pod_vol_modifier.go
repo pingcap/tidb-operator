@@ -15,6 +15,7 @@ package volumes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -174,6 +175,9 @@ func (p *podVolModifier) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*
 	}
 
 	name := pvc.Spec.VolumeName
+	if name == "" {
+		return nil, errors.New("pvc is not bound yet: spec.volumeName is empty")
+	}
 
 	return p.deps.PVLister.Get(name)
 }
@@ -200,7 +204,6 @@ func (p *podVolModifier) NewActualVolumeOfPod(vs []DesiredVolume, ns string, vol
 		return nil, nil
 	}
 
-	// TODO: fix the case when pvc is pending
 	pv, err := p.getBoundPVFromPVC(pvc)
 	if err != nil {
 		return nil, err

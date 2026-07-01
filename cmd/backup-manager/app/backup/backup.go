@@ -331,7 +331,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 			logCallback(line)
 		}
 
-		klog.Info(strings.Replace(line, "\n", "", -1))
+		klog.Info(strings.ReplaceAll(line, "\n", ""))
 		if err != nil {
 			if err != io.EOF {
 				klog.Errorf("read stdout error: %s", err.Error())

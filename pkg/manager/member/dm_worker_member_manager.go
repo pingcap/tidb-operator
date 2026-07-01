@@ -434,7 +434,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for dm-worker, dmcluster %s/%s, error: %v", dc.Namespace, dc.Name, err)
 	}
-	storageRequest := corev1.ResourceRequirements{
+	storageRequest := corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: rs,
 		},
@@ -539,8 +539,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: dc.Spec.Worker.StorageClassName,
-						Resources:        storageRequest,
+						StorageClassName:          dc.Spec.Worker.StorageClassName,
+						VolumeAttributesClassName: dc.Spec.Worker.VolumeAttributesClassName,
+						Resources:                 storageRequest,
 					},
 				},
 			},

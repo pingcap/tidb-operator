@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/agiledragon/gomonkey/v2"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -282,15 +281,18 @@ func TestCleanBRRemoteBackupDataOnce(t *testing.T) {
 		}
 
 		batchDel := tt.setup(drv, opt)
-		s3patch := gomonkey.ApplyFunc(util.BatchDeleteObjectsOfS3, func(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *util.BatchDeleteObjectsResult {
+		origS3 := util.BatchDeleteObjectsOfS3Func
+		util.BatchDeleteObjectsOfS3Func = func(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *util.BatchDeleteObjectsResult {
 			return batchDel(objs)
-		})
-		defer s3patch.Reset()
+		}
+		defer func() { util.BatchDeleteObjectsOfS3Func = origS3 }()
+
 		backoff := false
-		timepatch := gomonkey.ApplyFunc(time.Sleep, func(d time.Duration) {
+		origSleep := timeSleep
+		timeSleep = func(d time.Duration) {
 			backoff = true
-		})
-		defer timepatch.Reset()
+		}
+		defer func() { timeSleep = origSleep }()
 
 		err := bo.cleanBRRemoteBackupDataOnce(context.TODO(), backend, *opt, 1)
 		tt.expect(err, backoff)

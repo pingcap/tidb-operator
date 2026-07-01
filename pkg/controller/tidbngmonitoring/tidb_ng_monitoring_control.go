@@ -138,9 +138,9 @@ func (c *defaultTiDBNGMonitoringControl) reconcile(tngm *v1alpha1.TidbNGMonitori
 
 func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring) (*v1alpha1.TidbNGMonitoring, error) {
 	var (
-		ns     string                           = tngm.GetNamespace()
-		name   string                           = tngm.GetName()
-		status *v1alpha1.TidbNGMonitoringStatus = tngm.Status.DeepCopy()
+		ns     = tngm.GetNamespace()
+		name   = tngm.GetName()
+		status = tngm.Status.DeepCopy()
 		update *v1alpha1.TidbNGMonitoring
 	)
 

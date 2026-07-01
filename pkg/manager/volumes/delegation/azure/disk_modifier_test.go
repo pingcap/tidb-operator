@@ -47,7 +47,7 @@ func TestModifyVolume(t *testing.T) {
 					Name:      "pvc1",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
@@ -101,7 +101,7 @@ func TestModifyVolume(t *testing.T) {
 					Name:      "pvc1",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
@@ -136,7 +136,7 @@ func TestModifyVolume(t *testing.T) {
 					Name:      "pvc1",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
@@ -190,7 +190,7 @@ func TestModifyVolume(t *testing.T) {
 					Name:      "pvc1",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
@@ -241,7 +241,7 @@ func TestModifyVolume(t *testing.T) {
 					Name:      "pvc1",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},

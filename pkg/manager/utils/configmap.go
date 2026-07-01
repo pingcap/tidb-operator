@@ -49,8 +49,8 @@ func Sha256Sum(v interface{}) (string, error) {
 // FindConfigMapVolume returns the configmap which's name matches the predicate in a PodSpec, empty indicates not found
 func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string {
 	for _, vol := range podSpec.Volumes {
-		if vol.ConfigMap != nil && pred(vol.ConfigMap.LocalObjectReference.Name) {
-			return vol.ConfigMap.LocalObjectReference.Name
+		if vol.ConfigMap != nil && pred(vol.ConfigMap.Name) {
+			return vol.ConfigMap.Name
 		}
 	}
 	return ""

@@ -93,13 +93,9 @@ func TestTiKVPodSyncForEviction(t *testing.T) {
 	})
 
 	stop := make(chan struct{})
-	go func() {
-		deps.KubeInformerFactory.Start(stop)
-	}()
+	deps.KubeInformerFactory.Start(stop)
 	deps.KubeInformerFactory.WaitForCacheSync(stop)
-	go func() {
-		deps.InformerFactory.Start(stop)
-	}()
+	deps.InformerFactory.Start(stop)
 	deps.InformerFactory.WaitForCacheSync(stop)
 
 	defer close(stop)
@@ -541,7 +537,7 @@ func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 			target:              0,
 			deleteAfterTransfer: true,
 			shouldTransfer:      true,
-			expirationTime:      metav1.Now().Time.Add(time.Hour),
+			expirationTime:      metav1.Now().Add(time.Hour),
 		},
 		{
 			name:                "expiration annotation in the past",
@@ -552,7 +548,7 @@ func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 			target:              0,
 			deleteAfterTransfer: true,
 			shouldTransfer:      false,
-			expirationTime:      metav1.Now().Time.Add(-time.Minute),
+			expirationTime:      metav1.Now().Add(-time.Minute),
 		},
 	}
 
@@ -577,13 +573,9 @@ func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 			podController.testPDClient = pdClient
 
 			stop := make(chan struct{})
-			go func() {
-				deps.KubeInformerFactory.Start(stop)
-			}()
+			deps.KubeInformerFactory.Start(stop)
 			deps.KubeInformerFactory.WaitForCacheSync(stop)
-			go func() {
-				deps.InformerFactory.Start(stop)
-			}()
+			deps.InformerFactory.Start(stop)
 			deps.InformerFactory.WaitForCacheSync(stop)
 
 			defer close(stop)
@@ -753,13 +745,9 @@ func TestTiDBPodSyncForGracefulShutdown(t *testing.T) {
 			podController := NewPodController(deps)
 
 			stop := make(chan struct{})
-			go func() {
-				deps.KubeInformerFactory.Start(stop)
-			}()
+			deps.KubeInformerFactory.Start(stop)
 			deps.KubeInformerFactory.WaitForCacheSync(stop)
-			go func() {
-				deps.InformerFactory.Start(stop)
-			}()
+			deps.InformerFactory.Start(stop)
 			deps.InformerFactory.WaitForCacheSync(stop)
 
 			defer close(stop)

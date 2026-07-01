@@ -59,10 +59,32 @@ const (
 	// BackupLabelKey is backup key
 	BackupLabelKey string = "tidb.pingcap.com/backup"
 
+	// CompactLabelKey is compact backup key
+	CompactLabelKey string = "tidb.pingcap.com/compact"
+
 	// RestoreLabelKey is restore key
 	RestoreLabelKey string = "tidb.pingcap.com/restore"
 	// RestoreWarmUpLabelKey defines which pod the restore warms up
 	RestoreWarmUpLabelKey string = "tidb.pingcap.com/warm-up-pod"
+
+	// ReplicationStepLabelKey distinguishes the two BR Jobs of a replication
+	// restore. Used by Restore controller to locate Jobs by label selector
+	// rather than name pattern.
+	ReplicationStepLabelKey string = "tidb.pingcap.com/replication-step"
+
+	// RestoreUIDLabelKey carries the owning Restore's UID on its replication
+	// BR Jobs so that a Restore re-created with the same name can distinguish
+	// its own Jobs from leftover Jobs of a deleted predecessor still being
+	// garbage-collected. Compared by byte-exact equality.
+	RestoreUIDLabelKey string = "tidb.pingcap.com/restore-uid"
+
+	// ReplicationStepSnapshotRestoreVal is the label value for the phase-1 BR
+	// Job (snapshot restore + checkpoint set).
+	ReplicationStepSnapshotRestoreVal string = "snapshot-restore"
+
+	// ReplicationStepLogRestoreVal is the label value for the phase-2 BR
+	// Job (log restore).
+	ReplicationStepLogRestoreVal string = "log-restore"
 
 	// BackupProtectionFinalizer is the name of finalizer on backups or federation backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
@@ -136,6 +158,10 @@ const (
 
 	// AnnTiCDCDeleteSlots is annotation key of ticdc delete slots.
 	AnnTiCDCDeleteSlots = "ticdc.tidb.pingcap.com/delete-slots"
+	// AnnTiCIMetaDeleteSlots is annotation key of tici meta delete slots.
+	AnnTiCIMetaDeleteSlots = "tici-meta.tidb.pingcap.com/delete-slots"
+	// AnnTiCIWorkerDeleteSlots is annotation key of tici worker delete slots.
+	AnnTiCIWorkerDeleteSlots = "tici-worker.tidb.pingcap.com/delete-slots"
 	// AnnTiProxyDeleteSlots is annotation key of tiproxy delete slots.
 	AnnTiProxyDeleteSlots = "tiproxy.tidb.pingcap.com/delete-slots"
 	// AnnDMMasterDeleteSlots is annotation key of dm-master delete slots.
@@ -177,6 +203,10 @@ const (
 	TiFlashLabelVal string = "tiflash"
 	// TiCDCLabelVal is TiCDC label value
 	TiCDCLabelVal string = "ticdc"
+	// TiCIMetaLabelVal is TiCI meta label value
+	TiCIMetaLabelVal string = "tici-meta"
+	// TiCIWorkerLabelVal is TiCI worker label value
+	TiCIWorkerLabelVal string = "tici-worker"
 	// TiProxyLabelVal is TiProxy label value
 	TiProxyLabelVal string = "tiproxy"
 	// PumpLabelVal is Pump label value
@@ -197,6 +227,8 @@ const (
 	RestoreWarmUpJobLabelVal string = "warmup"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
+	// CompactJobLabelVal is compact backup job label value
+	CompactJobLabelVal string = "compactbackup"
 	// BackupScheduleJobLabelVal is backup schedule job label value
 	BackupScheduleJobLabelVal string = "backup-schedule"
 	// InitJobLabelVal is TiDB initializer job label value
@@ -275,6 +307,14 @@ func NewBackup() Label {
 	return Label{
 		NameLabelKey:      BackupJobLabelVal,
 		ManagedByLabelKey: "backup-operator",
+	}
+}
+
+// NewCompactBackup initialize a new Label for Jobs of compact backup
+func NewCompactBackup() Label {
+	return Label{
+		NameLabelKey:      CompactJobLabelVal,
+		ManagedByLabelKey: "compact-backup-operator",
 	}
 }
 
@@ -392,6 +432,11 @@ func (l Label) BackupJob() Label {
 	return l.Component(BackupJobLabelVal)
 }
 
+// CompactJob assigns compact backup to component key in label
+func (l Label) CompactJob() Label {
+	return l.Component(CompactJobLabelVal)
+}
+
 // RestoreJob assigns restore to component key in label
 func (l Label) RestoreJob() Label {
 	return l.Component(RestoreJobLabelVal)
@@ -404,6 +449,12 @@ func (l Label) RestoreWarmUpJob() Label {
 // Backup assigns specific value to backup key in label
 func (l Label) Backup(val string) Label {
 	l[BackupLabelKey] = val
+	return l
+}
+
+// Compact assigns specific value to compact backup key in label
+func (l Label) Compact(val string) Label {
+	l[CompactLabelKey] = val
 	return l
 }
 
@@ -558,6 +609,26 @@ func (l Label) TiCDC() Label {
 // IsTiCDC returns whether label is a TiCDC component
 func (l Label) IsTiCDC() bool {
 	return l[ComponentLabelKey] == TiCDCLabelVal
+}
+
+// TiCIMeta assigns tici-meta to component key in label
+func (l Label) TiCIMeta() Label {
+	return l.Component(TiCIMetaLabelVal)
+}
+
+// IsTiCIMeta returns whether label is a TiCI meta component
+func (l Label) IsTiCIMeta() bool {
+	return l[ComponentLabelKey] == TiCIMetaLabelVal
+}
+
+// TiCIWorker assigns tici-worker to component key in label
+func (l Label) TiCIWorker() Label {
+	return l.Component(TiCIWorkerLabelVal)
+}
+
+// IsTiCIWorker returns whether label is a TiCI worker component
+func (l Label) IsTiCIWorker() bool {
+	return l[ComponentLabelKey] == TiCIWorkerLabelVal
 }
 
 // Selector gets labels.Selector from label

@@ -157,7 +157,7 @@ func NormalizeBucketURI(bucket string) string {
 
 // GetOptionValueFromEnv get option's value from environment variable. If unset, return empty string.
 func GetOptionValueFromEnv(option, envPrefix string) string {
-	envVar := envPrefix + "_" + strings.Replace(strings.ToUpper(option), "-", "_", -1)
+	envVar := envPrefix + "_" + strings.ReplaceAll(strings.ToUpper(option), "-", "_")
 	return os.Getenv(envVar)
 }
 

@@ -57,6 +57,7 @@ func NewDefaultTidbClusterControl(
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
 	ticdcMemberManager manager.Manager,
+	ticiMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
 	tidbClusterStatusManager manager.Manager,
 	conditionUpdater TidbClusterConditionUpdater,
@@ -77,6 +78,7 @@ func NewDefaultTidbClusterControl(
 		pumpMemberManager:        pumpMemberManager,
 		tiflashMemberManager:     tiflashMemberManager,
 		ticdcMemberManager:       ticdcMemberManager,
+		ticiMemberManager:        ticiMemberManager,
 		discoveryManager:         discoveryManager,
 		tidbClusterStatusManager: tidbClusterStatusManager,
 		conditionUpdater:         conditionUpdater,
@@ -100,6 +102,7 @@ type defaultTidbClusterControl struct {
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
 	ticdcMemberManager       manager.Manager
+	ticiMemberManager        manager.Manager
 	discoveryManager         member.TidbDiscoveryManager
 	tidbClusterStatusManager manager.Manager
 	conditionUpdater         TidbClusterConditionUpdater
@@ -284,6 +287,15 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
+	// works that should be done to make the tici cluster current state match the desired state:
+	//   - waiting for pd/tikv/tidb ready
+	//   - create or update tici meta/worker
+	//   - create ticdc changefeed for tici
+	if err := c.ticiMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "tici").Inc()
+		return err
+	}
+
 	// syncing the labels from Pod to PVC and PV, these labels include:
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
@@ -351,6 +363,14 @@ func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.TiCDC != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "ticdc").Set(float64(tc.Spec.TiCDC.Replicas))
+	}
+	if tc.Spec.TiCI != nil {
+		if tc.Spec.TiCI.Meta != nil {
+			metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tici-meta").Set(float64(tc.Spec.TiCI.Meta.Replicas))
+		}
+		if tc.Spec.TiCI.Worker != nil {
+			metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tici-worker").Set(float64(tc.Spec.TiCI.Worker.Replicas))
+		}
 	}
 	if tc.Spec.Pump != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "pump").Set(float64(tc.Spec.Pump.Replicas))

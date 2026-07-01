@@ -142,6 +142,14 @@ func NewStorageBackend(provider v1alpha1.StorageProvider, cred *StorageCredentia
 	return b, nil
 }
 
+// Variables for mockability
+var (
+	newS3Storage     = newS3StorageImpl
+	newGcsStorage    = newGcsStorageImpl
+	newAzblobStorage = newAzblobStorageImpl
+	newLocalStorage  = newLocalStorageImpl
+)
+
 func (b *StorageBackend) StorageType() v1alpha1.BackupStorageType {
 	if b.s3 != nil {
 		return v1alpha1.BackupStorageTypeS3
@@ -157,13 +165,13 @@ func (b *StorageBackend) StorageType() v1alpha1.BackupStorageType {
 
 func (b *StorageBackend) ListPage(opts *blob.ListOptions) *PageIterator {
 	return &PageIterator{
-		iter: b.Bucket.List(opts),
+		iter: b.List(opts),
 	}
 }
 
 func (b *StorageBackend) AsS3() (*s3.S3, bool) {
 	var s3cli *s3.S3
-	if ok := b.Bucket.As(&s3cli); !ok {
+	if ok := b.As(&s3cli); !ok {
 		return nil, false
 	}
 
@@ -231,17 +239,22 @@ func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.Li
 		if opt.BatchConcurrency != 0 {
 			concurrency = opt.BatchConcurrency
 		}
-		result = BatchDeleteObjectsOfS3(ctx, s3cli, objs, b.GetBucket(), b.GetPrefix(), int(concurrency))
+		result = BatchDeleteObjectsOfS3Func(ctx, s3cli, objs, b.GetBucket(), b.GetPrefix(), int(concurrency))
 	} else {
 		concurrency := v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency
 		if opt.RoutineConcurrency != 0 {
 			concurrency = opt.RoutineConcurrency
 		}
-		result = BatchDeleteObjectsConcurrently(ctx, b.Bucket, objs, int(concurrency))
+		result = BatchDeleteObjectsConcurrentlyFunc(ctx, b.Bucket, objs, int(concurrency))
 	}
 
 	return result
 }
+
+var (
+	BatchDeleteObjectsOfS3Func         = BatchDeleteObjectsOfS3
+	BatchDeleteObjectsConcurrentlyFunc = BatchDeleteObjectsConcurrently
+)
 
 // BatchDeleteObjectsOfS3 delete objects by batch delete api
 func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *BatchDeleteObjectsResult {
@@ -441,14 +454,14 @@ func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
 	return s3options
 }
 
-func newLocalStorage(conf *localConfig) (*blob.Bucket, error) {
+func newLocalStorageImpl(conf *localConfig) (*blob.Bucket, error) {
 	dir := path.Join(conf.mountPath, conf.prefix)
 	bucket, err := fileblob.OpenBucket(dir, nil)
 	return bucket, err
 }
 
 // newS3Storage initialize a new s3 storage
-func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
+func newS3StorageImpl(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
 	awsConfig := aws.NewConfig().WithMaxRetries(maxRetries).
 		WithS3ForcePathStyle(conf.forcePathStyle)
 	if conf.region != "" {
@@ -491,7 +504,7 @@ func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error)
 }
 
 // newGcsStorage initialize a new gcs storage
-func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
+func newGcsStorageImpl(conf *gcsConfig) (*blob.Bucket, error) {
 	ctx := context.Background()
 
 	// Your GCP credentials.
@@ -531,10 +544,10 @@ type azblobSharedKeyCred struct {
 }
 
 // newAzblobStorage initialize a new azblob storage
-func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
+func newAzblobStorageImpl(conf *azblobConfig) (*blob.Bucket, error) {
 	account := os.Getenv("AZURE_STORAGE_ACCOUNT")
 	if len(account) == 0 {
-		return nil, errors.New("No AZURE_STORAGE_ACCOUNT")
+		return nil, errors.New("no AZURE_STORAGE_ACCOUNT")
 	}
 
 	// Azure AAD Service Principal with access to the storage account.
@@ -565,7 +578,7 @@ func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 			sharedKey: accountKey,
 		})
 	} else {
-		return nil, errors.New("Missing necessary key(s) for credentials")
+		return nil, errors.New("missing necessary key(s) for credentials")
 	}
 
 	if err != nil {

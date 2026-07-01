@@ -56,8 +56,10 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if len(m.PDAddresses) == 0 {
 		if tc.AcrossK8s() {
 			m.AcrossK8s = &AcrossK8sScriptModel{
-				PDAddr:        fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
-				DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+				PDAddr:          fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+				DiscoveryAddr:   fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+				DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+				ClusterCertPath: "/var/lib/tikv-tls",
 			}
 			m.PDAddresses = "${result}" // get pd addr in subscript
 		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
@@ -115,12 +117,16 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 const (
 	// tikvStartSubScript contains optional subscripts used in start script.
+	//
+	// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+	tikvAcrossK8sDiscoveryFetchPrefix = `{{ if .AcrossK8s.DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .AcrossK8s.ClusterCertPath }}/ca.crt --cert {{ .AcrossK8s.ClusterCertPath }}/tls.crt --key {{ .AcrossK8s.ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}`
+
 	tikvStartSubScript = `
 {{ define "AcrossK8sSubscript" }}
 pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+until result=$(` + tikvAcrossK8sDiscoveryFetchPrefix + `://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done

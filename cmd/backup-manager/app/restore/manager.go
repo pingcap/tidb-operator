@@ -61,21 +61,21 @@ func NewManager(
 }
 
 func (rm *Manager) setOptions(restore *v1alpha1.Restore) {
-	rm.Options.Host = restore.Spec.To.Host
+	rm.Host = restore.Spec.To.Host
 
 	if restore.Spec.To.Port != 0 {
-		rm.Options.Port = restore.Spec.To.Port
+		rm.Port = restore.Spec.To.Port
 	} else {
-		rm.Options.Port = v1alpha1.DefaultTiDBServerPort
+		rm.Port = v1alpha1.DefaultTiDBServerPort
 	}
 
 	if restore.Spec.To.User != "" {
-		rm.Options.User = restore.Spec.To.User
+		rm.User = restore.Spec.To.User
 	} else {
-		rm.Options.User = v1alpha1.DefaultTidbUser
+		rm.User = v1alpha1.DefaultTidbUser
 	}
 
-	rm.Options.Password = backuputil.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+	rm.Password = backuputil.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
 }
 
 // ProcessRestore used to process the restore logic

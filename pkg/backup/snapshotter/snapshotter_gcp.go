@@ -67,7 +67,7 @@ func (s *GCPSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error
 }
 
 func (s *GCPSnapshotter) GenerateBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (*CloudSnapBackup, string, error) {
-	return s.BaseSnapshotter.generateBackupMetadata(b, tc, s)
+	return s.generateBackupMetadata(b, tc, s)
 }
 
 func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error {
@@ -96,7 +96,7 @@ func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 }
 
 func (s *GCPSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
-	return s.BaseSnapshotter.prepareRestoreMetadata(r, csb, s)
+	return s.prepareRestoreMetadata(r, csb, s)
 }
 
 func (s *GCPSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {

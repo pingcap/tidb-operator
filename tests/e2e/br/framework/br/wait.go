@@ -30,7 +30,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -177,6 +176,40 @@ func WaitForBackupFailed(c versioned.Interface, ns, name string, timeout time.Du
 		return false, nil
 	}); err != nil {
 		return fmt.Errorf("can't wait for backup failed: %v", err)
+	}
+	return nil
+}
+
+// WaitForLogBackupFailedWithReason will poll and wait until timeout or log backup fails with expected reason
+func WaitForLogBackupFailedWithReason(c versioned.Interface, ns, name, expectedReason string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		b, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		// Check log backup subcommand status for failure
+		if b.Spec.Mode == v1alpha1.BackupModeLog {
+			if v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupFailed) {
+				reason, _ := v1alpha1.GetLogSubcommandConditionInfo(b)
+				if reason == expectedReason {
+					return true, nil
+				}
+				return false, fmt.Errorf("log backup failed with unexpected reason: %s, expected: %s", reason, expectedReason)
+			}
+		}
+
+		// Also check top-level conditions
+		for _, cond := range b.Status.Conditions {
+			if cond.Type == v1alpha1.BackupFailed && cond.Status == corev1.ConditionTrue {
+				if cond.Reason == expectedReason {
+					return true, nil
+				}
+			}
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for log backup failed with reason %s: %v", expectedReason, err)
 	}
 	return nil
 }
@@ -362,7 +395,7 @@ func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout tim
 		case string(v1alpha1.BackupComplete):
 			return true, nil
 		case string(v1alpha1.BackupFailed):
-			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
+			return false, fmt.Errorf("compact failed: %s", cpbk.Status.Message)
 		default:
 			log.Logf("the current status is: %s %s", cpbk.Status.State, cpbk.Status.Progress)
 			//do nothing
@@ -383,7 +416,7 @@ func printPodLogs(f *framework.Framework, ns, name string) {
 		return
 	}
 
-	var matchingPods []v1.Pod
+	var matchingPods []corev1.Pod
 	for _, pod := range pods.Items {
 		if strings.Contains(pod.Name, name) {
 			matchingPods = append(matchingPods, pod)
@@ -396,7 +429,7 @@ func printPodLogs(f *framework.Framework, ns, name string) {
 	}
 
 	for _, pod := range matchingPods {
-		req := f.ClientSet.CoreV1().Pods(ns).GetLogs(pod.Name, &v1.PodLogOptions{})
+		req := f.ClientSet.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{})
 
 		// Execute the log request and get the stream
 		logStream, err := req.Stream(context.TODO())

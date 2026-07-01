@@ -15,6 +15,7 @@ package v2
 
 import (
 	"fmt"
+	neturl "net/url"
 	"path"
 	"slices"
 	"strings"
@@ -35,6 +36,13 @@ type TiCDCStartScriptModel struct {
 	LogLevel      string
 	PDAddresses   string
 	ExtraArgs     string
+	// TiCI changefeed settings
+	EnableTiCIChangefeed  bool
+	IncludeChangefeedConf bool
+	ChangefeedID          string
+	ChangefeedSinkURI     string
+	ChangefeedServerAddr  string
+	ChangefeedTLSArgs     string
 
 	AcrossK8s *AcrossK8sScriptModel
 }
@@ -67,8 +75,10 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if len(m.PDAddresses) == 0 {
 		if tc.AcrossK8s() {
 			m.AcrossK8s = &AcrossK8sScriptModel{
-				PDAddr:        fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
-				DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+				PDAddr:          fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+				DiscoveryAddr:   fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+				DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+				ClusterCertPath: "/var/lib/ticdc-tls",
 			}
 			m.PDAddresses = "${result}" // get pd addr in subscript
 		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
@@ -88,21 +98,158 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.Spec.TiCDC.Config != nil && !tc.Spec.TiCDC.Config.OnlyOldItems() {
 		extraArgs = append(extraArgs, fmt.Sprintf("--config=%s", "/etc/ticdc/ticdc.toml"))
 	}
+	if tc.Spec.TiCI != nil {
+		extraArgs = append(extraArgs, "--newarch=true")
+	}
 	if len(extraArgs) > 0 {
 		m.ExtraArgs = strings.Join(extraArgs, " ")
+	}
+
+	changefeedInfo, err := buildTiCIChangefeedInfo(tc)
+	if err != nil {
+		return "", err
+	}
+	if changefeedInfo.Enabled {
+		m.EnableTiCIChangefeed = true
+		m.IncludeChangefeedConf = changefeedInfo.IncludeChangefeedConf
+		m.ChangefeedID = changefeedInfo.ID
+		m.ChangefeedSinkURI = escapeSingleQuotes(changefeedInfo.SinkURI)
+		m.ChangefeedServerAddr = changefeedInfo.ServerAddr
+		m.ChangefeedTLSArgs = changefeedInfo.TLSArgs
 	}
 
 	return renderTemplateFunc(ticdcStartScriptTpl, m)
 }
 
+type tiCIS3ConfigForChangefeed struct {
+	Endpoint     string
+	Region       string
+	AccessKey    string
+	SecretKey    string
+	Bucket       string
+	Prefix       string
+	UsePathStyle bool
+}
+
+type tiCIChangefeedInfo struct {
+	Enabled               bool
+	IncludeChangefeedConf bool
+	ID                    string
+	SinkURI               string
+	ServerAddr            string
+	TLSArgs               string
+}
+
+func buildTiCIChangefeedInfo(tc *v1alpha1.TidbCluster) (*tiCIChangefeedInfo, error) {
+	info := &tiCIChangefeedInfo{}
+	if tc.Spec.TiCI == nil {
+		return info, nil
+	}
+	if tc.Spec.TiCI.Changefeed != nil && tc.Spec.TiCI.Changefeed.Enable != nil && !*tc.Spec.TiCI.Changefeed.Enable {
+		return info, nil
+	}
+	info.Enabled = true
+	info.IncludeChangefeedConf = true
+	changefeedID := "tici-replication-task"
+	if tc.Spec.TiCI.Changefeed != nil && tc.Spec.TiCI.Changefeed.ChangefeedID != "" {
+		changefeedID = tc.Spec.TiCI.Changefeed.ChangefeedID
+	}
+	info.ID = changefeedID
+
+	sinkURI := ""
+	if tc.Spec.TiCI.Changefeed != nil {
+		sinkURI = tc.Spec.TiCI.Changefeed.SinkURI
+	}
+	if sinkURI == "" {
+		s3, err := buildTiCIS3ConfigForChangefeed(tc)
+		if err != nil {
+			return nil, err
+		}
+		sinkURI = buildTiCIChangefeedSinkURIFromS3(s3)
+	}
+	info.SinkURI = sinkURI
+	info.ServerAddr = fmt.Sprintf("%s://127.0.0.1:%d", tc.Scheme(), v1alpha1.DefaultTiCDCPort)
+	if tc.IsTLSClusterEnabled() {
+		ticdcCertPath := constants.TiCDCCertPath
+		info.TLSArgs = fmt.Sprintf("--ca=%s --cert=%s --key=%s",
+			path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey),
+			path.Join(ticdcCertPath, corev1.TLSCertKey),
+			path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey),
+		)
+	}
+	return info, nil
+}
+
+func buildTiCIS3ConfigForChangefeed(tc *v1alpha1.TidbCluster) (*tiCIS3ConfigForChangefeed, error) {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.S3 == nil {
+		return nil, fmt.Errorf("TiCI S3 config is required for changefeed")
+	}
+	s3 := tc.Spec.TiCI.S3
+	if s3.Endpoint == "" || s3.Bucket == "" {
+		return nil, fmt.Errorf("TiCI S3 endpoint and bucket are required for changefeed")
+	}
+	usePathStyle := true
+	if s3.UsePathStyle != nil {
+		usePathStyle = *s3.UsePathStyle
+	}
+	region := s3.Region
+	if region == "" {
+		region = "us-east-1"
+	}
+	prefix := s3.Prefix
+	if prefix == "" {
+		prefix = "tici_default_prefix"
+	}
+	return &tiCIS3ConfigForChangefeed{
+		Endpoint:     s3.Endpoint,
+		Region:       region,
+		AccessKey:    s3.AccessKey,
+		SecretKey:    s3.SecretKey,
+		Bucket:       s3.Bucket,
+		Prefix:       prefix,
+		UsePathStyle: usePathStyle,
+	}, nil
+}
+
+func buildTiCIChangefeedSinkURIFromS3(s3 *tiCIS3ConfigForChangefeed) string {
+	sinkPrefix := fmt.Sprintf("%s/cdc", strings.TrimRight(s3.Prefix, "/"))
+	if isGCSStorageEndpoint(s3.Endpoint) {
+		return fmt.Sprintf("gcs://%s/%s?protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
+			s3.Bucket, sinkPrefix)
+	}
+	return fmt.Sprintf("s3://%s/%s?endpoint=%s&access-key=%s&secret-access-key=%s&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
+		s3.Bucket, sinkPrefix, s3.Endpoint, s3.AccessKey, s3.SecretKey)
+}
+
+func isGCSStorageEndpoint(endpoint string) bool {
+	host := strings.TrimSpace(endpoint)
+	if parsed, err := neturl.Parse(endpoint); err == nil {
+		if parsed.Host != "" {
+			host = parsed.Hostname()
+		} else if parsed.Path != "" {
+			host = strings.Split(strings.TrimSpace(parsed.Path), "/")[0]
+		}
+	}
+	host = strings.ToLower(strings.TrimSpace(host))
+	return host == "storage.googleapis.com" || strings.HasSuffix(host, ".storage.googleapis.com")
+}
+
+func escapeSingleQuotes(input string) string {
+	return strings.ReplaceAll(input, "'", `'"'"'`)
+}
+
 const (
 	// ticdcStartSubScript contains optional subscripts used in start script.
+	//
+	// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+	ticdcAcrossK8sDiscoveryFetchPrefix = `{{ if .AcrossK8s.DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .AcrossK8s.ClusterCertPath }}/ca.crt --cert {{ .AcrossK8s.ClusterCertPath }}/tls.crt --key {{ .AcrossK8s.ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}`
+
 	ticdcStartSubScript = `
 {{ define "AcrossK8sSubscript" }}
 pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$(` + ticdcAcrossK8sDiscoveryFetchPrefix + `://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
@@ -126,7 +273,43 @@ ARGS="${ARGS} {{ .ExtraArgs }}"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
+{{- if .EnableTiCIChangefeed }}
+/cdc server ${ARGS} &
+CDC_PID=$!
+CHANGEFEED_SERVER="{{ .ChangefeedServerAddr }}"
+CHANGEFEED_ID="{{ .ChangefeedID }}"
+CHANGEFEED_SINK_URI='{{ .ChangefeedSinkURI }}'
+CHANGEFEED_TLS_ARGS="{{ .ChangefeedTLSArgs }}"
+{{- if .IncludeChangefeedConf }}
+CHANGEFEED_CONFIG="/tmp/ticdc-changefeed-config.toml"
+cat <<'EOF' > "${CHANGEFEED_CONFIG}"
+[sink]
+date-separator = "none"
+EOF
+{{- end }}
+i=0
+while [ $i -lt 15 ]; do
+    if /cdc cli capture list --server="${CHANGEFEED_SERVER}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+        break
+    fi
+    i=$((i+1))
+    sleep 2
+done
+j=0
+while [ $j -lt 15 ]; do
+    if /cdc cli changefeed query --server="${CHANGEFEED_SERVER}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+        break
+    fi
+    if /cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}"{{- if .IncludeChangefeedConf }} --config="${CHANGEFEED_CONFIG}"{{- end }} ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+        break
+    fi
+    j=$((j+1))
+    sleep 2
+done
+wait ${CDC_PID}
+{{- else }}
 exec /cdc server ${ARGS}
+{{- end }}
 `
 )
 

@@ -34,7 +34,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
-	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -187,7 +186,7 @@ func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterfac
 	return
 }
 
-func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
@@ -368,6 +367,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	objMeta, stsLabels := getPumpMeta(tc, controller.PumpMemberName)
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
+	volumeAttributesClassName := tc.Spec.Pump.VolumeAttributesClassName
 	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
 	podAnnos := util.CombineStringMap(spec.Annotations(), controller.AnnProm(v1alpha1.DefaultPumpPort, "/metrics"))
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
@@ -485,8 +485,9 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
-				StorageClassName: storageClass,
-				Resources:        storageRequest,
+				StorageClassName:          storageClass,
+				VolumeAttributesClassName: volumeAttributesClassName,
+				Resources:                 storageRequest,
 			},
 		},
 	}
@@ -519,7 +520,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	}
 
 	// To compatible with default podManagementPolicy of pump is "OrderedReady"
-	podManagementPolicy := apps.OrderedReadyPodManagement
+	podManagementPolicy := appsv1.OrderedReadyPodManagement
 	if len(tc.Spec.Pump.PodManagementPolicy) != 0 || len(tc.Spec.PodManagementPolicy) != 0 {
 		podManagementPolicy = spec.PodManagementPolicy()
 	}
@@ -534,7 +535,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			Template:             podTemplate,
 			VolumeClaimTemplates: volumeClaims,
 			PodManagementPolicy:  podManagementPolicy,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: spec.StatefulSetUpdateStrategy(),
 			},
 		},
@@ -554,7 +555,7 @@ func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1
 	return objMeta, pumpLabel
 }
 
-func (m *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+func (m *pumpMemberManager) pumpStatefulSetIsUpgrading(set *appsv1.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
 	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
@@ -570,7 +571,7 @@ func (m *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc
 		return false, fmt.Errorf("pumpStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %s", tc.GetNamespace(), tc.GetName(), selector, err)
 	}
 	for _, pod := range pumpPods {
-		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		revisionHash, exist := pod.Labels[appsv1.ControllerRevisionHashLabelKey]
 		if !exist {
 			return false, nil
 		}

@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	utilpkg "github.com/pingcap/tidb-operator/pkg/util"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
@@ -109,7 +110,7 @@ func newTestCase(backupVersion, restoreVersion string, typ string, opts ...optio
 func (t *testcase) description() string {
 	builder := &strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
+	fmt.Fprintf(builder, "[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion)
 
 	if t.enableTLS {
 		builder.WriteString("[TLS]")
@@ -313,15 +314,106 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		tcase := newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR)
 		tcase.configureBackup = func(backup *v1alpha1.Backup) {
-			backup.Spec.StorageProvider.S3.Bucket = path.Join(backup.Spec.StorageProvider.S3.Bucket, middlePath) // bucket add suffix
+			backup.Spec.S3.Bucket = path.Join(backup.Spec.S3.Bucket, middlePath) // bucket add suffix
 		}
 		tcase.postBackup = func(backup *v1alpha1.Backup) {
 			ginkgo.By("Check whether prefix of backup files in storage is right")
-			expectedPrefix := path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
+			expectedPrefix := path.Join(middlePath, backup.Spec.S3.Prefix)
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, expectedPrefix)
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, false, "storage should have data")
 		}
+	})
+
+	ginkgo.It("backup and restore should work with automountServiceAccountToken disabled", func() {
+		backupClusterName := "backup-restore-no-sa-token"
+		restoreClusterName := "restore-no-sa-token"
+		backupVersion := utilimage.TiDBLatest
+		enableTLS := false
+		skipCA := false
+		dbName := "e2etest"
+		backupName := backupClusterName
+		restoreName := restoreClusterName
+		typ := strings.ToLower(typeBR)
+		disableAutomount := false
+
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ginkgo.By("Create TiDB cluster for backup")
+		err := createTidbClusterWithConfig(f, backupClusterName, backupVersion, enableTLS, skipCA, func(tc *v1alpha1.TidbCluster) {
+			setAllTidbClusterComponentsAutomountServiceAccountToken(tc, &disableAutomount)
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create TiDB cluster for restore")
+		err = createTidbClusterWithConfig(f, restoreClusterName, backupVersion, enableTLS, skipCA, func(tc *v1alpha1.TidbCluster) {
+			setAllTidbClusterComponentsAutomountServiceAccountToken(tc, &disableAutomount)
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for backup TiDB cluster ready")
+		err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for restore TiDB cluster ready")
+		err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Forward backup TiDB cluster service")
+		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(v1alpha1.DefaultTiDBServerPort))
+		framework.ExpectNoError(err)
+		err = initDatabase(backupHost, dbName)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Write data into backup TiDB cluster")
+		backupDSN := getDefaultDSN(backupHost, dbName)
+		err = blockwriter.New().Write(context.Background(), backupDSN)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create RBAC for backup and restore")
+		err = createRBAC(f)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create backup with automountServiceAccountToken disabled")
+		backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+			backup.Spec.AutomountServiceAccountToken = &disableAutomount
+		})
+		framework.ExpectNoError(err)
+
+		backupJob, err := f.ClientSet.BatchV1().Jobs(ns).Get(context.TODO(), backup.GetBackupJobName(), metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&backupJob.Spec.Template.Spec))
+
+		backupPod, err := waitForJobPod(f, ns, backup.GetBackupJobName(), 2*time.Minute)
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&backupPod.Spec))
+
+		ginkgo.By("Create restore with automountServiceAccountToken disabled")
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, func(restore *v1alpha1.Restore) {
+			restore.Spec.AutomountServiceAccountToken = &disableAutomount
+		})
+		framework.ExpectNoError(err)
+
+		restore, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Get(context.TODO(), restoreName, metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		restoreJob, err := f.ClientSet.BatchV1().Jobs(ns).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&restoreJob.Spec.Template.Spec))
+
+		restorePod, err := waitForJobPod(f, ns, restore.GetRestoreJobName(), 2*time.Minute)
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&restorePod.Spec))
+
+		ginkgo.By("Forward restore TiDB cluster service")
+		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), int(v1alpha1.DefaultTiDBServerPort))
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Validate restore result")
+		restoreDSN := getDefaultDSN(restoreHost, dbName)
+		err = checkDataIsSame(backupDSN, restoreDSN)
+		framework.ExpectNoError(err)
 	})
 
 	ginkgo.Context("[Backup Clean]", func() {
@@ -770,6 +862,120 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	k8se2e.ExpectNoError(err)
 		// 	k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
 		// })
+
+		ginkgo.It("log backup task deleted externally should fail with LogBackupTaskNotFound", func() {
+			backupClusterName := "log-backup-not-found"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster")
+			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for log backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Start log backup")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Stop log backup task via BR command (bypass operator)")
+			err = stopLogBackupTaskViaBR(f, backupClusterName, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup to fail with LogBackupTaskNotFound")
+			err = brutil.WaitForLogBackupFailedWithReason(f.ExtClient, ns, backupName, "LogBackupTaskNotFound", backupCompleteTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Verify backup can be deleted")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
+		ginkgo.It("log backup should wait and start when cluster becomes ready", func() {
+			backupClusterName := "log-backup-wait-cluster"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create RBAC for log backup first")
+			err := createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create log backup CR before cluster exists")
+			backupFolder := time.Now().Format(time.RFC3339)
+			cfg := f.Storage.Config(ns, backupFolder)
+			s := brutil.GetSecret(ns, backupName, "")
+			_, err = f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{})
+			framework.ExpectNoError(err)
+
+			backup := brutil.GetBackup(ns, backupName, backupClusterName, typ, cfg)
+			backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			backup.Spec.Mode = v1alpha1.BackupModeLog
+			_, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Verify backup is waiting (cluster not found)")
+			// Wait a few seconds to let controller attempt reconcile
+			time.Sleep(10 * time.Second)
+			_, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create log-backup.enable TiDB cluster")
+			err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup to become Running")
+			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Verify CommitTs is set")
+			backup, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "", "CommitTs should be set")
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
 	})
 
 	// the following cases may encounter errors after restarting the backup pod:
@@ -1276,6 +1482,10 @@ func getPDServiceResourceName(tcName string) string {
 }
 
 func createTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
+	return createTidbClusterWithConfig(f, name, version, enableTLS, skipCA, nil)
+}
+
+func createTidbClusterWithConfig(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool, configure func(*v1alpha1.TidbCluster)) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
 	tc := fixture.GetTidbClusterWithoutPDMS(ns, name, version)
@@ -1291,12 +1501,57 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 			return err
 		}
 	}
+	if configure != nil {
+		configure(tc)
+	}
 
 	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func setAllTidbClusterComponentsAutomountServiceAccountToken(tc *v1alpha1.TidbCluster, value *bool) {
+	if tc.Spec.Discovery.ComponentSpec == nil {
+		tc.Spec.Discovery.ComponentSpec = &v1alpha1.ComponentSpec{}
+	}
+	tc.Spec.Discovery.AutomountServiceAccountToken = value
+
+	if tc.Spec.PD != nil {
+		tc.Spec.PD.AutomountServiceAccountToken = value
+	}
+	for _, pdms := range tc.Spec.PDMS {
+		if pdms != nil {
+			pdms.AutomountServiceAccountToken = value
+		}
+	}
+	if tc.Spec.TiDB != nil {
+		tc.Spec.TiDB.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiKV != nil {
+		tc.Spec.TiKV.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiFlash != nil {
+		tc.Spec.TiFlash.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiCDC != nil {
+		tc.Spec.TiCDC.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.Pump != nil {
+		tc.Spec.Pump.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiProxy != nil {
+		tc.Spec.TiProxy.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiCI != nil {
+		if tc.Spec.TiCI.Meta != nil {
+			tc.Spec.TiCI.Meta.AutomountServiceAccountToken = value
+		}
+		if tc.Spec.TiCI.Worker != nil {
+			tc.Spec.TiCI.Worker.AutomountServiceAccountToken = value
+		}
+	}
 }
 
 // createLogBackupEnableTidbCluster create tidb cluster and set "log-backup.enable = true" in tikv to enable log backup.
@@ -1351,13 +1606,13 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespa
 		if err != nil {
 			return err
 		}
-		caSecret.ObjectMeta.ResourceVersion = ""
+		caSecret.ResourceVersion = ""
 		caSecret.Namespace = ns2
 		err = f.GenericClient.Create(context.TODO(), caSecret)
 		if err != nil {
 			return err
 		}
-		caSecret.ObjectMeta.ResourceVersion = ""
+		caSecret.ResourceVersion = ""
 		caSecret.Namespace = ns3
 		err = f.GenericClient.Create(context.TODO(), caSecret)
 		if err != nil {
@@ -1687,6 +1942,58 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 	return nil
 }
 
+func waitForJobPod(f *e2eframework.Framework, ns, jobName string, timeout time.Duration) (*v1.Pod, error) {
+	var jobPod *v1.Pod
+	err := wait.PollImmediate(2*time.Second, timeout, func() (bool, error) {
+		pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+		})
+		if err != nil {
+			return false, err
+		}
+		if len(pods.Items) == 0 {
+			return false, nil
+		}
+		jobPod = pods.Items[0].DeepCopy()
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return jobPod, nil
+}
+
+func assertProjectedSATokenPodSpec(podSpec *v1.PodSpec) error {
+	if podSpec.AutomountServiceAccountToken == nil || *podSpec.AutomountServiceAccountToken {
+		return fmt.Errorf("expected automountServiceAccountToken=false, got %v", podSpec.AutomountServiceAccountToken)
+	}
+
+	hasProjectedVolume := false
+	for _, volume := range podSpec.Volumes {
+		if volume.Name != utilpkg.SATokenProjectionVolumeName {
+			continue
+		}
+		if volume.Projected == nil {
+			return fmt.Errorf("volume %s should be projected", utilpkg.SATokenProjectionVolumeName)
+		}
+		hasProjectedVolume = true
+		break
+	}
+	if !hasProjectedVolume {
+		return fmt.Errorf("projected service account token volume %s not found", utilpkg.SATokenProjectionVolumeName)
+	}
+
+	for _, container := range podSpec.Containers {
+		for _, volumeMount := range container.VolumeMounts {
+			if volumeMount.Name == utilpkg.SATokenProjectionVolumeName && volumeMount.MountPath == utilpkg.SATokenProjectionMountPath && volumeMount.ReadOnly {
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("projected service account token volume mount %s not found", utilpkg.SATokenProjectionMountPath)
+}
+
 func getDefaultDSN(host, dbName string) string {
 	user := "root"
 	password := ""
@@ -1835,4 +2142,58 @@ func createCompactBackupAndWaitForComplete(f *e2eframework.Framework, name, tcNa
 		return compact, err
 	}
 	return f.ExtClient.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+}
+
+// stopLogBackupTaskViaBR stops a log backup task directly via BR command, bypassing the operator.
+// This is used to simulate external deletion of the log backup task in TiKV.
+func stopLogBackupTaskViaBR(f *e2eframework.Framework, clusterName, taskName string) error {
+	ns := f.Namespace.Name
+	pdAddr := fmt.Sprintf("%s-pd:2379", clusterName)
+
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "br-cli-" + taskName,
+			Namespace: ns,
+		},
+		Spec: v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyNever,
+			Containers: []v1.Container{
+				{
+					Name:    "br",
+					Image:   fmt.Sprintf("pingcap/br:%s", utilimage.TiDBLatest),
+					Command: []string{"/br", "log", "stop", "--task-name=" + taskName, "--pd=" + pdAddr},
+				},
+			},
+		},
+	}
+
+	// Create the pod
+	_, err := f.ClientSet.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create BR CLI pod: %v", err)
+	}
+
+	// Wait for pod to complete
+	err = wait.PollImmediate(time.Second*2, time.Minute*5, func() (bool, error) {
+		p, err := f.ClientSet.CoreV1().Pods(ns).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if p.Status.Phase == v1.PodSucceeded {
+			return true, nil
+		}
+		if p.Status.Phase == v1.PodFailed {
+			return false, fmt.Errorf("BR CLI pod failed")
+		}
+		return false, nil
+	})
+
+	// Clean up pod regardless of success/failure
+	deleteErr := f.ClientSet.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+	if deleteErr != nil {
+		// Log but don't fail on cleanup error
+		fmt.Printf("Warning: failed to delete BR CLI pod: %v\n", deleteErr)
+	}
+
+	return err
 }

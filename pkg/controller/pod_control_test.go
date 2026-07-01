@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	core "k8s.io/client-go/testing"
@@ -374,8 +373,8 @@ func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
 	g.Expect(updatePod.Labels["a"]).To(Equal("b"))
 }
 
-func newFakeClientRecorderAndPDControl() (*fake.Clientset, *pdapi.FakePDControl, corelisters.PodLister, cache.Indexer, *record.FakeRecorder) {
-	fakeClient := &fake.Clientset{}
+func newFakeClientRecorderAndPDControl() (*kubefake.Clientset, *pdapi.FakePDControl, corelisters.PodLister, cache.Indexer, *record.FakeRecorder) {
+	fakeClient := &kubefake.Clientset{}
 	kubeCli := kubefake.NewSimpleClientset()
 	kubeinformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pdControl := pdapi.NewFakePDControl(kubeinformer.Core().V1().Secrets().Lister())

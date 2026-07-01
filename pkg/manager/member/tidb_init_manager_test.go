@@ -60,7 +60,7 @@ func TestTiDBInitManagerSync(t *testing.T) {
 			}
 			tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
 			// sync configmap
-			_, err = tmm.deps.Controls.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil)
+			_, err = tmm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			err = indexers.ti.Add(ti)
@@ -126,6 +126,36 @@ func TestTiDBInitManagerSync(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i], t)
 	}
+}
+
+func TestMakeTiDBInitJobDisablesServiceAccountTokenAutomount(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tim, _, indexers := newFakeTiDBInitManager()
+	ti := newTidbInitializerForTiDB()
+	tc := newTidbClusterForTiDB()
+
+	err := indexers.tc.Add(tc)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	job, err := tim.makeTiDBInitJob(ti)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Spec.Template.Spec.AutomountServiceAccountToken).NotTo(BeNil())
+	g.Expect(*job.Spec.Template.Spec.AutomountServiceAccountToken).To(BeFalse())
+}
+
+func TestMakeTiDBInitJobUsesServiceAccountName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tim, _, indexers := newFakeTiDBInitManager()
+	ti := newTidbInitializerForTiDB()
+	ti.Spec.ServiceAccountName = "tidb-initializer"
+	tc := newTidbClusterForTiDB()
+
+	err := indexers.tc.Add(tc)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	job, err := tim.makeTiDBInitJob(ti)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Spec.Template.Spec.ServiceAccountName).To(Equal("tidb-initializer"))
 }
 
 func newFakeTiDBInitManager() (*tidbInitManager, *tidbMemberManager, *fakeIndexers) {

@@ -295,6 +295,60 @@ exec /tiflash/tiflash ${ARGS}
 `,
 		},
 		{
+			name: "across k8s with discovery mtls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true, EnableDiscoveryMTLS: true}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="${result}"
+pd_url=start-script-test-pd:2379
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
+until result=$(curl -sS --fail --max-time 3 --cacert /var/lib/tiflash-tls/ca.crt --cert /var/lib/tiflash-tls/tls.crt --key /var/lib/tiflash-tls/tls.key https://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep $((RANDOM % 5))
+done
+PD_ADDRESS=${result}
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20170 \
+--flash.service_addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:3930 \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`,
+		},
+		{
 			name: "basic with ipv6",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PreferIPv6 = true

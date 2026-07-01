@@ -82,6 +82,10 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
+	// TiCIMetaMemberType is tici meta member type
+	TiCIMetaMemberType MemberType = "tici-meta"
+	// TiCIWorkerMemberType is tici worker member type
+	TiCIWorkerMemberType MemberType = "tici-worker"
 	// TiProxyMemberType is ticdc member type
 	TiProxyMemberType MemberType = "tiproxy"
 	// PumpMemberType is pump member type
@@ -157,8 +161,20 @@ const (
 type StartScriptV2FeatureFlag string
 
 const (
-	StartScriptV2FeatureFlagWaitForDnsNameIpMatch          = "WaitForDnsNameIpMatch"
+	// StartScriptV2FeatureFlagWaitForDnsNameIpMatch makes PD and TiKV wait until the local IP
+	// address matches the one published to external DNS before starting the component.
+	StartScriptV2FeatureFlagWaitForDnsNameIpMatch = "WaitForDnsNameIpMatch"
+	// StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery advises the start script to use
+	// TidbClusterSpec.PDAddresses (if supplied) as the --join/--backend-endpoints argument
+	// instead of querying the discovery service.
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
+	// StartScriptV2FeatureFlagBashShebang changes the shell interpreter from /bin/sh to /bin/bash.
+	StartScriptV2FeatureFlagBashShebang = "BashShebang"
+	// StartScriptV2FeatureFlagNoWaitDNS skips the DNS readiness check before starting the component.
+	// By default v2 waits for the pod's domain name to resolve (and optionally for the resolved IP
+	// to match the local IP) before launching. This flag disables that wait entirely.
+	// When set together with WaitForDnsNameIpMatch, NoWaitDNS takes precedence.
+	StartScriptV2FeatureFlagNoWaitDNS = "NoWaitDNS"
 )
 
 type TiProxyCertLayout string
@@ -172,6 +188,8 @@ const (
 const (
 	// AnnoKeySkipFlushLogBackup when set to a `TidbCluster`, during restarting the cluster, log backup tasks won't be flushed.
 	AnnoKeySkipFlushLogBackup = "tidb.pingcap.com/tikv-restart-without-flush-log-backup"
+	// AnnoKeyLogBackupStateQueryFailureGracePeriod when set to a log `Backup`, overrides how long the tracker waits before failing the backup after continuous state query failures.
+	AnnoKeyLogBackupStateQueryFailureGracePeriod = "tidb.pingcap.com/log-backup-state-query-failure-grace-period"
 )
 
 // +genclient
@@ -253,6 +271,10 @@ type TidbClusterSpec struct {
 	// TiCDC cluster spec
 	// +optional
 	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
+
+	// TiCI cluster spec
+	// +optional
+	TiCI *TiCISpec `json:"tici,omitempty"`
 
 	// TiProxy cluster spec
 	// +optional
@@ -412,8 +434,12 @@ type TidbClusterSpec struct {
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// StartScriptVersion is the version of start script
-	// When PD enables microservice mode, pd and pd microservice component will use start script v2.
+	// StartScriptVersion is the version of start script.
+	//
+	// v1: the original start script.
+	// v2: enhanced start script that waits for the pod's domain name to resolve before launching
+	//     the component. Behaviour can be further tuned via StartScriptV2FeatureFlags.
+	//     When PD enables microservice mode, PD and PD microservice components use v2 automatically.
 	//
 	// default to "v1"
 	// +optional
@@ -436,15 +462,18 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	ClusterID string                 `json:"clusterID,omitempty"`
-	PD        PDStatus               `json:"pd,omitempty"`
-	PDMS      map[string]*PDMSStatus `json:"pdms,omitempty"`
-	TiKV      TiKVStatus             `json:"tikv,omitempty"`
-	TiDB      TiDBStatus             `json:"tidb,omitempty"`
-	Pump      PumpStatus             `json:"pump,omitempty"`
-	TiFlash   TiFlashStatus          `json:"tiflash,omitempty"`
-	TiProxy   TiProxyStatus          `json:"tiproxy,omitempty"`
-	TiCDC     TiCDCStatus            `json:"ticdc,omitempty"`
+	ClusterID  string                 `json:"clusterID,omitempty"`
+	PD         PDStatus               `json:"pd,omitempty"`
+	PDMS       map[string]*PDMSStatus `json:"pdms,omitempty"`
+	TiKV       TiKVStatus             `json:"tikv,omitempty"`
+	TiDB       TiDBStatus             `json:"tidb,omitempty"`
+	Pump       PumpStatus             `json:"pump,omitempty"`
+	TiFlash    TiFlashStatus          `json:"tiflash,omitempty"`
+	TiProxy    TiProxyStatus          `json:"tiproxy,omitempty"`
+	TiCDC      TiCDCStatus            `json:"ticdc,omitempty"`
+	TiCIMeta   TiCIMetaStatus         `json:"ticiMeta,omitempty"`
+	TiCIWorker TiCIWorkerStatus       `json:"ticiWorker,omitempty"`
+	TiCI       TiCIStatus             `json:"tici,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	// +nullable
@@ -539,6 +568,11 @@ type PDSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for PD data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// StorageVolumes configure additional storage for PD pods.
 	// +optional
@@ -661,6 +695,11 @@ type PDMSSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for PD microservice data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// StorageVolumes configure additional storage for PD microservice pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
@@ -729,6 +768,11 @@ type TiKVSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiKV data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// Subdirectory within the volume to store TiKV Data. By default, the data
 	// is stored in the root directory of volume which is mounted at
@@ -897,11 +941,167 @@ type TiCDCSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for TiCDC data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod.
 	// Encoded in the format of Go Duration.
 	// Defaults to 10m
 	// +optional
 	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
+}
+
+// TiCISpec contains details of TiCI meta/worker members
+// +k8s:openapi-gen=true
+type TiCISpec struct {
+	// Meta is the specification of TiCI meta servers
+	// +optional
+	Meta *TiCIMetaSpec `json:"meta,omitempty"`
+
+	// Worker is the specification of TiCI worker servers
+	// +optional
+	Worker *TiCIWorkerSpec `json:"worker,omitempty"`
+
+	// S3 is the configuration of S3/MinIO storage used by TiCI
+	// +optional
+	S3 *TiCIS3Spec `json:"s3,omitempty"`
+
+	// Reader is the configuration of TiCI reader in TiFlash
+	// +optional
+	Reader *TiCIReaderSpec `json:"reader,omitempty"`
+
+	// Changefeed controls the TiCDC changefeed creation for TiCI
+	// +optional
+	Changefeed *TiCIChangefeedSpec `json:"changefeed,omitempty"`
+}
+
+// TiCIMetaSpec contains details of TiCI meta members
+// +k8s:openapi-gen=true
+type TiCIMetaSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiCI meta
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// StorageVolumes configure additional storage for TiCI meta pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// Config is appended to the generated TiCI meta TOML config.
+	// +optional
+	Config string `json:"config,omitempty"`
+
+	// The storageClassName of the persistent volume for TiCI meta data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiCI meta data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+}
+
+// TiCIWorkerSpec contains details of TiCI worker members
+// +k8s:openapi-gen=true
+type TiCIWorkerSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiCI worker
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// StorageVolumes configure additional storage for TiCI worker pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// Config is appended to the generated TiCI worker TOML config.
+	// +optional
+	Config string `json:"config,omitempty"`
+
+	// The storageClassName of the persistent volume for TiCI worker data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiCI worker data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+}
+
+// TiCIS3Spec is the configuration of S3/MinIO for TiCI
+// +k8s:openapi-gen=true
+type TiCIS3Spec struct {
+	// Endpoint is the S3 endpoint, e.g. http://minio:9000
+	Endpoint string `json:"endpoint"`
+	// Region is the S3 region
+	// +optional
+	Region string `json:"region,omitempty"`
+	// AccessKey is the S3 access key
+	// +optional
+	AccessKey string `json:"accessKey,omitempty"`
+	// SecretKey is the S3 secret key
+	// +optional
+	SecretKey string `json:"secretKey,omitempty"`
+	// Bucket is the S3 bucket name
+	Bucket string `json:"bucket"`
+	// Prefix is the S3 prefix for TiCI data
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
+	// UsePathStyle enables path-style access for S3
+	// +optional
+	UsePathStyle *bool `json:"usePathStyle,omitempty"`
+}
+
+// TiCIReaderSpec controls the tici reader config inside TiFlash
+// +k8s:openapi-gen=true
+type TiCIReaderSpec struct {
+	// Port for TiCI reader
+	// +optional
+	Port *int32 `json:"port,omitempty"`
+	// HeartbeatInterval is the interval between heartbeats
+	// +optional
+	HeartbeatInterval *string `json:"heartbeatInterval,omitempty"`
+	// MaxHeartbeatRetries is the max retries for heartbeat
+	// +optional
+	MaxHeartbeatRetries *int32 `json:"maxHeartbeatRetries,omitempty"`
+	// HeartbeatWorkerCount is the worker count for heartbeat
+	// +optional
+	HeartbeatWorkerCount *int32 `json:"heartbeatWorkerCount,omitempty"`
+}
+
+// TiCIChangefeedSpec controls TiCDC changefeed creation for TiCI
+// +k8s:openapi-gen=true
+type TiCIChangefeedSpec struct {
+	// Enable changefeed creation
+	// +optional
+	Enable *bool `json:"enable,omitempty"`
+	// SinkURI overrides the computed TiCI sink uri
+	// +optional
+	SinkURI string `json:"sinkURI,omitempty"`
+	// ChangefeedID is the changefeed id
+	// +optional
+	ChangefeedID string `json:"changefeedID,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
@@ -975,6 +1175,11 @@ type TiProxySpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for TiProxy data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// ServerLabels defines the server labels of the TiProxy.
 	// Using both this field and config file to manage the labels is an undefined behavior.
 	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
@@ -1031,6 +1236,10 @@ type StorageClaim struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// Name of the VolumeAttributesClassName required by the claim.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 }
 
 // TiDBSpec contains details of TiDB members
@@ -1116,6 +1325,11 @@ type TiDBSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiDB data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -1241,6 +1455,11 @@ type PumpSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for Pump data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// The configuration of Pump cluster.
 	// +optional
@@ -1464,6 +1683,10 @@ type ComponentSpec struct {
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
+
+	// AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.
+	// +optional
+	AutomountServiceAccountToken *bool `json:"automountServiceAccountToken,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1838,6 +2061,42 @@ type TiCDCStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
+// TiCIMetaStatus is TiCI meta status
+type TiCIMetaStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiCIWorkerStatus is TiCI worker status
+type TiCIWorkerStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiCIStatus is TiCI changefeed status
+type TiCIStatus struct {
+	// ChangefeedSynced indicates whether the TiCI changefeed is created
+	ChangefeedSynced bool `json:"changefeedSynced,omitempty"`
+	// ChangefeedJobName is the job name that creates the changefeed
+	ChangefeedJobName string `json:"changefeedJobName,omitempty"`
+	// ChangefeedLastError records the last error message if job failed
+	ChangefeedLastError string `json:"changefeedLastError,omitempty"`
+}
+
 // TiCDCCapture is TiCDC Capture status
 type TiCDCCapture struct {
 	PodName string `json:"podName,omitempty"`
@@ -1955,6 +2214,15 @@ type TLSCluster struct {
 	//        Same for other components.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+
+	// EnableDiscoveryMTLS indicates whether to enable mutual TLS on the discovery server (port 10261).
+	// When enabled, the discovery server presents its own certificate, and all components must present
+	// a client certificate when calling the discovery service.
+	// A single secret named <clusterName>-discovery-cluster-secret must be created containing ca.crt,
+	// tls.crt and tls.key, and will be mounted to both the discovery server pod and all component pods.
+	// This field only takes effect when Enabled is true.
+	// +optional
+	EnableDiscoveryMTLS bool `json:"enableDiscoveryMTLS,omitempty"`
 }
 
 // +genclient
@@ -2271,6 +2539,9 @@ type BackupSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// The VolumeAttributesClassName of the persistent volume for Backup data storage.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
@@ -2325,6 +2596,9 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.
+	// +optional
+	AutomountServiceAccountToken *bool `json:"automountServiceAccountToken,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	// +kubebuilder:validation:Enum:=Retain;OnFailure;Delete
 	// +kubebuilder:default=Retain
@@ -2655,6 +2929,9 @@ type BackupScheduleSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// The VolumeAttributesClassName of the persistent volume for Backup data storage if not volumeAttributesClassName set in BackupSpec.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -2785,6 +3062,33 @@ const (
 	RestorePruneComplete RestoreConditionType = "PruneComplete"
 	// RestorePruneFailed means the prune job has failed.
 	RestorePruneFailed RestoreConditionType = "PruneFailed"
+
+	// RestoreSnapshotRestore means the replication restore is in phase-1:
+	// BR snapshot restore running in parallel with CompactBackup shards.
+	// This is a phase value (drives status.phase).
+	RestoreSnapshotRestore RestoreConditionType = "SnapshotRestore"
+
+	// RestoreLogRestore means the replication restore is in phase-2:
+	// BR log restore after the phase-1 gate has passed.
+	// This is a phase value (drives status.phase).
+	RestoreLogRestore RestoreConditionType = "LogRestore"
+
+	// RestoreSnapshotRestored indicates the phase-1 BR snapshot restore Job
+	// has completed successfully. This is a condition marker — it is
+	// appended to status.conditions but does NOT drive status.phase.
+	// Written by handler.appendRestoreMarker, not by UpdateRestoreCondition.
+	RestoreSnapshotRestored RestoreConditionType = "SnapshotRestored"
+
+	// RestoreCompactSettled indicates the referenced CompactBackup has reached
+	// a settled state from the Restore's perspective — either a true terminal
+	// (Complete / Failed), or an unrecoverable observation (cross-CR mismatch
+	// / WaitTimeout expired). The Reason field carries the specific outcome
+	// (AllShardsComplete / ShardsPartialFailed / CompactBackupMismatch /
+	// CompactBackupWaitTimeout) and is consumed by phase-2 backup-manager to
+	// decide compact-vs-fallback. This is a condition marker — it is appended
+	// to status.conditions but does NOT drive status.phase. Written by
+	// handler.appendRestoreMarker.
+	RestoreCompactSettled RestoreConditionType = "CompactSettled"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
@@ -2858,6 +3162,9 @@ type RestoreSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// The VolumeAttributesClassName of the persistent volume for Restore data storage.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// BR is the configs for BR.
@@ -2872,6 +3179,9 @@ type RestoreSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of restore
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.
+	// +optional
+	AutomountServiceAccountToken *bool `json:"automountServiceAccountToken,omitempty"`
 	// ToolImage specifies the tool image used in `Restore`, which supports BR and TiDB Lightning images.
 	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8`
 	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
@@ -2910,6 +3220,30 @@ type RestoreSpec struct {
 	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
 	// +kubebuilder:default=0
 	BackoffLimit int32 `json:"backoffLimit,omitempty"`
+	// ReplicationConfig is the optional configuration for replication restore.
+	// When Mode == pitr and this field is non-nil, the controller runs a
+	// two-phase replication restore (snapshot restore + log restore gated on
+	// CompactBackup terminal state). When nil, the controller runs a standard
+	// PiTR restore (existing behavior unchanged).
+	// +optional
+	ReplicationConfig *ReplicationConfig `json:"replicationConfig,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// ReplicationConfig holds the replication-specific configuration for PiTR restore.
+type ReplicationConfig struct {
+	// CompactBackupName references a CompactBackup CR in the same namespace.
+	// The referenced CR must reach a terminal state (Complete or Failed)
+	// before the controller proceeds from phase-1 (snapshot restore) to
+	// phase-2 (log restore).
+	CompactBackupName string `json:"compactBackupName"`
+
+	// WaitTimeout bounds how long the controller waits for a missing
+	// CompactBackup CR to appear. 0 means wait indefinitely.
+	// This timeout does NOT apply when the CompactBackup exists but is
+	// still running; compaction duration is business-dependent.
+	// +optional
+	WaitTimeout *metav1.Duration `json:"waitTimeout,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore
@@ -2967,6 +3301,11 @@ type RestoreStatus struct {
 	// Progresses is the progress of restore.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
+	// ReplicationStep identifies the current phase of replication restore.
+	// Values: "" (not replication), "snapshot-restore", "log-restore".
+	// Set by the controller when creating each phase's Job.
+	// +optional
+	ReplicationStep string `json:"replicationStep,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -3225,6 +3564,11 @@ type MasterSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for dm-master data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// StorageSize is the request storage size for dm-master.
 	// Defaults to "10Gi".
 	// +optional
@@ -3291,6 +3635,11 @@ type WorkerSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for dm-worker data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// StorageSize is the request storage size for dm-worker.
 	// Defaults to "10Gi".
@@ -3436,11 +3785,14 @@ type WorkerFailureMember struct {
 // If `MountPath` is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
 // in somewhere else such as Mutating Admission Webhook)
 // If `StorageClassName` is not set, default to the `spec.${component}.storageClassName`
+// If `VolumeAttributesClassName` is not set, default to the `spec.${component}.volumeAttributesClassName`
+// If `VolumeAttributesClassName` is set, the change of `StorageClassName` will be ignored.
 type StorageVolume struct {
-	Name             string  `json:"name"`
-	StorageClassName *string `json:"storageClassName,omitempty"`
-	StorageSize      string  `json:"storageSize"`
-	MountPath        string  `json:"mountPath,omitempty"`
+	Name                      string  `json:"name"`
+	StorageClassName          *string `json:"storageClassName,omitempty"`
+	StorageSize               string  `json:"storageSize"`
+	MountPath                 string  `json:"mountPath,omitempty"`
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 }
 
 type ObservedStorageVolumeStatus struct {
@@ -3609,6 +3961,19 @@ type CompactBackup struct {
 // +k8s:openapi-gen=true
 type CompactSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// +kubebuilder:validation:Enum:="";"sharded"
+	// +optional
+	Mode CompactMode `json:"mode,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	ShardCount *int32 `json:"shardCount,omitempty"`
+	// PhysicalFileCacheCapacity is passed to tikv-ctl compact-log-backup as --physical-file-cache-capacity.
+	// It uses Kubernetes quantity format, e.g. "150G" or "150Gi", and defaults to "0" when omitted.
+	// +optional
+	PhysicalFileCacheCapacity string `json:"physicalFileCacheCapacity,omitempty"`
+	// Name is passed to tikv-ctl compact-log-backup as --name when configured.
+	// +optional
+	Name string `json:"name,omitempty"`
 	// List of environment variables to set in the container, like v1.Container.Env.
 	// Note that the following builtin env vars will be overwritten by values set here
 	// - S3_PROVIDER
@@ -3670,6 +4035,9 @@ type CompactSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.
+	// +optional
+	AutomountServiceAccountToken *bool `json:"automountServiceAccountToken,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
@@ -3700,6 +4068,12 @@ type CompactRetryRecord struct {
 	RetryReason string `json:"retryReason,omitempty"`
 }
 
+type CompactMode string
+
+const (
+	CompactModeSharded CompactMode = "sharded"
+)
+
 type CompactStatus struct {
 	// State is the current state of the backup
 	State string `json:"state,omitempty"`
@@ -3709,6 +4083,10 @@ type CompactStatus struct {
 	Message string `json:"message,omitempty"`
 	// endTs is the real endTs processed by the compact backup
 	EndTs string `json:"endTs,omitempty"`
+	// CompletedIndexes holds the completed indexes when compact backup runs in sharded mode.
+	CompletedIndexes string `json:"completedIndexes,omitempty"`
+	// FailedIndexes holds the failed indexes when compact backup runs in sharded mode.
+	FailedIndexes string `json:"failedIndexes,omitempty"`
 	// RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
 	RetryStatus []CompactRetryRecord `json:"backoffRetryStatus,omitempty"`
 }

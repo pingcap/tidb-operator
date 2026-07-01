@@ -29,7 +29,7 @@ func newTestPVC(size string) *corev1.PersistentVolumeClaim {
 
 	return &corev1.PersistentVolumeClaim{
 		Spec: corev1.PersistentVolumeClaimSpec{
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: q,
 				},
