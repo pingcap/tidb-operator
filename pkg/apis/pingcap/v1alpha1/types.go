@@ -188,6 +188,8 @@ const (
 const (
 	// AnnoKeySkipFlushLogBackup when set to a `TidbCluster`, during restarting the cluster, log backup tasks won't be flushed.
 	AnnoKeySkipFlushLogBackup = "tidb.pingcap.com/tikv-restart-without-flush-log-backup"
+	// AnnoKeyLogBackupStateQueryFailureGracePeriod when set to a log `Backup`, overrides how long the tracker waits before failing the backup after continuous state query failures.
+	AnnoKeyLogBackupStateQueryFailureGracePeriod = "tidb.pingcap.com/log-backup-state-query-failure-grace-period"
 )
 
 // +genclient
