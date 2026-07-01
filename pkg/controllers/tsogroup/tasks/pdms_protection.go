@@ -41,7 +41,7 @@ func TaskPDMSProtection(state *ReconcileContext, c client.Client) task.Task {
 		replicas := coreutil.Replicas[scope.TSOGroup](tg)
 		involvesMS := msState.InvolvesMS()
 		deleting := !tg.DeletionTimestamp.IsZero()
-		protected := involvesMS && ((!deleting && replicas == 0) || (deleting && !hasNonDeletingOtherTSOGroup(msState, tg)))
+		protected := involvesMS && ((!deleting && replicas == 0) || (deleting && !hasAvailableOtherTSOGroup(msState, tg)))
 		state.SetPDMSProtected(protected)
 
 		var condChanged bool
@@ -64,12 +64,14 @@ func TaskPDMSProtection(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func hasNonDeletingOtherTSOGroup(s *pdms.State, tg *v1alpha1.TSOGroup) bool {
+func hasAvailableOtherTSOGroup(s *pdms.State, tg *v1alpha1.TSOGroup) bool {
 	for _, other := range s.TSOGroups {
 		if other.Namespace == tg.Namespace && other.Name == tg.Name {
 			continue
 		}
-		if other.DeletionTimestamp.IsZero() {
+		if other.DeletionTimestamp.IsZero() &&
+			coreutil.Replicas[scope.TSOGroup](other) > 0 &&
+			coreutil.IsGroupHealthyAndUpToDate[scope.TSOGroup](other) {
 			return true
 		}
 	}

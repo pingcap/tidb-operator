@@ -61,6 +61,7 @@ func TestPDMSProtection(t *testing.T) {
 		tg := fakeTSOGroupForPDMSProtection("tso-extra", 0)
 		markDeleting(tg)
 		otherTG := fakeTSOGroupForPDMSProtection("tso", 1)
+		markReady(otherTG)
 		pdg := fakePDGroupForPDMSProtection()
 		state := &ReconcileContext{State: &state{tg: tg}}
 		fc := client.NewFakeClient(tg, otherTG, pdg)
@@ -71,6 +72,38 @@ func TestPDMSProtection(t *testing.T) {
 		require.Len(t, tg.Status.Conditions, 1)
 		assert.Equal(t, v1alpha1.CondPDMSProtected, tg.Status.Conditions[0].Type)
 		assert.Equal(t, metav1.ConditionFalse, tg.Status.Conditions[0].Status)
+	})
+
+	t.Run("deleting last available TSOGroup is protected when other TSOGroup has zero replicas", func(t *testing.T) {
+		tg := fakeTSOGroupForPDMSProtection("tso", 1)
+		markDeleting(tg)
+		otherTG := fakeTSOGroupForPDMSProtection("tso-zero", 0)
+		pdg := fakePDGroupForPDMSProtection()
+		state := &ReconcileContext{State: &state{tg: tg}}
+		fc := client.NewFakeClient(tg, otherTG, pdg)
+
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state, fc))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.True(t, state.PDMSProtected())
+		require.Len(t, tg.Status.Conditions, 1)
+		assert.Equal(t, v1alpha1.CondPDMSProtected, tg.Status.Conditions[0].Type)
+		assert.Equal(t, metav1.ConditionTrue, tg.Status.Conditions[0].Status)
+	})
+
+	t.Run("deleting last available TSOGroup is protected when other TSOGroup is not ready", func(t *testing.T) {
+		tg := fakeTSOGroupForPDMSProtection("tso", 1)
+		markDeleting(tg)
+		otherTG := fakeTSOGroupForPDMSProtection("tso-unready", 1)
+		pdg := fakePDGroupForPDMSProtection()
+		state := &ReconcileContext{State: &state{tg: tg}}
+		fc := client.NewFakeClient(tg, otherTG, pdg)
+
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state, fc))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.True(t, state.PDMSProtected())
+		require.Len(t, tg.Status.Conditions, 1)
+		assert.Equal(t, v1alpha1.CondPDMSProtected, tg.Status.Conditions[0].Type)
+		assert.Equal(t, metav1.ConditionTrue, tg.Status.Conditions[0].Status)
 	})
 
 	t.Run("concurrent TSOGroup deletes keep last non-deleting topology protected", func(t *testing.T) {
@@ -111,6 +144,17 @@ func markDeleting(tg *v1alpha1.TSOGroup) {
 	now := metav1.Now()
 	tg.DeletionTimestamp = &now
 	tg.Finalizers = []string{"test.finalizer"}
+}
+
+func markReady(tg *v1alpha1.TSOGroup) {
+	replicas := ptr.Deref(tg.Spec.Replicas, 0)
+	tg.Status.ObservedGeneration = tg.Generation
+	tg.Status.CurrentRevision = "current"
+	tg.Status.UpdateRevision = "current"
+	tg.Status.Replicas = replicas
+	tg.Status.ReadyReplicas = replicas
+	tg.Status.CurrentReplicas = replicas
+	tg.Status.UpdatedReplicas = replicas
 }
 
 func fakePDGroupForPDMSProtection() *v1alpha1.PDGroup {
