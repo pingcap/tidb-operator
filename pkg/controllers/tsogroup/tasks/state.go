@@ -31,6 +31,10 @@ type state struct {
 	tg      *v1alpha1.TSOGroup
 	ts      []*v1alpha1.TSO
 
+	pdGroups  []*v1alpha1.PDGroup
+	pds       []*v1alpha1.PD
+	tsoGroups []*v1alpha1.TSOGroup
+
 	updateRevision  string
 	currentRevision string
 	collisionCount  int32
@@ -62,6 +66,10 @@ type State interface {
 
 	SetPDMSProtected(bool)
 	PDMSProtected() bool
+	SetPDMSProtectionContext(pdgs []*v1alpha1.PDGroup, pds []*v1alpha1.PD, tgs []*v1alpha1.TSOGroup)
+	PDMSProtectionPDGroups() []*v1alpha1.PDGroup
+	PDMSProtectionPDs() []*v1alpha1.PD
+	PDMSProtectionTSOGroups() []*v1alpha1.TSOGroup
 }
 
 func NewState(key types.NamespacedName) State {
@@ -100,6 +108,18 @@ func (s *state) TSOSlice() []*v1alpha1.TSO {
 	return s.ts
 }
 
+func (s *state) PDMSProtectionPDGroups() []*v1alpha1.PDGroup {
+	return s.pdGroups
+}
+
+func (s *state) PDMSProtectionPDs() []*v1alpha1.PD {
+	return s.pds
+}
+
+func (s *state) PDMSProtectionTSOGroups() []*v1alpha1.TSOGroup {
+	return s.tsoGroups
+}
+
 func (s *state) Slice() []*runtime.TSO {
 	return runtime.FromTSOSlice(s.ts)
 }
@@ -110,6 +130,12 @@ func (s *state) InstanceSlice() []*v1alpha1.TSO {
 
 func (s *state) SetInstanceSlice(ts []*v1alpha1.TSO) {
 	s.ts = ts
+}
+
+func (s *state) SetPDMSProtectionContext(pdgs []*v1alpha1.PDGroup, pds []*v1alpha1.PD, tgs []*v1alpha1.TSOGroup) {
+	s.pdGroups = pdgs
+	s.pds = pds
+	s.tsoGroups = tgs
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {

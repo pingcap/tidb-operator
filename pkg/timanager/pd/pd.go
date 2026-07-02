@@ -28,7 +28,6 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/v2/pkg/pdms"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 )
@@ -167,11 +166,11 @@ func getPDMode(c client.Client, cluster *v1alpha1.Cluster) (v1alpha1.PDMode, err
 
 	mode := v1alpha1.PDModeNormal
 
-	s, err := pdms.GetState(ctx, c, cluster.Namespace, cluster.Name)
+	involvesMS, err := apicall.PDTopologyInvolvesMS(ctx, c, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return mode, fmt.Errorf("cannot inspect PDMS state: %w", err)
+		return mode, fmt.Errorf("cannot inspect PD topology: %w", err)
 	}
-	if s.InvolvesMS() {
+	if involvesMS {
 		mode = v1alpha1.PDModeMS
 	}
 

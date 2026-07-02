@@ -15,6 +15,9 @@
 package coreutil
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
@@ -58,4 +61,29 @@ func PDServiceURL(c *v1alpha1.Cluster, pdg *v1alpha1.PDGroup) string {
 
 	host := ServiceHost(c, svc)
 	return hostToURL(host, port, IsTLSClusterEnabled(c))
+}
+
+func PDTopologyInvolvesMS(pdgs []*v1alpha1.PDGroup, pds []*v1alpha1.PD) bool {
+	for _, pdg := range pdgs {
+		if PDGroupInvolvesMS(pdg) {
+			return true
+		}
+	}
+	for _, pd := range pds {
+		if pd.Spec.Mode == v1alpha1.PDModeMS {
+			return true
+		}
+	}
+	return false
+}
+
+func PDGroupInvolvesMS(pdg *v1alpha1.PDGroup) bool {
+	return pdg.Spec.Template.Spec.Mode == v1alpha1.PDModeMS ||
+		pdg.Status.Mode == v1alpha1.PDModeMS ||
+		PDGroupModeSwitching(pdg)
+}
+
+func PDGroupModeSwitching(pdg *v1alpha1.PDGroup) bool {
+	cond := meta.FindStatusCondition(pdg.Status.Conditions, v1alpha1.CondModeSwitching)
+	return cond != nil && cond.Status == metav1.ConditionTrue
 }

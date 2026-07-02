@@ -19,8 +19,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/pdms"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -31,17 +29,14 @@ type PDMSProtectionState interface {
 	PDMSProtected() bool
 }
 
-func TaskPDMSProtection(state *ReconcileContext, c client.Client) task.Task {
+func TaskPDMSProtection(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("PDMSProtection", func(ctx context.Context) task.Result {
 		tg := state.Object()
-		msState, err := pdms.GetState(ctx, c, tg.Namespace, tg.Spec.Cluster.Name)
-		if err != nil {
-			return task.Fail().With("cannot inspect PDMS protection: %w", err)
-		}
 		replicas := coreutil.Replicas[scope.TSOGroup](tg)
-		involvesMS := msState.InvolvesMS()
+		involvesMS := coreutil.PDTopologyInvolvesMS(state.PDMSProtectionPDGroups(), state.PDMSProtectionPDs())
 		deleting := !tg.DeletionTimestamp.IsZero()
-		protected := involvesMS && ((!deleting && replicas == 0) || (deleting && !hasAvailableOtherTSOGroup(msState, tg)))
+		protected := involvesMS && ((!deleting && replicas == 0) ||
+			(deleting && !coreutil.HasAvailableOtherTSOGroup(state.PDMSProtectionTSOGroups(), tg)))
 		state.SetPDMSProtected(protected)
 
 		var condChanged bool
@@ -64,20 +59,6 @@ func TaskPDMSProtection(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func hasAvailableOtherTSOGroup(s *pdms.State, tg *v1alpha1.TSOGroup) bool {
-	for _, other := range s.TSOGroups {
-		if other.Namespace == tg.Namespace && other.Name == tg.Name {
-			continue
-		}
-		if other.DeletionTimestamp.IsZero() &&
-			coreutil.Replicas[scope.TSOGroup](other) > 0 &&
-			coreutil.IsGroupHealthyAndUpToDate[scope.TSOGroup](other) {
-			return true
-		}
-	}
-	return false
-}
-
 func CondPDMSProtected(state PDMSProtectionState) task.Condition {
 	return task.CondFunc(func() bool { return state.PDMSProtected() })
 }
@@ -88,14 +69,10 @@ func TaskPDMSProtectedRetry() task.Task {
 	})
 }
 
-func effectiveReplicas(ctx context.Context, c client.Client, tg *v1alpha1.TSOGroup) (replicas int32, protected bool, err error) {
-	replicas = coreutil.Replicas[scope.TSOGroup](tg)
-	protected, err = pdms.TSOGroupProtected(ctx, c, tg)
-	if err != nil {
-		return replicas, false, err
-	}
+func effectiveReplicas(tg *v1alpha1.TSOGroup, protected bool) int32 {
+	replicas := coreutil.Replicas[scope.TSOGroup](tg)
 	if protected && replicas == 0 {
-		return 1, true, nil
+		return 1
 	}
-	return replicas, protected, nil
+	return replicas
 }

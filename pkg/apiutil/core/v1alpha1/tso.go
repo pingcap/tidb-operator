@@ -38,3 +38,17 @@ func TSOServiceURL(c *v1alpha1.Cluster, tg *v1alpha1.TSOGroup) string {
 	host := ServiceHost(c, svc)
 	return hostToURL(host, v1alpha1.DefaultTSOPortClient, IsTLSClusterEnabled(c))
 }
+
+func HasAvailableOtherTSOGroup(tgs []*v1alpha1.TSOGroup, tg *v1alpha1.TSOGroup) bool {
+	for _, other := range tgs {
+		if other.Namespace == tg.Namespace && other.Name == tg.Name {
+			continue
+		}
+		if other.DeletionTimestamp.IsZero() &&
+			Replicas[scope.TSOGroup](other) > 0 &&
+			IsGroupHealthyAndUpToDate[scope.TSOGroup](other) {
+			return true
+		}
+	}
+	return false
+}

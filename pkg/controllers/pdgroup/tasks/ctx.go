@@ -21,6 +21,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -40,6 +43,33 @@ type ReconcileContext struct {
 type Member struct {
 	ID   string
 	Name string
+}
+
+func TaskContextPDMSDependencies(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("ContextPDMSDependencies", func(ctx context.Context) task.Result {
+		pdg := state.PDGroup()
+		ns, cluster := pdg.Namespace, pdg.Spec.Cluster.Name
+
+		pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list PDGroups: %w", err)
+		}
+		tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list TSOGroups: %w", err)
+		}
+		sgs, err := apicall.ListGroups[scope.SchedulingGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list SchedulingGroups: %w", err)
+		}
+		rmgs, err := apicall.ListGroups[scope.ResourceManagerGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list ResourceManagerGroups: %w", err)
+		}
+
+		state.SetPDMSDependencyGroups(pdgs, tgs, sgs, rmgs)
+		return task.Complete().With("PDMS dependencies are set")
+	})
 }
 
 func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Task {

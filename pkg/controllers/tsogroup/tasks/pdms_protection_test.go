@@ -24,7 +24,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -35,21 +34,21 @@ func TestPDMSProtection(t *testing.T) {
 	t.Run("replicas zero is clamped when PD involves ms", func(t *testing.T) {
 		tg := fakeTSOGroupForPDMSProtection("tso", 0)
 		pdg := fakePDGroupForPDMSProtection()
-		fc := client.NewFakeClient(tg, pdg)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, nil, []*v1alpha1.TSOGroup{tg})
 
-		desired, protected, err := effectiveReplicas(ctx, fc, tg)
-		require.NoError(t, err)
-		assert.True(t, protected)
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.True(t, state.PDMSProtected())
+		desired := effectiveReplicas(tg, state.PDMSProtected())
 		assert.Equal(t, int32(1), desired)
 	})
 
 	t.Run("condition is true only for destructive protected state", func(t *testing.T) {
 		tg := fakeTSOGroupForPDMSProtection("tso", 0)
 		pdg := fakePDGroupForPDMSProtection()
-		state := &ReconcileContext{State: &state{tg: tg}}
-		fc := client.NewFakeClient(tg, pdg)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, nil, []*v1alpha1.TSOGroup{tg})
 
-		res, _ := task.RunTask(ctx, TaskPDMSProtection(state, fc))
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.True(t, state.PDMSProtected())
 		require.Len(t, tg.Status.Conditions, 1)
@@ -63,10 +62,9 @@ func TestPDMSProtection(t *testing.T) {
 		otherTG := fakeTSOGroupForPDMSProtection("tso", 1)
 		markReady(otherTG)
 		pdg := fakePDGroupForPDMSProtection()
-		state := &ReconcileContext{State: &state{tg: tg}}
-		fc := client.NewFakeClient(tg, otherTG, pdg)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, nil, []*v1alpha1.TSOGroup{tg, otherTG})
 
-		res, _ := task.RunTask(ctx, TaskPDMSProtection(state, fc))
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.False(t, state.PDMSProtected())
 		require.Len(t, tg.Status.Conditions, 1)
@@ -79,10 +77,9 @@ func TestPDMSProtection(t *testing.T) {
 		markDeleting(tg)
 		otherTG := fakeTSOGroupForPDMSProtection("tso-zero", 0)
 		pdg := fakePDGroupForPDMSProtection()
-		state := &ReconcileContext{State: &state{tg: tg}}
-		fc := client.NewFakeClient(tg, otherTG, pdg)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, nil, []*v1alpha1.TSOGroup{tg, otherTG})
 
-		res, _ := task.RunTask(ctx, TaskPDMSProtection(state, fc))
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.True(t, state.PDMSProtected())
 		require.Len(t, tg.Status.Conditions, 1)
@@ -95,10 +92,9 @@ func TestPDMSProtection(t *testing.T) {
 		markDeleting(tg)
 		otherTG := fakeTSOGroupForPDMSProtection("tso-unready", 1)
 		pdg := fakePDGroupForPDMSProtection()
-		state := &ReconcileContext{State: &state{tg: tg}}
-		fc := client.NewFakeClient(tg, otherTG, pdg)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, nil, []*v1alpha1.TSOGroup{tg, otherTG})
 
-		res, _ := task.RunTask(ctx, TaskPDMSProtection(state, fc))
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.True(t, state.PDMSProtected())
 		require.Len(t, tg.Status.Conditions, 1)
@@ -112,10 +108,9 @@ func TestPDMSProtection(t *testing.T) {
 		otherTG := fakeTSOGroupForPDMSProtection("tso-1", 1)
 		markDeleting(otherTG)
 		pdg := fakePDGroupForPDMSProtection()
-		state := &ReconcileContext{State: &state{tg: tg}}
-		fc := client.NewFakeClient(tg, otherTG, pdg)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, nil, []*v1alpha1.TSOGroup{tg, otherTG})
 
-		res, _ := task.RunTask(ctx, TaskPDMSProtection(state, fc))
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.True(t, state.PDMSProtected())
 		require.Len(t, tg.Status.Conditions, 1)
@@ -129,11 +124,12 @@ func TestPDMSProtection(t *testing.T) {
 		pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeNormal
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		pd := fakePDInstanceForPDMSProtection("pd-0", v1alpha1.PDModeMS)
-		fc := client.NewFakeClient(tg, pdg, pd)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, []*v1alpha1.PD{pd}, []*v1alpha1.TSOGroup{tg})
 
-		desired, protected, err := effectiveReplicas(ctx, fc, tg)
-		require.NoError(t, err)
-		assert.True(t, protected)
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.True(t, state.PDMSProtected())
+		desired := effectiveReplicas(tg, state.PDMSProtected())
 		assert.Equal(t, int32(1), desired)
 	})
 
@@ -151,11 +147,12 @@ func TestPDMSProtection(t *testing.T) {
 				ObservedGeneration: 1,
 			},
 		}
-		fc := client.NewFakeClient(tg, pdg)
+		state := newPDMSProtectionState(tg, []*v1alpha1.PDGroup{pdg}, nil, []*v1alpha1.TSOGroup{tg})
 
-		desired, protected, err := effectiveReplicas(ctx, fc, tg)
-		require.NoError(t, err)
-		assert.True(t, protected)
+		res, _ := task.RunTask(ctx, TaskPDMSProtection(state))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.True(t, state.PDMSProtected())
+		desired := effectiveReplicas(tg, state.PDMSProtected())
 		assert.Equal(t, int32(1), desired)
 	})
 
@@ -174,6 +171,20 @@ func fakeTSOGroupForPDMSProtection(name string, replicas int32) *v1alpha1.TSOGro
 			tg.Spec.Replicas = ptr.To(replicas)
 			return tg
 		})
+}
+
+func newPDMSProtectionState(
+	tg *v1alpha1.TSOGroup,
+	pdgs []*v1alpha1.PDGroup,
+	pds []*v1alpha1.PD,
+	tgs []*v1alpha1.TSOGroup,
+) *ReconcileContext {
+	return &ReconcileContext{State: &state{
+		tg:        tg,
+		pdGroups:  pdgs,
+		pds:       pds,
+		tsoGroups: tgs,
+	}}
 }
 
 func fakePDInstanceForPDMSProtection(name string, mode v1alpha1.PDMode) *v1alpha1.PD {

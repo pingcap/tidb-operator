@@ -39,7 +39,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextSlice[scope.TSOGroup](state, r.Client),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TSOGroup](state),
-			tasks.TaskPDMSProtection(state, r.Client),
+			tasks.TaskContextPDMSProtection(state, r.Client),
+			tasks.TaskPDMSProtection(state),
 			task.IfBreak(tasks.CondPDMSProtected(state),
 				common.TaskGroupConditionReady[scope.TSOGroup](state),
 				common.TaskGroupConditionSynced[scope.TSOGroup](state),
@@ -68,7 +69,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		common.TaskRevision[runtime.TSOGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
-		tasks.TaskPDMSProtection(state, r.Client),
+		tasks.TaskContextPDMSProtection(state, r.Client),
+		tasks.TaskPDMSProtection(state),
 		tasks.TaskUpdater(state, r.Client, r.AllocateFactory),
 		common.TaskGroupStatusSelector[scope.TSOGroup](state),
 		common.TaskGroupConditionSuspended[scope.TSOGroup](state),

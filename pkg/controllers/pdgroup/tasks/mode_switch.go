@@ -19,12 +19,9 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/pdms"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
@@ -41,7 +38,7 @@ type tsoClientGetter interface {
 	Get(key string) (tsom.TSOClient, bool)
 }
 
-func TaskModeSwitch(state *ReconcileContext, c client.Client, tsocm tsoClientGetter) task.Task {
+func TaskModeSwitch(state *ReconcileContext, tsocm tsoClientGetter) task.Task {
 	return task.NameTaskFunc("ModeSwitch", func(ctx context.Context) task.Result {
 		state.SetModeSwitchBlocked(false)
 
@@ -66,18 +63,18 @@ func TaskModeSwitch(state *ReconcileContext, c client.Client, tsocm tsoClientGet
 			return task.Complete().With("PD mode switch is not needed")
 		}
 
-		info, err := pdms.GetState(ctx, c, pdg.Namespace, pdg.Spec.Cluster.Name)
-		if err != nil {
-			return task.Fail().With("cannot inspect PDMS topology: %w", err)
-		}
-
-		if blocked, reason, msg := unsupportedTopology(info); blocked {
+		if blocked, reason, msg := unsupportedTopology(
+			state.PDGroups(),
+			state.TSOGroups(),
+			state.SchedulingGroups(),
+			state.ResourceManagerGroups(),
+		); blocked {
 			blockModeSwitch(state, reason, msg)
 			return task.Retry(defaultUpdateWaitTime).With(msg)
 		}
 
 		if target == v1alpha1.PDModeMS {
-			if blocked, reason, msg := checkTSODependency(ctx, info, tsocm); blocked {
+			if blocked, reason, msg := checkTSODependency(ctx, state.TSOGroups(), tsocm); blocked {
 				blockModeSwitch(state, reason, msg)
 				return task.Retry(defaultUpdateWaitTime).With(msg)
 			}
@@ -97,7 +94,7 @@ func CondModeSwitchBlocked(state ModeSwitchState) task.Condition {
 }
 
 func modeSwitchActive(pdg *v1alpha1.PDGroup, pds []*v1alpha1.PD, target v1alpha1.PDMode) bool {
-	if modeSwitchingConditionActive(pdg) {
+	if coreutil.PDGroupModeSwitching(pdg) {
 		return true
 	}
 	if len(pds) == 0 && pdg.Status.Mode == v1alpha1.PDModeNormal {
@@ -112,11 +109,6 @@ func modeSwitchActive(pdg *v1alpha1.PDGroup, pds []*v1alpha1.PD, target v1alpha1
 		}
 	}
 	return false
-}
-
-func modeSwitchingConditionActive(pdg *v1alpha1.PDGroup) bool {
-	cond := meta.FindStatusCondition(pdg.Status.Conditions, v1alpha1.CondModeSwitching)
-	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
 func pdInstancesAtTarget(pds []*v1alpha1.PD, target v1alpha1.PDMode, updateRevision string, replicas int32) bool {
@@ -158,29 +150,34 @@ func blockModeSwitch(state *ReconcileContext, reason, msg string) {
 	}
 }
 
-func unsupportedTopology(s *pdms.State) (blocked bool, reason, message string) {
-	if len(s.PDGroups) != 1 {
-		return true, v1alpha1.ReasonWaitingForSinglePDGroup, fmt.Sprintf("waiting for exactly one PDGroup, got %d", len(s.PDGroups))
+func unsupportedTopology(
+	pdgs []*v1alpha1.PDGroup,
+	tgs []*v1alpha1.TSOGroup,
+	sgs []*v1alpha1.SchedulingGroup,
+	rmgs []*v1alpha1.ResourceManagerGroup,
+) (blocked bool, reason, message string) {
+	if len(pdgs) != 1 {
+		return true, v1alpha1.ReasonWaitingForSinglePDGroup, fmt.Sprintf("waiting for exactly one PDGroup, got %d", len(pdgs))
 	}
-	if len(s.TSOGroups) > 1 {
-		return true, v1alpha1.ReasonUnsupportedTSOGroupCount, fmt.Sprintf("unsupported TSOGroup count %d", len(s.TSOGroups))
+	if len(tgs) > 1 {
+		return true, v1alpha1.ReasonUnsupportedTSOGroupCount, fmt.Sprintf("unsupported TSOGroup count %d", len(tgs))
 	}
-	if len(s.SchedulingGroups) > 1 {
-		return true, v1alpha1.ReasonUnsupportedSchedulingGroupCount, fmt.Sprintf("unsupported SchedulingGroup count %d", len(s.SchedulingGroups))
+	if len(sgs) > 1 {
+		return true, v1alpha1.ReasonUnsupportedSchedulingGroupCount, fmt.Sprintf("unsupported SchedulingGroup count %d", len(sgs))
 	}
-	if len(s.ResourceManagerGroups) > 1 {
+	if len(rmgs) > 1 {
 		return true, v1alpha1.ReasonUnsupportedResourceManagerGroupCount,
-			fmt.Sprintf("unsupported ResourceManagerGroup count %d", len(s.ResourceManagerGroups))
+			fmt.Sprintf("unsupported ResourceManagerGroup count %d", len(rmgs))
 	}
 	return false, "", ""
 }
 
-func checkTSODependency(ctx context.Context, s *pdms.State, tsocm tsoClientGetter) (blocked bool, reason, message string) {
-	if len(s.TSOGroups) != 1 {
-		return true, v1alpha1.ReasonWaitingForSingleTSOGroup, fmt.Sprintf("waiting for exactly one TSOGroup, got %d", len(s.TSOGroups))
+func checkTSODependency(ctx context.Context, tgs []*v1alpha1.TSOGroup, tsocm tsoClientGetter) (blocked bool, reason, message string) {
+	if len(tgs) != 1 {
+		return true, v1alpha1.ReasonWaitingForSingleTSOGroup, fmt.Sprintf("waiting for exactly one TSOGroup, got %d", len(tgs))
 	}
 
-	tg := s.TSOGroups[0]
+	tg := tgs[0]
 	if tg.Spec.Replicas == nil || *tg.Spec.Replicas == 0 || !coreutil.IsGroupHealthyAndUpToDate[scope.TSOGroup](tg) {
 		return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s to be ready and up-to-date", tg.Name)
 	}
