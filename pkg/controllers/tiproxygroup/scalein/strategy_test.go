@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/updater"
 )
 
 func TestNeedsGracefulOfflineScaleIn(t *testing.T) {
@@ -115,7 +116,7 @@ func TestChooseBeingOfflineToReviveSkipsNearDeletion(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestShouldOfflineInsteadOfDelete(t *testing.T) {
+func TestShouldOffline(t *testing.T) {
 	t.Parallel()
 
 	strategy := NewGracefulScaleInStrategy[*runtime.TiProxy]()
@@ -127,10 +128,11 @@ func TestShouldOfflineInsteadOfDelete(t *testing.T) {
 			},
 		},
 	}
-	assert.True(t, strategy.ShouldOfflineInsteadOfDelete(proxy))
+	assert.True(t, strategy.ShouldOffline(proxy, updater.OfflineOnScaleInUpdate))
+	assert.False(t, strategy.ShouldOffline(proxy, updater.OfflineOnDelete))
 
 	proxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = "0"
-	assert.False(t, strategy.ShouldOfflineInsteadOfDelete(proxy))
+	assert.False(t, strategy.ShouldOffline(proxy, updater.OfflineOnScaleInUpdate))
 }
 
 func TestOfflineRevivePatchClearsOffline(t *testing.T) {

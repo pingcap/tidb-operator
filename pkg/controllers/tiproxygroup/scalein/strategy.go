@@ -32,7 +32,10 @@ func NewGracefulScaleInStrategy[R runtime.Instance]() updater.ScaleInStrategy[R]
 	return gracefulScaleInStrategy[R]{}
 }
 
-func (gracefulScaleInStrategy[R]) ShouldOfflineInsteadOfDelete(obj R) bool {
+func (gracefulScaleInStrategy[R]) ShouldOffline(obj R, trigger updater.OfflineTrigger) bool {
+	if trigger != updater.OfflineOnScaleInUpdate {
+		return false
+	}
 	return needsGracefulOfflineScaleIn(obj) && !obj.IsOffline()
 }
 
@@ -50,9 +53,6 @@ func (gracefulScaleInStrategy[R]) OfflineRevivePatch(_ R) updater.ScaleInReviveP
 }
 
 func needsGracefulOfflineScaleIn(obj runtime.Instance) bool {
-	if obj.IsStore() {
-		return false
-	}
 	raw := obj.GetAnnotations()[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
 	if raw == "" {
 		return false

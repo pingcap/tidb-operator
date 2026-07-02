@@ -245,10 +245,6 @@ func (in *TiKVWorker) IsOffline() bool {
 	return false
 }
 
-func (in *TiKVWorker) IsStore() bool {
-	return false
-}
-
 type (
 	TiKVWorkerGroup v1alpha1.TiKVWorkerGroup
 )

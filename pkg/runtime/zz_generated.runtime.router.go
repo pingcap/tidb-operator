@@ -245,10 +245,6 @@ func (in *Router) IsOffline() bool {
 	return false
 }
 
-func (in *Router) IsStore() bool {
-	return false
-}
-
 type (
 	RouterGroup v1alpha1.RouterGroup
 )

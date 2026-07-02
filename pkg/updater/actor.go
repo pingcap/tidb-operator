@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -227,7 +226,7 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	act.actions = append(act.actions, actionScaleInUpdate)
 
 	if act.outdated.Len() == 0 &&
-		act.scaleInStrategyOrDefault().ShouldOfflineInsteadOfDelete(obj) {
+		act.scaleInStrategyOrDefault().ShouldOffline(obj, OfflineOnScaleInUpdate) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return false, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
@@ -414,9 +413,7 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 }
 
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
-	if obj.IsStore() &&
-		!obj.IsOffline() &&
-		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
+	if act.scaleInStrategyOrDefault().ShouldOffline(obj, OfflineOnDelete) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}

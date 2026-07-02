@@ -245,10 +245,6 @@ func (in *TiProxy) IsOffline() bool {
 	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
-func (in *TiProxy) IsStore() bool {
-	return false
-}
-
 type (
 	TiProxyGroup v1alpha1.TiProxyGroup
 )

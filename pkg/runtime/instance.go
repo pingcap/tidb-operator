@@ -58,10 +58,6 @@ type Instance interface {
 	// ServerLabels return spec.server.labels
 	// If no server labels, return nil
 	ServerLabels() map[string]string
-
-	// IsStore indicates whether the instance is a store.
-	// For TiKV and TiFlash, it returns true, otherwise it returns false.
-	IsStore() bool
 }
 
 type InstanceT[T InstanceSet] interface {

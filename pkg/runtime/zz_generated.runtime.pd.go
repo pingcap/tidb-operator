@@ -245,10 +245,6 @@ func (in *PD) IsOffline() bool {
 	return false
 }
 
-func (in *PD) IsStore() bool {
-	return false
-}
-
 type (
 	PDGroup v1alpha1.PDGroup
 )

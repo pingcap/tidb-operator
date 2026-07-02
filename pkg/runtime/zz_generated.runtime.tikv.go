@@ -245,10 +245,6 @@ func (in *TiKV) IsOffline() bool {
 	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
-func (in *TiKV) IsStore() bool {
-	return true
-}
-
 type (
 	TiKVGroup v1alpha1.TiKVGroup
 )

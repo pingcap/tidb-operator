@@ -245,10 +245,6 @@ func (in *TiDB) IsOffline() bool {
 	return false
 }
 
-func (in *TiDB) IsStore() bool {
-	return false
-}
-
 type (
 	TiDBGroup v1alpha1.TiDBGroup
 )

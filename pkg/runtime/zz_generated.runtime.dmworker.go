@@ -245,10 +245,6 @@ func (in *DMWorker) IsOffline() bool {
 	return false
 }
 
-func (in *DMWorker) IsStore() bool {
-	return false
-}
-
 type (
 	DMWorkerGroup v1alpha1.DMWorkerGroup
 )

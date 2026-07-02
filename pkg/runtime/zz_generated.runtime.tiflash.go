@@ -245,10 +245,6 @@ func (in *TiFlash) IsOffline() bool {
 	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
-func (in *TiFlash) IsStore() bool {
-	return true
-}
-
 type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )

@@ -26,6 +26,17 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
+// OfflineTrigger indicates which scale-in path is requesting an offline decision.
+type OfflineTrigger int
+
+const (
+	// OfflineOnScaleInUpdate is used when scaling in from the update pool.
+	// Callers should gate rolling-update cases (for example outdated.Len() == 0) before calling.
+	OfflineOnScaleInUpdate OfflineTrigger = iota
+	// OfflineOnDelete is used when deleteInstance would otherwise delete the CR immediately.
+	OfflineOnDelete
+)
+
 // ScaleInContext carries runtime state needed by ScaleInStrategy.
 type ScaleInContext struct {
 	Now time.Time
@@ -41,10 +52,8 @@ type ScaleInRevivePatch struct {
 
 // ScaleInStrategy customizes scale-in offline and scale-out revival behavior.
 type ScaleInStrategy[R runtime.Instance] interface {
-	// ShouldOfflineInsteadOfDelete reports whether ScaleInUpdate should mark the instance
-	// offline instead of deleting it. Callers should only consult this on the scale-in-update
-	// path and gate rolling-update cases (for example outdated.Len() == 0) before calling.
-	ShouldOfflineInsteadOfDelete(obj R) bool
+	// ShouldOffline reports whether to set spec.offline instead of deleting the CR now.
+	ShouldOffline(obj R, trigger OfflineTrigger) bool
 	ChooseOfflineToRevive(items []R, ctx ScaleInContext) (chosen R, ok bool)
 	OfflineRevivePatch(obj R) ScaleInRevivePatch
 }
@@ -56,7 +65,7 @@ func DefaultScaleInStrategy[R runtime.Instance]() ScaleInStrategy[R] {
 	return noopScaleInStrategy[R]{}
 }
 
-func (noopScaleInStrategy[R]) ShouldOfflineInsteadOfDelete(_ R) bool {
+func (noopScaleInStrategy[R]) ShouldOffline(_ R, _ OfflineTrigger) bool {
 	return false
 }
 
