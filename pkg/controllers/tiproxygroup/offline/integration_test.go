@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scalein_test
+package offline_test
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	tiproxyscalein "github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup/scalein"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup/offline"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/updater"
@@ -67,7 +67,7 @@ func newGracefulExecutor(
 		WithClient(cli).
 		WithRevision(rev).
 		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy { return &runtime.TiProxy{} })).
-		WithScaleInStrategy(tiproxyscalein.NewGracefulScaleInStrategy[*runtime.TiProxy]()).
+		WithOfflineScaleStrategy(offline.NewGracefulOfflineScaleStrategy[*runtime.TiProxy]()).
 		Build()
 }
 

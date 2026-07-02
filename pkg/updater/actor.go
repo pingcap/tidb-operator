@@ -100,16 +100,16 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	scaleInSelector Selector[R]
 	updateSelector  Selector[R]
 
-	scaleInStrategy ScaleInStrategy[R]
+	offlineScaleStrategy OfflineScaleStrategy[R]
 
 	actions []action
 }
 
-func (act *actor[T, O, R]) scaleInStrategyOrDefault() ScaleInStrategy[R] {
-	if act.scaleInStrategy != nil {
-		return act.scaleInStrategy
+func (act *actor[T, O, R]) offlineScaleStrategyOrDefault() OfflineScaleStrategy[R] {
+	if act.offlineScaleStrategy != nil {
+		return act.offlineScaleStrategy
 	}
-	return DefaultScaleInStrategy[R]()
+	return DefaultOfflineScaleStrategy[R]()
 }
 
 // chooseToUpdate selects an outdated instance for update operation.
@@ -149,7 +149,7 @@ func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error 
 	)
 	act.actions = append(act.actions, actionCancelOffline)
 
-	patch := act.scaleInStrategyOrDefault().OfflineRevivePatch(obj)
+	patch := act.offlineScaleStrategyOrDefault().OfflineRevivePatch(obj)
 	if patch.ClearOffline {
 		if obj.IsOffline() {
 			if err := patch.Apply(ctx, act.c, act.converter.To(obj)); err != nil {
@@ -167,9 +167,9 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		chosen, ok := act.scaleInStrategyOrDefault().ChooseOfflineToRevive(
+		chosen, ok := act.offlineScaleStrategyOrDefault().ChooseOfflineToRevive(
 			act.beingOffline.List(),
-			ScaleInContext{Now: time.Now()},
+			OfflineScaleContext{Now: time.Now()},
 		)
 		if ok {
 			if err := act.cancelOneOfflining(ctx, chosen); err != nil {
@@ -226,7 +226,7 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	act.actions = append(act.actions, actionScaleInUpdate)
 
 	if act.outdated.Len() == 0 &&
-		act.scaleInStrategyOrDefault().ShouldOffline(obj, OfflineOnScaleInUpdate) {
+		act.offlineScaleStrategyOrDefault().ShouldOffline(obj, OfflineOnScaleInUpdate) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return false, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
@@ -413,7 +413,7 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 }
 
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
-	if act.scaleInStrategyOrDefault().ShouldOffline(obj, OfflineOnDelete) {
+	if act.offlineScaleStrategyOrDefault().ShouldOffline(obj, OfflineOnDelete) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}

@@ -366,7 +366,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 				scaleInSelector: NewSelector(newMockPreferPolicy(update)),
 				updateSelector:  NewSelector(newMockPreferPolicy(outdated)),
 				updateHooks:     []UpdateHook[*runtime.TiKV]{KeepName[*runtime.TiKV]()},
-				scaleInStrategy: NewStoreScaleInStrategy[*runtime.TiKV](),
+				offlineScaleStrategy: NewStoreOfflineScaleStrategy[*runtime.TiKV](),
 				actions:         make([]action, 0),
 			}
 			e := NewExecutor(act, len(update), len(outdated), tt.desired,

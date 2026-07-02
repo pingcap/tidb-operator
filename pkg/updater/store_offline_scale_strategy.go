@@ -21,14 +21,14 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
-type storeScaleInStrategy[R runtime.Instance] struct{}
+type storeOfflineScaleStrategy[R runtime.Instance] struct{}
 
-// NewStoreScaleInStrategy returns a scale-in strategy for PD store components (TiKV/TiFlash).
-func NewStoreScaleInStrategy[R runtime.Instance]() ScaleInStrategy[R] {
-	return storeScaleInStrategy[R]{}
+// NewStoreOfflineScaleStrategy returns an offline scale strategy for PD store components (TiKV/TiFlash).
+func NewStoreOfflineScaleStrategy[R runtime.Instance]() OfflineScaleStrategy[R] {
+	return storeOfflineScaleStrategy[R]{}
 }
 
-func (storeScaleInStrategy[R]) ShouldOffline(obj R, trigger OfflineTrigger) bool {
+func (storeOfflineScaleStrategy[R]) ShouldOffline(obj R, trigger OfflineTrigger) bool {
 	if trigger != OfflineOnDelete {
 		return false
 	}
@@ -36,7 +36,7 @@ func (storeScaleInStrategy[R]) ShouldOffline(obj R, trigger OfflineTrigger) bool
 		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType)
 }
 
-func (storeScaleInStrategy[R]) ChooseOfflineToRevive(items []R, _ ScaleInContext) (R, bool) {
+func (storeOfflineScaleStrategy[R]) ChooseOfflineToRevive(items []R, _ OfflineScaleContext) (R, bool) {
 	if len(items) == 0 {
 		var zero R
 		return zero, false
@@ -44,6 +44,6 @@ func (storeScaleInStrategy[R]) ChooseOfflineToRevive(items []R, _ ScaleInContext
 	return items[0], true
 }
 
-func (storeScaleInStrategy[R]) OfflineRevivePatch(_ R) ScaleInRevivePatch {
-	return ScaleInRevivePatch{ClearOffline: true}
+func (storeOfflineScaleStrategy[R]) OfflineRevivePatch(_ R) OfflineRevivePatch {
+	return OfflineRevivePatch{ClearOffline: true}
 }

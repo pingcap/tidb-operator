@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scalein
+package offline
 
 import (
 	"strconv"
@@ -119,7 +119,7 @@ func TestChooseBeingOfflineToReviveSkipsNearDeletion(t *testing.T) {
 func TestShouldOffline(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewGracefulScaleInStrategy[*runtime.TiProxy]()
+	strategy := NewGracefulOfflineScaleStrategy[*runtime.TiProxy]()
 
 	proxy := &runtime.TiProxy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -138,7 +138,7 @@ func TestShouldOffline(t *testing.T) {
 func TestOfflineRevivePatchClearsOffline(t *testing.T) {
 	t.Parallel()
 
-	patch := NewGracefulScaleInStrategy[*runtime.TiProxy]().OfflineRevivePatch(nil)
+	patch := NewGracefulOfflineScaleStrategy[*runtime.TiProxy]().OfflineRevivePatch(nil)
 	assert.True(t, patch.ClearOffline)
 	require.NotNil(t, patch.Annotations)
 	_, ok := patch.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained]

@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
-// OfflineTrigger indicates which scale-in path is requesting an offline decision.
+// OfflineTrigger indicates which path is requesting an offline decision.
 type OfflineTrigger int
 
 const (
@@ -37,39 +37,39 @@ const (
 	OfflineOnDelete
 )
 
-// ScaleInContext carries runtime state needed by ScaleInStrategy.
-type ScaleInContext struct {
+// OfflineScaleContext carries runtime state needed by OfflineScaleStrategy.
+type OfflineScaleContext struct {
 	Now time.Time
 }
 
-// ScaleInRevivePatch describes metadata/spec changes applied when canceling offline.
+// OfflineRevivePatch describes metadata/spec changes applied when canceling offline.
 // When ClearOffline is true, cancelOneOfflining patches the instance (if still offline)
 // and returns it to the update pool without recreating via updateOutdated.
-type ScaleInRevivePatch struct {
+type OfflineRevivePatch struct {
 	ClearOffline bool
 	Annotations  map[string]*string
 }
 
-// ScaleInStrategy customizes scale-in offline and scale-out revival behavior.
-type ScaleInStrategy[R runtime.Instance] interface {
+// OfflineScaleStrategy customizes offline scale-in and scale-out revival behavior.
+type OfflineScaleStrategy[R runtime.Instance] interface {
 	// ShouldOffline reports whether to set spec.offline instead of deleting the CR now.
 	ShouldOffline(obj R, trigger OfflineTrigger) bool
-	ChooseOfflineToRevive(items []R, ctx ScaleInContext) (chosen R, ok bool)
-	OfflineRevivePatch(obj R) ScaleInRevivePatch
+	ChooseOfflineToRevive(items []R, ctx OfflineScaleContext) (chosen R, ok bool)
+	OfflineRevivePatch(obj R) OfflineRevivePatch
 }
 
-type noopScaleInStrategy[R runtime.Instance] struct{}
+type noopOfflineScaleStrategy[R runtime.Instance] struct{}
 
-// DefaultScaleInStrategy returns the default scale-in strategy used by most components.
-func DefaultScaleInStrategy[R runtime.Instance]() ScaleInStrategy[R] {
-	return noopScaleInStrategy[R]{}
+// DefaultOfflineScaleStrategy returns the default offline scale strategy used by most components.
+func DefaultOfflineScaleStrategy[R runtime.Instance]() OfflineScaleStrategy[R] {
+	return noopOfflineScaleStrategy[R]{}
 }
 
-func (noopScaleInStrategy[R]) ShouldOffline(_ R, _ OfflineTrigger) bool {
+func (noopOfflineScaleStrategy[R]) ShouldOffline(_ R, _ OfflineTrigger) bool {
 	return false
 }
 
-func (noopScaleInStrategy[R]) ChooseOfflineToRevive(items []R, _ ScaleInContext) (R, bool) {
+func (noopOfflineScaleStrategy[R]) ChooseOfflineToRevive(items []R, _ OfflineScaleContext) (R, bool) {
 	if len(items) == 0 {
 		var zero R
 		return zero, false
@@ -77,12 +77,12 @@ func (noopScaleInStrategy[R]) ChooseOfflineToRevive(items []R, _ ScaleInContext)
 	return items[0], true
 }
 
-func (noopScaleInStrategy[R]) OfflineRevivePatch(_ R) ScaleInRevivePatch {
-	return ScaleInRevivePatch{}
+func (noopOfflineScaleStrategy[R]) OfflineRevivePatch(_ R) OfflineRevivePatch {
+	return OfflineRevivePatch{}
 }
 
 // Apply writes the revive patch to the given object.
-func (p ScaleInRevivePatch) Apply(ctx context.Context, c client.Client, obj client.Object) error {
+func (p OfflineRevivePatch) Apply(ctx context.Context, c client.Client, obj client.Object) error {
 	if !p.ClearOffline && len(p.Annotations) == 0 {
 		return nil
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scalein
+package offline
 
 import (
 	"sort"
@@ -25,26 +25,26 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/updater"
 )
 
-type gracefulScaleInStrategy[R runtime.Instance] struct{}
+type gracefulOfflineScaleStrategy[R runtime.Instance] struct{}
 
-// NewGracefulScaleInStrategy returns a scale-in strategy for TiProxy graceful scale-in.
-func NewGracefulScaleInStrategy[R runtime.Instance]() updater.ScaleInStrategy[R] {
-	return gracefulScaleInStrategy[R]{}
+// NewGracefulOfflineScaleStrategy returns an offline scale strategy for TiProxy graceful scale-in.
+func NewGracefulOfflineScaleStrategy[R runtime.Instance]() updater.OfflineScaleStrategy[R] {
+	return gracefulOfflineScaleStrategy[R]{}
 }
 
-func (gracefulScaleInStrategy[R]) ShouldOffline(obj R, trigger updater.OfflineTrigger) bool {
+func (gracefulOfflineScaleStrategy[R]) ShouldOffline(obj R, trigger updater.OfflineTrigger) bool {
 	if trigger != updater.OfflineOnScaleInUpdate {
 		return false
 	}
 	return needsGracefulOfflineScaleIn(obj) && !obj.IsOffline()
 }
 
-func (gracefulScaleInStrategy[R]) ChooseOfflineToRevive(items []R, ctx updater.ScaleInContext) (R, bool) {
+func (gracefulOfflineScaleStrategy[R]) ChooseOfflineToRevive(items []R, ctx updater.OfflineScaleContext) (R, bool) {
 	return chooseBeingOfflineToRevive(items, ctx.Now)
 }
 
-func (gracefulScaleInStrategy[R]) OfflineRevivePatch(_ R) updater.ScaleInRevivePatch {
-	return updater.ScaleInRevivePatch{
+func (gracefulOfflineScaleStrategy[R]) OfflineRevivePatch(_ R) updater.OfflineRevivePatch {
+	return updater.OfflineRevivePatch{
 		ClearOffline: true,
 		Annotations: map[string]*string{
 			v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained: nil,

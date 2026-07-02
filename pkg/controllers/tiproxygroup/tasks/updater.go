@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup/scalein"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup/offline"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -122,7 +122,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			).
 			WithNoInPaceUpdate(noUpdate).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiProxyGroup](proxyg)).
-			WithScaleInStrategy(scalein.NewGracefulScaleInStrategy[*runtime.TiProxy]()).
+			WithOfflineScaleStrategy(offline.NewGracefulOfflineScaleStrategy[*runtime.TiProxy]()).
 			Build().
 			Do(ctx)
 		if err != nil {
