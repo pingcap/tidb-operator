@@ -15,7 +15,13 @@
 package updater
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"time"
+
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
@@ -64,4 +70,30 @@ func (noopScaleInStrategy[R]) ChooseOfflineToRevive(items []R, _ ScaleInContext)
 
 func (noopScaleInStrategy[R]) OfflineRevivePatch(_ R) ScaleInRevivePatch {
 	return ScaleInRevivePatch{}
+}
+
+// Apply writes the revive patch to the given object.
+func (p ScaleInRevivePatch) Apply(ctx context.Context, c client.Client, obj client.Object) error {
+	if !p.ClearOffline && len(p.Annotations) == 0 {
+		return nil
+	}
+
+	patch := Patch{
+		Metadata: Metadata{
+			ResourceVersion: obj.GetResourceVersion(),
+			Annotations:     p.Annotations,
+		},
+	}
+	if p.ClearOffline {
+		patch.Spec = &Spec{
+			Offline: false,
+		}
+	}
+
+	data, err := json.Marshal(&patch)
+	if err != nil {
+		return fmt.Errorf("invalid patch: %w", err)
+	}
+
+	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
 }

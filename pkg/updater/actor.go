@@ -153,7 +153,7 @@ func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error 
 	patch := act.scaleInStrategyOrDefault().OfflineRevivePatch(obj)
 	if patch.ClearOffline {
 		if obj.IsOffline() {
-			if err := act.applyOfflineRevivePatch(ctx, obj, patch); err != nil {
+			if err := patch.Apply(ctx, act.c, act.converter.To(obj)); err != nil {
 				return fmt.Errorf("failed to clear offline for instance %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
 			}
 		}
@@ -452,27 +452,6 @@ func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R) error {
 		Spec: &Spec{
 			Offline: true,
 		},
-	}
-
-	data, err := json.Marshal(&p)
-	if err != nil {
-		return fmt.Errorf("invalid patch: %w", err)
-	}
-
-	return act.c.Patch(ctx, act.converter.To(obj), client.RawPatch(types.MergePatchType, data))
-}
-
-func (act *actor[T, O, R]) applyOfflineRevivePatch(ctx context.Context, obj R, patch ScaleInRevivePatch) error {
-	p := Patch{
-		Metadata: Metadata{
-			ResourceVersion: obj.GetResourceVersion(),
-			Annotations:     patch.Annotations,
-		},
-	}
-	if patch.ClearOffline {
-		p.Spec = &Spec{
-			Offline: false,
-		}
 	}
 
 	data, err := json.Marshal(&p)
