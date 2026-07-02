@@ -90,7 +90,7 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
-		tg := fakeReadyTSOGroup("tso", cluster, 1)
+		tg := fakeReadyTSOGroup("tso", cluster)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg)
 
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, healthyTSOClientGetter()))
@@ -106,8 +106,8 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
-		tg1 := fakeReadyTSOGroup("tso-1", cluster, 1)
-		tg2 := fakeReadyTSOGroup("tso-2", cluster, 1)
+		tg1 := fakeReadyTSOGroup("tso-1", cluster)
+		tg2 := fakeReadyTSOGroup("tso-2", cluster)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg1, tg2)
 
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, healthyTSOClientGetter()))
@@ -123,7 +123,7 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
-		tg := fakeReadyTSOGroup("tso", cluster, 1)
+		tg := fakeReadyTSOGroup("tso", cluster)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg)
 
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, failingTSOClientGetter(errors.New("connection refused"))))
@@ -140,7 +140,7 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
-		tg := fakeReadyTSOGroup("tso", cluster, 1)
+		tg := fakeReadyTSOGroup("tso", cluster)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg)
 
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, missingTSOClientGetter()))
@@ -174,8 +174,8 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg.Status.Mode = v1alpha1.PDModeMS
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
 		pd := fakeSyncedPD(pdg, v1alpha1.PDModeMS)
-		tg1 := fakeReadyTSOGroup("tso-1", cluster, 1)
-		tg2 := fakeReadyTSOGroup("tso-2", cluster, 1)
+		tg1 := fakeReadyTSOGroup("tso-1", cluster)
+		tg2 := fakeReadyTSOGroup("tso-2", cluster)
 		rctx := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg1, tg2)
 
 		res, _ := task.RunTask(ctx, TaskModeSwitch(rctx, healthyTSOClientGetter()))
@@ -274,10 +274,11 @@ func fakeSyncedPD(pdg *v1alpha1.PDGroup, mode v1alpha1.PDMode) *v1alpha1.PD {
 	return pd
 }
 
-func fakeReadyTSOGroup(name string, cluster *v1alpha1.Cluster, replicas int32) *v1alpha1.TSOGroup {
+func fakeReadyTSOGroup(name string, cluster *v1alpha1.Cluster) *v1alpha1.TSOGroup {
 	return fake.FakeObj(name,
 		fake.SetNamespace[v1alpha1.TSOGroup](cluster.Namespace),
 		func(tg *v1alpha1.TSOGroup) *v1alpha1.TSOGroup {
+			replicas := int32(1)
 			tg.Spec.Cluster.Name = cluster.Name
 			tg.Spec.Replicas = ptr.To(replicas)
 			tg.Status.ObservedGeneration = tg.Generation
