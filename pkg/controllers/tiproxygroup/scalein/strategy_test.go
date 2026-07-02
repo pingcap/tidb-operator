@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package updater
+package scalein
 
 import (
-	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -27,9 +26,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 func TestNeedsGracefulOfflineScaleIn(t *testing.T) {
@@ -118,48 +115,32 @@ func TestChooseBeingOfflineToReviveSkipsNearDeletion(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestCancelOneOffliningSkipsUpdateAtCurrentRevision(t *testing.T) {
+func TestShouldOfflineInsteadOfDelete(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	rev := "2"
+	strategy := NewGracefulScaleInStrategy[*runtime.TiProxy]()
+
 	proxy := &runtime.TiProxy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            "proxy-0",
-			Namespace:       metav1.NamespaceDefault,
-			ResourceVersion: "10",
-			Labels:          map[string]string{v1alpha1.LabelKeyInstanceRevisionHash: rev},
-			Generation:      2,
-		},
-		Spec: v1alpha1.TiProxySpec{
-			Offline: ptr.To(true),
-		},
-		Status: v1alpha1.TiProxyStatus{
-			CommonStatus: v1alpha1.CommonStatus{
-				ObservedGeneration: 2,
-				CurrentRevision:    rev,
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
 			},
 		},
 	}
+	assert.True(t, strategy.ShouldOfflineInsteadOfDelete(proxy))
 
-	fakeCli := client.NewFakeClient(proxy.To())
-	act := &actor[runtime.TiProxyTuple, *v1alpha1.TiProxy, *runtime.TiProxy]{
-		c:            fakeCli,
-		f:            NewFunc[*runtime.TiProxy](func() *runtime.TiProxy { return &runtime.TiProxy{} }),
-		beingOffline: NewState([]*runtime.TiProxy{proxy}),
-		update:       NewState[*runtime.TiProxy](nil),
-		rev:          rev,
-		actions:      make([]action, 0),
-	}
+	proxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = "0"
+	assert.False(t, strategy.ShouldOfflineInsteadOfDelete(proxy))
+}
 
-	require.NoError(t, act.cancelOneOfflining(ctx, proxy))
-	assert.Equal(t, []action{actionCancelOffline}, act.RecordedActions())
-	assert.Equal(t, 1, act.update.Len())
-	assert.Equal(t, 0, act.beingOffline.Len())
+func TestOfflineRevivePatchClearsOffline(t *testing.T) {
+	t.Parallel()
 
-	actual := &v1alpha1.TiProxy{}
-	require.NoError(t, fakeCli.Get(ctx, client.ObjectKeyFromObject(proxy.To()), actual))
-	assert.False(t, coreutil.IsOffline[scope.TiProxy](actual))
+	patch := NewGracefulScaleInStrategy[*runtime.TiProxy]().OfflineRevivePatch(nil)
+	assert.True(t, patch.ClearOffline)
+	require.NotNil(t, patch.Annotations)
+	_, ok := patch.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained]
+	assert.True(t, ok)
 }
 
 func TestRevivableForScaleOutUsesMinRemainingConstant(t *testing.T) {

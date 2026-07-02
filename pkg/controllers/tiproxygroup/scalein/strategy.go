@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package updater
+package scalein
 
 import (
 	"sort"
@@ -22,7 +22,32 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/updater"
 )
+
+type gracefulScaleInStrategy[R runtime.Instance] struct{}
+
+// NewGracefulScaleInStrategy returns a scale-in strategy for TiProxy graceful scale-in.
+func NewGracefulScaleInStrategy[R runtime.Instance]() updater.ScaleInStrategy[R] {
+	return gracefulScaleInStrategy[R]{}
+}
+
+func (gracefulScaleInStrategy[R]) ShouldOfflineInsteadOfDelete(obj R) bool {
+	return needsGracefulOfflineScaleIn(obj) && !obj.IsOffline()
+}
+
+func (gracefulScaleInStrategy[R]) ChooseOfflineToRevive(items []R, ctx updater.ScaleInContext) (R, bool) {
+	return chooseBeingOfflineToRevive(items, ctx.Now)
+}
+
+func (gracefulScaleInStrategy[R]) OfflineRevivePatch(_ R) updater.ScaleInRevivePatch {
+	return updater.ScaleInRevivePatch{
+		ClearOffline: true,
+		Annotations: map[string]*string{
+			v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained: nil,
+		},
+	}
+}
 
 func needsGracefulOfflineScaleIn(obj runtime.Instance) bool {
 	if obj.IsStore() {

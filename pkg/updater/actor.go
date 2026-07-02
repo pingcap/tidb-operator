@@ -101,9 +101,16 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	scaleInSelector Selector[R]
 	updateSelector  Selector[R]
 
-	rev string
+	scaleInStrategy ScaleInStrategy[R]
 
 	actions []action
+}
+
+func (act *actor[T, O, R]) scaleInStrategyOrDefault() ScaleInStrategy[R] {
+	if act.scaleInStrategy != nil {
+		return act.scaleInStrategy
+	}
+	return DefaultScaleInStrategy[R]()
 }
 
 // chooseToUpdate selects an outdated instance for update operation.
@@ -143,13 +150,13 @@ func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error 
 	)
 	act.actions = append(act.actions, actionCancelOffline)
 
-	if obj.IsOffline() {
-		if err := act.clearOffline(ctx, obj); err != nil {
-			return fmt.Errorf("failed to clear offline for instance %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+	patch := act.scaleInStrategyOrDefault().OfflineRevivePatch(obj)
+	if patch.ClearOffline {
+		if obj.IsOffline() {
+			if err := act.applyOfflineRevivePatch(ctx, obj, patch); err != nil {
+				return fmt.Errorf("failed to clear offline for instance %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+			}
 		}
-	}
-
-	if obj.GetUpdateRevision() == act.rev {
 		act.update.Add(obj)
 		return nil
 	}
@@ -161,7 +168,10 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		chosen, ok := chooseBeingOfflineToRevive(act.beingOffline.List(), time.Now())
+		chosen, ok := act.scaleInStrategyOrDefault().ChooseOfflineToRevive(
+			act.beingOffline.List(),
+			ScaleInContext{Now: time.Now()},
+		)
 		if ok {
 			if err := act.cancelOneOfflining(ctx, chosen); err != nil {
 				return err
@@ -216,7 +226,13 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	)
 	act.actions = append(act.actions, actionScaleInUpdate)
 
-	if err := act.deleteInstance(ctx, obj); err != nil {
+	if act.outdated.Len() == 0 &&
+		act.scaleInStrategyOrDefault().ShouldOfflineInsteadOfDelete(obj) {
+		if err := act.setOffline(ctx, obj); err != nil {
+			return false, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
+		}
+		act.beingOffline.Add(obj)
+	} else if err := act.deleteInstance(ctx, obj); err != nil {
 		return false, err
 	}
 
@@ -397,49 +413,10 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 	return act.actions
 }
 
-// shouldGracefulOfflineScaleInBeforeDelete reports whether deleteInstance should mark a
-// TiProxy offline instead of deleting its CR immediately.
-//
-// Offline scale-in keeps the TiProxy CR and Pod running while connections drain. The instance
-// is tracked in beingOffline so a later ScaleOut can revive it (cancel offline, clear graceful
-// drain state, reuse the same Pod) instead of creating a new one. That revive path is only
-// intended for scale-in: rolling restart should delete the CR and drain via the finalizer
-// (TaskDrainPodForDelete), without entering spec.offline or beingOffline.
-//
-// An instance is eligible to be marked offline here only when it may later be revived:
-//   - graceful scale-in delay is configured on the instance;
-//   - it is already on the group's target revision (not an outdated rolling-replace victim);
-//   - it is not a defer-delete cleanup target from an in-progress rolling update;
-//   - no outdated instances remain, so we are not in the middle of rolling replace.
-//
-// Whether ScaleOut actually revives a beingOffline instance is decided separately by
-// chooseBeingOfflineToRevive and RevivableForGracefulScaleOutFromSources (for example,
-// connections-drained or near the end of the delete delay makes it non-revivable).
-func (act *actor[T, O, R]) shouldGracefulOfflineScaleInBeforeDelete(obj R) bool {
-	if !needsGracefulOfflineScaleIn(obj) || obj.IsOffline() {
-		return false
-	}
-	if obj.GetUpdateRevision() != act.rev {
-		return false
-	}
-	if _, ok := obj.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
-		return false
-	}
-	return act.outdated.Len() == 0
-}
-
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 	if obj.IsStore() &&
 		!obj.IsOffline() &&
 		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
-		if err := act.setOffline(ctx, obj); err != nil {
-			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
-		}
-		act.beingOffline.Add(obj)
-		return nil
-	}
-
-	if act.shouldGracefulOfflineScaleInBeforeDelete(obj) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
@@ -485,18 +462,17 @@ func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R) error {
 	return act.c.Patch(ctx, act.converter.To(obj), client.RawPatch(types.MergePatchType, data))
 }
 
-func (act *actor[T, O, R]) clearOffline(ctx context.Context, obj R) error {
+func (act *actor[T, O, R]) applyOfflineRevivePatch(ctx context.Context, obj R, patch ScaleInRevivePatch) error {
 	p := Patch{
 		Metadata: Metadata{
 			ResourceVersion: obj.GetResourceVersion(),
-			Annotations: map[string]*string{
-				// Scale-out revival cancels an in-progress scale-in drain.
-				v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained: nil,
-			},
+			Annotations:     patch.Annotations,
 		},
-		Spec: &Spec{
+	}
+	if patch.ClearOffline {
+		p.Spec = &Spec{
 			Offline: false,
-		},
+		}
 	}
 
 	data, err := json.Marshal(&p)

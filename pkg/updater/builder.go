@@ -41,6 +41,7 @@ type Builder[R runtime.Instance] interface {
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
 	// MinReadySeconds means instances are available only when they keep ready more than minReadySeconds
 	WithMinReadySeconds(minReadySeconds int64) Builder[R]
+	WithScaleInStrategy(ScaleInStrategy[R]) Builder[R]
 	Build() Executor
 }
 
@@ -64,6 +65,8 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 
 	scaleInPreferPolicies []PreferPolicy[R]
 	updatePreferPolicies  []PreferPolicy[R]
+
+	scaleInStrategy ScaleInStrategy[R]
 }
 
 func (b *builder[T, O, R]) Build() Executor {
@@ -101,7 +104,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		scaleInSelector: NewSelector(scaleInPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
 
-		rev: b.rev,
+		scaleInStrategy: b.scaleInStrategyOrDefault(),
 	}
 	return NewExecutor(
 		actor,
@@ -188,6 +191,18 @@ func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 func (b *builder[T, O, R]) WithMinReadySeconds(minReadySeconds int64) Builder[R] {
 	b.minReadySeconds = minReadySeconds
 	return b
+}
+
+func (b *builder[T, O, R]) WithScaleInStrategy(strategy ScaleInStrategy[R]) Builder[R] {
+	b.scaleInStrategy = strategy
+	return b
+}
+
+func (b *builder[T, O, R]) scaleInStrategyOrDefault() ScaleInStrategy[R] {
+	if b.scaleInStrategy != nil {
+		return b.scaleInStrategy
+	}
+	return DefaultScaleInStrategy[R]()
 }
 
 func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {
