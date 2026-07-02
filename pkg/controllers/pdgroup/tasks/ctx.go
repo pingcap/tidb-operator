@@ -58,16 +58,8 @@ func TaskContextPDMSDependencies(state *ReconcileContext, c client.Client) task.
 		if err != nil {
 			return task.Fail().With("cannot list TSOGroups: %w", err)
 		}
-		sgs, err := apicall.ListGroups[scope.SchedulingGroup](ctx, c, ns, cluster)
-		if err != nil {
-			return task.Fail().With("cannot list SchedulingGroups: %w", err)
-		}
-		rmgs, err := apicall.ListGroups[scope.ResourceManagerGroup](ctx, c, ns, cluster)
-		if err != nil {
-			return task.Fail().With("cannot list ResourceManagerGroups: %w", err)
-		}
 
-		state.SetPDMSDependencyGroups(pdgs, tgs, sgs, rmgs)
+		state.SetPDMSDependencyGroups(pdgs, tgs)
 		return task.Complete().With("PDMS dependencies are set")
 	})
 }

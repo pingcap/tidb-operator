@@ -63,12 +63,7 @@ func TaskModeSwitch(state *ReconcileContext, tsocm tsoClientGetter) task.Task {
 			return task.Complete().With("PD mode switch is not needed")
 		}
 
-		if blocked, reason, msg := unsupportedTopology(
-			state.PDGroups(),
-			state.TSOGroups(),
-			state.SchedulingGroups(),
-			state.ResourceManagerGroups(),
-		); blocked {
+		if blocked, reason, msg := unsupportedTopology(state.PDGroups()); blocked {
 			blockModeSwitch(state, reason, msg)
 			return task.Retry(defaultUpdateWaitTime).With(msg)
 		}
@@ -150,38 +145,25 @@ func blockModeSwitch(state *ReconcileContext, reason, msg string) {
 	}
 }
 
-func unsupportedTopology(
-	pdgs []*v1alpha1.PDGroup,
-	tgs []*v1alpha1.TSOGroup,
-	sgs []*v1alpha1.SchedulingGroup,
-	rmgs []*v1alpha1.ResourceManagerGroup,
-) (blocked bool, reason, message string) {
+func unsupportedTopology(pdgs []*v1alpha1.PDGroup) (blocked bool, reason, message string) {
 	if len(pdgs) != 1 {
 		return true, v1alpha1.ReasonWaitingForSinglePDGroup, fmt.Sprintf("waiting for exactly one PDGroup, got %d", len(pdgs))
-	}
-	if len(tgs) > 1 {
-		return true, v1alpha1.ReasonUnsupportedTSOGroupCount, fmt.Sprintf("unsupported TSOGroup count %d", len(tgs))
-	}
-	if len(sgs) > 1 {
-		return true, v1alpha1.ReasonUnsupportedSchedulingGroupCount, fmt.Sprintf("unsupported SchedulingGroup count %d", len(sgs))
-	}
-	if len(rmgs) > 1 {
-		return true, v1alpha1.ReasonUnsupportedResourceManagerGroupCount,
-			fmt.Sprintf("unsupported ResourceManagerGroup count %d", len(rmgs))
 	}
 	return false, "", ""
 }
 
 func checkTSODependency(ctx context.Context, tgs []*v1alpha1.TSOGroup, tsocm tsoClientGetter) (blocked bool, reason, message string) {
-	if len(tgs) != 1 {
-		return true, v1alpha1.ReasonWaitingForSingleTSOGroup, fmt.Sprintf("waiting for exactly one TSOGroup, got %d", len(tgs))
+	if len(tgs) == 0 {
+		return true, v1alpha1.ReasonWaitingForTSOGroup, "waiting for at least one TSOGroup, got 0"
+	}
+
+	for _, tg := range tgs {
+		if tg.Spec.Replicas == nil || *tg.Spec.Replicas == 0 || !coreutil.IsGroupHealthyAndUpToDate[scope.TSOGroup](tg) {
+			return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s to be ready and up-to-date", tg.Name)
+		}
 	}
 
 	tg := tgs[0]
-	if tg.Spec.Replicas == nil || *tg.Spec.Replicas == 0 || !coreutil.IsGroupHealthyAndUpToDate[scope.TSOGroup](tg) {
-		return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s to be ready and up-to-date", tg.Name)
-	}
-
 	tsoc, ok := tsocm.Get(timanager.PrimaryKey(tg.Namespace, tg.Spec.Cluster.Name))
 	if !ok {
 		return true, v1alpha1.ReasonWaitingForTSOGroupReady, fmt.Sprintf("waiting for TSOGroup %s health check client", tg.Name)

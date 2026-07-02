@@ -69,8 +69,6 @@ func Setup(
 		For(&v1alpha1.PDGroup{}).
 		Owns(&v1alpha1.PD{}).
 		Watches(&v1alpha1.TSOGroup{}, handler.EnqueueRequestsFromMapFunc(r.EnqueuePDGroupsForPDMSDependency())).
-		Watches(&v1alpha1.SchedulingGroup{}, handler.EnqueueRequestsFromMapFunc(r.EnqueuePDGroupsForPDMSDependency())).
-		Watches(&v1alpha1.ResourceManagerGroup{}, handler.EnqueueRequestsFromMapFunc(r.EnqueuePDGroupsForPDMSDependency())).
 		// Only care about the generation change (i.e. spec update)
 		Watches(&v1alpha1.Cluster{}, r.ClusterEventHandler(), builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
@@ -82,10 +80,6 @@ func (r *Reconciler) EnqueuePDGroupsForPDMSDependency() handler.MapFunc {
 		clusterName := ""
 		switch typed := obj.(type) {
 		case *v1alpha1.TSOGroup:
-			clusterName = typed.Spec.Cluster.Name
-		case *v1alpha1.SchedulingGroup:
-			clusterName = typed.Spec.Cluster.Name
-		case *v1alpha1.ResourceManagerGroup:
 			clusterName = typed.Spec.Cluster.Name
 		default:
 			return nil

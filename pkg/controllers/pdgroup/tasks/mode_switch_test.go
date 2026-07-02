@@ -50,7 +50,7 @@ func TestTaskModeSwitch(t *testing.T) {
 		assert.Equal(t, v1alpha1.ReasonModeSwitchNotNeeded, cond.Reason)
 	})
 
-	t.Run("normal to ms waits for single TSOGroup", func(t *testing.T) {
+	t.Run("normal to ms waits for TSOGroup", func(t *testing.T) {
 		pdg := fakePDGroupForModeSwitch()
 		pdg.Status.Mode = v1alpha1.PDModeNormal
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
@@ -62,7 +62,7 @@ func TestTaskModeSwitch(t *testing.T) {
 		assert.True(t, state.ModeSwitchBlocked())
 		cond := modeSwitchingCondition(t, pdg)
 		assert.Equal(t, metav1.ConditionTrue, cond.Status)
-		assert.Equal(t, v1alpha1.ReasonWaitingForSingleTSOGroup, cond.Reason)
+		assert.Equal(t, v1alpha1.ReasonWaitingForTSOGroup, cond.Reason)
 	})
 
 	t.Run("same blocked state does not mark status changed again", func(t *testing.T) {
@@ -71,8 +71,8 @@ func TestTaskModeSwitch(t *testing.T) {
 		pdg.Status.Conditions = append(pdg.Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.CondModeSwitching,
 			Status:             metav1.ConditionTrue,
-			Reason:             v1alpha1.ReasonWaitingForSingleTSOGroup,
-			Message:            "waiting for exactly one TSOGroup, got 0",
+			Reason:             v1alpha1.ReasonWaitingForTSOGroup,
+			Message:            "waiting for at least one TSOGroup, got 0",
 			ObservedGeneration: pdg.Generation,
 		})
 		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
@@ -92,6 +92,23 @@ func TestTaskModeSwitch(t *testing.T) {
 		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
 		tg := fakeReadyTSOGroup("tso", cluster, 1)
 		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg)
+
+		res, _ := task.RunTask(ctx, TaskModeSwitch(state, healthyTSOClientGetter()))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.False(t, state.ModeSwitchBlocked())
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, cond.Reason)
+	})
+
+	t.Run("normal to ms allows multiple ready TSOGroups", func(t *testing.T) {
+		pdg := fakePDGroupForModeSwitch()
+		pdg.Status.Mode = v1alpha1.PDModeNormal
+		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeNormal)
+		tg1 := fakeReadyTSOGroup("tso-1", cluster, 1)
+		tg2 := fakeReadyTSOGroup("tso-2", cluster, 1)
+		state := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg1, tg2)
 
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
@@ -146,6 +163,24 @@ func TestTaskModeSwitch(t *testing.T) {
 		res, _ := task.RunTask(ctx, TaskModeSwitch(state, healthyTSOClientGetter()))
 		assert.Equal(t, task.SComplete.String(), res.Status().String())
 		assert.False(t, state.ModeSwitchBlocked())
+		cond := modeSwitchingCondition(t, pdg)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, cond.Reason)
+	})
+
+	t.Run("normal target allows multiple TSOGroups", func(t *testing.T) {
+		pdg := fakePDGroupForModeSwitch()
+		pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeNormal
+		pdg.Status.Mode = v1alpha1.PDModeMS
+		cluster := fake.FakeObj("cluster", fake.SetNamespace[v1alpha1.Cluster]("ns"))
+		pd := fakeSyncedPD(pdg, v1alpha1.PDModeMS)
+		tg1 := fakeReadyTSOGroup("tso-1", cluster, 1)
+		tg2 := fakeReadyTSOGroup("tso-2", cluster, 1)
+		rctx := newModeSwitchState(pdg, cluster, []*v1alpha1.PD{pd}, tg1, tg2)
+
+		res, _ := task.RunTask(ctx, TaskModeSwitch(rctx, healthyTSOClientGetter()))
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.False(t, rctx.ModeSwitchBlocked())
 		cond := modeSwitchingCondition(t, pdg)
 		assert.Equal(t, metav1.ConditionTrue, cond.Status)
 		assert.Equal(t, v1alpha1.ReasonSwitchingPDInstances, cond.Reason)
