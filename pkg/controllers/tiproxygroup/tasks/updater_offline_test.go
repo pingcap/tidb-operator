@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package offline_test
+package tasks
 
 import (
 	"context"
@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup/offline"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/updater"
@@ -66,8 +65,12 @@ func newGracefulExecutor(
 		WithDesired(desired).
 		WithClient(cli).
 		WithRevision(rev).
-		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy { return &runtime.TiProxy{} })).
-		WithOfflineScaleStrategy(offline.NewGracefulOfflineScaleStrategy[*runtime.TiProxy]()).
+		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
+			return &runtime.TiProxy{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
+				Spec:       v1alpha1.TiProxySpec{Offline: ptr.To(false)},
+			}
+		})).
 		Build()
 }
 

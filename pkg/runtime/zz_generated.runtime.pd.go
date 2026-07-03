@@ -245,6 +245,10 @@ func (in *PD) IsOffline() bool {
 	return false
 }
 
+func (in *PD) SupportsOffline() bool {
+	return false
+}
+
 type (
 	PDGroup v1alpha1.PDGroup
 )

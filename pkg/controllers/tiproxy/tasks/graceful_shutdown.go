@@ -40,8 +40,8 @@ func drainPodForGracefulShutdown(
 	// forOfflineScaleIn distinguishes graceful scale-in drain from TiProxy CR deletion.
 	// Both paths delete the pod as soon as tiproxy_server_connections reaches zero (#6936).
 	//
-	// Scale-in additionally guards against racing TiProxyGroup scale-out revival:
-	//   1. mark connections-drained on the TiProxy CR so updater won't pick it for revive
+	// Scale-in additionally coordinates with TiProxyGroup scale-out revival:
+	//   1. mark connections-drained on the TiProxy CR when zero connections are observed
 	//   2. re-read spec.offline before deleting the pod; skip delete if scale-out already cleared offline
 	forOfflineScaleIn bool,
 ) (time.Duration, error) {

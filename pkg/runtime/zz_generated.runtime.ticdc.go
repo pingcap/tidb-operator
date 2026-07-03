@@ -245,6 +245,10 @@ func (in *TiCDC) IsOffline() bool {
 	return false
 }
 
+func (in *TiCDC) SupportsOffline() bool {
+	return false
+}
+
 type (
 	TiCDCGroup v1alpha1.TiCDCGroup
 )

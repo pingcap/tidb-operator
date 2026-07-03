@@ -245,6 +245,10 @@ func (in *DM) IsOffline() bool {
 	return false
 }
 
+func (in *DM) SupportsOffline() bool {
+	return false
+}
+
 type (
 	DMGroup v1alpha1.DMGroup
 )

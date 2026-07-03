@@ -44,6 +44,9 @@ type Instance interface {
 	// TODO: may be change a more meaningful name?
 	IsUpToDate() bool
 	IsOffline() bool
+	// SupportsOffline indicates whether deleteInstance should mark spec.offline
+	// instead of deleting the CR immediately (TiKV/TiFlash).
+	SupportsOffline() bool
 
 	CurrentRevision() string
 	SetCurrentRevision(rev string)

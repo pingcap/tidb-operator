@@ -18,9 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -100,16 +100,7 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	scaleInSelector Selector[R]
 	updateSelector  Selector[R]
 
-	offlineScaleStrategy OfflineScaleStrategy[R]
-
 	actions []action
-}
-
-func (act *actor[T, O, R]) offlineScaleStrategyOrDefault() OfflineScaleStrategy[R] {
-	if act.offlineScaleStrategy != nil {
-		return act.offlineScaleStrategy
-	}
-	return DefaultOfflineScaleStrategy[R]()
 }
 
 // chooseToUpdate selects an outdated instance for update operation.
@@ -149,17 +140,6 @@ func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error 
 	)
 	act.actions = append(act.actions, actionCancelOffline)
 
-	patch := act.offlineScaleStrategyOrDefault().OfflineRevivePatch(obj)
-	if patch.ClearOffline {
-		if obj.IsOffline() {
-			if err := patch.Apply(ctx, act.c, act.converter.To(obj)); err != nil {
-				return fmt.Errorf("failed to clear offline for instance %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
-			}
-		}
-		act.update.Add(obj)
-		return nil
-	}
-
 	return act.updateOutdated(ctx, obj)
 }
 
@@ -167,16 +147,11 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		chosen, ok := act.offlineScaleStrategyOrDefault().ChooseOfflineToRevive(
-			act.beingOffline.List(),
-			OfflineScaleContext{Now: time.Now()},
-		)
-		if ok {
-			if err := act.cancelOneOfflining(ctx, chosen); err != nil {
-				return err
-			}
-			return nil
+		// TODO: could implement more sophisticated selection logic
+		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
+			return err
 		}
+		return nil
 	}
 
 	obj, unlock, exists := act.f.Adopt()
@@ -225,13 +200,7 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	)
 	act.actions = append(act.actions, actionScaleInUpdate)
 
-	if act.outdated.Len() == 0 &&
-		act.offlineScaleStrategyOrDefault().ShouldOffline(obj, OfflineOnScaleInUpdate) {
-		if err := act.setOffline(ctx, obj); err != nil {
-			return false, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
-		}
-		act.beingOffline.Add(obj)
-	} else if err := act.deleteInstance(ctx, obj); err != nil {
+	if err := act.deleteInstance(ctx, obj); err != nil {
 		return false, err
 	}
 
@@ -413,7 +382,7 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 }
 
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
-	if act.offlineScaleStrategyOrDefault().ShouldOffline(obj, OfflineOnDelete) {
+	if act.shouldOfflineBeforeDelete(obj) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
@@ -433,6 +402,22 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 	}
 
 	return nil
+}
+
+// shouldOfflineBeforeDelete reports whether deleteInstance should set spec.offline instead of deleting.
+// TiKV/TiFlash always offline before delete. TiProxy only during pure scale-in (no outdated replicas).
+func (act *actor[T, O, R]) shouldOfflineBeforeDelete(obj R) bool {
+	if obj.IsOffline() ||
+		meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
+		return false
+	}
+	if !obj.SupportsOffline() {
+		return false
+	}
+	if act.outdated.Len() > 0 && runtime.GracefulOfflineScaleInEnabled(obj.GetAnnotations()) {
+		return false
+	}
+	return true
 }
 
 // TODO: use apicall.SetOffline

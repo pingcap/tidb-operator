@@ -320,6 +320,26 @@ func (in *$.|pub$) IsOffline() bool {
 `, t)
 	}
 
+	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
+		sw.Do(`
+func (in *$.|pub$) SupportsOffline() bool {
+	return true
+}
+`, t)
+	} else if strings.EqualFold(t.Name.Name, "TiProxy") {
+		sw.Do(`
+func (in *TiProxy) SupportsOffline() bool {
+	return GracefulOfflineScaleInEnabled(in.GetAnnotations())
+}
+`, t)
+	} else {
+		sw.Do(`
+func (in *$.|pub$) SupportsOffline() bool {
+	return false
+}
+`, t)
+	}
+
 	return sw.Error()
 }
 

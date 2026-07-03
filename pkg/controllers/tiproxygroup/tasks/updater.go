@@ -20,13 +20,13 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup/offline"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -122,7 +122,6 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			).
 			WithNoInPaceUpdate(noUpdate).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiProxyGroup](proxyg)).
-			WithOfflineScaleStrategy(offline.NewGracefulOfflineScaleStrategy[*runtime.TiProxy]()).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -188,6 +187,7 @@ func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string, fg features.Gates) 
 				Features:            proxyg.Spec.Features,
 				Subdomain:           coreutil.HeadlessServiceName[scope.TiProxyGroup](proxyg), // same as headless service
 				TiProxyTemplateSpec: *spec,
+				Offline:             ptr.To(false),
 			},
 		}
 

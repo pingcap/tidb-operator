@@ -103,7 +103,6 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 				topoPolicy.PolicyScaleIn(),
 			).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiFlashGroup](fg)).
-			WithOfflineScaleStrategy(updater.NewStoreOfflineScaleStrategy[*runtime.TiFlash]()).
 			Build().
 			Do(ctx)
 		if err != nil {

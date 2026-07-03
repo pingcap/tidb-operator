@@ -245,6 +245,10 @@ func (in *ResourceManager) IsOffline() bool {
 	return false
 }
 
+func (in *ResourceManager) SupportsOffline() bool {
+	return false
+}
+
 type (
 	ResourceManagerGroup v1alpha1.ResourceManagerGroup
 )

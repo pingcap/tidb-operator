@@ -245,6 +245,10 @@ func (in *Router) IsOffline() bool {
 	return false
 }
 
+func (in *Router) SupportsOffline() bool {
+	return false
+}
+
 type (
 	RouterGroup v1alpha1.RouterGroup
 )

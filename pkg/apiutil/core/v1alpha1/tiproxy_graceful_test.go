@@ -15,7 +15,6 @@
 package coreutil
 
 import (
-	"strconv"
 	"testing"
 	"time"
 
@@ -52,31 +51,6 @@ func TestGracefulShutdownHelpers(t *testing.T) {
 	assert.Greater(t, remaining, 80*time.Second)
 }
 
-func TestRevivableForGracefulScaleOut(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now()
-	delay := time.Hour
-	annotations := map[string]string{
-		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
-	}
-
-	annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = now.Add(-delay + time.Minute).Format(time.RFC3339Nano)
-	revivable, err := RevivableForGracefulScaleOutFromSources(now, annotations)
-	require.NoError(t, err)
-	assert.False(t, revivable)
-
-	annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = now.Add(-delay + MinRemainingToReviveBeforeDelete).Format(time.RFC3339Nano)
-	revivable, err = RevivableForGracefulScaleOutFromSources(now, annotations)
-	require.NoError(t, err)
-	assert.True(t, revivable)
-
-	annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] = v1alpha1.AnnoValTrue
-	revivable, err = RevivableForGracefulScaleOutFromSources(now, annotations)
-	require.NoError(t, err)
-	assert.False(t, revivable)
-}
-
 func TestGracefulShutdownBeginTimeFromSources(t *testing.T) {
 	t.Parallel()
 
@@ -90,29 +64,6 @@ func TestGracefulShutdownBeginTimeFromSources(t *testing.T) {
 	)
 	require.False(t, startAt.IsZero())
 	assert.Equal(t, earlier, startAt.Format(time.RFC3339Nano))
-}
-
-func TestRevivableForGracefulScaleOutFromSourcesUsesEarliestBeginTime(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now()
-	delay := time.Hour
-	podAnnotations := map[string]string{
-		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: strconv.Itoa(int(delay.Seconds())),
-		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime:          now.Add(-delay + time.Minute).Format(time.RFC3339Nano),
-	}
-	crAnnotations := map[string]string{
-		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: strconv.Itoa(int(delay.Seconds())),
-	}
-
-	revivable, err := RevivableForGracefulScaleOutFromSources(now, crAnnotations, podAnnotations)
-	require.NoError(t, err)
-	assert.False(t, revivable)
-
-	crAnnotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = now.Add(-2 * time.Minute).Format(time.RFC3339Nano)
-	revivable, err = RevivableForGracefulScaleOutFromSources(now, crAnnotations, podAnnotations)
-	require.NoError(t, err)
-	assert.False(t, revivable)
 }
 
 func TestHasGracefulDrainState(t *testing.T) {

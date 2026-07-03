@@ -21,10 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
-// MinRemainingToReviveBeforeDelete is the minimum remaining graceful shutdown time required
-// before a draining TiProxy can be revived during scale-out.
-const MinRemainingToReviveBeforeDelete = 5 * time.Minute
-
 // GracefulShutdownDeleteDelaySeconds returns the configured graceful shutdown delay for a TiProxy instance.
 func GracefulShutdownDeleteDelaySeconds(tiproxy *v1alpha1.TiProxy) (seconds int32, ok bool, err error) {
 	if tiproxy == nil {
@@ -129,34 +125,4 @@ func GracefulShutdownBeginTimeFromSources(sources ...map[string]string) time.Tim
 		}
 	}
 	return earliest
-}
-
-// RevivableForGracefulScaleOutFromSources reports whether a draining TiProxy instance can be revived,
-// considering multiple annotation sources (for example TiProxy CR and Pod) to avoid incorrect revive
-// decisions when annotations are temporarily out of sync.
-//
-// An instance is revivable when its drain has not started yet, or still has at least
-// MinRemainingToReviveBeforeDelete left. Once zero connections were observed (connections-drained),
-// scale-in commits to deletion and the instance is no longer revivable.
-func RevivableForGracefulScaleOutFromSources(now time.Time, sources ...map[string]string) (bool, error) {
-	for _, annotations := range sources {
-		if GracefulShutdownConnectionsDrained(annotations) {
-			// TiProxy controller already observed zero connections during scale-in drain. Scale-in
-			// should delete the pod/CR instead of being canceled by scale-out revival.
-			return false, nil
-		}
-	}
-
-	remaining, enabled, err := GracefulShutdownRemainingFromSources(now, sources...)
-	if err != nil {
-		return false, err
-	}
-	if !enabled {
-		return true, nil
-	}
-	if GracefulShutdownBeginTimeFromSources(sources...).IsZero() {
-		// Drain has not started yet; always revivable regardless of the configured delay.
-		return true, nil
-	}
-	return remaining >= MinRemainingToReviveBeforeDelete, nil
 }

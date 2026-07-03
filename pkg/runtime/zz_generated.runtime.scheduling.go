@@ -245,6 +245,10 @@ func (in *Scheduling) IsOffline() bool {
 	return false
 }
 
+func (in *Scheduling) SupportsOffline() bool {
+	return false
+}
+
 type (
 	SchedulingGroup v1alpha1.SchedulingGroup
 )

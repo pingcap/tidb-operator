@@ -41,7 +41,6 @@ type Builder[R runtime.Instance] interface {
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
 	// MinReadySeconds means instances are available only when they keep ready more than minReadySeconds
 	WithMinReadySeconds(minReadySeconds int64) Builder[R]
-	WithOfflineScaleStrategy(OfflineScaleStrategy[R]) Builder[R]
 	Build() Executor
 }
 
@@ -65,8 +64,6 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 
 	scaleInPreferPolicies []PreferPolicy[R]
 	updatePreferPolicies  []PreferPolicy[R]
-
-	offlineScaleStrategy OfflineScaleStrategy[R]
 }
 
 func (b *builder[T, O, R]) Build() Executor {
@@ -103,8 +100,6 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		scaleInSelector: NewSelector(scaleInPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
-
-		offlineScaleStrategy: b.offlineScaleStrategyOrDefault(),
 	}
 	return NewExecutor(
 		actor,
@@ -191,18 +186,6 @@ func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 func (b *builder[T, O, R]) WithMinReadySeconds(minReadySeconds int64) Builder[R] {
 	b.minReadySeconds = minReadySeconds
 	return b
-}
-
-func (b *builder[T, O, R]) WithOfflineScaleStrategy(strategy OfflineScaleStrategy[R]) Builder[R] {
-	b.offlineScaleStrategy = strategy
-	return b
-}
-
-func (b *builder[T, O, R]) offlineScaleStrategyOrDefault() OfflineScaleStrategy[R] {
-	if b.offlineScaleStrategy != nil {
-		return b.offlineScaleStrategy
-	}
-	return DefaultOfflineScaleStrategy[R]()
 }
 
 func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {

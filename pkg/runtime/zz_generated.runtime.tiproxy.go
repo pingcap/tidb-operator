@@ -245,6 +245,10 @@ func (in *TiProxy) IsOffline() bool {
 	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
+func (in *TiProxy) SupportsOffline() bool {
+	return GracefulOfflineScaleInEnabled(in.GetAnnotations())
+}
+
 type (
 	TiProxyGroup v1alpha1.TiProxyGroup
 )
