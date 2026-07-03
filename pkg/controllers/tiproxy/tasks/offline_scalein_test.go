@@ -135,7 +135,6 @@ func TestTaskReviveFromScaleInClearsCRBeforePodAndHealth(t *testing.T) {
 	actualProxy := &v1alpha1.TiProxy{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actualProxy))
 	assert.Empty(t, actualProxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
-	assert.Empty(t, actualProxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained])
 
 	actualPod := &corev1.Pod{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actualPod))
@@ -244,4 +243,48 @@ func TestNeedsScaleInRevive(t *testing.T) {
 	assert.True(t, needsScaleInRevive(proxyWithCR, nil))
 	assert.True(t, needsScaleInRevive(&v1alpha1.TiProxy{}, podWithDrain))
 	assert.False(t, needsScaleInRevive(&v1alpha1.TiProxy{}, &corev1.Pod{}))
+}
+
+func TestOfflineScaleInDrainComplete(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	startAt := now.Add(-time.Minute).Format(time.RFC3339Nano)
+
+	tiproxy := &v1alpha1.TiProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime:          startAt,
+			},
+		},
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: startAt,
+			},
+		},
+	}
+
+	complete, err := offlineScaleInDrainComplete(tiproxy, pod)
+	require.NoError(t, err)
+	assert.False(t, complete)
+
+	deleting := now
+	pod = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: startAt,
+			},
+			DeletionTimestamp: &metav1.Time{Time: deleting},
+		},
+	}
+	complete, err = offlineScaleInDrainComplete(tiproxy, pod)
+	require.NoError(t, err)
+	assert.True(t, complete)
+
+	complete, err = offlineScaleInDrainComplete(tiproxy, nil)
+	require.NoError(t, err)
+	assert.True(t, complete)
 }

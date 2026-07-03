@@ -191,10 +191,6 @@ const (
 	// after it has been marked unhealthy during graceful shutdown.
 	AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds = AnnoKeyPrefix + "tiproxy-graceful-shutdown-delete-delay-seconds"
 
-	// TiProxy graceful shutdown connections drained marks that scale-in drain has observed zero SQL
-	// connections. Updater must not revive instances carrying this annotation.
-	AnnoKeyTiProxyGracefulShutdownConnectionsDrained = AnnoKeyPrefix + "tiproxy-graceful-shutdown-connections-drained"
-
 	// Features is recorded to check whether the pod should be restarted because of changes of features
 	AnnoKeyFeatures = AnnoKeyPrefix + "features"
 

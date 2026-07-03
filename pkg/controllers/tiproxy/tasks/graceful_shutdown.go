@@ -40,9 +40,8 @@ func drainPodForGracefulShutdown(
 	// forOfflineScaleIn distinguishes graceful scale-in drain from TiProxy CR deletion.
 	// Both paths delete the pod as soon as tiproxy_server_connections reaches zero (#6936).
 	//
-	// Scale-in additionally coordinates with TiProxyGroup scale-out revival:
-	//   1. mark connections-drained on the TiProxy CR when zero connections are observed
-	//   2. re-read spec.offline before deleting the pod; skip delete if scale-out already cleared offline
+	// Scale-in additionally guards against racing TiProxyGroup scale-out revival by
+	// re-reading spec.offline before deleting the pod; skip delete if scale-out already cleared offline.
 	forOfflineScaleIn bool,
 ) (time.Duration, error) {
 	logger := logr.FromContextOrDiscard(ctx)
@@ -85,9 +84,6 @@ func drainPodForGracefulShutdown(
 
 	if tiProxyConnectionsDrained(ctx, state, c, logger) {
 		if forOfflineScaleIn {
-			if err := markGracefulShutdownConnectionsDrained(ctx, c, tiproxy); err != nil {
-				return 0, err
-			}
 			if err := guardOfflineScaleInBeforePodDelete(ctx, c, tiproxy, forOfflineScaleIn); err != nil {
 				return 0, err
 			}
@@ -162,23 +158,6 @@ func guardOfflineScaleInBeforePodDelete(
 		return err
 	}
 	*tiproxy = *fresh
-	return nil
-}
-
-func markGracefulShutdownConnectionsDrained(ctx context.Context, c client.Client, tiproxy *v1alpha1.TiProxy) error {
-	if tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] == v1alpha1.AnnoValTrue {
-		return nil
-	}
-
-	newTiProxy := tiproxy.DeepCopy()
-	if newTiProxy.Annotations == nil {
-		newTiProxy.Annotations = map[string]string{}
-	}
-	newTiProxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] = v1alpha1.AnnoValTrue
-	if err := c.Update(ctx, newTiProxy); err != nil {
-		return err
-	}
-	*tiproxy = *newTiProxy
 	return nil
 }
 
@@ -295,33 +274,20 @@ func ensureTiProxyHealthOverrideCleared(ctx context.Context, state State, c clie
 	return healthy
 }
 
-func offlineScaleInDrainComplete(tiproxy *v1alpha1.TiProxy, pod *corev1.Pod, now time.Time) (bool, error) {
-	if coreutil.GracefulShutdownConnectionsDrained(tiproxy.Annotations) {
-		// Zero connections were observed; scale-in proceeds once the pod is removed.
-		if pod == nil || !pod.GetDeletionTimestamp().IsZero() {
-			return true, nil
-		}
+func offlineScaleInDrainComplete(tiproxy *v1alpha1.TiProxy, pod *corev1.Pod) (bool, error) {
+	annotationSources := []map[string]string{tiproxy.Annotations}
+	if pod != nil {
+		annotationSources = append(annotationSources, pod.Annotations)
+	}
+	if !gracefulShutdownStarted(annotationSources...) {
 		return false, nil
 	}
 
-	if pod == nil {
-		started := !coreutil.GracefulShutdownBeginTimeFromSources(tiproxy.Annotations).IsZero()
-		if !started {
-			return false, nil
-		}
-		remaining, enabled, err := coreutil.GracefulShutdownRemainingFromSources(now, tiproxy.Annotations)
-		if err != nil || !enabled {
-			return false, err
-		}
-		return remaining == 0, nil
-	}
+	return pod == nil || !pod.GetDeletionTimestamp().IsZero(), nil
+}
 
-	remaining, enabled, err := coreutil.GracefulShutdownRemainingFromSources(now, tiproxy.Annotations, pod.Annotations)
-	if err != nil || !enabled {
-		return false, err
-	}
-	started := !coreutil.GracefulShutdownBeginTimeFromSources(tiproxy.Annotations, pod.Annotations).IsZero()
-	return started && remaining == 0, nil
+func gracefulShutdownStarted(sources ...map[string]string) bool {
+	return !coreutil.GracefulShutdownBeginTimeFromSources(sources...).IsZero()
 }
 
 func needsScaleInRevive(tiproxy *v1alpha1.TiProxy, pod *corev1.Pod) bool {
@@ -344,10 +310,6 @@ func clearGracefulDrainAnnotationsOnCR(tiproxy *v1alpha1.TiProxy) bool {
 	changed := false
 	if tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != "" {
 		delete(tiproxy.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime)
-		changed = true
-	}
-	if tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] != "" {
-		delete(tiproxy.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained)
 		changed = true
 	}
 	return changed

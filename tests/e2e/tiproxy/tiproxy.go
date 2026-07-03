@@ -52,7 +52,7 @@ graceful-wait-before-shutdown = 30
 `
 	gracefulScaleInDeleteDelaySeconds int32 = 3600
 	// legacyHealthAPIScaleInDeleteDelaySeconds is short enough for e2e while still exercising
-	// operator-side delete-delay expiry (as opposed to connections-drained fast delete).
+	// operator-side delete-delay expiry (as opposed to connection-count fast delete).
 	legacyHealthAPIScaleInDeleteDelaySeconds int32 = 120
 	largeGracefulWaitBeforeShutdownSeconds   int   = 3600
 )
@@ -775,9 +775,6 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
 						return fmt.Errorf("tiproxy %s/%s is offline but graceful shutdown has not begun yet", tp.Namespace, tp.Name)
 					}
-					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] != "" {
-						return fmt.Errorf("tiproxy %s/%s already drained its connections and is no longer revivable", tp.Namespace, tp.Name)
-					}
 					draining++
 				}
 				if draining != expectedDraining {
@@ -833,9 +830,6 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != "" {
 						return fmt.Errorf("tiproxy %s/%s still has graceful shutdown begin time after revive", tp.Namespace, tp.Name)
 					}
-					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] != "" {
-						return fmt.Errorf("tiproxy %s/%s still has connections-drained annotation after revive", tp.Namespace, tp.Name)
-					}
 				}
 				return nil
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
@@ -880,7 +874,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			supportsHealthOverrideAPI, err := tiproxySupportsHealthOverrideAPI(ctx, f, &initialPods.Items[0])
 			f.Must(err)
 			if !supportsHealthOverrideAPI {
-				ginkgo.Skip("TiProxy does not support the health override API required for connections-drained scale-in")
+				ginkgo.Skip("TiProxy does not support the health override API required for graceful scale-in")
 			}
 
 			initialPodUIDs := podUIDSet(initialPods.Items)
@@ -981,9 +975,6 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					if tp.Spec.Offline != nil && *tp.Spec.Offline {
 						return fmt.Errorf("tiproxy %s/%s is still offline after scale-out", tp.Namespace, tp.Name)
 					}
-					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] != "" {
-						return fmt.Errorf("tiproxy %s/%s still has connections-drained annotation after scale-out", tp.Namespace, tp.Name)
-					}
 				}
 				return nil
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
@@ -1023,7 +1014,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 
 			initialPodUIDs := podUIDSet(initialPods.Items)
 
-			ginkgo.By("Hold SQL connections so scale-in drain waits for operator delete-delay instead of connections-drained fast delete")
+			ginkgo.By("Hold SQL connections so scale-in drain waits for operator delete-delay instead of fast delete on zero connections")
 			var releaseFuncs []func()
 			defer func() {
 				for _, release := range releaseFuncs {

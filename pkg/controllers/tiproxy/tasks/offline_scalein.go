@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"time"
 
 	"github.com/go-logr/logr"
 
@@ -46,7 +45,7 @@ func CondOfflineScaleInDrainComplete(state State) task.Condition {
 		if !coreutil.IsOffline[scope.TiProxy](tiproxy) || !coreutil.GracefulScaleInEnabled(tiproxy) {
 			return false
 		}
-		complete, err := offlineScaleInDrainComplete(tiproxy, state.Pod(), time.Now())
+		complete, err := offlineScaleInDrainComplete(tiproxy, state.Pod())
 		if err != nil {
 			return false
 		}

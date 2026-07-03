@@ -63,52 +63,12 @@ func GracefulShutdownBeginTime(annotations map[string]string) time.Time {
 	return startAt
 }
 
-// GracefulShutdownRemainingFromSources returns how long to wait before graceful shutdown can
-// complete, deriving both the configured delay and the begin time from the given annotation
-// sources (for example TiProxy CR and Pod). enabled is false when no positive delay is configured.
-func GracefulShutdownRemainingFromSources(now time.Time, sources ...map[string]string) (remaining time.Duration, enabled bool, err error) {
-	var seconds int32
-	for _, annotations := range sources {
-		parsed, ok, perr := gracefulShutdownDeleteDelaySecondsFromAnnotations(annotations)
-		if perr != nil {
-			return 0, false, perr
-		}
-		if ok && parsed > 0 {
-			seconds = parsed
-			enabled = true
-			break
-		}
-	}
-	if !enabled {
-		return 0, false, nil
-	}
-
-	startAt := GracefulShutdownBeginTimeFromSources(sources...)
-	if startAt.IsZero() {
-		return time.Duration(seconds) * time.Second, true, nil
-	}
-
-	remaining = startAt.Add(time.Duration(seconds) * time.Second).Sub(now)
-	if remaining < 0 {
-		remaining = 0
-	}
-	return remaining, true, nil
-}
-
-// GracefulShutdownConnectionsDrained reports whether scale-in drain has observed zero connections.
-func GracefulShutdownConnectionsDrained(annotations map[string]string) bool {
-	return annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownConnectionsDrained] == v1alpha1.AnnoValTrue
-}
-
 // HasGracefulDrainState reports whether graceful scale-in drain annotations are present.
 func HasGracefulDrainState(annotations map[string]string) bool {
 	if annotations == nil {
 		return false
 	}
-	if annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != "" {
-		return true
-	}
-	return GracefulShutdownConnectionsDrained(annotations)
+	return annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != ""
 }
 
 // GracefulShutdownBeginTimeFromSources returns the earliest non-zero begin time across annotation sets.
