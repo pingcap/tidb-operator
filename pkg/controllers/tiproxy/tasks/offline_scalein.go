@@ -58,7 +58,7 @@ func TaskOfflineScaleInDrain(state State, c client.Client) task.Task {
 			return task.Wait().With("wait for tiproxy pod before graceful scale-in drain")
 		}
 
-		retryAfter, err := drainPodForGracefulShutdown(ctx, c, state, pod, true)
+		retryAfter, err := drainPodForGracefulShutdown(ctx, c, state, pod)
 		if err != nil {
 			return task.Fail().With("cannot drain tiproxy pod for graceful scale-in: %v", err)
 		}

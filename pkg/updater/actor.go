@@ -385,7 +385,7 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 	if !obj.IsOffline() &&
 		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) &&
 		obj.SupportsOffline() &&
-		!(act.outdated.Len() > 0 && runtime.GracefulOfflineScaleInEnabled(obj.GetAnnotations())) {
+		(act.outdated.Len() == 0 || !runtime.GracefulOfflineScaleInEnabled(obj.GetAnnotations())) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}

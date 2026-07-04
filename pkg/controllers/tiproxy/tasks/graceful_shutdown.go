@@ -38,12 +38,6 @@ func drainPodForGracefulShutdown(
 	c client.Client,
 	state State,
 	pod *corev1.Pod,
-	// forOfflineScaleIn distinguishes graceful scale-in drain from TiProxy CR deletion.
-	// Both paths delete the pod as soon as tiproxy_server_connections reaches zero (#6936).
-	//
-	// Scale-in additionally guards against racing TiProxyGroup scale-out revival by
-	// re-reading spec.offline before deleting the pod; skip delete if scale-out already cleared offline.
-	forOfflineScaleIn bool,
 ) (time.Duration, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	tiproxy := state.Object()
@@ -73,24 +67,10 @@ func drainPodForGracefulShutdown(
 
 	remaining := time.Until(startAt.Add(time.Duration(seconds) * time.Second))
 	if remaining <= 0 {
-		if err := guardOfflineScaleInBeforePodDelete(ctx, c, tiproxy, forOfflineScaleIn); err != nil {
-			return 0, err
-		}
-		if forOfflineScaleIn && !coreutil.IsOffline[scope.TiProxy](tiproxy) {
-			return task.DefaultRequeueAfter, nil
-		}
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
 	if tiProxyConnectionsDrained(ctx, state, c, logger) {
-		if forOfflineScaleIn {
-			if err := guardOfflineScaleInBeforePodDelete(ctx, c, tiproxy, forOfflineScaleIn); err != nil {
-				return 0, err
-			}
-			if !coreutil.IsOffline[scope.TiProxy](tiproxy) {
-				return task.DefaultRequeueAfter, nil
-			}
-		}
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
@@ -99,24 +79,6 @@ func drainPodForGracefulShutdown(
 	}
 
 	return remaining, nil
-}
-
-func guardOfflineScaleInBeforePodDelete(
-	ctx context.Context,
-	c client.Client,
-	tiproxy *v1alpha1.TiProxy,
-	forOfflineScaleIn bool,
-) error {
-	if !forOfflineScaleIn {
-		return nil
-	}
-
-	fresh := &v1alpha1.TiProxy{}
-	if err := c.Get(ctx, client.ObjectKeyFromObject(tiproxy), fresh); err != nil {
-		return err
-	}
-	*tiproxy = *fresh
-	return nil
 }
 
 func gracefulShutdownDeleteDelaySeconds(tiproxy *v1alpha1.TiProxy) (seconds int32, ok bool, err error) {
