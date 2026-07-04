@@ -60,13 +60,13 @@ func drainPodForGracefulShutdown(
 	}
 
 	// pod is guaranteed non-nil here (dereferenced above).
-	startAt := coreutil.GracefulShutdownBeginTimeFromSources(tiproxy.Annotations, pod.Annotations)
+	startAt := coreutil.GracefulShutdownBeginTime(pod.Annotations)
 	if startAt.IsZero() {
 		if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger) {
 			return task.DefaultRequeueAfter, nil
 		}
 		startAt = time.Now()
-		if err := markGracefulShutdownBeginTime(ctx, c, tiproxy, pod, startAt); err != nil {
+		if err := markGracefulShutdownBeginTime(ctx, c, pod, startAt); err != nil {
 			return 0, err
 		}
 	}
@@ -164,28 +164,19 @@ func guardOfflineScaleInBeforePodDelete(
 func markGracefulShutdownBeginTime(
 	ctx context.Context,
 	c client.Client,
-	tiproxy *v1alpha1.TiProxy,
 	pod *corev1.Pod,
 	startAt time.Time,
 ) error {
-	formatted := startAt.Format(time.RFC3339Nano)
-
-	newTiProxy := tiproxy.DeepCopy()
-	if newTiProxy.Annotations == nil {
-		newTiProxy.Annotations = map[string]string{}
-	}
-	newTiProxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = formatted
-	if err := c.Update(ctx, newTiProxy); err != nil {
-		return err
-	}
-	*tiproxy = *newTiProxy
-
 	newPod := pod.DeepCopy()
 	if newPod.Annotations == nil {
 		newPod.Annotations = map[string]string{}
 	}
-	newPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = formatted
-	return c.Update(ctx, newPod)
+	newPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = startAt.Format(time.RFC3339Nano)
+	if err := c.Update(ctx, newPod); err != nil {
+		return err
+	}
+	*pod = *newPod
+	return nil
 }
 
 func deleteTiProxyPod(ctx context.Context, c client.Client, pod *corev1.Pod) (time.Duration, error) {
@@ -274,45 +265,15 @@ func ensureTiProxyHealthOverrideCleared(ctx context.Context, state State, c clie
 	return healthy
 }
 
-func offlineScaleInDrainComplete(tiproxy *v1alpha1.TiProxy, pod *corev1.Pod) (bool, error) {
-	annotationSources := []map[string]string{tiproxy.Annotations}
-	if pod != nil {
-		annotationSources = append(annotationSources, pod.Annotations)
-	}
-	if !gracefulShutdownStarted(annotationSources...) {
-		return false, nil
-	}
-
+func offlineScaleInDrainComplete(_ *v1alpha1.TiProxy, pod *corev1.Pod) (bool, error) {
 	return pod == nil || !pod.GetDeletionTimestamp().IsZero(), nil
-}
-
-func gracefulShutdownStarted(sources ...map[string]string) bool {
-	return !coreutil.GracefulShutdownBeginTimeFromSources(sources...).IsZero()
 }
 
 func needsScaleInRevive(tiproxy *v1alpha1.TiProxy, pod *corev1.Pod) bool {
 	if tiproxy == nil || coreutil.IsOffline[scope.TiProxy](tiproxy) {
 		return false
 	}
-	if coreutil.HasGracefulDrainState(tiproxy.Annotations) {
-		return true
-	}
-	if pod != nil && coreutil.HasGracefulDrainState(pod.Annotations) {
-		return true
-	}
-	return false
-}
-
-func clearGracefulDrainAnnotationsOnCR(tiproxy *v1alpha1.TiProxy) bool {
-	if tiproxy.Annotations == nil {
-		return false
-	}
-	changed := false
-	if tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != "" {
-		delete(tiproxy.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime)
-		changed = true
-	}
-	return changed
+	return pod != nil && coreutil.HasGracefulDrainState(pod.Annotations)
 }
 
 func newTiProxyAPIClient(ctx context.Context, state State, c client.Client) (tiproxyapi.TiProxyClient, error) {

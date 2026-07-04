@@ -70,19 +70,3 @@ func HasGracefulDrainState(annotations map[string]string) bool {
 	}
 	return annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != ""
 }
-
-// GracefulShutdownBeginTimeFromSources returns the earliest non-zero begin time across annotation sets.
-// When Pod and CR annotations diverge, the earliest time reflects the most advanced drain progress.
-func GracefulShutdownBeginTimeFromSources(sources ...map[string]string) time.Time {
-	var earliest time.Time
-	for _, annotations := range sources {
-		startAt := GracefulShutdownBeginTime(annotations)
-		if startAt.IsZero() {
-			continue
-		}
-		if earliest.IsZero() || startAt.Before(earliest) {
-			earliest = startAt
-		}
-	}
-	return earliest
-}

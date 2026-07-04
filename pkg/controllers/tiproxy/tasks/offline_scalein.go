@@ -96,21 +96,12 @@ func TaskReviveFromScaleIn(state State, c client.Client) task.Task {
 			return task.Complete().With("tiproxy does not need scale-in revive")
 		}
 
-		newTiProxy := tiproxy.DeepCopy()
-		if clearGracefulDrainAnnotationsOnCR(newTiProxy) {
-			if err := c.Update(ctx, newTiProxy); err != nil {
-				return task.Fail().With("cannot clear tiproxy graceful shutdown state on CR: %v", err)
-			}
-			state.SetObject(newTiProxy)
-			tiproxy = newTiProxy
-		}
-
 		// If the pod is gone, there is no live TiProxy process holding a health override. Skip the
 		// API call (which would otherwise keep failing and block the later TaskPod from recreating
 		// the pod) and let the normal process recreate it; a fresh pod starts healthy without any
 		// override.
 		if pod == nil {
-			return task.Complete().With("tiproxy pod is gone, cleared graceful scale-in drain state and will recreate pod")
+			return task.Complete().With("tiproxy pod is gone, will recreate pod")
 		}
 
 		if !ensureTiProxyHealthOverrideCleared(ctx, state, c, logger) {

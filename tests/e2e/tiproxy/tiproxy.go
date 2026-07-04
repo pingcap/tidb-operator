@@ -238,16 +238,22 @@ func tiproxyByName(tiproxies *v1alpha1.TiProxyList) map[string]*v1alpha1.TiProxy
 	return byName
 }
 
-func gracefulShutdownBeginTime(pod *corev1.Pod, tiproxy *v1alpha1.TiProxy) string {
-	if pod != nil {
-		if raw := pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]; raw != "" {
-			return raw
+func tiproxyPodByOwnerName(pods []corev1.Pod) map[string]*corev1.Pod {
+	byOwner := make(map[string]*corev1.Pod, len(pods))
+	for i := range pods {
+		pod := &pods[i]
+		if ownerName, ok := controllerTiProxyOwnerName(pod); ok {
+			byOwner[ownerName] = pod
 		}
 	}
-	if tiproxy != nil {
-		return tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]
+	return byOwner
+}
+
+func gracefulShutdownBeginTime(pod *corev1.Pod) string {
+	if pod == nil {
+		return ""
 	}
-	return ""
+	return pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]
 }
 
 // manuallyTriggerTiProxyUnhealthy sends SIGTERM to TiProxy in pods owned by the given
@@ -612,19 +618,13 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					return err
 				}
 
-				tiproxiesByName := tiproxyByName(tiproxies)
-
 				oldPodDraining := false
 				for i := range pods.Items {
 					pod := &pods.Items[i]
 					if _, ok := initialPodUIDs[pod.Name]; !ok {
 						continue
 					}
-					var tiproxy *v1alpha1.TiProxy
-					if ownerName, ok := controllerTiProxyOwnerName(pod); ok {
-						tiproxy = tiproxiesByName[ownerName]
-					}
-					if gracefulShutdownBeginTime(pod, tiproxy) == "" {
+					if gracefulShutdownBeginTime(pod) == "" {
 						continue
 					}
 					oldPodDraining = true
@@ -766,14 +766,19 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					return err
 				}
 				draining := 0
+				podByOwner := tiproxyPodByOwnerName(pods.Items)
 				for i := range tiproxies.Items {
 					tp := &tiproxies.Items[i]
 					offline := tp.Spec.Offline != nil && *tp.Spec.Offline
 					if !offline || !tp.DeletionTimestamp.IsZero() {
 						continue
 					}
-					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
-						return fmt.Errorf("tiproxy %s/%s is offline but graceful shutdown has not begun yet", tp.Namespace, tp.Name)
+					pod := podByOwner[tp.Name]
+					if pod == nil {
+						return fmt.Errorf("no pod found for offline tiproxy %s/%s", tp.Namespace, tp.Name)
+					}
+					if gracefulShutdownBeginTime(pod) == "" {
+						return fmt.Errorf("tiproxy pod %s/%s is offline but graceful shutdown has not begun yet", pod.Namespace, pod.Name)
 					}
 					draining++
 				}
@@ -813,6 +818,9 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					if string(pod.UID) != uid {
 						return fmt.Errorf("tiproxy pod %s/%s was recreated (uid %s -> %s) instead of revived", pod.Namespace, pod.Name, uid, pod.UID)
 					}
+					if gracefulShutdownBeginTime(pod) != "" {
+						return fmt.Errorf("tiproxy pod %s/%s still has graceful shutdown begin time after revive", pod.Namespace, pod.Name)
+					}
 				}
 
 				tiproxies, err := listTiProxies(ctx, f, proxyg)
@@ -826,9 +834,6 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					tp := &tiproxies.Items[i]
 					if tp.Spec.Offline != nil && *tp.Spec.Offline {
 						return fmt.Errorf("tiproxy %s/%s is still offline after scale-out revive", tp.Namespace, tp.Name)
-					}
-					if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != "" {
-						return fmt.Errorf("tiproxy %s/%s still has graceful shutdown begin time after revive", tp.Namespace, tp.Name)
 					}
 				}
 				return nil
@@ -1059,19 +1064,14 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 							return err
 						}
 
+						podByOwner := tiproxyPodByOwnerName(pods.Items)
 						for name := range offline {
-							var tp *v1alpha1.TiProxy
-							for i := range tiproxies.Items {
-								if tiproxies.Items[i].Name == name {
-									tp = &tiproxies.Items[i]
-									break
-								}
+							pod := podByOwner[name]
+							if pod == nil {
+								return fmt.Errorf("no pod found for offline tiproxy %s", name)
 							}
-							if tp == nil {
-								return fmt.Errorf("offline tiproxy %s not found", name)
-							}
-							if tp.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
-								return fmt.Errorf("tiproxy %s/%s graceful shutdown has not started yet", tp.Namespace, tp.Name)
+							if gracefulShutdownBeginTime(pod) == "" {
+								return fmt.Errorf("tiproxy pod %s/%s graceful shutdown has not started yet", pod.Namespace, pod.Name)
 							}
 						}
 

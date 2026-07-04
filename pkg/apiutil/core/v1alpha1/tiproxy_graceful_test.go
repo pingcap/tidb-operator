@@ -43,21 +43,6 @@ func TestGracefulShutdownHelpers(t *testing.T) {
 	assert.True(t, GracefulScaleInEnabled(proxy))
 }
 
-func TestGracefulShutdownBeginTimeFromSources(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now()
-	earlier := now.Add(-2 * time.Hour).Format(time.RFC3339Nano)
-	later := now.Add(-10 * time.Minute).Format(time.RFC3339Nano)
-
-	startAt := GracefulShutdownBeginTimeFromSources(
-		map[string]string{v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: later},
-		map[string]string{v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: earlier},
-	)
-	require.False(t, startAt.IsZero())
-	assert.Equal(t, earlier, startAt.Format(time.RFC3339Nano))
-}
-
 func TestHasGracefulDrainState(t *testing.T) {
 	t.Parallel()
 
