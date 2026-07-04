@@ -17,6 +17,7 @@ package tasks
 import (
 	"context"
 	"crypto/tls"
+	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -51,24 +52,90 @@ func drainPodForGracefulShutdown(
 		return task.DefaultRequeueAfter, nil
 	}
 
-	seconds, ok, err := coreutil.GracefulShutdownDeleteDelaySeconds(tiproxy)
-	if err != nil {
-		return 0, err
+	var seconds int32
+	var ok bool
+	if tiproxy != nil {
+		raw := tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
+		if raw != "" {
+			parsed, err := strconv.ParseInt(raw, 10, 32)
+			if err != nil {
+				return 0, err
+			}
+			seconds = int32(parsed)
+			ok = true
+		}
 	}
 	if !ok || seconds <= 0 {
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
-	// pod is guaranteed non-nil here (dereferenced above).
-	startAt := coreutil.GracefulShutdownBeginTime(pod.Annotations)
+	var startAt time.Time
+	if raw := pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime]; raw != "" {
+		startAt, _ = time.Parse(time.RFC3339Nano, raw)
+	}
 	if startAt.IsZero() {
-		if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger) {
+		tpClient, err := newTiProxyAPIClient(ctx, state, c)
+		if err != nil {
+			logger.Info(
+				"failed to build TiProxy API client before graceful shutdown, continue retrying",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"error", err,
+			)
 			return task.DefaultRequeueAfter, nil
 		}
+
+		healthy, err := tpClient.IsHealthy(ctx)
+		if err != nil {
+			logger.Info(
+				"failed to query TiProxy health before graceful shutdown, continue retrying",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"error", err,
+			)
+			return task.DefaultRequeueAfter, nil
+		}
+		if healthy {
+			if err := tpClient.MarkUnhealthy(ctx); err != nil {
+				logger.Info(
+					"failed to mark TiProxy unhealthy before graceful shutdown, continue retrying",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+					"error", err,
+				)
+				return task.DefaultRequeueAfter, nil
+			}
+
+			healthy, err = tpClient.IsHealthy(ctx)
+			if err != nil {
+				logger.Info(
+					"failed to re-check TiProxy health after graceful shutdown action, continue retrying",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+					"error", err,
+				)
+				return task.DefaultRequeueAfter, nil
+			}
+			if healthy {
+				logger.Info(
+					"TiProxy health is still healthy after graceful shutdown action, continue retrying",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+				)
+				return task.DefaultRequeueAfter, nil
+			}
+		}
+
 		startAt = time.Now()
-		if err := markGracefulShutdownBeginTime(ctx, c, pod, startAt); err != nil {
+		newPod := pod.DeepCopy()
+		if newPod.Annotations == nil {
+			newPod.Annotations = map[string]string{}
+		}
+		newPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = startAt.Format(time.RFC3339Nano)
+		if err := c.Update(ctx, newPod); err != nil {
 			return 0, err
 		}
+		*pod = *newPod
 	}
 
 	remaining := time.Until(startAt.Add(time.Duration(seconds) * time.Second))
@@ -82,28 +149,6 @@ func drainPodForGracefulShutdown(
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
-	if tiProxyConnectionsDrained(ctx, state, c, logger) {
-		if forOfflineScaleIn {
-			if err := guardOfflineScaleInBeforePodDelete(ctx, c, tiproxy, forOfflineScaleIn); err != nil {
-				return 0, err
-			}
-			if !coreutil.IsOffline[scope.TiProxy](tiproxy) {
-				return task.DefaultRequeueAfter, nil
-			}
-		}
-		return deleteTiProxyPod(ctx, c, pod)
-	}
-
-	if remaining > task.DefaultRequeueAfter {
-		remaining = task.DefaultRequeueAfter
-	}
-
-	return remaining, nil
-}
-
-func tiProxyConnectionsDrained(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {
-	tiproxy := state.Object()
-
 	tpClient, err := newTiProxyAPIClient(ctx, state, c)
 	if err != nil {
 		logger.Info(
@@ -112,35 +157,45 @@ func tiProxyConnectionsDrained(ctx context.Context, state State, c client.Client
 			"name", tiproxy.Name,
 			"error", err,
 		)
-		return false
+	} else {
+		connectionCount, err := tpClient.ConnectionCount(ctx)
+		if err != nil {
+			logger.Info(
+				"failed to query TiProxy connections before graceful delete, continue waiting",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"error", err,
+			)
+		} else if connectionCount == 0 {
+			logger.Info(
+				"TiProxy has no active connections, delete pod without waiting for the remaining graceful delay",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+			)
+			if forOfflineScaleIn {
+				if err := guardOfflineScaleInBeforePodDelete(ctx, c, tiproxy, forOfflineScaleIn); err != nil {
+					return 0, err
+				}
+				if !coreutil.IsOffline[scope.TiProxy](tiproxy) {
+					return task.DefaultRequeueAfter, nil
+				}
+			}
+			return deleteTiProxyPod(ctx, c, pod)
+		} else {
+			logger.Info(
+				"TiProxy still has active connections, continue waiting",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"connectionCount", connectionCount,
+			)
+		}
 	}
 
-	connectionCount, err := tpClient.ConnectionCount(ctx)
-	if err != nil {
-		logger.Info(
-			"failed to query TiProxy connections before graceful delete, continue waiting",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-			"error", err,
-		)
-		return false
-	}
-	if connectionCount > 0 {
-		logger.Info(
-			"TiProxy still has active connections, continue waiting",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-			"connectionCount", connectionCount,
-		)
-		return false
+	if remaining > task.DefaultRequeueAfter {
+		remaining = task.DefaultRequeueAfter
 	}
 
-	logger.Info(
-		"TiProxy has no active connections, delete pod without waiting for the remaining graceful delay",
-		"namespace", tiproxy.Namespace,
-		"name", tiproxy.Name,
-	)
-	return true
+	return remaining, nil
 }
 
 func guardOfflineScaleInBeforePodDelete(
@@ -161,119 +216,11 @@ func guardOfflineScaleInBeforePodDelete(
 	return nil
 }
 
-func markGracefulShutdownBeginTime(
-	ctx context.Context,
-	c client.Client,
-	pod *corev1.Pod,
-	startAt time.Time,
-) error {
-	newPod := pod.DeepCopy()
-	if newPod.Annotations == nil {
-		newPod.Annotations = map[string]string{}
-	}
-	newPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] = startAt.Format(time.RFC3339Nano)
-	if err := c.Update(ctx, newPod); err != nil {
-		return err
-	}
-	*pod = *newPod
-	return nil
-}
-
 func deleteTiProxyPod(ctx context.Context, c client.Client, pod *corev1.Pod) (time.Duration, error) {
 	if err := c.Delete(ctx, pod); err != nil && !apierrors.IsNotFound(err) {
 		return 0, err
 	}
 	return task.DefaultRequeueAfter, nil
-}
-
-func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {
-	tiproxy := state.Object()
-
-	tpClient, err := newTiProxyAPIClient(ctx, state, c)
-	if err != nil {
-		logger.Info(
-			"failed to build TiProxy API client before graceful shutdown, continue retrying",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-			"error", err,
-		)
-		return false
-	}
-
-	healthy, err := tpClient.IsHealthy(ctx)
-	if err != nil {
-		logger.Info(
-			"failed to query TiProxy health before graceful shutdown, continue retrying",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-			"error", err,
-		)
-		return false
-	}
-	if !healthy {
-		return true
-	}
-
-	if err := tpClient.MarkUnhealthy(ctx); err != nil {
-		logger.Info(
-			"failed to mark TiProxy unhealthy before graceful shutdown, continue retrying",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-			"error", err,
-		)
-		return false
-	}
-
-	healthy, err = tpClient.IsHealthy(ctx)
-	if err != nil {
-		logger.Info(
-			"failed to re-check TiProxy health after graceful shutdown action, continue retrying",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-			"error", err,
-		)
-		return false
-	}
-	if healthy {
-		logger.Info(
-			"TiProxy health is still healthy after graceful shutdown action, continue retrying",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-		)
-		return false
-	}
-	return true
-}
-
-func ensureTiProxyHealthOverrideCleared(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {
-	tpClient, err := newTiProxyAPIClient(ctx, state, c)
-	if err != nil {
-		logger.Info("failed to build TiProxy API client before revive, continue retrying", "error", err)
-		return false
-	}
-
-	if err := tpClient.ClearHealthOverride(ctx); err != nil {
-		logger.Info("failed to clear TiProxy health override before revive, continue retrying", "error", err)
-		return false
-	}
-
-	healthy, err := tpClient.IsHealthy(ctx)
-	if err != nil {
-		logger.Info("failed to query TiProxy health after revive, continue retrying", "error", err)
-		return false
-	}
-	return healthy
-}
-
-func offlineScaleInDrainComplete(_ *v1alpha1.TiProxy, pod *corev1.Pod) (bool, error) {
-	return pod == nil || !pod.GetDeletionTimestamp().IsZero(), nil
-}
-
-func needsScaleInRevive(tiproxy *v1alpha1.TiProxy, pod *corev1.Pod) bool {
-	if tiproxy == nil || coreutil.IsOffline[scope.TiProxy](tiproxy) {
-		return false
-	}
-	return pod != nil && coreutil.HasGracefulDrainState(pod.Annotations)
 }
 
 func newTiProxyAPIClient(ctx context.Context, state State, c client.Client) (tiproxyapi.TiProxyClient, error) {

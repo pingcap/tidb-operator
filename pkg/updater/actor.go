@@ -382,7 +382,10 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 }
 
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
-	if act.shouldOfflineBeforeDelete(obj) {
+	if !obj.IsOffline() &&
+		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) &&
+		obj.SupportsOffline() &&
+		!(act.outdated.Len() > 0 && runtime.GracefulOfflineScaleInEnabled(obj.GetAnnotations())) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
@@ -402,22 +405,6 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 	}
 
 	return nil
-}
-
-// shouldOfflineBeforeDelete reports whether deleteInstance should set spec.offline instead of deleting.
-// TiKV/TiFlash always offline before delete. TiProxy only during pure scale-in (no outdated replicas).
-func (act *actor[T, O, R]) shouldOfflineBeforeDelete(obj R) bool {
-	if obj.IsOffline() ||
-		meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
-		return false
-	}
-	if !obj.SupportsOffline() {
-		return false
-	}
-	if act.outdated.Len() > 0 && runtime.GracefulOfflineScaleInEnabled(obj.GetAnnotations()) {
-		return false
-	}
-	return true
 }
 
 // TODO: use apicall.SetOffline

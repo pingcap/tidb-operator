@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -197,68 +196,4 @@ func TestTaskReviveFromScaleInPodGoneSkipsHealthClear(t *testing.T) {
 	assert.Contains(t, res.Message(), "does not need scale-in revive")
 	assert.Equal(t, 0, healthServer.clearHealthCalls)
 	assert.False(t, s.IsHealthy())
-}
-
-func TestNeedsScaleInRevive(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now().Format(time.RFC3339Nano)
-	offlineProxy := fake.FakeObj("offline", func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
-		obj.Spec.Offline = ptr.To(true)
-		return obj
-	})
-	podWithDrain := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: now,
-			},
-		},
-	}
-
-	assert.False(t, needsScaleInRevive(offlineProxy, nil))
-	assert.True(t, needsScaleInRevive(&v1alpha1.TiProxy{}, podWithDrain))
-	assert.False(t, needsScaleInRevive(&v1alpha1.TiProxy{}, &corev1.Pod{}))
-}
-
-func TestOfflineScaleInDrainComplete(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now()
-	startAt := now.Add(-time.Minute).Format(time.RFC3339Nano)
-
-	tiproxy := &v1alpha1.TiProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
-			},
-		},
-	}
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: startAt,
-			},
-		},
-	}
-
-	complete, err := offlineScaleInDrainComplete(tiproxy, pod)
-	require.NoError(t, err)
-	assert.False(t, complete)
-
-	deleting := now
-	pod = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: startAt,
-			},
-			DeletionTimestamp: &metav1.Time{Time: deleting},
-		},
-	}
-	complete, err = offlineScaleInDrainComplete(tiproxy, pod)
-	require.NoError(t, err)
-	assert.True(t, complete)
-
-	complete, err = offlineScaleInDrainComplete(tiproxy, nil)
-	require.NoError(t, err)
-	assert.True(t, complete)
 }

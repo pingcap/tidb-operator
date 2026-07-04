@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -32,7 +33,7 @@ func CondObjectIsOfflineForGracefulScaleIn(state State) task.Condition {
 		if tiproxy == nil || !tiproxy.GetDeletionTimestamp().IsZero() {
 			return false
 		}
-		return coreutil.IsOffline[scope.TiProxy](tiproxy) && coreutil.GracefulScaleInEnabled(tiproxy)
+		return coreutil.IsOffline[scope.TiProxy](tiproxy) && runtime.GracefulOfflineScaleInEnabled(tiproxy.GetAnnotations())
 	})
 }
 
@@ -42,14 +43,11 @@ func CondOfflineScaleInDrainComplete(state State) task.Condition {
 		if tiproxy == nil || !tiproxy.GetDeletionTimestamp().IsZero() {
 			return false
 		}
-		if !coreutil.IsOffline[scope.TiProxy](tiproxy) || !coreutil.GracefulScaleInEnabled(tiproxy) {
+		if !coreutil.IsOffline[scope.TiProxy](tiproxy) || !runtime.GracefulOfflineScaleInEnabled(tiproxy.GetAnnotations()) {
 			return false
 		}
-		complete, err := offlineScaleInDrainComplete(tiproxy, state.Pod())
-		if err != nil {
-			return false
-		}
-		return complete
+		pod := state.Pod()
+		return pod == nil || !pod.GetDeletionTimestamp().IsZero()
 	})
 }
 
@@ -92,30 +90,36 @@ func TaskReviveFromScaleIn(state State, c client.Client) task.Task {
 		}
 
 		pod := state.Pod()
-		if !needsScaleInRevive(tiproxy, pod) {
+		if pod == nil || pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] == "" {
 			return task.Complete().With("tiproxy does not need scale-in revive")
 		}
 
-		// If the pod is gone, there is no live TiProxy process holding a health override. Skip the
-		// API call (which would otherwise keep failing and block the later TaskPod from recreating
-		// the pod) and let the normal process recreate it; a fresh pod starts healthy without any
-		// override.
-		if pod == nil {
-			return task.Complete().With("tiproxy pod is gone, will recreate pod")
-		}
-
-		if !ensureTiProxyHealthOverrideCleared(ctx, state, c, logger) {
+		tpClient, err := newTiProxyAPIClient(ctx, state, c)
+		if err != nil {
+			logger.Info("failed to build TiProxy API client before revive, continue retrying", "error", err)
 			return task.Retry(task.DefaultRequeueAfter).With("wait for tiproxy health override to be cleared")
 		}
 
-		if pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != "" {
-			newPod := pod.DeepCopy()
-			delete(newPod.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime)
-			if err := c.Update(ctx, newPod); err != nil {
-				return task.Fail().With("cannot clear tiproxy graceful scale-in drain state on pod: %v", err)
-			}
-			state.SetPod(newPod)
+		if err := tpClient.ClearHealthOverride(ctx); err != nil {
+			logger.Info("failed to clear TiProxy health override before revive, continue retrying", "error", err)
+			return task.Retry(task.DefaultRequeueAfter).With("wait for tiproxy health override to be cleared")
 		}
+
+		healthy, err := tpClient.IsHealthy(ctx)
+		if err != nil {
+			logger.Info("failed to query TiProxy health after revive, continue retrying", "error", err)
+			return task.Retry(task.DefaultRequeueAfter).With("wait for tiproxy health override to be cleared")
+		}
+		if !healthy {
+			return task.Retry(task.DefaultRequeueAfter).With("wait for tiproxy health override to be cleared")
+		}
+
+		newPod := pod.DeepCopy()
+		delete(newPod.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime)
+		if err := c.Update(ctx, newPod); err != nil {
+			return task.Fail().With("cannot clear tiproxy graceful scale-in drain state on pod: %v", err)
+		}
+		state.SetPod(newPod)
 
 		state.SetHealthy()
 		return task.Complete().With("tiproxy is revived from graceful scale-in drain")
