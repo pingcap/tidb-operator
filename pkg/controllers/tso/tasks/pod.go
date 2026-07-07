@@ -77,9 +77,10 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 				}
 
 				if wait {
+					state.PDClient.TSOMembers().Refresh()
 					// Retry because even if the leader is transferred, the leader may be transferred back immediately.
 					// Poller may miss the change and reconciler may wait forever.
-					return task.Retry(task.DefaultRequeueAfter).With("wait for tso leader being transferred")
+					return task.Retry(task.RequeueAfterOnePoll).With("wait for tso leader being transferred")
 				}
 			}
 			logger.Info("will delete the pod to recreate", "name", pod.Name, "namespace", pod.Namespace, "UID", pod.UID)
