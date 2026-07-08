@@ -17,6 +17,7 @@ package timanager
 import (
 	"cmp"
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -37,6 +38,20 @@ import (
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
+
+type AlwaysFailingLister[T any, PT Object[T]] struct{}
+
+func (*AlwaysFailingLister[T, PT]) List(context.Context) (*List[T, PT], error) {
+	return nil, errors.New("list failed")
+}
+
+func (*AlwaysFailingLister[T, PT]) GetItems(*List[T, PT]) []PT {
+	return nil
+}
+
+func (*AlwaysFailingLister[T, PT]) MarkAsInvalid(PT) bool {
+	return false
+}
 
 func TestClientManager(t *testing.T) {
 	cases := []struct {
@@ -461,5 +476,69 @@ func TestClientManagerSource(t *testing.T) {
 			assert.Equal(tt, c.expectedUpdateEvents, updateEvents)
 			assert.Equal(tt, c.expectedDeleteEvents, deleteEvents)
 		})
+	}
+}
+
+func TestClientManagerSourceIsRegisteredBeforeAllCachesSync(t *testing.T) {
+	storeLister := NewFakeLister([]pdv1.Store{
+		*fake.FakeObj[pdv1.Store]("aa", fake.ResourceVersion[pdv1.Store]("1")),
+	})
+
+	cm := NewManagerBuilder[client.Object, int, int]().
+		WithNewUnderlayClientFunc(func(client.Object) (int, error) {
+			return 0, nil
+		}).
+		WithCacheKeysFunc(func(obj client.Object) ([]string, error) {
+			return []string{obj.GetName()}, nil
+		}).
+		WithNewClientFunc(func(_ client.Object, _ int, f SharedInformerFactory[int]) (int, error) {
+			f.InformerFor(&pdv1.Store{})
+			f.InformerFor(&pdv1.Member{})
+			return 0, nil
+		}).
+		WithNewPollerFunc(&pdv1.Store{}, func(name string, logger logr.Logger, _ int) Poller {
+			return NewPoller(name, logger, storeLister, NewDeepEquality[pdv1.Store](logger), time.Millisecond*20)
+		}).
+		WithNewPollerFunc(&pdv1.Member{}, func(name string, logger logr.Logger, _ int) Poller {
+			return NewPoller(name, logger, &AlwaysFailingLister[pdv1.Member, *pdv1.Member]{}, NewDeepEquality[pdv1.Member](logger), time.Millisecond*20)
+		}).
+		Build()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	updated := make(chan string, 1)
+	s := cm.Source(&pdv1.Store{}, handler.TypedFuncs[client.Object, reconcile.Request]{
+		UpdateFunc: func(_ context.Context, event event.TypedUpdateEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			if gocmp.Diff(event.ObjectOld, event.ObjectNew) == "" {
+				return
+			}
+			updated <- event.ObjectNew.GetName()
+		},
+	})
+
+	cm.Start(ctx)
+	require.NoError(t, s.Start(ctx, workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedItemBasedRateLimiter[reconcile.Request]())))
+	require.NoError(t, cm.Register(fake.FakeObj[corev1.Pod]("cluster")))
+
+	es, ok := s.(EventSource)
+	require.True(t, ok)
+	require.True(t, cache.WaitForCacheSync(ctx.Done(), func() bool {
+		return es.HasSynced("cluster")
+	}))
+
+	storeLister.UpdateItems([]pdv1.Store{
+		*fake.FakeObj[pdv1.Store]("aa", func(store *pdv1.Store) *pdv1.Store {
+			store.Labels = map[string]string{"updated": "true"}
+			store.ResourceVersion = "1"
+			return store
+		}),
+	})
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("wait store update event timeout")
+	case name := <-updated:
+		assert.Equal(t, "aa", name)
 	}
 }

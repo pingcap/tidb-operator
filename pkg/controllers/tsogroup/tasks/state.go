@@ -31,11 +31,16 @@ type state struct {
 	tg      *v1alpha1.TSOGroup
 	ts      []*v1alpha1.TSO
 
+	pdGroups  []*v1alpha1.PDGroup
+	pds       []*v1alpha1.PD
+	tsoGroups []*v1alpha1.TSOGroup
+
 	updateRevision  string
 	currentRevision string
 	collisionCount  int32
 
 	statusChanged bool
+	pdmsProtected bool
 
 	stateutil.IFeatureGates
 }
@@ -58,6 +63,13 @@ type State interface {
 	common.StatusPersister[*v1alpha1.TSOGroup]
 
 	stateutil.IFeatureGates
+
+	SetPDMSProtected(bool)
+	PDMSProtected() bool
+	SetPDMSProtectionContext(pdgs []*v1alpha1.PDGroup, pds []*v1alpha1.PD, tgs []*v1alpha1.TSOGroup)
+	PDMSProtectionPDGroups() []*v1alpha1.PDGroup
+	PDMSProtectionPDs() []*v1alpha1.PD
+	PDMSProtectionTSOGroups() []*v1alpha1.TSOGroup
 }
 
 func NewState(key types.NamespacedName) State {
@@ -96,6 +108,18 @@ func (s *state) TSOSlice() []*v1alpha1.TSO {
 	return s.ts
 }
 
+func (s *state) PDMSProtectionPDGroups() []*v1alpha1.PDGroup {
+	return s.pdGroups
+}
+
+func (s *state) PDMSProtectionPDs() []*v1alpha1.PD {
+	return s.pds
+}
+
+func (s *state) PDMSProtectionTSOGroups() []*v1alpha1.TSOGroup {
+	return s.tsoGroups
+}
+
 func (s *state) Slice() []*runtime.TSO {
 	return runtime.FromTSOSlice(s.ts)
 }
@@ -108,6 +132,12 @@ func (s *state) SetInstanceSlice(ts []*v1alpha1.TSO) {
 	s.ts = ts
 }
 
+func (s *state) SetPDMSProtectionContext(pdgs []*v1alpha1.PDGroup, pds []*v1alpha1.PD, tgs []*v1alpha1.TSOGroup) {
+	s.pdGroups = pdgs
+	s.pds = pds
+	s.tsoGroups = tgs
+}
+
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 	s.cluster = cluster
 }
@@ -118,6 +148,14 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
+}
+
+func (s *state) SetPDMSProtected(protected bool) {
+	s.pdmsProtected = protected
+}
+
+func (s *state) PDMSProtected() bool {
+	return s.pdmsProtected
 }
 
 func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.TSOGroup] {

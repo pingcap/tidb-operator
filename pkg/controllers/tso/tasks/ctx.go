@@ -56,11 +56,16 @@ func TaskContextClient(state *ReconcileContext, cm pdm.PDClientManager, tsocm ts
 			return task.Complete().With("context without member info is completed, cache of tso info is not synced")
 		}
 
+		tsoMembers := pc.TSOMembers()
+		if tsoMembers == nil {
+			return task.Complete().With("context without tso member info is completed, tso member cache is not available")
+		}
+
 		state.PDClient = pc
 		state.CacheSynced = true
 
 		tso := state.Object()
-		m, err := pc.TSOMembers().Get(tso.Name)
+		m, err := tsoMembers.Get(tso.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				state.TSOMemberNotFound = true

@@ -216,6 +216,10 @@ func (f *fakePDClientWrapper) HasSynced() bool {
 	return true
 }
 
+func (f *fakePDClientWrapper) MembersSynced() bool {
+	return true
+}
+
 func (f *fakePDClientWrapper) Stores() pdm.StoreCache {
 	return nil
 }

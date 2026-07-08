@@ -17,12 +17,38 @@ package tasks
 import (
 	"context"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 type ReconcileContext struct {
 	State
+}
+
+func TaskContextPDMSProtection(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("ContextPDMSProtection", func(ctx context.Context) task.Result {
+		tg := state.Object()
+		ns, cluster := tg.Namespace, tg.Spec.Cluster.Name
+
+		pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list PDGroups: %w", err)
+		}
+		pds, err := apicall.ListClusterInstances[scope.PD](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list PDs: %w", err)
+		}
+		tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list TSOGroups: %w", err)
+		}
+
+		state.SetPDMSProtectionContext(pdgs, pds, tgs)
+		return task.Complete().With("PDMS protection context is set")
+	})
 }
 
 func TaskContextTSOClient(state *ReconcileContext, m tsom.TSOClientManager) task.Task {

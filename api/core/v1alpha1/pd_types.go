@@ -155,7 +155,6 @@ type PDTemplate struct {
 
 // PDTemplateSpec can only be specified in PDGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
-// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode) && has(self.mode))",fieldPath=".mode",message="pd mode can only be set when creating now"
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 // +kubebuilder:validation:XValidation:rule="has(self.volumes) && ('data' in self.volumes.map(v, v.name))",message="data volume must be configured"
 type PDTemplateSpec struct {
@@ -169,8 +168,6 @@ type PDTemplateSpec struct {
 	Image *string `json:"image,omitempty"`
 
 	// Mode of pd, default is normal
-	// Now it cannot be changed after creation. It may be supported in the future.
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="pd mode is immutable now, it may be supported later"
 	Mode PDMode `json:"mode,omitempty"`
 	// Server defines server config for PD
 	Server         PDServer             `json:"server,omitempty"`
@@ -218,6 +215,9 @@ type PDPorts struct {
 type PDGroupStatus struct {
 	CommonStatus `json:",inline"`
 	GroupStatus  `json:",inline"`
+
+	// Mode is the actual PD mode after all desired PD instances have converged.
+	Mode PDMode `json:"mode,omitempty"`
 }
 
 // PDSpec describes the common attributes of a PD instance

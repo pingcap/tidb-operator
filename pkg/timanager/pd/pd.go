@@ -28,7 +28,6 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 )
@@ -40,7 +39,14 @@ const (
 type PDClientManager = timanager.Manager[*v1alpha1.Cluster, PDClient]
 
 type PDClient interface {
+	// HasSynced reports whether all caches owned by this PD client are ready.
+	// In normal mode this includes Store and Member caches; in MS mode it also
+	// includes the TSO member cache.
 	HasSynced() bool
+	// MembersSynced reports whether the PD member cache is ready. Prefer this
+	// when the caller only reads Members(), so store or TSO member cache failures
+	// do not block PD/PDGroup reconciliation.
+	MembersSynced() bool
 	Stores() StoreCache
 	Members() MemberCache
 	TSOMembers() TSOMemberCache
@@ -55,7 +61,8 @@ type pdClient struct {
 	members    MemberCache
 	tsoMembers TSOMemberCache
 
-	hasSynced []func() bool
+	memberSynced func() bool
+	hasSynced    []func() bool
 }
 
 func (c *pdClient) Stores() StoreCache {
@@ -84,6 +91,10 @@ func (c *pdClient) HasSynced() bool {
 	return true
 }
 
+func (c *pdClient) MembersSynced() bool {
+	return c.memberSynced != nil && c.memberSynced()
+}
+
 func NewClientFunc(c client.Client) timanager.NewClientFunc[*v1alpha1.Cluster, pdapi.PDClient, PDClient] {
 	return func(
 		cluster *v1alpha1.Cluster,
@@ -103,9 +114,10 @@ func NewClientFunc(c client.Client) timanager.NewClientFunc[*v1alpha1.Cluster, p
 		members := NewMemberCache(key, informerFactory)
 
 		pdc := &pdClient{
-			underlay: underlay,
-			stores:   stores,
-			members:  members,
+			underlay:     underlay,
+			stores:       stores,
+			members:      members,
+			memberSynced: memberInformer.HasSynced,
 			hasSynced: []func() bool{
 				storeInformer.HasSynced,
 				memberInformer.HasSynced,
@@ -147,22 +159,19 @@ func CacheKeysFunc(c client.Client) func(cluster *v1alpha1.Cluster) ([]string, e
 	}
 }
 
-// If there are any PD in ms mode, use ms mode client
+// If PD desired mode, actual mode, transition, or instances involve ms, use ms mode client.
 func getPDMode(c client.Client, cluster *v1alpha1.Cluster) (v1alpha1.PDMode, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
 	mode := v1alpha1.PDModeNormal
 
-	pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, cluster.Namespace, cluster.Name)
+	involvesMS, err := apicall.PDTopologyInvolvesMS(ctx, c, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return mode, fmt.Errorf("cannot list pd groups: %w", err)
+		return mode, fmt.Errorf("cannot inspect PD topology: %w", err)
 	}
-
-	for _, pdg := range pdgs {
-		if pdg.Spec.Template.Spec.Mode == v1alpha1.PDModeMS {
-			mode = v1alpha1.PDModeMS
-		}
+	if involvesMS {
+		mode = v1alpha1.PDModeMS
 	}
 
 	return mode, nil

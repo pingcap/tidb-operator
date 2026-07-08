@@ -207,8 +207,13 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 
 	if f != nil {
 		go func() {
-			cacheObj.Start(m.ctx)
-			f.WaitForCacheSync(m.ctx.Done())
+			// Register event handlers before starting informers. A client can own
+			// multiple pollers, and a transition may make one poller unable to sync
+			// for a while. For example, when PD is still in normal mode during a
+			// normal-to-MS switch, the TSO member poller can fail because PD's MS
+			// API is not available yet. Waiting for all caches to sync before
+			// adding handlers would also block events from already-available
+			// informers, such as PD members, and can stall the rolling update.
 			if err := f.ForEach(func(t reflect.Type, informer cache.SharedIndexInformer) error {
 				ss := m.sources[t]
 				for _, s := range ss {
@@ -221,6 +226,8 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 			}); err != nil {
 				m.logger.Error(err, "failed to add event handler")
 			}
+			cacheObj.Start(m.ctx)
+			f.WaitForCacheSync(m.ctx.Done())
 		}()
 	}
 

@@ -37,32 +37,75 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pdgroup/tasks"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
 )
 
 type Reconciler struct {
-	Logger          logr.Logger
-	Client          client.Client
-	PDClientManager pdm.PDClientManager
-	AllocateFactory tracker.AllocateFactory
+	Logger           logr.Logger
+	Client           client.Client
+	PDClientManager  pdm.PDClientManager
+	TSOClientManager tsom.TSOClientManager
+	AllocateFactory  tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, af tracker.AllocateFactory) error {
+func Setup(
+	mgr manager.Manager,
+	c client.Client,
+	pdcm pdm.PDClientManager,
+	tsocm tsom.TSOClientManager,
+	af tracker.AllocateFactory,
+) error {
 	r := &Reconciler{
-		Logger:          mgr.GetLogger().WithName("PDGroup"),
-		Client:          c,
-		PDClientManager: pdcm,
-		AllocateFactory: af,
+		Logger:           mgr.GetLogger().WithName("PDGroup"),
+		Client:           c,
+		PDClientManager:  pdcm,
+		TSOClientManager: tsocm,
+		AllocateFactory:  af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.PDGroup{}).
 		Owns(&v1alpha1.PD{}).
+		Watches(&v1alpha1.TSOGroup{}, handler.EnqueueRequestsFromMapFunc(r.EnqueuePDGroupsForPDMSDependency())).
 		// Only care about the generation change (i.e. spec update)
 		Watches(&v1alpha1.Cluster{}, r.ClusterEventHandler(), builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
+}
+
+func (r *Reconciler) EnqueuePDGroupsForPDMSDependency() handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		clusterName := ""
+		switch typed := obj.(type) {
+		case *v1alpha1.TSOGroup:
+			clusterName = typed.Spec.Cluster.Name
+		default:
+			return nil
+		}
+
+		var list v1alpha1.PDGroupList
+		if err := r.Client.List(ctx, &list, client.InNamespace(obj.GetNamespace()),
+			client.MatchingFields{"spec.cluster.name": clusterName}); err != nil {
+			if !errors.IsNotFound(err) {
+				r.Logger.Error(err, "cannot list all pd groups", "ns", obj.GetNamespace(), "cluster", clusterName)
+			}
+			return nil
+		}
+
+		requests := make([]reconcile.Request, 0, len(list.Items))
+		for i := range list.Items {
+			pdg := &list.Items[i]
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      pdg.Name,
+					Namespace: pdg.Namespace,
+				},
+			})
+		}
+		return requests
+	}
 }
 
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {

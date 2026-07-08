@@ -21,6 +21,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -31,7 +34,7 @@ type ReconcileContext struct {
 
 	Members []Member
 
-	// mark pdgroup is bootstrapped if cache of pd is synced
+	// mark pdgroup is bootstrapped if the PD member cache is synced
 	IsBootstrapped bool
 }
 
@@ -42,6 +45,25 @@ type Member struct {
 	Name string
 }
 
+func TaskContextPDMSDependencies(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("ContextPDMSDependencies", func(ctx context.Context) task.Result {
+		pdg := state.PDGroup()
+		ns, cluster := pdg.Namespace, pdg.Spec.Cluster.Name
+
+		pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list PDGroups: %w", err)
+		}
+		tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, c, ns, cluster)
+		if err != nil {
+			return task.Fail().With("cannot list TSOGroups: %w", err)
+		}
+
+		state.SetPDMSDependencyGroups(pdgs, tgs)
+		return task.Complete().With("PDMS dependencies are set")
+	})
+}
+
 func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextPDClient", func(_ context.Context) task.Result {
 		ck := state.Cluster()
@@ -50,7 +72,9 @@ func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Ta
 			return task.Complete().With("context without pd client is completed, pd cannot be visited")
 		}
 
-		if !pc.HasSynced() {
+		// PDGroup only needs the member list. Do not wait for Store or TSO
+		// member caches, which are unrelated to bootstrapping and scale/update.
+		if !pc.MembersSynced() {
 			return task.Complete().With("context without pd client is completed, cache of pd info is not synced")
 		}
 

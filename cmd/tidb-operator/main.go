@@ -455,7 +455,7 @@ func setupControllers(
 		{
 			name: "PDGroup",
 			setupFunc: func() error {
-				return pdgroup.Setup(mgr, c, pdcm, tf.AllocateFactory("pd"))
+				return pdgroup.Setup(mgr, c, pdcm, tsocm, tf.AllocateFactory("pd"))
 			},
 		},
 		{

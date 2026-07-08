@@ -31,11 +31,15 @@ type state struct {
 	pdg     *v1alpha1.PDGroup
 	pds     []*v1alpha1.PD
 
+	pdGroups  []*v1alpha1.PDGroup
+	tsoGroups []*v1alpha1.TSOGroup
+
 	updateRevision  string
 	currentRevision string
 	collisionCount  int32
 
-	statusChanged bool
+	statusChanged     bool
+	modeSwitchBlocked bool
 
 	stateutil.IFeatureGates
 }
@@ -62,6 +66,15 @@ type State interface {
 	common.StatusPersister[*v1alpha1.PDGroup]
 
 	stateutil.IFeatureGates
+
+	SetModeSwitchBlocked(bool)
+	ModeSwitchBlocked() bool
+	SetPDMSDependencyGroups(
+		pdgs []*v1alpha1.PDGroup,
+		tgs []*v1alpha1.TSOGroup,
+	)
+	PDGroups() []*v1alpha1.PDGroup
+	TSOGroups() []*v1alpha1.TSOGroup
 }
 
 func NewState(key types.NamespacedName) State {
@@ -100,6 +113,14 @@ func (s *state) PDSlice() []*v1alpha1.PD {
 	return s.pds
 }
 
+func (s *state) PDGroups() []*v1alpha1.PDGroup {
+	return s.pdGroups
+}
+
+func (s *state) TSOGroups() []*v1alpha1.TSOGroup {
+	return s.tsoGroups
+}
+
 func (s *state) Slice() []*runtime.PD {
 	return runtime.FromPDSlice(s.pds)
 }
@@ -112,6 +133,14 @@ func (s *state) SetInstanceSlice(pds []*v1alpha1.PD) {
 	s.pds = pds
 }
 
+func (s *state) SetPDMSDependencyGroups(
+	pdgs []*v1alpha1.PDGroup,
+	tgs []*v1alpha1.TSOGroup,
+) {
+	s.pdGroups = pdgs
+	s.tsoGroups = tgs
+}
+
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 	s.cluster = cluster
 }
@@ -122,6 +151,14 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
+}
+
+func (s *state) SetModeSwitchBlocked(blocked bool) {
+	s.modeSwitchBlocked = blocked
+}
+
+func (s *state) ModeSwitchBlocked() bool {
+	return s.modeSwitchBlocked
 }
 
 func (s *state) PDSliceInitializer() common.PDSliceInitializer {

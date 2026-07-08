@@ -18,12 +18,17 @@ import (
 	"context"
 
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
 
 const PDMSVersion = "v8.3.0"
@@ -33,6 +38,31 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 	f.Setup()
 
 	ginkgo.Context("PDMS Basic", label.P0, func() {
+		ginkgo.It("support switch between normal and microservice mode", func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx,
+				data.WithVersion[scope.PDGroup](PDMSVersion),
+				data.WithReplicas[scope.PDGroup](3),
+			)
+			tg := f.MustCreateTSO(ctx,
+				data.WithVersion[scope.TSOGroup](PDMSVersion),
+				data.WithReplicas[scope.TSOGroup](2),
+			)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTSOGroupReady(ctx, tg)
+			waitForPDGroupMode(ctx, f, pdg, v1alpha1.PDModeNormal)
+
+			action.MustUpdate[scope.PDGroup](ctx, f, pdg, data.WithMSMode())
+			f.WaitForPDGroupReady(ctx, pdg)
+			waitForPDGroupMode(ctx, f, pdg, v1alpha1.PDModeMS)
+
+			action.MustUpdate[scope.PDGroup](ctx, f, pdg, data.GroupPatchFunc[*v1alpha1.PDGroup](func(pdg *v1alpha1.PDGroup) {
+				pdg.Spec.Template.Spec.Mode = v1alpha1.PDModeNormal
+			}))
+			f.WaitForPDGroupReady(ctx, pdg)
+			waitForPDGroupMode(ctx, f, pdg, v1alpha1.PDModeNormal)
+		})
+
 		ginkgo.It("support create PD, TSO, and scheduling with 1 replica", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx,
 				data.WithVersion[scope.PDGroup](PDMSVersion),
@@ -110,3 +140,12 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 			})
 		})
 })
+
+func waitForPDGroupMode(ctx context.Context, f *framework.Framework, pdg *v1alpha1.PDGroup, mode v1alpha1.PDMode) {
+	ginkgo.By("wait for pd group mode")
+	gomega.EventuallyWithOffset(1, func(g gomega.Gomega) {
+		var got v1alpha1.PDGroup
+		g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(pdg), &got)).To(gomega.Succeed())
+		g.Expect(got.Status.Mode).To(gomega.Equal(mode))
+	}, waiter.LongTaskTimeout).Should(gomega.Succeed())
+}

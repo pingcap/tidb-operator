@@ -31,6 +31,22 @@ const (
 )
 
 const (
+	CondModeSwitching = "ModeSwitching"
+
+	ReasonWaitingForSinglePDGroup = "WaitingForSinglePDGroup"
+	ReasonWaitingForTSOGroup      = "WaitingForTSOGroup"
+	ReasonWaitingForTSOGroupReady = "WaitingForTSOGroupReady"
+	ReasonWaitingForTSOPrimary    = "WaitingForTSOPrimary"
+	ReasonSwitchingPDInstances    = "SwitchingPDInstances"
+	ReasonModeSwitchComplete      = "ModeSwitchComplete"
+	ReasonModeSwitchNotNeeded     = "ModeSwitchNotNeeded"
+
+	CondPDMSProtected             = "PDMSProtected"
+	ReasonBlockedByPDMSMode       = "BlockedByPDMSMode"
+	ReasonPDMSProtectionNotNeeded = "PDMSProtectionNotNeeded"
+)
+
+const (
 	ReasonUnknown = "Unknown"
 	// Ready means all managed resources are ready.
 	// NOTE: It does not mean all managed resources are up to date.
