@@ -97,6 +97,9 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(t, k8s.LabelValK8sAppNameDMCluster, pod.Labels[k8s.LabelKeyK8sAppName])
 			require.Len(t, pod.Spec.Containers[0].Ports, 1)
 			assert.Equal(t, int32(8262), pod.Spec.Containers[0].Ports[0].ContainerPort)
+			assert.Equal(t, "true", pod.Annotations["prometheus.io/scrape"])
+			assert.Equal(t, "8262", pod.Annotations["prometheus.io/port"])
+			assert.Equal(t, "/metrics", pod.Annotations["prometheus.io/path"])
 		})
 	}
 }

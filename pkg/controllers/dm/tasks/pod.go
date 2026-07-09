@@ -35,6 +35,8 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
+const metricsPath = "/metrics"
+
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
@@ -166,6 +168,7 @@ func newPod(cluster *v1alpha1.Cluster, dm *v1alpha1.DM) *corev1.Pod {
 					k8s.LabelKeyK8sAppName: k8s.LabelValK8sAppNameDMCluster,
 				},
 			),
+			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.DMPort(dm), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(dm, v1alpha1.SchemeGroupVersion.WithKind("DM")),
 			},

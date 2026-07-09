@@ -123,6 +123,9 @@ func TestTaskPod(t *testing.T) {
 			assert.Len(t, pod.Spec.Containers[0].Ports, 2)
 			assert.Equal(t, int32(8261), pod.Spec.Containers[0].Ports[0].ContainerPort)
 			assert.Equal(t, int32(8291), pod.Spec.Containers[0].Ports[1].ContainerPort)
+			assert.Equal(t, "true", pod.Annotations["prometheus.io/scrape"])
+			assert.Equal(t, "8261", pod.Annotations["prometheus.io/port"])
+			assert.Equal(t, "/metrics", pod.Annotations["prometheus.io/path"])
 		})
 	}
 }
