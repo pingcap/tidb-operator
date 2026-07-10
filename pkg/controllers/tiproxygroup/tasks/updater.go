@@ -117,6 +117,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithScaleInPreferPolicy(
 				topoPolicy.PolicyScaleIn(),
 			).
+			WithCancelOfflineFilterPolicy(
+				updater.FilterOutdated[*runtime.TiProxy](updateRevision),
+			).
 			WithUpdatePreferPolicy(
 				topoPolicy.PolicyUpdate(),
 			).

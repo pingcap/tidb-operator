@@ -29,10 +29,23 @@ import (
 func TestSelector(t *testing.T) {
 	cases := []struct {
 		desc     string
+		filters  []FilterPolicy[*runtime.PD]
 		ps       []PreferPolicy[*runtime.PD]
 		allowed  []*runtime.PD
 		expected string
 	}{
+		{
+			desc: "filter rejects when no eligible instance",
+			filters: []FilterPolicy[*runtime.PD]{
+				FilterPolicyFunc[*runtime.PD](func([]*runtime.PD) []*runtime.PD {
+					return []*runtime.PD{}
+				}),
+			},
+			allowed: []*runtime.PD{
+				fakePD("aaa", true, true),
+			},
+			expected: "",
+		},
 		{
 			desc: "no policy",
 			allowed: []*runtime.PD{
@@ -185,7 +198,7 @@ func TestSelector(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			s := NewSelector(c.ps...)
+			s := NewSelectorWithFilter(c.filters, c.ps...)
 			choosed := s.Choose(c.allowed)
 			assert.Equal(tt, c.expected, choosed)
 		})
@@ -338,4 +351,46 @@ func TestPreferPriority(t *testing.T) {
 			assert.ElementsMatch(tt, c.expected, resultNames)
 		})
 	}
+}
+
+func TestFilterOutdated(t *testing.T) {
+	t.Parallel()
+
+	const rev = "rev-current"
+	filter := FilterOutdated[*runtime.PD](rev)
+
+	current := fakePD("pd-a", true, true)
+	current.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: rev,
+	}
+	outdated := fakePD("pd-old", true, true)
+	outdated.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: "rev-old",
+	}
+
+	assert.Equal(t, []*runtime.PD{current}, filter.Filter([]*runtime.PD{current, outdated}))
+	assert.Empty(t, filter.Filter([]*runtime.PD{outdated}))
+}
+
+func TestFilterOutdatedCancelOfflineSelector(t *testing.T) {
+	t.Parallel()
+
+	const rev = "rev-current"
+	selector := NewSelectorWithFilter(
+		[]FilterPolicy[*runtime.PD]{
+			FilterOutdated[*runtime.PD](rev),
+		},
+	)
+
+	current := fakePD("pd-a", true, true)
+	current.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: rev,
+	}
+	outdated := fakePD("pd-old", true, true)
+	outdated.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: "rev-old",
+	}
+
+	assert.Equal(t, "pd-a", selector.Choose([]*runtime.PD{current, outdated}))
+	assert.Empty(t, selector.Choose([]*runtime.PD{outdated}))
 }

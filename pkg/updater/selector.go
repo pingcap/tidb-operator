@@ -34,25 +34,55 @@ func (f PreferPolicyFunc[R]) Prefer(in []R) []R {
 	return f(in)
 }
 
+// FilterPolicy narrows the allowed instances before prefer policies run.
+type FilterPolicy[R runtime.Instance] interface {
+	// Filter returns eligible instances.
+	// Return nil to abstain and keep the current allowed set.
+	// Return a non-nil empty slice when no instance is eligible.
+	Filter([]R) []R
+}
+
+type FilterPolicyFunc[R runtime.Instance] func([]R) []R
+
+func (f FilterPolicyFunc[R]) Filter(in []R) []R {
+	return f(in)
+}
+
 type Selector[R runtime.Instance] interface {
 	Choose([]R) string
 }
 
 type selector[R runtime.Instance] struct {
-	ps []PreferPolicy[R]
+	filters []FilterPolicy[R]
+	ps      []PreferPolicy[R]
 }
 
-// NewSelector with prefer policies, the last policy has highest priority
+// NewSelector with prefer policies, the last policy has highest priority.
 func NewSelector[R runtime.Instance](ps ...PreferPolicy[R]) Selector[R] {
-	s := selector[R]{
-		ps: ps,
-	}
+	return &selector[R]{ps: ps}
+}
 
-	return &s
+// NewSelectorWithFilter creates a selector with filter and prefer policies.
+func NewSelectorWithFilter[R runtime.Instance](filters []FilterPolicy[R], ps ...PreferPolicy[R]) Selector[R] {
+	return &selector[R]{filters: filters, ps: ps}
+}
+
+func applyFilters[R runtime.Instance](allowed []R, filters []FilterPolicy[R]) []R {
+	for _, f := range filters {
+		filtered := f.Filter(allowed)
+		if filtered == nil {
+			continue
+		}
+		if len(filtered) == 0 {
+			return filtered
+		}
+		allowed = filtered
+	}
+	return allowed
 }
 
 func (s *selector[R]) Choose(allowed []R) string {
-	// return early if no allowed
+	allowed = applyFilters(allowed, s.filters)
 	if len(allowed) == 0 {
 		return ""
 	}
@@ -140,5 +170,21 @@ func PreferPriority[R runtime.Instance]() PreferPolicy[R] {
 		}
 
 		return chosen
+	})
+}
+
+// FilterOutdated excludes instances not on the target revision.
+func FilterOutdated[R runtime.Instance](revision string) FilterPolicy[R] {
+	return FilterPolicyFunc[R](func(s []R) []R {
+		var updated []R
+		for _, in := range s {
+			if in.GetUpdateRevision() == revision {
+				updated = append(updated, in)
+			}
+		}
+		if len(updated) == 0 {
+			return []R{}
+		}
+		return updated
 	})
 }

@@ -65,6 +65,9 @@ func newGracefulExecutor(
 		WithDesired(desired).
 		WithClient(cli).
 		WithRevision(rev).
+		WithCancelOfflineFilterPolicy(
+			updater.FilterOutdated[*runtime.TiProxy](rev),
+		).
 		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
 			return &runtime.TiProxy{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
@@ -130,4 +133,28 @@ func TestExecutorScaleOutRevivesGracefulOfflineInstance(t *testing.T) {
 	actual := &v1alpha1.TiProxy{}
 	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKeyFromObject(obj), actual))
 	assert.False(t, coreutil.IsOffline[scope.TiProxy](actual))
+}
+
+func TestExecutorScaleOutSkipsOutdatedOfflineInstance(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	outdated := gracefulTiProxy("tiproxy-old", "rev-old")
+	outdated.Spec.Offline = ptr.To(true)
+	current := gracefulTiProxy("tiproxy-a", testUpdateRevision)
+	cli := client.NewFakeClient(outdated, current)
+
+	_, err := newGracefulExecutor(t, cli, 3, testUpdateRevision,
+		runtime.FromTiProxy(outdated),
+		runtime.FromTiProxy(current),
+	).Do(ctx)
+	require.NoError(t, err)
+
+	revived := &v1alpha1.TiProxy{}
+	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKeyFromObject(current), revived))
+	assert.False(t, coreutil.IsOffline[scope.TiProxy](revived))
+
+	stillOffline := &v1alpha1.TiProxy{}
+	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKeyFromObject(outdated), stillOffline))
+	assert.True(t, coreutil.IsOffline[scope.TiProxy](stillOffline))
 }

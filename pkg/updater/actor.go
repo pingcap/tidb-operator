@@ -97,8 +97,9 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	updateHooks []UpdateHook[R]
 	delHooks    []DelHook[R]
 
-	scaleInSelector Selector[R]
-	updateSelector  Selector[R]
+	scaleInSelector       Selector[R]
+	updateSelector        Selector[R]
+	cancelOfflineSelector Selector[R]
 
 	actions []action
 }
@@ -127,6 +128,15 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	return name, nil
 }
 
+// chooseToCancelOffline selects a being-offline instance to revive during scale-out.
+func (act *actor[T, O, R]) chooseToCancelOffline(s []R) (string, bool) {
+	name := act.cancelOfflineSelector.Choose(s)
+	if name == "" {
+		return "", false
+	}
+	return name, true
+}
+
 // cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
 func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error {
 	logger := logr.FromContextOrDiscard(ctx)
@@ -147,11 +157,12 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		// TODO: could implement more sophisticated selection logic
-		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
-			return err
+		if name, ok := act.chooseToCancelOffline(act.beingOffline.List()); ok {
+			if err := act.cancelOneOfflining(ctx, act.beingOffline.Get(name)); err != nil {
+				return err
+			}
+			return nil
 		}
-		return nil
 	}
 
 	obj, unlock, exists := act.f.Adopt()
@@ -382,10 +393,9 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 }
 
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
-	if !obj.IsOffline() &&
-		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) &&
-		obj.SupportsOffline() &&
-		(act.outdated.Len() == 0 || !runtime.GracefulOfflineScaleInEnabled(obj.GetAnnotations())) {
+	if obj.SupportsOffline() &&
+		!obj.IsOffline() &&
+		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
 		if err := act.setOffline(ctx, obj); err != nil {
 			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
