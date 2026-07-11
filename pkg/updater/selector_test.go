@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -393,4 +394,27 @@ func TestFilterOutdatedCancelOfflineSelector(t *testing.T) {
 
 	assert.Equal(t, "pd-a", selector.Choose([]*runtime.PD{current, outdated}))
 	assert.Empty(t, selector.Choose([]*runtime.PD{outdated}))
+}
+
+func TestFilterReviveAbandoned(t *testing.T) {
+	t.Parallel()
+
+	filter := FilterReviveAbandoned[*runtime.TiProxy]()
+
+	revivable := &runtime.TiProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tiproxy-a",
+		},
+	}
+	abandoned := &runtime.TiProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tiproxy-b",
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyTiProxyReviveAbandoned: v1alpha1.AnnoValTrue,
+			},
+		},
+	}
+
+	assert.Equal(t, []*runtime.TiProxy{revivable}, filter.Filter([]*runtime.TiProxy{revivable, abandoned}))
+	assert.Empty(t, filter.Filter([]*runtime.TiProxy{abandoned}))
 }

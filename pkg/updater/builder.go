@@ -65,7 +65,6 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 
 	scaleInPreferPolicies       []PreferPolicy[R]
 	cancelOfflineFilterPolicies []FilterPolicy[R]
-	cancelOfflinePreferPolicies []PreferPolicy[R]
 	updatePreferPolicies        []PreferPolicy[R]
 }
 
@@ -89,7 +88,6 @@ func (b *builder[T, O, R]) Build() Executor {
 	cancelOfflinePolicies := []PreferPolicy[R]{
 		PreferPriority[R](),
 	}
-	cancelOfflinePolicies = append(cancelOfflinePolicies, b.cancelOfflinePreferPolicies...)
 
 	actor := &actor[T, O, R]{
 		c: b.c,

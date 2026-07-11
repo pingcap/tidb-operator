@@ -136,6 +136,39 @@ func TestTaskReviveFromScaleInClearsPodDrainState(t *testing.T) {
 	assert.Equal(t, 1, healthServer.clearHealthCalls)
 }
 
+func TestTaskReviveFromScaleInAbandonOnUnsupportedHealthOverride(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	healthServer := newReviveTestHealthServer(t)
+	healthServer.clearHealthStatus = http.StatusNotFound
+
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(healthServer.port(t))
+	beginTime := time.Now().Format(time.RFC3339Nano)
+	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(s, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SComplete.String(), res.Status().String())
+	assert.Contains(t, res.Message(), "abandon revive")
+
+	actual := &v1alpha1.TiProxy{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual))
+	require.NotNil(t, actual.Spec.Offline)
+	assert.True(t, *actual.Spec.Offline)
+	assert.Equal(t, v1alpha1.AnnoValTrue, actual.Annotations[v1alpha1.AnnoKeyTiProxyReviveAbandoned])
+
+	actualPod := &corev1.Pod{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actualPod))
+	assert.Equal(t, beginTime, actualPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+	assert.False(t, s.IsHealthy())
+	assert.Equal(t, 1, healthServer.clearHealthCalls)
+}
+
 func TestTaskReviveFromScaleInRetriesHealthClearBeforePodAnnotationCleanup(t *testing.T) {
 	t.Parallel()
 

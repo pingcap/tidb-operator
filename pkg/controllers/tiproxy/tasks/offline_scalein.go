@@ -101,6 +101,17 @@ func TaskReviveFromScaleIn(state State, c client.Client) task.Task {
 		}
 
 		if err := tpClient.ClearHealthOverride(ctx); err != nil {
+			if isHealthOverrideUnsupported(err) {
+				logger.Info("health override API unsupported, abandon revive",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+					"error", err,
+				)
+				if err := abandonRevive(ctx, c, tiproxy); err != nil {
+					return task.Fail().With("cannot abandon revive: %v", err)
+				}
+				return task.Complete().With("abandon revive: health override API unsupported")
+			}
 			logger.Info("failed to clear TiProxy health override before revive, continue retrying", "error", err)
 			return task.Retry(task.DefaultRequeueAfter).With("wait for tiproxy health override to be cleared")
 		}

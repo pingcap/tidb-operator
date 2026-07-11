@@ -17,12 +17,18 @@ package tasks
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
@@ -30,8 +36,53 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
+	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
+
+type reviveAbandonPatch struct {
+	Metadata reviveAbandonMetadata `json:"metadata"`
+	Spec     *reviveAbandonSpec    `json:"spec,omitempty"`
+}
+
+type reviveAbandonMetadata struct {
+	ResourceVersion string             `json:"resourceVersion"`
+	Annotations     map[string]*string `json:"annotations,omitempty"`
+}
+
+type reviveAbandonSpec struct {
+	Offline bool `json:"offline"`
+}
+
+func isHealthOverrideUnsupported(err error) bool {
+	var httpErr httputil.Error
+	if !errors.As(err, &httpErr) {
+		return false
+	}
+	return httpErr.Status == http.StatusNotFound ||
+		httpErr.Status == http.StatusMethodNotAllowed
+}
+
+func abandonRevive(ctx context.Context, c client.Client, tiproxy *v1alpha1.TiProxy) error {
+	p := reviveAbandonPatch{
+		Metadata: reviveAbandonMetadata{
+			ResourceVersion: tiproxy.ResourceVersion,
+			Annotations: map[string]*string{
+				v1alpha1.AnnoKeyTiProxyReviveAbandoned: ptr.To(v1alpha1.AnnoValTrue),
+			},
+		},
+		Spec: &reviveAbandonSpec{
+			Offline: true,
+		},
+	}
+
+	data, err := json.Marshal(&p)
+	if err != nil {
+		return fmt.Errorf("invalid revive abandon patch: %w", err)
+	}
+
+	return c.Patch(ctx, tiproxy, client.RawPatch(types.MergePatchType, data))
+}
 
 func drainPodForGracefulShutdown(
 	ctx context.Context,

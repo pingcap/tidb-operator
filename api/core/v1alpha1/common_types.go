@@ -191,6 +191,10 @@ const (
 	// after it has been marked unhealthy during graceful shutdown.
 	AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds = AnnoKeyPrefix + "tiproxy-graceful-shutdown-delete-delay-seconds"
 
+	// TiProxy revive was abandoned because health override API is unsupported.
+	// Instances carrying this annotation must not be selected by cancelOffline again.
+	AnnoKeyTiProxyReviveAbandoned = AnnoKeyPrefix + "tiproxy-revive-abandoned"
+
 	// Features is recorded to check whether the pod should be restarted because of changes of features
 	AnnoKeyFeatures = AnnoKeyPrefix + "features"
 

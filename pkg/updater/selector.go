@@ -57,7 +57,7 @@ type selector[R runtime.Instance] struct {
 	ps      []PreferPolicy[R]
 }
 
-// NewSelector with prefer policies, the last policy has highest priority.
+// NewSelector with prefer policies, the last policy has highest priority
 func NewSelector[R runtime.Instance](ps ...PreferPolicy[R]) Selector[R] {
 	return &selector[R]{ps: ps}
 }
@@ -170,6 +170,23 @@ func PreferPriority[R runtime.Instance]() PreferPolicy[R] {
 		}
 
 		return chosen
+	})
+}
+
+// FilterReviveAbandoned excludes instances whose scale-in revive was abandoned.
+func FilterReviveAbandoned[R runtime.Instance]() FilterPolicy[R] {
+	return FilterPolicyFunc[R](func(s []R) []R {
+		var eligible []R
+		for _, in := range s {
+			if in.GetAnnotations()[v1alpha1.AnnoKeyTiProxyReviveAbandoned] == v1alpha1.AnnoValTrue {
+				continue
+			}
+			eligible = append(eligible, in)
+		}
+		if len(eligible) == 0 {
+			return []R{}
+		}
+		return eligible
 	})
 }
 

@@ -67,6 +67,7 @@ func newGracefulExecutor(
 		WithRevision(rev).
 		WithCancelOfflineFilterPolicy(
 			updater.FilterOutdated[*runtime.TiProxy](rev),
+			updater.FilterReviveAbandoned[*runtime.TiProxy](),
 		).
 		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
 			return &runtime.TiProxy{
@@ -157,4 +158,45 @@ func TestExecutorScaleOutSkipsOutdatedOfflineInstance(t *testing.T) {
 	stillOffline := &v1alpha1.TiProxy{}
 	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKeyFromObject(outdated), stillOffline))
 	assert.True(t, coreutil.IsOffline[scope.TiProxy](stillOffline))
+}
+
+func TestExecutorScaleOutSkipsReviveAbandonedInstance(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	abandoned := gracefulTiProxy("tiproxy-a", testUpdateRevision)
+	abandoned.Spec.Offline = ptr.To(true)
+	abandoned.Annotations[v1alpha1.AnnoKeyTiProxyReviveAbandoned] = v1alpha1.AnnoValTrue
+	current := gracefulTiProxy("tiproxy-b", testUpdateRevision)
+	cli := client.NewFakeClient(abandoned, current)
+
+	_, err := newGracefulExecutor(t, cli, 3, testUpdateRevision,
+		runtime.FromTiProxy(abandoned),
+		runtime.FromTiProxy(current),
+	).Do(ctx)
+	require.NoError(t, err)
+
+	stillAbandoned := &v1alpha1.TiProxy{}
+	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKeyFromObject(abandoned), stillAbandoned))
+	assert.True(t, coreutil.IsOffline[scope.TiProxy](stillAbandoned))
+	assert.Equal(t, v1alpha1.AnnoValTrue, stillAbandoned.Annotations[v1alpha1.AnnoKeyTiProxyReviveAbandoned])
+
+	unchanged := &v1alpha1.TiProxy{}
+	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKeyFromObject(current), unchanged))
+	assert.False(t, coreutil.IsOffline[scope.TiProxy](unchanged))
+
+	tiproxies := &v1alpha1.TiProxyList{}
+	require.NoError(t, cli.List(ctx, tiproxies, ctrlclient.InNamespace("ns")))
+	assert.Len(t, tiproxies.Items, 3)
+
+	created := 0
+	for i := range tiproxies.Items {
+		tp := &tiproxies.Items[i]
+		if tp.Name == "tiproxy-a" || tp.Name == "tiproxy-b" {
+			continue
+		}
+		created++
+		assert.False(t, coreutil.IsOffline[scope.TiProxy](tp))
+	}
+	assert.Equal(t, 1, created)
 }
