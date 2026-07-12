@@ -23,6 +23,8 @@ import (
 
 const (
 	DefaultRequeueAfter = 5 * time.Second
+	// poll interval is 30s, add 15s for jitter
+	RequeueAfterOnePoll = 45 * time.Second
 )
 
 type Status int
