@@ -56,7 +56,6 @@ func newGracefulExecutor(
 	t *testing.T,
 	cli client.Client,
 	desired int,
-	rev string,
 	instances ...*runtime.TiProxy,
 ) updater.Executor {
 	t.Helper()
@@ -64,9 +63,9 @@ func newGracefulExecutor(
 		WithInstances(instances...).
 		WithDesired(desired).
 		WithClient(cli).
-		WithRevision(rev).
+		WithRevision(testUpdateRevision).
 		WithCancelOfflineFilterPolicy(
-			updater.FilterOutdated[*runtime.TiProxy](rev),
+			updater.FilterOutdated[*runtime.TiProxy](testUpdateRevision),
 			updater.FilterReviveAbandoned[*runtime.TiProxy](),
 		).
 		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
@@ -85,7 +84,7 @@ func TestExecutorScaleInUpdateMarksOffline(t *testing.T) {
 	obj := gracefulTiProxy("tiproxy-a", testUpdateRevision)
 	cli := client.NewFakeClient(obj)
 
-	_, err := newGracefulExecutor(t, cli, 0, testUpdateRevision, runtime.FromTiProxy(obj)).Do(ctx)
+	_, err := newGracefulExecutor(t, cli, 0, runtime.FromTiProxy(obj)).Do(ctx)
 	require.NoError(t, err)
 
 	actual := &v1alpha1.TiProxy{}
@@ -103,7 +102,7 @@ func TestExecutorScaleInUpdateDeletesDuringRollingReplace(t *testing.T) {
 	outdated := gracefulTiProxy("tiproxy-old", "rev-old")
 	cli := client.NewFakeClient(currentA, currentB, outdated)
 
-	_, err := newGracefulExecutor(t, cli, 1, testUpdateRevision,
+	_, err := newGracefulExecutor(t, cli, 1,
 		runtime.FromTiProxy(currentA),
 		runtime.FromTiProxy(currentB),
 		runtime.FromTiProxy(outdated),
@@ -128,7 +127,7 @@ func TestExecutorScaleOutRevivesGracefulOfflineInstance(t *testing.T) {
 	obj.Spec.Offline = ptr.To(true)
 	cli := client.NewFakeClient(obj)
 
-	_, err := newGracefulExecutor(t, cli, 2, testUpdateRevision, runtime.FromTiProxy(obj)).Do(ctx)
+	_, err := newGracefulExecutor(t, cli, 2, runtime.FromTiProxy(obj)).Do(ctx)
 	require.NoError(t, err)
 
 	actual := &v1alpha1.TiProxy{}
@@ -145,7 +144,7 @@ func TestExecutorScaleOutSkipsOutdatedOfflineInstance(t *testing.T) {
 	current := gracefulTiProxy("tiproxy-a", testUpdateRevision)
 	cli := client.NewFakeClient(outdated, current)
 
-	_, err := newGracefulExecutor(t, cli, 3, testUpdateRevision,
+	_, err := newGracefulExecutor(t, cli, 3,
 		runtime.FromTiProxy(outdated),
 		runtime.FromTiProxy(current),
 	).Do(ctx)
@@ -170,7 +169,7 @@ func TestExecutorScaleOutSkipsReviveAbandonedInstance(t *testing.T) {
 	current := gracefulTiProxy("tiproxy-b", testUpdateRevision)
 	cli := client.NewFakeClient(abandoned, current)
 
-	_, err := newGracefulExecutor(t, cli, 3, testUpdateRevision,
+	_, err := newGracefulExecutor(t, cli, 3,
 		runtime.FromTiProxy(abandoned),
 		runtime.FromTiProxy(current),
 	).Do(ctx)
