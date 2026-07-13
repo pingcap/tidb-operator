@@ -28,6 +28,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -310,6 +311,18 @@ func (f *Framework) PortForwardPod(ctx context.Context, pod *corev1.Pod, ports [
 	f.Must(err)
 
 	return ps
+}
+
+func PortForwardGroup[
+	S scope.Group[G, T],
+	G client.Object,
+	T runtime.Group,
+](ctx context.Context, f *Framework, group G, ports []string) []portforward.ForwardedPort {
+	pods, err := apicall.ListPods[S](ctx, f.Client, group)
+	f.Must(err)
+	gomega.ExpectWithOffset(1, pods.Items).ToNot(gomega.BeEmpty())
+
+	return f.PortForwardPod(ctx, &pods.Items[0], ports)
 }
 
 func AsyncWaitPodsRollingUpdateOnce[

@@ -20,11 +20,11 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
@@ -124,11 +124,8 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 				f.WaitForTiKVGroupReady(ctx, kvg)
 
 				ginkgo.By("Verifying PD pods have correct readiness probe configuration")
-				pods := &corev1.PodList{}
-				f.Must(f.Client.List(ctx, pods, client.InNamespace(f.Namespace.Name), client.MatchingLabels(map[string]string{
-					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-				})))
+				pods, err := apicall.ListPods[scope.PDGroup](ctx, f.Client, pdg)
+				f.Must(err)
 
 				gomega.Expect(len(pods.Items)).To(gomega.Equal(3), "Should have 3 PD pods")
 				for _, pod := range pods.Items {

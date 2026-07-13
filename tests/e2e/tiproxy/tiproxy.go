@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	tiproxyapi "github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
@@ -405,15 +406,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
 
 			listTiProxyPods := func() (*corev1.PodList, error) {
-				pods := &corev1.PodList{}
-				if err := f.Client.List(ctx, pods, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
-					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
-					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
-				}); err != nil {
-					return nil, err
-				}
-				return pods, nil
+				return apicall.ListPods[scope.TiProxyGroup](ctx, f.Client, proxyg)
 			}
 
 			listTiProxies := func() (*v1alpha1.TiProxyList, error) {
@@ -617,12 +610,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			}))
 			gomega.Expect(tiproxies.Items).To(gomega.HaveLen(int(replicas)))
 
-			pods := &corev1.PodList{}
-			f.Must(f.Client.List(ctx, pods, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
-				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-				v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
-			}))
+			pods, err := apicall.ListPods[scope.TiProxyGroup](ctx, f.Client, proxyg)
+			f.Must(err)
 			gomega.Expect(pods.Items).To(gomega.HaveLen(int(replicas)))
 		})
 	})
@@ -652,12 +641,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.WaitForTiProxyGroupReady(ctx, pg)
 
 			ginkgo.By("Checking the status of the cluster and the connection to the TiProxy service")
-			checkComponent := func(groupName, componentName string, expectedReplicas *int32) {
-				podList := &corev1.PodList{}
-				f.Must(f.Client.List(ctx, podList, client.InNamespace(ns), client.MatchingLabels(map[string]string{
-					v1alpha1.LabelKeyCluster: tcName,
-					v1alpha1.LabelKeyGroup:   groupName,
-				})))
+			checkComponent := func(podList *corev1.PodList, groupName, componentName string, expectedReplicas *int32) {
 				gomega.Expect(len(podList.Items)).To(gomega.Equal(int(*expectedReplicas)))
 				for _, pod := range podList.Items {
 					gomega.Expect(pod.Status.Phase).To(gomega.Equal(corev1.PodRunning))
@@ -703,10 +687,18 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				_, ready := utiltidb.IsClusterReady(f.Client, tcName, ns)
 				g.Expect(ready).To(gomega.BeTrue())
 
-				checkComponent(pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
-				checkComponent(kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
-				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
-				checkComponent(pg.Name, v1alpha1.LabelValComponentTiProxy, pg.Spec.Replicas)
+				pdPods, err := apicall.ListPods[scope.PDGroup](ctx, f.Client, pdg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(pdPods, pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
+				tikvPods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, kvg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(tikvPods, kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
+				tidbPods, err := apicall.ListPods[scope.TiDBGroup](ctx, f.Client, dbg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(tidbPods, dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
+				tiproxyPods, err := apicall.ListPods[scope.TiProxyGroup](ctx, f.Client, pg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(tiproxyPods, pg.Name, v1alpha1.LabelValComponentTiProxy, pg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
 			sec := pg.Name + "-tiproxy-client-secret"

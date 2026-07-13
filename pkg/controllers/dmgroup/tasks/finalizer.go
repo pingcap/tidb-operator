@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
@@ -41,7 +42,7 @@ func TaskFinalizerDel(state State, c client.Client) task.Task {
 				}
 			}
 
-			if err := k8s.RemoveFinalizer(ctx, c, dm); err != nil {
+			if err := apicall.RemoveFinalizer(ctx, c, dm); err != nil {
 				errList = append(errList, err)
 			}
 		}
@@ -62,7 +63,7 @@ func TaskFinalizerDel(state State, c client.Client) task.Task {
 			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 		}
 
-		if err := k8s.RemoveFinalizer(ctx, c, state.DMGroup()); err != nil {
+		if err := apicall.RemoveFinalizer(ctx, c, state.DMGroup()); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
 		}
 

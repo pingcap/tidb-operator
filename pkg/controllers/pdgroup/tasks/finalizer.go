@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
@@ -50,7 +51,7 @@ func TaskFinalizerDel(state State, c client.Client) task.Task {
 			//   We can all forcely clean up finalizers when the cluster is deleted and change this task to
 			//   the common one.
 			// TODO(liubo02): refactor to use common task
-			if err := k8s.RemoveFinalizer(ctx, c, peer); err != nil {
+			if err := apicall.RemoveFinalizer(ctx, c, peer); err != nil {
 				errList = append(errList, err)
 			}
 		}
@@ -71,7 +72,7 @@ func TaskFinalizerDel(state State, c client.Client) task.Task {
 			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 		}
 
-		if err := k8s.RemoveFinalizer(ctx, c, state.PDGroup()); err != nil {
+		if err := apicall.RemoveFinalizer(ctx, c, state.PDGroup()); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
 		}
 

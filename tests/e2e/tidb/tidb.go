@@ -26,6 +26,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
@@ -328,12 +329,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiCDCGroupReady(ctx, cdcg)
 
 			ginkgo.By("Checking the status of the cluster and the connection to the TiDB service")
-			checkComponent := func(groupName, componentName string, expectedReplicas *int32) {
-				podList := &corev1.PodList{}
-				f.Must(f.Client.List(ctx, podList, client.InNamespace(ns), client.MatchingLabels(map[string]string{
-					v1alpha1.LabelKeyCluster: tcName,
-					v1alpha1.LabelKeyGroup:   groupName,
-				})))
+			checkComponent := func(podList *corev1.PodList, groupName, componentName string, expectedReplicas *int32) {
 				gomega.Expect(len(podList.Items)).To(gomega.Equal(int(*expectedReplicas)))
 				for _, pod := range podList.Items {
 					gomega.Expect(pod.Status.Phase).To(gomega.Equal(corev1.PodRunning))
@@ -379,11 +375,21 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				_, ready := utiltidb.IsClusterReady(f.Client, tcName, ns)
 				g.Expect(ready).To(gomega.BeTrue())
 
-				checkComponent(pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
-				checkComponent(kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
-				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
-				checkComponent(flashg.Name, v1alpha1.LabelValComponentTiFlash, flashg.Spec.Replicas)
-				checkComponent(cdcg.Name, v1alpha1.LabelValComponentTiCDC, cdcg.Spec.Replicas)
+				pdPods, err := apicall.ListPods[scope.PDGroup](ctx, f.Client, pdg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(pdPods, pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
+				tikvPods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, kvg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(tikvPods, kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
+				tidbPods, err := apicall.ListPods[scope.TiDBGroup](ctx, f.Client, dbg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(tidbPods, dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
+				tiflashPods, err := apicall.ListPods[scope.TiFlashGroup](ctx, f.Client, flashg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(tiflashPods, flashg.Name, v1alpha1.LabelValComponentTiFlash, flashg.Spec.Replicas)
+				ticdcPods, err := apicall.ListPods[scope.TiCDCGroup](ctx, f.Client, cdcg)
+				g.Expect(err).ToNot(gomega.HaveOccurred())
+				checkComponent(ticdcPods, cdcg.Name, v1alpha1.LabelValComponentTiCDC, cdcg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
 			sec := dbg.Name + "-tidb-client-secret"
@@ -412,11 +418,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
 			ginkgo.By("Checking TiDB pods have session token signing cert volume mounted")
-			podList := &corev1.PodList{}
-			f.Must(f.Client.List(ctx, podList, client.InNamespace(ns), client.MatchingLabels(map[string]string{
-				v1alpha1.LabelKeyCluster: tcName,
-				v1alpha1.LabelKeyGroup:   dbg.Name,
-			})))
+			podList, err := apicall.ListPods[scope.TiDBGroup](ctx, f.Client, dbg)
+			f.Must(err)
 
 			gomega.Expect(len(podList.Items)).To(gomega.BeNumerically(">", 0))
 			for _, pod := range podList.Items {

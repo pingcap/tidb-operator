@@ -31,6 +31,7 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -274,6 +275,8 @@ func WaitForPodsReady[G runtime.Group](ctx context.Context, c client.Client, g G
 	}, timeout)
 }
 
+// WaitForPodsRecreated check all pods are created after change time
+// TODO(liubo02): changeTime should be changed to pods, check all input pods not exist
 func WaitForPodsRecreated[G runtime.Group](
 	ctx context.Context,
 	c client.Client,
@@ -316,6 +319,34 @@ func WaitForPodsCondition[G runtime.Group](
 	})
 }
 
+func WaitForPodsDeleted[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c client.Client, g F, timeout time.Duration) error {
+	var lastErr error
+	if err := wait.PollUntilContextTimeout(ctx, Poll, timeout, true, func(ctx context.Context) (bool, error) {
+		list, err := apicall.ListPods[S](ctx, c, g)
+		if err != nil {
+			return false, fmt.Errorf("can't list pods for group %s/%s: %w", g.GetNamespace(), g.GetName(), err)
+		}
+		if len(list.Items) != 0 {
+			lastErr = fmt.Errorf("group %s/%s still has %d pods", g.GetNamespace(), g.GetName(), len(list.Items))
+			return false, nil
+		}
+
+		return true, nil
+	}); err != nil {
+		if wait.Interrupted(err) {
+			return fmt.Errorf("wait for group %s/%s pods deleted timeout: %w", g.GetNamespace(), g.GetName(), lastErr)
+		}
+
+		return fmt.Errorf("can't wait for group %s/%s pods deleted, error: %w", g.GetNamespace(), g.GetName(), err)
+	}
+
+	return nil
+}
+
 func MaxPodsCreateTimestamp[
 	S scope.Group[F, T],
 	F client.Object,
@@ -325,12 +356,8 @@ func MaxPodsCreateTimestamp[
 	c client.Client,
 	g F,
 ) (*time.Time, error) {
-	list := corev1.PodList{}
-	if err := c.List(ctx, &list, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
-		v1alpha1.LabelKeyGroup:     g.GetName(),
-		v1alpha1.LabelKeyComponent: scope.Component[S](),
-	}); err != nil {
+	list, err := apicall.ListPods[S](ctx, c, g)
+	if err != nil {
 		return nil, err
 	}
 	maxTime := &time.Time{}

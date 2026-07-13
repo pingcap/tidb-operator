@@ -24,6 +24,7 @@ func TestTiFlash(t *testing.T) {
 	cases := []Case{}
 	cases = append(cases, transferTiFlashCases(t, Topology(), "spec", "topology")...)
 	cases = append(cases, transferTiFlashCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiFlashCases(t, PlacementServerLabels("spec", "server", "labels"), "spec", "server", "labels")...)
 	cases = append(cases, transferTiFlashCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 	cases = append(cases, transferTiFlashCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferTiFlashCases(t, DataVolumeRequired(), "spec")...)
@@ -38,6 +39,7 @@ func TestTiFlashGroup(t *testing.T) {
 	cases = append(cases, transferTiFlashGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiFlashGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiFlashGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	cases = append(cases, transferTiFlashGroupCases(t, PlacementServerLabels("spec", "template", "spec", "server", "labels"), "spec", "template", "spec", "server", "labels")...)
 	Validate(t, "crd/core.pingcap.com_tiflashgroups.yaml", cases)
 }
 

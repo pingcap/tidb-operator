@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	pdapi "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
@@ -40,6 +41,57 @@ import (
 var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	f := framework.New()
 	f.Setup()
+
+	ginkgo.It("migrates regions away when TiKVGroup becomes exclusive", label.P1, func(ctx context.Context) {
+		pdg := f.MustCreatePD(ctx,
+			data.GroupPatchFunc[*v1alpha1.PDGroup](func(pdg *v1alpha1.PDGroup) {
+				pdg.Spec.Template.Spec.Config = `[replication]
+enable-placement-rules = true
+max-replicas = 1
+`
+			}),
+		)
+		source := f.MustCreateTiKV(ctx, data.WithName[scope.TiKVGroup]("kvg-source"))
+
+		f.WaitForPDGroupReady(ctx, pdg)
+		f.WaitForTiKVGroupReady(ctx, source)
+
+		pdc := newPDClient(ctx, f, pdg)
+		ginkgo.By("Checking source TiKVGroup has the default region")
+		f.Must(waiter.WaitForStoreLabelValue(ctx, f.Client, pdc, source, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForStoreRegionCountAtLeast(ctx, f.Client, pdc, source, 1, waiter.LongTaskTimeout))
+
+		sourcePods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, source)
+		f.Must(err)
+		gomega.Expect(sourcePods.Items).To(gomega.HaveLen(1))
+		sourcePodName := sourcePods.Items[0].Name
+		sourcePodUID := sourcePods.Items[0].UID
+
+		target := f.MustCreateTiKV(ctx, data.WithName[scope.TiKVGroup]("kvg-target"))
+		f.WaitForTiKVGroupReady(ctx, target)
+		f.Must(waiter.WaitForStoreLabelValue(ctx, f.Client, pdc, target, waiter.LongTaskTimeout))
+
+		ginkgo.By("Updating source TiKVGroup to exclusive placement")
+		var latest v1alpha1.TiKVGroup
+		f.Must(f.Client.Get(ctx, client.ObjectKeyFromObject(source), &latest))
+		patch := client.MergeFrom(latest.DeepCopy())
+		latest.Spec.Template.Spec.Placement = &v1alpha1.TiKVStorePlacement{
+			Exclusive: ptr.To(true),
+		}
+		f.Must(f.Client.Patch(ctx, &latest, patch))
+
+		f.WaitForTiKVGroupReady(ctx, &latest)
+		ginkgo.By("Checking source TiKV pod is not restarted")
+		currentSourcePods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, &latest)
+		f.Must(err)
+		gomega.Expect(currentSourcePods.Items).To(gomega.HaveLen(1))
+		gomega.Expect(currentSourcePods.Items[0].Name).To(gomega.Equal(sourcePodName))
+		gomega.Expect(currentSourcePods.Items[0].UID).To(gomega.Equal(sourcePodUID))
+
+		ginkgo.By("Checking source TiKVGroup is exclusive and regions are migrated away")
+		f.Must(waiter.WaitForStoreLabelValue(ctx, f.Client, pdc, &latest, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForStoreRegionCount(ctx, f.Client, pdc, &latest, 0, waiter.LongTaskTimeout))
+	})
 
 	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
@@ -421,4 +473,11 @@ func waitForTiKVInstancesDeleted(ctx context.Context, f *framework.Framework, kv
 	for _, kv := range kvs {
 		f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, kv, timeout))
 	}
+}
+
+func newPDClient(ctx context.Context, f *framework.Framework, pdg *v1alpha1.PDGroup) pdapi.PDClient {
+	forwardCtx, cancel := context.WithCancel(ctx)
+	ginkgo.DeferCleanup(cancel)
+	ports := framework.PortForwardGroup[scope.PDGroup](forwardCtx, f, pdg, []string{fmt.Sprintf(":%d", v1alpha1.DefaultPDPortClient)})
+	return pdapi.NewPDClient(fmt.Sprintf("http://127.0.0.1:%d", ports[0].Local), 30*time.Second, nil)
 }

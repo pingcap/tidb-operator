@@ -59,6 +59,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/dmworkergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pdgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/placementpolicy"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/resourcemanager"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/resourcemanagergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/router"
@@ -330,6 +331,14 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.PlacementPolicy{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			policy := obj.(*v1alpha1.PlacementPolicy)
+			return []string{policy.Spec.Cluster.Name}
+		}); err != nil {
+		return err
+	}
+
 	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiDBGroup{}, "spec.cluster.name",
 		func(obj client.Object) []string {
 			tidbGroup := obj.(*v1alpha1.TiDBGroup)
@@ -486,6 +495,12 @@ func setupControllers(
 			name: "TiKV",
 			setupFunc: func() error {
 				return tikv.Setup(mgr, c, pdcm, vm, tf.Tracker("tikv"))
+			},
+		},
+		{
+			name: "PlacementPolicy",
+			setupFunc: func() error {
+				return placementpolicy.Setup(mgr, c, pdcm)
 			},
 		},
 		{
@@ -675,6 +690,9 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TiKV{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.PlacementPolicy{}: {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TiDBGroup{}: {

@@ -185,6 +185,9 @@ type TiKVTemplateSpec struct {
 	Config         ConfigFile     `json:"config,omitempty"`
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
+	// Placement defines TiDB Operator managed placement properties for TiKV stores.
+	Placement *TiKVStorePlacement `json:"placement,omitempty"`
+
 	// Security defines security config
 	Security *Security `json:"security,omitempty"`
 
@@ -241,8 +244,18 @@ type TiKVServer struct {
 	//  - host
 	//  - region
 	//  - zone
+	//  - k/*
+	//  - $k/*
 	// +kubebuilder:validation:XValidation:rule="!('host' in self) && !('region' in self) && !('zone' in self)",message="labels cannot contain 'host', 'region', or 'zone' keys"
+	// +kubebuilder:validation:XValidation:rule="self.all(k, !k.startsWith('k/') && !k.startsWith('$k/'))",message="labels cannot contain keys with 'k/' or '$k/' prefix"
 	Labels map[string]string `json:"labels,omitempty"`
+}
+
+// TiKVStorePlacement defines operator-managed placement labels for TiKV stores.
+type TiKVStorePlacement struct {
+	// Exclusive marks the TiKV stores in this group with an additional exclusive placement label.
+	// All TiKV stores still get the normal TiKVGroup placement label.
+	Exclusive *bool `json:"exclusive,omitempty"`
 }
 
 type TiKVPorts struct {

@@ -24,6 +24,7 @@ func TestTiKV(t *testing.T) {
 	cases := []Case{}
 	cases = append(cases, transferTiKVCases(t, Topology(), "spec", "topology")...)
 	cases = append(cases, transferTiKVCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiKVCases(t, PlacementServerLabels("spec", "server", "labels"), "spec", "server", "labels")...)
 	cases = append(cases, transferTiKVCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 	cases = append(cases, transferTiKVCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferTiKVCases(t, DataVolumeRequired(), "spec")...)
@@ -38,6 +39,7 @@ func TestTiKVGroup(t *testing.T) {
 	cases = append(cases, transferTiKVGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiKVGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiKVGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	cases = append(cases, transferTiKVGroupCases(t, PlacementServerLabels("spec", "template", "spec", "server", "labels"), "spec", "template", "spec", "server", "labels")...)
 	Validate(t, "crd/core.pingcap.com_tikvgroups.yaml", cases)
 }
 

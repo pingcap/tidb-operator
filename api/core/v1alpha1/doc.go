@@ -45,6 +45,9 @@
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tikvs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tikvs/status,verbs=get;list;watch;update;patch
 //
+// +kubebuilder:rbac:groups=core.pingcap.com,resources=placementpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.pingcap.com,resources=placementpolicies/status,verbs=get;list;watch;update;patch
+//
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tiflashgroups,verbs=get;list;watch;delete;update
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tiflashgroups/status,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tiflashes,verbs=get;list;watch;create;update;patch;delete

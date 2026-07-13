@@ -193,7 +193,10 @@ type TiFlashServer struct {
 	//  - host
 	//  - region
 	//  - zone
+	//  - k/*
+	//  - $k/*
 	// +kubebuilder:validation:XValidation:rule="!('host' in self) && !('region' in self) && !('zone' in self)",message="labels cannot contain 'host', 'region', or 'zone' keys"
+	// +kubebuilder:validation:XValidation:rule="self.all(k, !k.startsWith('k/') && !k.startsWith('$k/'))",message="labels cannot contain keys with 'k/' or '$k/' prefix"
 	Labels map[string]string `json:"labels,omitempty"`
 }
 

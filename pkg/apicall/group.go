@@ -19,11 +19,13 @@ import (
 	"context"
 	"slices"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -59,6 +61,29 @@ func ListInstances[
 	})
 
 	return objs, nil
+}
+
+func ListPods[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c ctrlclient.Client, g F) (*corev1.PodList, error) {
+	group := scope.From[S](g)
+	list := &corev1.PodList{}
+	if err := c.List(ctx, list, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyCluster:   group.Cluster(),
+		v1alpha1.LabelKeyGroup:     g.GetName(),
+		v1alpha1.LabelKeyComponent: group.Component(),
+	}); err != nil {
+		return nil, err
+	}
+
+	slices.SortFunc(list.Items, func(a, b corev1.Pod) int {
+		return cmp.Compare(a.GetName(), b.GetName())
+	})
+
+	return list, nil
 }
 
 // ListPeerInstances returns peers of an instance in a same cluster

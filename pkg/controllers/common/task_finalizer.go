@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -39,7 +40,7 @@ func TaskFinalizerAdd[
 ](state ObjectState[F], c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
 		obj := state.Object()
-		if err := k8s.EnsureFinalizer(ctx, c, obj); err != nil {
+		if err := apicall.EnsureFinalizer(ctx, c, obj); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
 		}
 		return task.Complete().With("finalizer is added")
@@ -54,7 +55,7 @@ func TaskGroupFinalizerAdd[
 ](state GroupState[RG], c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
 		var t GT
-		if err := k8s.EnsureFinalizer(ctx, c, t.To(state.Group())); err != nil {
+		if err := apicall.EnsureFinalizer(ctx, c, t.To(state.Group())); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
 		}
 		return task.Complete().With("finalizer is added")
@@ -69,7 +70,7 @@ func TaskInstanceFinalizerAdd[
 ](state InstanceState[RI], c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
 		var t IT
-		if err := k8s.EnsureFinalizer(ctx, c, t.To(state.Instance())); err != nil {
+		if err := apicall.EnsureFinalizer(ctx, c, t.To(state.Instance())); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
 		}
 		return task.Complete().With("finalizer is added")
@@ -125,7 +126,7 @@ func TaskGroupFinalizerDel[
 			return task.Retry(defaultDelWaitTime).With("wait all subresources deleted")
 		}
 
-		if err := k8s.RemoveFinalizer(ctx, c, obj); err != nil {
+		if err := apicall.RemoveFinalizer(ctx, c, obj); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
 		}
 
@@ -137,7 +138,7 @@ func TaskJobFinalizerAdd[
 	J runtime.Job,
 ](state JobState[J], c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
-		if err := k8s.EnsureFinalizer(ctx, c, state.Job().Object()); err != nil {
+		if err := apicall.EnsureFinalizer(ctx, c, state.Job().Object()); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
 		}
 		return task.Complete().With("finalizer is added")
@@ -148,7 +149,7 @@ func TaskJobFinalizerDel[
 	J runtime.Job,
 ](state JobState[J], c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		if err := k8s.RemoveFinalizer(ctx, c, state.Job().Object()); err != nil {
+		if err := apicall.RemoveFinalizer(ctx, c, state.Job().Object()); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been removed: %v", err)
 		}
 		return task.Complete().With("finalizer is removed")
@@ -223,7 +224,7 @@ func TaskInstanceFinalizerDel[
 			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 		}
 
-		if err := k8s.RemoveFinalizer(ctx, c, state.Object()); err != nil {
+		if err := apicall.RemoveFinalizer(ctx, c, state.Object()); err != nil {
 			return task.Fail().With("cannot remove finalizer: %v", err)
 		}
 

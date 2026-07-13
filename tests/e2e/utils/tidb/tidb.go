@@ -30,6 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
 )
 
@@ -276,12 +278,8 @@ func AreAllPDHealthy(cli client.Client, pdg *v1alpha1.PDGroup, checkGroup bool) 
 		}
 	}
 
-	var podList corev1.PodList
-	if err := cli.List(context.TODO(), &podList, client.InNamespace(pdg.Namespace), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   pdg.Spec.Cluster.Name,
-		v1alpha1.LabelKeyGroup:     pdg.Name,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-	}); err != nil {
+	podList, err := apicall.ListPods[scope.PDGroup](context.TODO(), cli, pdg)
+	if err != nil {
 		return fmt.Errorf("failed to list pd pod %s/%s: %w", pdg.Namespace, pdg.Name, err)
 	}
 	if len(podList.Items) != int(*pdg.Spec.Replicas) {
@@ -324,12 +322,8 @@ func AreAllTiKVHealthy(cli client.Client, kvg *v1alpha1.TiKVGroup, checkGroup bo
 		}
 	}
 
-	var podList corev1.PodList
-	if err := cli.List(context.TODO(), &podList, client.InNamespace(kvg.Namespace), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   kvg.Spec.Cluster.Name,
-		v1alpha1.LabelKeyGroup:     kvg.Name,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-	}); err != nil {
+	podList, err := apicall.ListPods[scope.TiKVGroup](context.TODO(), cli, kvg)
+	if err != nil {
 		return fmt.Errorf("failed to list tikv pod %s/%s: %w", kvg.Namespace, kvg.Name, err)
 	}
 	if len(podList.Items) != int(*kvg.Spec.Replicas) {
@@ -372,12 +366,8 @@ func AreAllTiDBHealthy(cli client.Client, dbg *v1alpha1.TiDBGroup, checkGroup bo
 		}
 	}
 
-	var podList corev1.PodList
-	if err := cli.List(context.TODO(), &podList, client.InNamespace(dbg.Namespace), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
-		v1alpha1.LabelKeyGroup:     dbg.Name,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
-	}); err != nil {
+	podList, err := apicall.ListPods[scope.TiDBGroup](context.TODO(), cli, dbg)
+	if err != nil {
 		return fmt.Errorf("failed to list tidb pod %s/%s: %w", dbg.Namespace, dbg.Name, err)
 	}
 	if len(podList.Items) != int(*dbg.Spec.Replicas) {
@@ -420,12 +410,8 @@ func AreAllTiFlashHealthy(cli client.Client, flashg *v1alpha1.TiFlashGroup, chec
 		}
 	}
 
-	var podList corev1.PodList
-	if err := cli.List(context.TODO(), &podList, client.InNamespace(flashg.Namespace), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   flashg.Spec.Cluster.Name,
-		v1alpha1.LabelKeyGroup:     flashg.Name,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
-	}); err != nil {
+	podList, err := apicall.ListPods[scope.TiFlashGroup](context.TODO(), cli, flashg)
+	if err != nil {
 		return fmt.Errorf("failed to list tiflash pod %s/%s: %w", flashg.Namespace, flashg.Name, err)
 	}
 	if len(podList.Items) != int(*flashg.Spec.Replicas) {
@@ -469,12 +455,8 @@ func AreAllTiCDCHealthy(cli client.Client, ticdcg *v1alpha1.TiCDCGroup, checkGro
 		}
 	}
 
-	var podList corev1.PodList
-	if err := cli.List(context.TODO(), &podList, client.InNamespace(ticdcg.Namespace), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   ticdcg.Spec.Cluster.Name,
-		v1alpha1.LabelKeyGroup:     ticdcg.Name,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiCDC,
-	}); err != nil {
+	podList, err := apicall.ListPods[scope.TiCDCGroup](context.TODO(), cli, ticdcg)
+	if err != nil {
 		return fmt.Errorf("failed to list ticdc pod %s/%s: %w", ticdcg.Namespace, ticdcg.Name, err)
 	}
 	if len(podList.Items) != int(*ticdcg.Spec.Replicas) {

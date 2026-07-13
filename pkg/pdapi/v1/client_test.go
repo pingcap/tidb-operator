@@ -16,6 +16,8 @@ package pdapi
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -527,7 +529,7 @@ func TestPDClient_GetStore(t *testing.T) {
 
 func TestPDClient_GetDownPeerRegions(t *testing.T) {
 	jsonStr := `
-{
+	{
   "count": 2,
   "regions": [
     {
@@ -555,6 +557,110 @@ func TestPDClient_GetDownPeerRegions(t *testing.T) {
 	assert.Equal(t, uint64(101), info.Regions[0].ID)
 }
 
+func TestPDClient_ListRegions(t *testing.T) {
+	jsonStr := `
+	{
+	  "count": 1,
+	  "regions": [
+	    {
+	      "id": 101,
+	      "start_key": "7200000100000000fb",
+	      "end_key": "7200000200000000fb",
+	      "peers": [
+	        {
+	          "id": 1,
+	          "store_id": 2
+	        }
+	      ],
+	      "pending_peers": [],
+	      "down_peers": []
+	    }
+	  ]
+	}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/regions", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	info, err := client.ListRegions(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	assert.Equal(t, 1, info.Count)
+	require.Len(t, info.Regions, 1)
+	assert.Equal(t, uint64(101), info.Regions[0].ID)
+	assert.Equal(t, "7200000100000000fb", info.Regions[0].StartKeyHex)
+	require.Len(t, info.Regions[0].Peers, 1)
+	assert.Equal(t, uint64(2), info.Regions[0].Peers[0].StoreId)
+}
+
+func TestPDClient_ListKeyspaceRegions(t *testing.T) {
+	jsonStr := `
+	{
+	  "count": 1,
+	  "regions": [
+	    {
+	      "id": 101,
+	      "start_key": "7200000100000000fb",
+	      "end_key": "7200000200000000fb",
+	      "peers": [
+	        {
+	          "id": 1,
+	          "store_id": 2
+	        }
+	      ],
+	      "pending_peers": [],
+	      "down_peers": []
+	    }
+	  ]
+	}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/regions/keyspace/id/1", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	info, err := client.ListKeyspaceRegions(context.Background(), "1")
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	assert.Equal(t, 1, info.Count)
+	require.Len(t, info.Regions, 1)
+	assert.Equal(t, uint64(101), info.Regions[0].ID)
+	assert.Equal(t, "7200000100000000fb", info.Regions[0].StartKeyHex)
+	require.Len(t, info.Regions[0].Peers, 1)
+	assert.Equal(t, uint64(2), info.Regions[0].Peers[0].StoreId)
+}
+
+func TestPDClient_CreateKeyspace(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v2/keyspaces", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		body, err := io.ReadAll(r.Body)
+		if !assert.NoError(t, err) {
+			return
+		}
+		assert.JSONEq(t, `{"name":"ks1","config":{"foo":"bar"}}`, string(body))
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write([]byte(`{"id":1,"name":"ks1","config":{"foo":"bar"}}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	meta, err := client.CreateKeyspace(context.Background(), "ks1", map[string]string{"foo": "bar"})
+	require.NoError(t, err)
+	require.NotNil(t, meta)
+	assert.Equal(t, uint32(1), meta.ID)
+	assert.Equal(t, "ks1", meta.Name)
+	assert.Equal(t, map[string]string{"foo": "bar"}, meta.Config)
+}
+
 func TestPDClinet_SetStoreLabels(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/store/1/label", r.URL.Path)
@@ -567,6 +673,510 @@ func TestPDClinet_SetStoreLabels(t *testing.T) {
 
 	client := NewPDClient(server.URL, time.Second, nil)
 	err := client.SetStoreLabels(context.Background(), "1", map[string]string{"zone": "cn", "rack": "1"})
+	require.NoError(t, err)
+}
+
+func TestPDClient_DeleteStoreLabel(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/store/1/label", r.URL.Path)
+		assert.Equal(t, http.MethodDelete, r.Method)
+		body, err := io.ReadAll(r.Body)
+		if !assert.NoError(t, err) {
+			return
+		}
+		assert.JSONEq(t, `"op/tikvgroup"`, string(body))
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.DeleteStoreLabel(context.Background(), "1", "op/tikvgroup")
+	require.NoError(t, err)
+}
+
+func TestPDClient_SetPlacementRuleBundle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/placement-rule", r.URL.Path)
+		assert.Equal(t, "partial=true", r.URL.RawQuery)
+		assert.Equal(t, http.MethodPost, r.Method)
+		var bundles []PlacementRuleGroupBundle
+		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&bundles)) {
+			return
+		}
+		if !assert.Len(t, bundles, 1) {
+			return
+		}
+		assert.Equal(t, "keyspace-1", bundles[0].ID)
+		assert.Equal(t, 100, bundles[0].Index)
+		assert.True(t, bundles[0].Override)
+		if !assert.Len(t, bundles[0].Rules, 1) {
+			return
+		}
+		assert.Equal(t, "keyspace-1-rule-r1-tikvgroup", bundles[0].Rules[0].ID)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.SetPlacementRuleBundle(context.Background(), &PlacementRuleGroupBundle{
+		ID:       "keyspace-1",
+		Index:    100,
+		Override: true,
+		Rules: []PlacementRule{
+			{
+				GroupID:     "keyspace-1",
+				ID:          "keyspace-1-rule-r1-tikvgroup",
+				StartKeyHex: "7800000100000000fb",
+				EndKeyHex:   "7800000200000000fb",
+				Role:        "voter",
+				Count:       3,
+			},
+		},
+	}, true)
+	require.NoError(t, err)
+}
+
+func TestPDClient_SetPlacementRuleGroup(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/rule_group", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		var group PlacementRuleGroup
+		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&group)) {
+			return
+		}
+		assert.Equal(t, "keyspace-1", group.ID)
+		assert.Equal(t, 99, group.Index)
+		assert.True(t, group.Override)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.SetPlacementRuleGroup(context.Background(), &PlacementRuleGroup{
+		ID:       "keyspace-1",
+		Index:    99,
+		Override: true,
+	})
+	require.NoError(t, err)
+}
+
+func TestPDClient_SetPlacementRulesInBatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/rules/batch", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		var ruleOps []PlacementRuleOp
+		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&ruleOps)) {
+			return
+		}
+		if !assert.Len(t, ruleOps, 2) {
+			return
+		}
+		assert.Equal(t, PlacementRuleOpDel, ruleOps[0].Action)
+		assert.Equal(t, "keyspace-1", ruleOps[0].GroupID)
+		assert.Equal(t, "pp-policy-", ruleOps[0].ID)
+		assert.True(t, ruleOps[0].DeleteByIDPrefix)
+
+		assert.Equal(t, PlacementRuleOpAdd, ruleOps[1].Action)
+		assert.Equal(t, "keyspace-1", ruleOps[1].GroupID)
+		assert.Equal(t, "pp-policy-voter-raw", ruleOps[1].ID)
+		assert.False(t, ruleOps[1].DeleteByIDPrefix)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.SetPlacementRulesInBatch(context.Background(), []PlacementRuleOp{
+		{
+			PlacementRule: PlacementRule{
+				GroupID: "keyspace-1",
+				ID:      "pp-policy-",
+			},
+			Action:           PlacementRuleOpDel,
+			DeleteByIDPrefix: true,
+		},
+		{
+			PlacementRule: PlacementRule{
+				GroupID:     "keyspace-1",
+				ID:          "pp-policy-voter-raw",
+				StartKeyHex: "7800000100000000fb",
+				EndKeyHex:   "7800000200000000fb",
+				Role:        "voter",
+				Count:       3,
+			},
+			Action: PlacementRuleOpAdd,
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestPDClient_ListPlacementRulesByGroupIDPrefix(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/rules/group/keyspace-1", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`[
+  {
+    "group_id": "keyspace-1",
+    "id": "pp-policy-voter-raw",
+    "role": "voter",
+    "count": 3
+  },
+  {
+    "group_id": "keyspace-1",
+    "id": "other-policy-voter-raw",
+    "role": "voter",
+    "count": 3
+  },
+  {
+    "group_id": "keyspace-1",
+    "id": "pp-policy-voter-txn",
+    "role": "voter",
+    "count": 3
+  }
+]`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	rules, err := client.ListPlacementRulesByGroupIDPrefix(context.Background(), "keyspace-1", "pp-policy-")
+	require.NoError(t, err)
+	require.Len(t, rules, 2)
+	assert.Equal(t, "pp-policy-voter-raw", rules[0].ID)
+	assert.Equal(t, "pp-policy-voter-txn", rules[1].ID)
+}
+
+func TestPDClient_SetPlacementRuleGroupRulesByIDPrefix(t *testing.T) {
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet {
+			assert.Equal(t, "/pd/api/v1/config/rules/group/keyspace-1", r.URL.Path)
+			_, err := w.Write([]byte(`[
+  {
+    "group_id": "keyspace-1",
+    "id": "pp-policy-voter-raw",
+    "start_key": "7800000100000000fa",
+    "end_key": "7800000200000000fa",
+    "role": "voter",
+    "count": 3
+  },
+  {
+    "group_id": "keyspace-1",
+    "id": "pp-policy-voter-txn",
+    "start_key": "7800000100000000fb",
+    "end_key": "7800000200000000fb",
+    "role": "voter",
+    "count": 2
+  },
+  {
+    "group_id": "keyspace-1",
+    "id": "pp-policy-old",
+    "role": "voter",
+    "count": 3
+  },
+  {
+    "group_id": "keyspace-1",
+    "id": "other-policy-voter-raw",
+    "role": "voter",
+    "count": 3
+  }
+]`))
+			assert.NoError(t, err)
+			return
+		}
+
+		assert.Equal(t, "/pd/api/v1/config/rules/batch", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		var ruleOps []PlacementRuleOp
+		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&ruleOps)) {
+			return
+		}
+		if !assert.Len(t, ruleOps, 2) {
+			return
+		}
+		assert.Equal(t, PlacementRuleOpDel, ruleOps[0].Action)
+		assert.Equal(t, "keyspace-1", ruleOps[0].GroupID)
+		assert.Equal(t, "pp-policy-old", ruleOps[0].ID)
+		assert.False(t, ruleOps[0].DeleteByIDPrefix)
+		assert.Equal(t, PlacementRuleOpAdd, ruleOps[1].Action)
+		assert.Equal(t, "pp-policy-voter-txn", ruleOps[1].ID)
+		assert.False(t, ruleOps[1].DeleteByIDPrefix)
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.SetPlacementRuleGroupRulesByIDPrefix(context.Background(), "keyspace-1", "pp-policy-", []PlacementRule{
+		{
+			GroupID:     "keyspace-1",
+			ID:          "pp-policy-voter-raw",
+			StartKeyHex: "7800000100000000fa",
+			EndKeyHex:   "7800000200000000fa",
+			Role:        "voter",
+			Count:       3,
+		},
+		{
+			GroupID:     "keyspace-1",
+			ID:          "pp-policy-voter-txn",
+			StartKeyHex: "7800000100000000fb",
+			EndKeyHex:   "7800000200000000fb",
+			Role:        "voter",
+			Count:       3,
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 2, requestCount)
+}
+
+func TestPlacementRuleDiffOps(t *testing.T) {
+	ruleOps, err := placementRuleDiffOps("keyspace-1", []PlacementRule{
+		{
+			GroupID: "keyspace-1",
+			ID:      "pp-policy-voter-raw",
+			Role:    "voter",
+			Count:   3,
+		},
+		{
+			GroupID: "keyspace-1",
+			ID:      "pp-policy-voter-txn",
+			Role:    "voter",
+			Count:   2,
+		},
+		{
+			GroupID: "keyspace-1",
+			ID:      "pp-policy-old",
+		},
+	}, []PlacementRule{
+		{
+			GroupID: "keyspace-1",
+			ID:      "pp-policy-voter-raw",
+			Role:    "voter",
+			Count:   3,
+		},
+		{
+			GroupID: "keyspace-1",
+			ID:      "pp-policy-voter-txn",
+			Role:    "voter",
+			Count:   3,
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, ruleOps, 2)
+	assert.Equal(t, PlacementRuleOpDel, ruleOps[0].Action)
+	assert.Equal(t, "pp-policy-old", ruleOps[0].ID)
+	assert.False(t, ruleOps[0].DeleteByIDPrefix)
+	assert.Equal(t, PlacementRuleOpAdd, ruleOps[1].Action)
+	assert.Equal(t, "pp-policy-voter-txn", ruleOps[1].ID)
+	assert.False(t, ruleOps[1].DeleteByIDPrefix)
+}
+
+func TestPlacementRuleDiffOpsNoop(t *testing.T) {
+	currentRules := []PlacementRule{
+		{
+			GroupID: "keyspace-1",
+			ID:      "pp-policy-voter-raw",
+			Role:    "voter",
+			Count:   3,
+		},
+	}
+	ruleOps, err := placementRuleDiffOps("keyspace-1", currentRules, currentRules)
+	require.NoError(t, err)
+	assert.Empty(t, ruleOps)
+}
+
+func TestPDClient_DeletePlacementRuleGroupRulesByIDPrefix(t *testing.T) {
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet {
+			assert.Equal(t, "/pd/api/v1/config/rules/group/keyspace-1", r.URL.Path)
+			_, err := w.Write([]byte(`[
+  {
+    "group_id": "keyspace-1",
+    "id": "pp-policy-voter-raw",
+    "role": "voter",
+    "count": 3
+  },
+  {
+    "group_id": "keyspace-1",
+    "id": "pp-policy-voter-txn",
+    "role": "voter",
+    "count": 3
+  },
+  {
+    "group_id": "keyspace-1",
+    "id": "other-policy-voter-raw",
+    "role": "voter",
+    "count": 3
+  }
+]`))
+			assert.NoError(t, err)
+			return
+		}
+
+		assert.Equal(t, "/pd/api/v1/config/rules/batch", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		var ruleOps []PlacementRuleOp
+		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&ruleOps)) {
+			return
+		}
+		require.Len(t, ruleOps, 2)
+		assert.Equal(t, PlacementRuleOpDel, ruleOps[0].Action)
+		assert.Equal(t, "keyspace-1", ruleOps[0].GroupID)
+		assert.Equal(t, "pp-policy-voter-raw", ruleOps[0].ID)
+		assert.False(t, ruleOps[0].DeleteByIDPrefix)
+		assert.Equal(t, PlacementRuleOpDel, ruleOps[1].Action)
+		assert.Equal(t, "keyspace-1", ruleOps[1].GroupID)
+		assert.Equal(t, "pp-policy-voter-txn", ruleOps[1].ID)
+		assert.False(t, ruleOps[1].DeleteByIDPrefix)
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.DeletePlacementRuleGroupRulesByIDPrefix(context.Background(), "keyspace-1", "pp-policy-")
+	require.NoError(t, err)
+	assert.Equal(t, 2, requestCount)
+}
+
+func TestPDClient_DeletePlacementRuleGroup(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/rule_group/keyspace-1", r.URL.Path)
+		assert.Equal(t, http.MethodDelete, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.DeletePlacementRuleGroup(context.Background(), "keyspace-1")
+	require.NoError(t, err)
+}
+
+func TestPDClient_ListPlacementRuleBundles(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/placement-rule", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`[
+  {
+    "group_id": "pd",
+    "group_index": 0,
+    "group_override": false,
+    "rules": [
+      {
+        "group_id": "pd",
+        "id": "default",
+        "role": "voter",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "group_id": "keyspace-1",
+    "group_index": 100,
+    "group_override": true,
+    "rules": [
+      {
+        "group_id": "keyspace-1",
+        "id": "keyspace-1-rule-r1-tikvgroup",
+        "start_key": "7800000100000000fb",
+        "end_key": "7800000200000000fb",
+        "role": "voter",
+        "count": 3
+      }
+    ]
+  }
+]`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	bundles, err := client.ListPlacementRuleBundles(context.Background())
+	require.NoError(t, err)
+	require.Len(t, bundles, 2)
+	assert.Equal(t, "pd", bundles[0].ID)
+	assert.Equal(t, 0, bundles[0].Index)
+	assert.False(t, bundles[0].Override)
+	require.Len(t, bundles[0].Rules, 1)
+	assert.Equal(t, "default", bundles[0].Rules[0].ID)
+	assert.Equal(t, "voter", bundles[0].Rules[0].Role)
+	assert.Equal(t, int32(3), bundles[0].Rules[0].Count)
+	assert.Equal(t, "keyspace-1", bundles[1].ID)
+	assert.Equal(t, 100, bundles[1].Index)
+	assert.True(t, bundles[1].Override)
+	require.Len(t, bundles[1].Rules, 1)
+	assert.Equal(t, "keyspace-1-rule-r1-tikvgroup", bundles[1].Rules[0].ID)
+	assert.Equal(t, "7800000100000000fb", bundles[1].Rules[0].StartKeyHex)
+	assert.Equal(t, "7800000200000000fb", bundles[1].Rules[0].EndKeyHex)
+}
+
+func TestPDClient_GetPlacementRuleBundle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/placement-rule/keyspace-1", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{
+  "group_id": "keyspace-1",
+  "group_index": 100,
+  "group_override": true,
+  "rules": [
+    {
+      "group_id": "keyspace-1",
+      "id": "keyspace-1-rule-r1-tikvgroup",
+      "start_key": "7800000100000000fb",
+      "end_key": "7800000200000000fb",
+      "role": "voter",
+      "count": 3
+    }
+  ]
+}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	bundle, err := client.GetPlacementRuleBundle(context.Background(), "keyspace-1")
+	require.NoError(t, err)
+	require.NotNil(t, bundle)
+	assert.Equal(t, "keyspace-1", bundle.ID)
+	assert.Equal(t, 100, bundle.Index)
+	assert.True(t, bundle.Override)
+	require.Len(t, bundle.Rules, 1)
+	assert.Equal(t, "keyspace-1-rule-r1-tikvgroup", bundle.Rules[0].ID)
+	assert.Equal(t, "7800000100000000fb", bundle.Rules[0].StartKeyHex)
+	assert.Equal(t, "7800000200000000fb", bundle.Rules[0].EndKeyHex)
+	assert.Equal(t, "voter", bundle.Rules[0].Role)
+	assert.Equal(t, int32(3), bundle.Rules[0].Count)
+}
+
+func TestPDClient_DeletePlacementRuleBundle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/config/placement-rule/keyspace-1", r.URL.Path)
+		assert.Equal(t, http.MethodDelete, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	err := client.DeletePlacementRuleBundle(context.Background(), "keyspace-1")
 	require.NoError(t, err)
 }
 
