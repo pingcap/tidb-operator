@@ -93,7 +93,7 @@ func TestExecutorScaleInUpdateMarksOffline(t *testing.T) {
 	assert.True(t, *actual.Spec.Offline)
 }
 
-func TestExecutorScaleInUpdateDeletesDuringRollingReplace(t *testing.T) {
+func TestExecutorScaleInUpdateMarksOfflineDuringRollingReplace(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -109,14 +109,23 @@ func TestExecutorScaleInUpdateDeletesDuringRollingReplace(t *testing.T) {
 	).Do(ctx)
 	require.NoError(t, err)
 
-	remaining := 0
 	for _, name := range []string{"tiproxy-a", "tiproxy-b", "tiproxy-old"} {
-		err = cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: name}, &v1alpha1.TiProxy{})
-		if err == nil {
-			remaining++
-		}
+		actual := &v1alpha1.TiProxy{}
+		require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: name}, actual))
 	}
-	assert.Equal(t, 2, remaining)
+
+	offlineA := &v1alpha1.TiProxy{}
+	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: "tiproxy-a"}, offlineA))
+	require.NotNil(t, offlineA.Spec.Offline)
+	assert.True(t, *offlineA.Spec.Offline)
+
+	kept := &v1alpha1.TiProxy{}
+	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: "tiproxy-b"}, kept))
+	assert.False(t, coreutil.IsOffline[scope.TiProxy](kept))
+
+	deferDeleted := &v1alpha1.TiProxy{}
+	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: "tiproxy-old"}, deferDeleted))
+	assert.Equal(t, v1alpha1.AnnoValTrue, deferDeleted.Annotations[v1alpha1.AnnoKeyDeferDelete])
 }
 
 func TestExecutorScaleOutRevivesGracefulOfflineInstance(t *testing.T) {
