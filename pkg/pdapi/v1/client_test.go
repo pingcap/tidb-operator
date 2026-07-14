@@ -1032,7 +1032,9 @@ func TestPDClient_DeletePlacementRuleGroupRulesByIDPrefix(t *testing.T) {
 		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&ruleOps)) {
 			return
 		}
-		require.Len(t, ruleOps, 2)
+		if !assert.Len(t, ruleOps, 2) {
+			return
+		}
 		assert.Equal(t, PlacementRuleOpDel, ruleOps[0].Action)
 		assert.Equal(t, "keyspace-1", ruleOps[0].GroupID)
 		assert.Equal(t, "pp-policy-voter-raw", ruleOps[0].ID)
