@@ -52,6 +52,12 @@ const (
 
 	reasonSynced     = "Synced"
 	reasonSyncFailed = "SyncFailed"
+
+	// PD excludes stores with $-prefixed labels from rules that do not reference
+	// that label key. Referencing $k/exclusive with notIn on an intentionally
+	// nonexistent value makes exclusive stores eligible without filtering out
+	// normal stores or stores labeled $k/exclusive=true.
+	placementExclusiveConstraintNonexistentValue = "__null__"
 )
 
 type Reconciler struct {
@@ -305,7 +311,7 @@ func (r *Reconciler) buildRules(ctx context.Context, policy *v1alpha1.PlacementP
 						{
 							Key:    v1alpha1.PlacementTiKVGroupExclusiveLabelKey,
 							Op:     "notIn",
-							Values: []string{"false"},
+							Values: []string{placementExclusiveConstraintNonexistentValue},
 						},
 					},
 				})

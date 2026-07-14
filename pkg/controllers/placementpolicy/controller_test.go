@@ -67,7 +67,7 @@ func TestBuildRulesUsesTiKVGroupLabelForAllTargets(t *testing.T) {
 		assert.Equal(t, pdapi.PlacementLabelConstraint{
 			Key:    v1alpha1.PlacementTiKVGroupExclusiveLabelKey,
 			Op:     "notIn",
-			Values: []string{"false"},
+			Values: []string{placementExclusiveConstraintNonexistentValue},
 		}, rule.LabelConstraints[1])
 	}
 }

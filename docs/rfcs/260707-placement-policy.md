@@ -122,7 +122,7 @@ For each user rule and each selected keyspace:
 - each policy owns only rules whose ID starts with the policy prefix: `<policyName>:`.
 - each generated rule ID is `<policyName>:<ruleName>-<keyspaceID>-<rangeType>` to avoid collisions in the shared group.
 - generate one PD rule per keyspace range with `k/tikvgroup in [...]`.
-- every generated rule also adds `$k/exclusive notIn ["false"]` so targeted exclusive stores are eligible.
+- every generated rule also adds `$k/exclusive notIn ["__null__"]`. This explicitly references the `$k/exclusive` key so PD can consider exclusive stores, while `__null__` is an intentionally nonexistent value so the constraint does not filter out normal stores or stores labeled `$k/exclusive=true`.
 - `count` is copied as-is to every generated PD rule.
 
 ## Risks and Mitigations
@@ -148,6 +148,8 @@ $k/exclusive=true
 All TiKV stores get `k/tikvgroup`. Exclusive stores also get `$k/exclusive=true`. When `exclusive` changes from true to false, the controller removes `$k/exclusive`.
 
 The `$` prefix is intentional. PD treats `$`-prefixed labels as exclusive labels. A store with `$k/exclusive` will not be selected by default rules. It can still be selected by a placement rule that explicitly constrains `$k/exclusive`.
+
+PlacementPolicy rules target both normal and exclusive TiKVGroups through the shared `k/tikvgroup` constraint. They also add `$k/exclusive notIn ["__null__"]` only to opt in to PD's exclusive-label matching. `__null__` must not be used as a real store label value; as a nonexistent sentinel, it keeps the constraint effectively non-filtering while still mentioning the exclusive label key.
 
 ### PlacementPolicy Controller
 
@@ -232,7 +234,7 @@ If `groupRefs` contains one normal TiKVGroup and one exclusive TiKVGroup, the ge
       {
         "key": "$k/exclusive",
         "op": "notIn",
-        "values": ["false"]
+        "values": ["__null__"]
       }
     ]
   }
