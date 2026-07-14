@@ -165,7 +165,7 @@ func PlacementPolicyRules() []Case {
 				},
 			},
 			wantErrs: []string{
-				`spec.rules[0].selector.keyspace.ids: Invalid value: "": spec.rules[0].selector.keyspace.ids in body shouldn't contain duplicates`,
+				`spec.rules[0].selector.keyspace.ids[1]: Duplicate value: "1"`,
 			},
 		},
 	}
