@@ -122,20 +122,6 @@ func (mr *MockPDClientMockRecorder) DeletePlacementRuleBundle(ctx, groupID any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePlacementRuleBundle", reflect.TypeOf((*MockPDClient)(nil).DeletePlacementRuleBundle), ctx, groupID)
 }
 
-// DeletePlacementRuleGroupRulesByIDPrefix mocks base method.
-func (m *MockPDClient) DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeletePlacementRuleGroupRulesByIDPrefix", ctx, groupID, idPrefix)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeletePlacementRuleGroupRulesByIDPrefix indicates an expected call of DeletePlacementRuleGroupRulesByIDPrefix.
-func (mr *MockPDClientMockRecorder) DeletePlacementRuleGroupRulesByIDPrefix(ctx, groupID, idPrefix any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePlacementRuleGroupRulesByIDPrefix", reflect.TypeOf((*MockPDClient)(nil).DeletePlacementRuleGroupRulesByIDPrefix), ctx, groupID, idPrefix)
-}
-
 // DeletePlacementRuleGroup mocks base method.
 func (m *MockPDClient) DeletePlacementRuleGroup(ctx context.Context, groupID string) error {
 	m.ctrl.T.Helper()
@@ -148,6 +134,20 @@ func (m *MockPDClient) DeletePlacementRuleGroup(ctx context.Context, groupID str
 func (mr *MockPDClientMockRecorder) DeletePlacementRuleGroup(ctx, groupID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePlacementRuleGroup", reflect.TypeOf((*MockPDClient)(nil).DeletePlacementRuleGroup), ctx, groupID)
+}
+
+// DeletePlacementRuleGroupRulesByIDPrefix mocks base method.
+func (m *MockPDClient) DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeletePlacementRuleGroupRulesByIDPrefix", ctx, groupID, idPrefix)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeletePlacementRuleGroupRulesByIDPrefix indicates an expected call of DeletePlacementRuleGroupRulesByIDPrefix.
+func (mr *MockPDClientMockRecorder) DeletePlacementRuleGroupRulesByIDPrefix(ctx, groupID, idPrefix any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePlacementRuleGroupRulesByIDPrefix", reflect.TypeOf((*MockPDClient)(nil).DeletePlacementRuleGroupRulesByIDPrefix), ctx, groupID, idPrefix)
 }
 
 // DeleteStore mocks base method.
@@ -476,20 +476,6 @@ func (mr *MockPDClientMockRecorder) SetPlacementRuleBundle(ctx, bundle, partial 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPlacementRuleBundle", reflect.TypeOf((*MockPDClient)(nil).SetPlacementRuleBundle), ctx, bundle, partial)
 }
 
-// SetPlacementRuleGroupRulesByIDPrefix mocks base method.
-func (m *MockPDClient) SetPlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string, rules []PlacementRule) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetPlacementRuleGroupRulesByIDPrefix", ctx, groupID, idPrefix, rules)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetPlacementRuleGroupRulesByIDPrefix indicates an expected call of SetPlacementRuleGroupRulesByIDPrefix.
-func (mr *MockPDClientMockRecorder) SetPlacementRuleGroupRulesByIDPrefix(ctx, groupID, idPrefix, rules any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPlacementRuleGroupRulesByIDPrefix", reflect.TypeOf((*MockPDClient)(nil).SetPlacementRuleGroupRulesByIDPrefix), ctx, groupID, idPrefix, rules)
-}
-
 // SetPlacementRuleGroup mocks base method.
 func (m *MockPDClient) SetPlacementRuleGroup(ctx context.Context, group *PlacementRuleGroup) error {
 	m.ctrl.T.Helper()
@@ -502,6 +488,20 @@ func (m *MockPDClient) SetPlacementRuleGroup(ctx context.Context, group *Placeme
 func (mr *MockPDClientMockRecorder) SetPlacementRuleGroup(ctx, group any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPlacementRuleGroup", reflect.TypeOf((*MockPDClient)(nil).SetPlacementRuleGroup), ctx, group)
+}
+
+// SetPlacementRuleGroupRulesByIDPrefix mocks base method.
+func (m *MockPDClient) SetPlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string, rules []PlacementRule) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetPlacementRuleGroupRulesByIDPrefix", ctx, groupID, idPrefix, rules)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetPlacementRuleGroupRulesByIDPrefix indicates an expected call of SetPlacementRuleGroupRulesByIDPrefix.
+func (mr *MockPDClientMockRecorder) SetPlacementRuleGroupRulesByIDPrefix(ctx, groupID, idPrefix, rules any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPlacementRuleGroupRulesByIDPrefix", reflect.TypeOf((*MockPDClient)(nil).SetPlacementRuleGroupRulesByIDPrefix), ctx, groupID, idPrefix, rules)
 }
 
 // SetPlacementRulesInBatch mocks base method.

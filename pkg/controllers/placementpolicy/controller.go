@@ -88,6 +88,17 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 			cluster := event.Object.(*v1alpha1.Cluster)
 			r.enqueuePoliciesForCluster(ctx, queue, cluster.Namespace, cluster.Name)
 		},
+		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
+			oldCluster := event.ObjectOld.(*v1alpha1.Cluster)
+			cluster := event.ObjectNew.(*v1alpha1.Cluster)
+			if oldCluster.Spec.Paused == cluster.Spec.Paused &&
+				reflect.DeepEqual(oldCluster.Spec.SuspendAction, cluster.Spec.SuspendAction) {
+				return
+			}
+			r.enqueuePoliciesForCluster(ctx, queue, cluster.Namespace, cluster.Name)
+		},
 		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
@@ -134,6 +145,7 @@ func (r *Reconciler) enqueuePoliciesForCluster(
 	var list v1alpha1.PlacementPolicyList
 	if err := r.Client.List(ctx, &list,
 		client.InNamespace(namespace),
+		client.MatchingFields{"spec.cluster.name": clusterName},
 	); err != nil {
 		if !apierrors.IsNotFound(err) {
 			r.Logger.Error(err, "cannot list placement policies", "ns", namespace, "cluster", clusterName)
@@ -143,9 +155,6 @@ func (r *Reconciler) enqueuePoliciesForCluster(
 
 	for i := range list.Items {
 		policy := &list.Items[i]
-		if policy.Spec.Cluster.Name != clusterName {
-			continue
-		}
 		queue.Add(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      policy.Name,
@@ -163,6 +172,7 @@ func (r *Reconciler) enqueuePoliciesForTiKVGroup(
 	var list v1alpha1.PlacementPolicyList
 	if err := r.Client.List(ctx, &list,
 		client.InNamespace(kvg.Namespace),
+		client.MatchingFields{"spec.cluster.name": kvg.Spec.Cluster.Name},
 	); err != nil {
 		if !apierrors.IsNotFound(err) {
 			r.Logger.Error(err, "cannot list placement policies", "ns", kvg.Namespace, "cluster", kvg.Spec.Cluster.Name)
@@ -172,9 +182,6 @@ func (r *Reconciler) enqueuePoliciesForTiKVGroup(
 
 	for i := range list.Items {
 		policy := &list.Items[i]
-		if policy.Spec.Cluster.Name != kvg.Spec.Cluster.Name {
-			continue
-		}
 		if !policyReferencesTiKVGroup(policy, kvg.Name) {
 			continue
 		}
@@ -208,6 +215,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	cluster, err := r.policyCluster(ctx, policy)
+	if err != nil {
+		return ctrl.Result{}, r.updateStatus(ctx, policy, err)
+	}
+	if clusterPlacementPolicySyncDisabled(cluster) {
+		logger.Info("skip placement policy sync as cluster is paused or suspending",
+			"paused", coreutil.ShouldPauseReconcile(cluster),
+			"suspendCompute", coreutil.ShouldSuspendCompute(cluster))
+		return ctrl.Result{}, nil
+	}
+
 	pdc, ok := r.PDClientManager.Get(timanager.PrimaryKey(policy.Namespace, policy.Spec.Cluster.Name))
 	if !ok {
 		err := fmt.Errorf("pd client is not ready")
@@ -229,12 +247,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Reconciler) reconcileDelete(ctx context.Context, policy *v1alpha1.PlacementPolicy) error {
-	deletingOrGone, err := r.clusterDeletingOrGone(ctx, policy)
+	cluster, deletingOrGone, err := r.clusterForPolicyDeletion(ctx, policy)
 	if err != nil {
 		return err
 	}
 	if deletingOrGone {
 		return apicall.RemoveFinalizer(ctx, r.Client, policy)
+	}
+	if clusterPlacementPolicySyncDisabled(cluster) {
+		return nil
 	}
 
 	pdc, ok := r.PDClientManager.Get(timanager.PrimaryKey(policy.Namespace, policy.Spec.Cluster.Name))
@@ -248,16 +269,32 @@ func (r *Reconciler) reconcileDelete(ctx context.Context, policy *v1alpha1.Place
 	return fmt.Errorf("pd client is not ready")
 }
 
-func (r *Reconciler) clusterDeletingOrGone(ctx context.Context, policy *v1alpha1.PlacementPolicy) (bool, error) {
+func (r *Reconciler) policyCluster(ctx context.Context, policy *v1alpha1.PlacementPolicy) (*v1alpha1.Cluster, error) {
 	cluster, err := apicall.Get[v1alpha1.Cluster](ctx, r.Client, policy.Namespace, policy.Spec.Cluster.Name)
-	if apierrors.IsNotFound(err) {
-		return true, nil
-	}
 	if err != nil {
-		return false, err
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("referenced cluster %q does not exist", policy.Spec.Cluster.Name)
+		}
+		return nil, err
 	}
 
-	return !cluster.DeletionTimestamp.IsZero(), nil
+	return cluster, nil
+}
+
+func (r *Reconciler) clusterForPolicyDeletion(ctx context.Context, policy *v1alpha1.PlacementPolicy) (*v1alpha1.Cluster, bool, error) {
+	cluster, err := apicall.Get[v1alpha1.Cluster](ctx, r.Client, policy.Namespace, policy.Spec.Cluster.Name)
+	if apierrors.IsNotFound(err) {
+		return nil, true, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	return cluster, !cluster.DeletionTimestamp.IsZero(), nil
+}
+
+func clusterPlacementPolicySyncDisabled(cluster *v1alpha1.Cluster) bool {
+	return coreutil.ShouldPauseReconcile(cluster) || coreutil.ShouldSuspendCompute(cluster)
 }
 
 func deletePolicyRules(ctx context.Context, pdc pdapi.PDClient, policy *v1alpha1.PlacementPolicy) error {
@@ -280,14 +317,6 @@ func (r *Reconciler) buildRules(ctx context.Context, policy *v1alpha1.PlacementP
 			return nil, fmt.Errorf("rule %q selector.keyspace is required", rule.Name)
 		}
 
-		role := rule.Role
-		if role == "" {
-			role = v1alpha1.PlacementPolicyRoleVoter
-		}
-		count := rule.Count
-		if count == 0 {
-			count = 3
-		}
 		for _, keyspaceID := range rule.Selector.Keyspace.IDs {
 			keyRanges, err := keyspace.MakeRegionBound(keyspaceID)
 			if err != nil {
@@ -300,8 +329,8 @@ func (r *Reconciler) buildRules(ctx context.Context, policy *v1alpha1.PlacementP
 					ID:          coreutil.PlacementPolicyRuleID(policy.Name, rule.Name, keyspaceID, keyRange.Type),
 					StartKeyHex: keyRange.StartKeyHex,
 					EndKeyHex:   keyRange.EndKeyHex,
-					Role:        role,
-					Count:       count,
+					Role:        rule.Role,
+					Count:       rule.Count,
 					LabelConstraints: []pdapi.PlacementLabelConstraint{
 						{
 							Key:    v1alpha1.PlacementTiKVGroupLabelKey,

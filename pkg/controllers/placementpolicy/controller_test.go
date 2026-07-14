@@ -107,11 +107,71 @@ func TestReconcileDeleteRemovesFinalizerWhenClusterDeleting(t *testing.T) {
 	assert.NotContains(t, actual.Finalizers, metav1alpha1.Finalizer)
 }
 
-func TestClusterEventHandlerEnqueuesOnlyOnCreateAndDelete(t *testing.T) {
+func TestReconcileSkipsSyncWhenClusterPausedOrSuspending(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		update func(*v1alpha1.Cluster)
+	}{
+		{
+			name: "paused",
+			update: func(cluster *v1alpha1.Cluster) {
+				cluster.Spec.Paused = true
+			},
+		},
+		{
+			name: "suspending compute",
+			update: func(cluster *v1alpha1.Cluster) {
+				cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			policy := newPlacementPolicy()
+			cluster := newCluster()
+			tt.update(cluster)
+			cli := client.NewFakeClient(policy, cluster)
+			r := &Reconciler{
+				Client:          cli,
+				PDClientManager: fakePDClientManager{},
+			}
+
+			_, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}})
+			require.NoError(t, err)
+
+			var actual v1alpha1.PlacementPolicy
+			require.NoError(t, cli.Get(ctx, types.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}, &actual))
+			assert.Contains(t, actual.Finalizers, metav1alpha1.Finalizer)
+			assert.Nil(t, apimeta.FindStatusCondition(actual.Status.Conditions, v1alpha1.CondSynced))
+		})
+	}
+}
+
+func TestReconcileDeleteSkipsSyncWhenClusterPaused(t *testing.T) {
+	ctx := context.Background()
+	policy := newDeletingPlacementPolicy()
+	cluster := newCluster()
+	cluster.Spec.Paused = true
+	cli := client.NewFakeClient(policy, cluster)
+	r := &Reconciler{
+		Client:          cli,
+		PDClientManager: fakePDClientManager{},
+	}
+
+	_, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}})
+	require.NoError(t, err)
+
+	var actual v1alpha1.PlacementPolicy
+	require.NoError(t, cli.Get(ctx, types.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}, &actual))
+	assert.Contains(t, actual.Finalizers, metav1alpha1.Finalizer)
+}
+
+func TestClusterEventHandlerEnqueuesByClusterField(t *testing.T) {
 	ctx := context.Background()
 	policy := newPlacementPolicy()
+	otherPolicy := newPlacementPolicyForCluster("other", "other")
 	r := &Reconciler{
-		Client: client.NewFakeClient(policy),
+		Client: client.NewFakeClient(policy, otherPolicy),
 	}
 	eventHandler := r.ClusterEventHandler()
 	cluster := newCluster()
@@ -124,7 +184,7 @@ func TestClusterEventHandlerEnqueuesOnlyOnCreateAndDelete(t *testing.T) {
 	updatedCluster := cluster.DeepCopy()
 	updatedCluster.Spec.Paused = true
 	eventHandler.Update(ctx, event.TypedUpdateEvent[client.Object]{ObjectOld: cluster, ObjectNew: updatedCluster}, updateQueue)
-	assert.Empty(t, drainRequestQueue(updateQueue))
+	assert.ElementsMatch(t, []reconcile.Request{newRequest(policy)}, drainRequestQueue(updateQueue))
 
 	deleteQueue := newRequestQueue()
 	eventHandler.Delete(ctx, event.TypedDeleteEvent[client.Object]{Object: cluster}, deleteQueue)
@@ -134,8 +194,9 @@ func TestClusterEventHandlerEnqueuesOnlyOnCreateAndDelete(t *testing.T) {
 func TestTiKVGroupEventHandlerEnqueuesOnCreateDeleteAndExclusiveChange(t *testing.T) {
 	ctx := context.Background()
 	policy := newPlacementPolicy()
+	otherPolicy := newPlacementPolicyForCluster("other", "other")
 	r := &Reconciler{
-		Client: client.NewFakeClient(policy),
+		Client: client.NewFakeClient(policy, otherPolicy),
 	}
 	eventHandler := r.TiKVGroupEventHandler()
 	kvg := newTiKVGroup("g1", false)
@@ -277,13 +338,17 @@ func TestUpdateStatusJoinsOriginalAndStatusUpdateErrors(t *testing.T) {
 }
 
 func newPlacementPolicy() *v1alpha1.PlacementPolicy {
+	return newPlacementPolicyForCluster("p", "c")
+}
+
+func newPlacementPolicyForCluster(name, clusterName string) *v1alpha1.PlacementPolicy {
 	return &v1alpha1.PlacementPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
-			Name:      "p",
+			Name:      name,
 		},
 		Spec: v1alpha1.PlacementPolicySpec{
-			Cluster: v1alpha1.ClusterReference{Name: "c"},
+			Cluster: v1alpha1.ClusterReference{Name: clusterName},
 			GroupRefs: []v1alpha1.PlacementPolicyGroupRef{
 				{
 					Group: v1alpha1.GroupName,
