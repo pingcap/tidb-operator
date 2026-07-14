@@ -105,6 +105,90 @@ type RegionPeerStat struct {
 	DownSeconds uint64       `json:"down_seconds,omitempty"`
 }
 
+// RegionsInfo is regions info returned from PD RESTful interface.
+type RegionsInfo struct {
+	Count   int           `json:"count"`
+	Regions []*RegionInfo `json:"regions,omitempty"`
+}
+
+// RegionInfo is a single region info returned from PD RESTful interface.
+type RegionInfo struct {
+	ID           uint64            `json:"id"`
+	StartKeyHex  string            `json:"start_key"`
+	EndKeyHex    string            `json:"end_key"`
+	Peers        []*metapb.Peer    `json:"peers,omitempty"`
+	Leader       *metapb.Peer      `json:"leader,omitempty"`
+	PendingPeers []*metapb.Peer    `json:"pending_peers,omitempty"`
+	DownPeers    []*RegionPeerStat `json:"down_peers,omitempty"`
+}
+
+// CreateKeyspaceRequest is the request body for creating a PD keyspace.
+type CreateKeyspaceRequest struct {
+	Name   string            `json:"name"`
+	Config map[string]string `json:"config"`
+}
+
+// KeyspaceMeta is PD keyspace metadata.
+type KeyspaceMeta struct {
+	ID             uint32            `json:"id"`
+	Name           string            `json:"name,omitempty"`
+	State          string            `json:"state,omitempty"`
+	CreatedAt      int64             `json:"created_at,omitempty"`
+	StateChangedAt int64             `json:"state_changed_at,omitempty"`
+	Config         map[string]string `json:"config,omitempty"`
+}
+
+// PlacementRuleGroupBundle is a PD placement rule bundle.
+type PlacementRuleGroupBundle struct {
+	ID       string          `json:"group_id"`
+	Index    int             `json:"group_index"`
+	Override bool            `json:"group_override"`
+	Rules    []PlacementRule `json:"rules"`
+}
+
+// PlacementRuleGroup is a PD placement rule group config.
+type PlacementRuleGroup struct {
+	ID       string `json:"id,omitempty"`
+	Index    int    `json:"index,omitempty"`
+	Override bool   `json:"override,omitempty"`
+}
+
+// PlacementRule is a PD placement rule.
+type PlacementRule struct {
+	GroupID          string                     `json:"group_id"`
+	ID               string                     `json:"id"`
+	StartKeyHex      string                     `json:"start_key"`
+	EndKeyHex        string                     `json:"end_key"`
+	Role             string                     `json:"role"`
+	Count            int32                      `json:"count"`
+	LabelConstraints []PlacementLabelConstraint `json:"label_constraints,omitempty"`
+}
+
+// PlacementRuleOpType indicates the operation type for batch placement rule APIs.
+type PlacementRuleOpType string
+
+const (
+	// PlacementRuleOpAdd adds or updates a placement rule.
+	PlacementRuleOpAdd PlacementRuleOpType = "add"
+	// PlacementRuleOpDel deletes a placement rule.
+	PlacementRuleOpDel PlacementRuleOpType = "del"
+)
+
+// PlacementRuleOp is one operation in PD's batch placement rule API.
+type PlacementRuleOp struct {
+	PlacementRule
+
+	Action           PlacementRuleOpType `json:"action"`
+	DeleteByIDPrefix bool                `json:"delete_by_id_prefix"`
+}
+
+// PlacementLabelConstraint is a PD placement rule label constraint.
+type PlacementLabelConstraint struct {
+	Key    string   `json:"key"`
+	Op     string   `json:"op"`
+	Values []string `json:"values"`
+}
+
 // SchedulerInfo is a single scheduler info returned from PD RESTful interface.
 type SchedulerInfo struct {
 	Name    string `json:"name"`

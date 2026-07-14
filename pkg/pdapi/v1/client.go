@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -51,6 +53,19 @@ type Namespace string
 type PDWriter interface {
 	// SetStoreLabels sets the labels for a store.
 	SetStoreLabels(ctx context.Context, storeID string, labels map[string]string) error
+	// DeleteStoreLabel deletes one label key from a store.
+	DeleteStoreLabel(ctx context.Context, storeID, labelKey string) error
+	// SetPlacementRulesInBatch applies placement rule add/delete operations in one request.
+	SetPlacementRulesInBatch(ctx context.Context, ruleOps []PlacementRuleOp) error
+	// SetPlacementRuleGroupRulesByIDPrefix reconciles placement rules with the specified ID prefix in a group.
+	// It lists current rules first, diffs them with the expected rules, and then sends one batch request.
+	SetPlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string, rules []PlacementRule) error
+	// DeletePlacementRuleGroupRulesByIDPrefix deletes placement rules with the specified ID prefix in a group.
+	DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string) error
+	// SetPlacementRuleGroup creates or updates a placement rule group.
+	SetPlacementRuleGroup(ctx context.Context, group *PlacementRuleGroup) error
+	// CreateKeyspace creates a PD keyspace and returns its metadata.
+	CreateKeyspace(ctx context.Context, name string, config map[string]string) (*KeyspaceMeta, error)
 	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
 	DeleteStore(ctx context.Context, storeID string) error
 	// CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
@@ -72,7 +87,7 @@ type PDWriter interface {
 type PDClient interface {
 	// GetMemberReady returns if a PD member is ready to serve.
 	// In order to call this method, the PD member's URL is required.
-	GetMemberReady(ctx context.Context, url, version string) (bool, error)
+	GetMemberReady(ctx context.Context, memberURL, version string) (bool, error)
 	// GetHealth returns the health of PD's members.
 	GetHealth(ctx context.Context) (*HealthInfo, error)
 	// GetConfig returns PD's config.
@@ -83,10 +98,18 @@ type PDClient interface {
 	GetMembers(ctx context.Context) (*MembersInfo, error)
 	// GetStores lists all TiKV/TiFlash stores of the cluster.
 	GetStores(ctx context.Context) (*StoresInfo, error)
+	// ListPlacementRulesByGroupIDPrefix lists placement rules with the specified ID prefix in a group.
+	ListPlacementRulesByGroupIDPrefix(ctx context.Context, groupID, idPrefix string) ([]PlacementRule, error)
+	// GetPlacementRuleBundle gets a PD placement rule bundle by group ID.
+	GetPlacementRuleBundle(ctx context.Context, groupID string) (*PlacementRuleGroupBundle, error)
 	// GetTombStoneStores lists all tombstone stores of the cluster.
 	// GetTombStoneStores() (*StoresInfo, error)
 	// GetStore gets a TiKV/TiFlash store for a specific store id of the cluster.
 	GetStore(ctx context.Context, storeID string) (*StoreInfo, error)
+	// ListRegions lists all regions of the cluster.
+	ListRegions(ctx context.Context) (*RegionsInfo, error)
+	// ListKeyspaceRegions lists all regions of the specified keyspace.
+	ListKeyspaceRegions(ctx context.Context, keyspaceID string) (*RegionsInfo, error)
 	// GetDownPeerRegions gets regions with down peers.
 	GetDownPeerRegions(ctx context.Context) (*RegionsCheckInfo, error)
 	// GetEvictLeaderScheduler gets leader eviction schedulers for stores.
@@ -129,9 +152,16 @@ const (
 	storesPrefix          = "pd/api/v1/stores"
 	storePrefix           = "pd/api/v1/store"
 	storeUpStatePrefix    = "pd/api/v1/store/%v/state?state=Up"
+	regionsPrefix         = "pd/api/v1/regions"
+	keyspaceRegionsPrefix = "pd/api/v1/regions/keyspace/id"
 	downPeerRegionsPrefix = "pd/api/v1/regions/check/down-peer"
 
-	pdReplicationPrefix = "pd/api/v1/config/replicate"
+	pdReplicationPrefix       = "pd/api/v1/config/replicate"
+	placementRulePrefix       = "pd/api/v1/config/placement-rule"
+	placementRuleGroupPrefix  = "pd/api/v1/config/rule_group"
+	placementRulesGroupPrefix = "pd/api/v1/config/rules/group"
+	placementRulesBatchPrefix = "pd/api/v1/config/rules/batch"
+	keyspacesPrefix           = "pd/api/v2/keyspaces"
 
 	schedulersPrefix                 = "pd/api/v1/schedulers"
 	pdLeaderPrefix                   = "pd/api/v1/leader"
@@ -156,9 +186,9 @@ type pdClient struct {
 }
 
 // NewPDClient returns a new PDClient
-func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) PDClient {
+func NewPDClient(address string, timeout time.Duration, tlsConfig *tls.Config) PDClient {
 	return &pdClient{
-		url: url,
+		url: address,
 		httpClient: &http.Client{
 			Timeout:   timeout,
 			Transport: &http.Transport{TLSClientConfig: tlsConfig},
@@ -293,6 +323,32 @@ func (c *pdClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, er
 	return storeInfo, nil
 }
 
+func (c *pdClient) ListRegions(ctx context.Context) (*RegionsInfo, error) {
+	apiURL := fmt.Sprintf("%s/%s", c.url, regionsPrefix)
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	info := &RegionsInfo{}
+	if err := json.Unmarshal(body, info); err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+func (c *pdClient) ListKeyspaceRegions(ctx context.Context, keyspaceID string) (*RegionsInfo, error) {
+	apiURL := fmt.Sprintf("%s/%s/%s", c.url, keyspaceRegionsPrefix, url.PathEscape(keyspaceID))
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	info := &RegionsInfo{}
+	if err := json.Unmarshal(body, info); err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
 func (c *pdClient) GetDownPeerRegions(ctx context.Context) (*RegionsCheckInfo, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, downPeerRegionsPrefix)
 	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
@@ -336,6 +392,210 @@ func (c *pdClient) SetStoreLabels(ctx context.Context, storeID string, labels ma
 		return fmt.Errorf("failed to set store labels: %w", err)
 	}
 	return nil
+}
+
+func (c *pdClient) DeleteStoreLabel(ctx context.Context, storeID, labelKey string) error {
+	apiURL := fmt.Sprintf("%s/%s/%s/label", c.url, storePrefix, storeID)
+	data, err := json.Marshal(labelKey)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, "DELETE", apiURL, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer httputil.DeferClose(res.Body)
+
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("failed to delete store label %s from store %s: %s", labelKey, storeID, body)
+}
+
+func (c *pdClient) SetPlacementRuleGroup(ctx context.Context, group *PlacementRuleGroup) error {
+	apiURL := fmt.Sprintf("%s/%s", c.url, placementRuleGroupPrefix)
+	data, err := json.Marshal(group)
+	if err != nil {
+		return err
+	}
+	if _, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(data)); err != nil {
+		return fmt.Errorf("failed to set placement rule group: %w", err)
+	}
+	return nil
+}
+
+func (c *pdClient) SetPlacementRulesInBatch(ctx context.Context, ruleOps []PlacementRuleOp) error {
+	apiURL := fmt.Sprintf("%s/%s", c.url, placementRulesBatchPrefix)
+	data, err := json.Marshal(ruleOps)
+	if err != nil {
+		return err
+	}
+	if _, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(data)); err != nil {
+		return fmt.Errorf("failed to set placement rules in batch: %w", err)
+	}
+	return nil
+}
+
+func (c *pdClient) SetPlacementRuleGroupRulesByIDPrefix(
+	ctx context.Context,
+	groupID, idPrefix string,
+	rules []PlacementRule,
+) error {
+	currentRules, err := c.ListPlacementRulesByGroupIDPrefix(ctx, groupID, idPrefix)
+	if err != nil {
+		return err
+	}
+	ruleOps, err := placementRuleDiffOps(groupID, currentRules, rules)
+	if err != nil {
+		return err
+	}
+	if len(ruleOps) == 0 {
+		return nil
+	}
+	return c.SetPlacementRulesInBatch(ctx, ruleOps)
+}
+
+func (c *pdClient) DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string) error {
+	currentRules, err := c.ListPlacementRulesByGroupIDPrefix(ctx, groupID, idPrefix)
+	if err != nil {
+		return err
+	}
+	ruleOps, err := placementRuleDiffOps(groupID, currentRules, nil)
+	if err != nil {
+		return err
+	}
+	if len(ruleOps) == 0 {
+		return nil
+	}
+	return c.SetPlacementRulesInBatch(ctx, ruleOps)
+}
+
+func placementRuleAddOps(rules []PlacementRule) []PlacementRuleOp {
+	ruleOps := make([]PlacementRuleOp, 0, len(rules))
+	for _, rule := range rules {
+		ruleOps = append(ruleOps, PlacementRuleOp{
+			PlacementRule: rule,
+			Action:        PlacementRuleOpAdd,
+		})
+	}
+
+	return ruleOps
+}
+
+func placementRuleDiffOps(groupID string, currentRules, expectedRules []PlacementRule) ([]PlacementRuleOp, error) {
+	currentByID := make(map[string]PlacementRule, len(currentRules))
+	for _, rule := range currentRules {
+		if _, ok := currentByID[rule.ID]; ok {
+			return nil, fmt.Errorf("duplicate current placement rule %q", rule.ID)
+		}
+		currentByID[rule.ID] = rule
+	}
+
+	expectedByID := make(map[string]PlacementRule, len(expectedRules))
+	for _, rule := range expectedRules {
+		if _, ok := expectedByID[rule.ID]; ok {
+			return nil, fmt.Errorf("duplicate expected placement rule %q", rule.ID)
+		}
+		expectedByID[rule.ID] = rule
+	}
+
+	ruleOps := []PlacementRuleOp{}
+	staleRules := make([]PlacementRule, 0, len(currentRules))
+	for _, rule := range currentRules {
+		if _, ok := expectedByID[rule.ID]; !ok {
+			staleRules = append(staleRules, rule)
+		}
+	}
+	for _, rule := range staleRules {
+		ruleOps = append(ruleOps, PlacementRuleOp{
+			PlacementRule: PlacementRule{
+				GroupID: groupID,
+				ID:      rule.ID,
+			},
+			Action: PlacementRuleOpDel,
+		})
+	}
+
+	addRules := make([]PlacementRule, 0, len(expectedRules))
+	for _, rule := range expectedRules {
+		current, ok := currentByID[rule.ID]
+		if !ok || !reflect.DeepEqual(current, rule) {
+			addRules = append(addRules, rule)
+		}
+	}
+	addOps := placementRuleAddOps(addRules)
+
+	return append(ruleOps, addOps...), nil
+}
+
+func (c *pdClient) CreateKeyspace(ctx context.Context, name string, config map[string]string) (*KeyspaceMeta, error) {
+	body := CreateKeyspaceRequest{
+		Name:   name,
+		Config: config,
+	}
+	if body.Config == nil {
+		body.Config = map[string]string{}
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	apiURL := fmt.Sprintf("%s/%s", c.url, keyspacesPrefix)
+	resp, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keyspace %s: %w", name, err)
+	}
+	meta := &KeyspaceMeta{}
+	if err := json.Unmarshal(resp, meta); err != nil {
+		return nil, err
+	}
+	return meta, nil
+}
+
+func (c *pdClient) GetPlacementRuleBundle(ctx context.Context, groupID string) (*PlacementRuleGroupBundle, error) {
+	apiURL := fmt.Sprintf("%s/%s/%s", c.url, placementRulePrefix, url.PathEscape(groupID))
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	bundle := &PlacementRuleGroupBundle{}
+	if err := json.Unmarshal(body, bundle); err != nil {
+		return nil, err
+	}
+	return bundle, nil
+}
+
+func (c *pdClient) ListPlacementRulesByGroupIDPrefix(ctx context.Context, groupID, idPrefix string) ([]PlacementRule, error) {
+	apiURL := fmt.Sprintf("%s/%s/%s", c.url, placementRulesGroupPrefix, url.PathEscape(groupID))
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		if httputil.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	allRules := []PlacementRule{}
+	if err := json.Unmarshal(body, &allRules); err != nil {
+		return nil, err
+	}
+
+	rules := make([]PlacementRule, 0, len(allRules))
+	for _, rule := range allRules {
+		if strings.HasPrefix(rule.ID, idPrefix) {
+			rules = append(rules, rule)
+		}
+	}
+	return rules, nil
 }
 
 func (c *pdClient) DeleteStore(ctx context.Context, storeID string) error {
@@ -698,8 +958,8 @@ func (c *pdClient) GetMicroServicePrimary(ctx context.Context, service string) (
 	return primary, nil
 }
 
-func (c *pdClient) GetMemberReady(ctx context.Context, url, version string) (bool, error) {
-	apiURL := fmt.Sprintf("%s/%s", url, pdReadyPrefix)
+func (c *pdClient) GetMemberReady(ctx context.Context, memberURL, version string) (bool, error) {
+	apiURL := fmt.Sprintf("%s/%s", memberURL, pdReadyPrefix)
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, http.NoBody)
 	if err != nil {
 		return false, fmt.Errorf("failed to new a request: %w", err)

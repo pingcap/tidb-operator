@@ -26,6 +26,7 @@ import (
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel/model"
+	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/listtype"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -84,6 +85,9 @@ func validateFunc(s *schema.Structural) func(ctx context.Context, fieldPath *fie
 			errs = append(errs, validation.ValidateCustomResourceUpdate(fieldPath, obj, old, schemaValidator, options...)...)
 		} else {
 			errs = append(errs, validation.ValidateCustomResource(fieldPath, obj, schemaValidator)...)
+		}
+		if objMap, ok := obj.(map[string]interface{}); ok {
+			errs = append(errs, listtype.ValidateListSetsAndMaps(fieldPath, s, objMap)...)
 		}
 
 		if has := hasBlockingErr(errs); !has {

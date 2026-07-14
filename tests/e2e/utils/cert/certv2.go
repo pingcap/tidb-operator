@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -212,7 +213,7 @@ type clientCertKeyPairData struct {
 }
 
 func registerTiProxyMySQLCerts(ctx context.Context, f *factory, ns, cluster string) error {
-	c, err := apicall.GetClusterByKey(ctx, f.c, ns, cluster)
+	c, err := apicall.Get[corev1alpha1.Cluster](ctx, f.c, ns, cluster)
 	if err != nil {
 		return err
 	}
@@ -267,7 +268,7 @@ func registerTiProxyMySQLCerts(ctx context.Context, f *factory, ns, cluster stri
 }
 
 func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string) error {
-	c, err := apicall.GetClusterByKey(ctx, f.c, ns, cluster)
+	c, err := apicall.Get[corev1alpha1.Cluster](ctx, f.c, ns, cluster)
 	if err != nil {
 		return err
 	}
@@ -327,7 +328,7 @@ func registerCertsForComponents[
 	T runtime.Group,
 	L client.ObjectList,
 ](ctx context.Context, f *factory, ns, cluster string) error {
-	c, err := apicall.GetClusterByKey(ctx, f.c, ns, cluster)
+	c, err := apicall.Get[corev1alpha1.Cluster](ctx, f.c, ns, cluster)
 	if err != nil {
 		return err
 	}

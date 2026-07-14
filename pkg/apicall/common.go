@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package k8s
+package apicall
 
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
 // EnsureFinalizer ensures the finalizer is added to the object and updates the object if necessary.
@@ -41,4 +42,24 @@ func RemoveFinalizer(ctx context.Context, cli client.Client, obj client.Object) 
 		}
 	}
 	return nil
+}
+
+type Object[T any] interface {
+	client.Object
+
+	*T
+}
+
+func Get[T any, PT Object[T]](ctx context.Context, c client.Client, ns, name string) (*T, error) {
+	var obj PT = new(T)
+
+	key := types.NamespacedName{
+		Namespace: ns,
+		Name:      name,
+	}
+	if err := c.Get(ctx, key, obj); err != nil {
+		return nil, err
+	}
+
+	return obj, nil
 }

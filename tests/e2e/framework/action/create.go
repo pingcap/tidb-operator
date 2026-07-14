@@ -57,6 +57,22 @@ func MustCreateTiKV(
 	return kvg
 }
 
+func MustCreatePlacementPolicy(
+	ctx context.Context,
+	f *framework.Framework,
+	ps ...data.PlacementPolicyPatch,
+) *v1alpha1.PlacementPolicy {
+	patches := []data.PlacementPolicyPatch{
+		data.WithPlacementPolicyCluster(f.Cluster.Name),
+	}
+	patches = append(patches, ps...)
+	policy := data.NewPlacementPolicy(f.Namespace.Name, patches...)
+	ginkgo.By("Creating placement policy")
+	f.Must(f.Client.Create(ctx, policy))
+
+	return policy
+}
+
 func MustCreateTiFlash(
 	ctx context.Context,
 	f *framework.Framework,

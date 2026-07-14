@@ -17,10 +17,10 @@ package tasks
 import (
 	"github.com/go-logr/logr"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
 
@@ -48,7 +48,7 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
 	if rtx.Cluster.GetDeletionTimestamp().IsZero() {
-		if err := k8s.EnsureFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
+		if err := apicall.EnsureFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
 			return task.Fail().With("can't ensure finalizer: %w", err)
 		}
 		return task.Complete().With("ensured finalizer")
@@ -68,7 +68,7 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		len(rtx.TiKVWorkerGroups) == 0 &&
 		len(rtx.DMGroups) == 0 &&
 		len(rtx.DMWorkerGroups) == 0 {
-		if err := k8s.RemoveFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
+		if err := apicall.RemoveFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
 			return task.Fail().With("can't remove finalizer: %w", err)
 		}
 		return task.Complete().Break().With("removed finalizer")

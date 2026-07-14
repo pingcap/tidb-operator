@@ -8337,6 +8337,16 @@ spec:
                     - name
                     x-kubernetes-list-type: map
                 type: object
+              placement:
+                description: Placement defines TiDB Operator managed placement properties
+                  for TiKV stores.
+                properties:
+                  exclusive:
+                    description: |-
+                      Exclusive marks the TiKV stores in this group with an additional exclusive placement label.
+                      All TiKV stores still get the normal TiKVGroup placement label.
+                    type: boolean
+                type: object
               preStop:
                 description: PreStop defines preStop config
                 properties:
@@ -8466,11 +8476,15 @@ spec:
                        - host
                        - region
                        - zone
+                       - k/*
+                       - $k/*
                     type: object
                     x-kubernetes-validations:
                     - message: labels cannot contain 'host', 'region', or 'zone' keys
                       rule: '!(''host'' in self) && !(''region'' in self) && !(''zone''
                         in self)'
+                    - message: labels cannot contain keys with 'k/' or '$k/' prefix
+                      rule: self.all(k, !k.startsWith('k/') && !k.startsWith('$k/'))
                   ports:
                     description: Ports defines all ports listened by tikv
                     properties:

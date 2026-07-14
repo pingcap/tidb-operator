@@ -27,17 +27,14 @@ import (
 	rtClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 )
 
-var (
-	JobLifecycleManager = &jobLifecycleManager{}
-)
+var JobLifecycleManager = &jobLifecycleManager{}
 
-type jobLifecycleManager struct {
-}
+type jobLifecycleManager struct{}
 
 func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c client.Client) error {
 	jobNs, jobName := job.Object().GetNamespace(), job.Object().GetName()
@@ -46,12 +43,12 @@ func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c clien
 
 	// finalizer management
 	if job.NeedAddFinalizer() {
-		if err := k8s.EnsureFinalizer(ctx, c, job.Object()); err != nil {
+		if err := apicall.EnsureFinalizer(ctx, c, job.Object()); err != nil {
 			return fmt.Errorf("failed to ensure finalizer for job %s: %w", job.Object(), err)
 		}
 	}
 	if job.NeedRemoveFinalizer() {
-		if err := k8s.RemoveFinalizer(ctx, c, job.Object()); err != nil {
+		if err := apicall.RemoveFinalizer(ctx, c, job.Object()); err != nil {
 			return fmt.Errorf("failed to remove finalizer for job %s: %w", job.Object(), err)
 		}
 	}
@@ -86,10 +83,9 @@ func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c clien
 }
 
 func (m *jobLifecycleManager) detectK8sJobFailure(ctx context.Context, c client.Client, job runtime.RetriableJob) (
-	jobFailed bool, reason string, originalReason string, err error) {
-	var (
-		j = job.Object()
-	)
+	jobFailed bool, reason string, originalReason string, err error,
+) {
+	j := job.Object()
 
 	var (
 		ns   = j.GetNamespace()
@@ -129,7 +125,8 @@ func (m *jobLifecycleManager) isFailureAlreadyRecorded(job runtime.RetriableJob)
 }
 
 func (m *jobLifecycleManager) isK8sJobFailed(ctx context.Context, cli client.Client, job runtime.Job) (
-	jobFailed bool, reason string, originalReason string, err error) {
+	jobFailed bool, reason string, originalReason string, err error,
+) {
 	j := job.Object()
 	k8sJobKey := job.K8sJob()
 	k8sJob := batchv1.Job{}

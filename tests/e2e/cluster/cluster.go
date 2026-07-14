@@ -46,7 +46,9 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
@@ -418,21 +420,15 @@ var _ = Describe("TiDB Cluster", func() {
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
 			By("Checking log tailer sidercar container")
-			var tidbPodList corev1.PodList
-			Expect(k8sClient.List(ctx, &tidbPodList, client.InNamespace(tc.Namespace), client.MatchingLabels{
-				v1alpha1.LabelKeyCluster: tc.Name,
-				v1alpha1.LabelKeyGroup:   dbg.Name,
-			})).To(Succeed())
+			tidbPodList, err := apicall.ListPods[scope.TiDBGroup](ctx, k8sClient, dbg)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(len(tidbPodList.Items)).To(Equal(1))
 			tidbPod := tidbPodList.Items[0]
 			Expect(tidbPod.Spec.InitContainers).To(HaveLen(1)) // sidercar container in `initContainers`
 			Expect(tidbPod.Spec.InitContainers[0].Name).To(Equal(v1alpha1.ContainerNameTiDBSlowLog))
 
-			var tiflashPodList corev1.PodList
-			Expect(k8sClient.List(ctx, &tiflashPodList, client.InNamespace(tc.Namespace), client.MatchingLabels{
-				v1alpha1.LabelKeyCluster: tc.Name,
-				v1alpha1.LabelKeyGroup:   flashg.Name,
-			})).To(Succeed())
+			tiflashPodList, err := apicall.ListPods[scope.TiFlashGroup](ctx, k8sClient, flashg)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(len(tiflashPodList.Items)).To(Equal(1))
 			tiflashPod := tiflashPodList.Items[0]
 			Expect(tiflashPod.Spec.InitContainers).To(HaveLen(2))
@@ -1258,9 +1254,8 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: pdg.Name}, &pdgGet)).To(Succeed())
 					g.Expect(pdgGet.Spec.Template.Spec.Version).To(Equal(newVersion))
 					g.Expect(pdgGet.Status.Version).To(Equal(newVersion))
-					var pdPods corev1.PodList
-					g.Expect(k8sClient.List(ctx, &pdPods, client.InNamespace(tc.Namespace),
-						client.MatchingLabels{v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD}))
+					pdPods, err := apicall.ListPods[scope.PDGroup](ctx, k8sClient, &pdgGet)
+					g.Expect(err).ToNot(HaveOccurred())
 					for _, pod := range pdPods.Items {
 						for _, container := range pod.Spec.Containers {
 							if container.Name == v1alpha1.ContainerNamePD {
@@ -1272,9 +1267,9 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: kvg.Name}, &kvgGet)).To(Succeed())
 					g.Expect(kvgGet.Spec.Template.Spec.Version).To(Equal(newVersion))
 					g.Expect(kvgGet.Status.Version).To(Equal(newVersion))
-					g.Expect(k8sClient.List(ctx, &pdPods, client.InNamespace(tc.Namespace),
-						client.MatchingLabels{v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV}))
-					for _, pod := range pdPods.Items {
+					tikvPods, err := apicall.ListPods[scope.TiKVGroup](ctx, k8sClient, &kvgGet)
+					g.Expect(err).ToNot(HaveOccurred())
+					for _, pod := range tikvPods.Items {
 						for _, container := range pod.Spec.Containers {
 							if container.Name == v1alpha1.ContainerNameTiKV {
 								g.Expect(strings.Contains(container.Image, newVersion)).To(BeTrue())

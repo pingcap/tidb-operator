@@ -19,7 +19,6 @@ import (
 	"context"
 	"slices"
 
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -55,21 +54,7 @@ func GetCluster[
 	F client.Object,
 	T runtime.Object,
 ](ctx context.Context, c client.Client, obj F) (*v1alpha1.Cluster, error) {
-	return GetClusterByKey(ctx, c, obj.GetNamespace(), coreutil.Cluster[S](obj))
-}
-
-func GetClusterByKey(ctx context.Context, c client.Client, ns, name string) (*v1alpha1.Cluster, error) {
-	cluster := &v1alpha1.Cluster{}
-
-	key := types.NamespacedName{
-		Namespace: ns,
-		Name:      name,
-	}
-	if err := c.Get(ctx, key, cluster); err != nil {
-		return nil, err
-	}
-
-	return cluster, nil
+	return Get[v1alpha1.Cluster](ctx, c, obj.GetNamespace(), coreutil.Cluster[S](obj))
 }
 
 func ListClusterInstances[

@@ -110,6 +110,7 @@ crds:
 - dmworkers.core.pingcap.com
 - pdgroups.core.pingcap.com
 - pds.core.pingcap.com
+- placementpolicies.core.pingcap.com
 - resourcemanagergroups.core.pingcap.com
 - resourcemanagers.core.pingcap.com
 - routergroups.core.pingcap.com

@@ -8434,11 +8434,15 @@ spec:
                        - host
                        - region
                        - zone
+                       - k/*
+                       - $k/*
                     type: object
                     x-kubernetes-validations:
                     - message: labels cannot contain 'host', 'region', or 'zone' keys
                       rule: '!(''host'' in self) && !(''region'' in self) && !(''zone''
                         in self)'
+                    - message: labels cannot contain keys with 'k/' or '$k/' prefix
+                      rule: self.all(k, !k.startsWith('k/') && !k.startsWith('$k/'))
                   ports:
                     description: Ports defines all ports listened by tiflash
                     properties:

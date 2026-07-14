@@ -20,6 +20,8 @@ import (
 
 	"github.com/go-logr/logr"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -39,6 +41,27 @@ func TaskStoreLabels(state *ReconcileContext, c client.Client, m pdm.PDClientMan
 		}
 
 		logger := logr.FromContextOrDiscard(ctx)
+		tikv := state.Object()
+		groupName := tikv.Labels[v1alpha1.LabelKeyGroup]
+		if groupName == "" {
+			return fmt.Errorf("tikv %s/%s has no %s label", tikv.Namespace, tikv.Name, v1alpha1.LabelKeyGroup)
+		}
+		ls[v1alpha1.PlacementTiKVGroupLabelKey] = coreutil.PlacementTiKVGroupLabelValue(
+			tikv.Namespace,
+			groupName,
+		)
+
+		if coreutil.TiKVStorePlacementExclusive(tikv.Spec.Placement) {
+			ls[v1alpha1.PlacementTiKVGroupExclusiveLabelKey] = v1alpha1.PlacementTiKVGroupExclusiveLabelValue
+		} else if _, ok := state.Store.Labels[v1alpha1.PlacementTiKVGroupExclusiveLabelKey]; ok {
+			if err := pc.Underlay().DeleteStoreLabel(ctx, state.Store.ID, v1alpha1.PlacementTiKVGroupExclusiveLabelKey); err != nil {
+				return err
+			}
+
+			logger.Info("deleted old store placement label", "id", state.Store.ID, "labelKey", v1alpha1.PlacementTiKVGroupExclusiveLabelKey)
+			return nil
+		}
+
 		if !maputil.Contains(state.Store.Labels, ls) {
 			if err := pc.Underlay().SetStoreLabels(ctx, state.Store.ID, ls); err != nil {
 				return err

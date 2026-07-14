@@ -66,11 +66,7 @@ var _ = ginkgo.Describe("DM", label.DM, func() {
 			ginkgo.By("Delete DMWorkerGroup")
 			f.Must(f.Client.Delete(ctx, dwg))
 			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, dwg, waiter.LongTaskTimeout))
-			f.Must(waiter.WaitForListDeleted(ctx, f.Client, &corev1.PodList{}, waiter.LongTaskTimeout, client.InNamespace(dwg.Namespace), client.MatchingLabels{
-				v1alpha1.LabelKeyCluster:   dwg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     dwg.Name,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentDMWorker,
-			}))
+			f.Must(waiter.WaitForPodsDeleted[scope.DMWorkerGroup](ctx, f.Client, dwg, waiter.LongTaskTimeout))
 			f.Must(waiter.WaitForListDeleted(ctx, f.Client, &corev1.ConfigMapList{}, waiter.LongTaskTimeout, client.InNamespace(dwg.Namespace), client.MatchingLabels{
 				v1alpha1.LabelKeyCluster:   dwg.Spec.Cluster.Name,
 				v1alpha1.LabelKeyGroup:     dwg.Name,
@@ -80,11 +76,7 @@ var _ = ginkgo.Describe("DM", label.DM, func() {
 			ginkgo.By("Delete DMGroup")
 			f.Must(f.Client.Delete(ctx, dmg))
 			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, dmg, waiter.LongTaskTimeout))
-			f.Must(waiter.WaitForListDeleted(ctx, f.Client, &corev1.PodList{}, waiter.LongTaskTimeout, client.InNamespace(dmg.Namespace), client.MatchingLabels{
-				v1alpha1.LabelKeyCluster:   dmg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     dmg.Name,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentDMMaster,
-			}))
+			f.Must(waiter.WaitForPodsDeleted[scope.DMGroup](ctx, f.Client, dmg, waiter.LongTaskTimeout))
 			f.Must(waiter.WaitForListDeleted(ctx, f.Client, &corev1.ConfigMapList{}, waiter.LongTaskTimeout, client.InNamespace(dmg.Namespace), client.MatchingLabels{
 				v1alpha1.LabelKeyCluster:   dmg.Spec.Cluster.Name,
 				v1alpha1.LabelKeyGroup:     dmg.Name,

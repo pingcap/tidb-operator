@@ -418,6 +418,36 @@ func ServerLabels() []Case {
 	}
 }
 
+func PlacementServerLabels(fields ...string) []Case {
+	errMsg := strings.Join(fields, ".") + ": Invalid value: \"object\": labels cannot contain keys with 'k/' or '$k/' prefix"
+
+	return []Case{
+		{
+			desc:     "set keyspace placement label",
+			isCreate: true,
+			current: map[string]any{
+				"k/tikvgroup": "foo",
+			},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "set exclusive keyspace placement label",
+			isCreate: true,
+			current: map[string]any{
+				"$k/exclusive": "true",
+			},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "set normal placement-adjacent label",
+			isCreate: true,
+			current: map[string]any{
+				"custom/k": "foo",
+			},
+		},
+	}
+}
+
 func OverlayVolumeClaims(requireDataVolume bool) []Case {
 	errMsg := `spec: Invalid value: "object": overlay volumeClaims names must exist in volumes`
 

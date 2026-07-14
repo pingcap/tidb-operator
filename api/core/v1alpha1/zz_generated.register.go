@@ -73,6 +73,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&PDGroup{},
 		&PDGroupList{},
 		&PDList{},
+		&PlacementPolicy{},
+		&PlacementPolicyList{},
 		&ResourceManager{},
 		&ResourceManagerGroup{},
 		&ResourceManagerGroupList{},

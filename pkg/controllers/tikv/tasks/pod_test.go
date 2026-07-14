@@ -203,6 +203,33 @@ func TestTaskPod(t *testing.T) {
 			pdClientReady:    false,
 		},
 		{
+			desc: "placement exclusive changed",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Version = fakeVersion
+						obj.Spec.Placement = &v1alpha1.TiKVStorePlacement{
+							Exclusive: ptr.To(true),
+						}
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							obj.Spec.Version = fakeVersion
+							return obj
+						}),
+					),
+				},
+			},
+
+			expectUpdatedPod:    true,
+			expectedStatus:      task.SComplete,
+			expectedShouldEvict: false,
+			pdClientReady:       false,
+		},
+		{
 			desc: "config changed, restart policy",
 			state: &ReconcileContext{
 				State: &state{
