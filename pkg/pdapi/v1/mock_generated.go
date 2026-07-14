@@ -108,34 +108,6 @@ func (mr *MockPDClientMockRecorder) DeleteMember(ctx, name any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMember", reflect.TypeOf((*MockPDClient)(nil).DeleteMember), ctx, name)
 }
 
-// DeletePlacementRuleBundle mocks base method.
-func (m *MockPDClient) DeletePlacementRuleBundle(ctx context.Context, groupID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeletePlacementRuleBundle", ctx, groupID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeletePlacementRuleBundle indicates an expected call of DeletePlacementRuleBundle.
-func (mr *MockPDClientMockRecorder) DeletePlacementRuleBundle(ctx, groupID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePlacementRuleBundle", reflect.TypeOf((*MockPDClient)(nil).DeletePlacementRuleBundle), ctx, groupID)
-}
-
-// DeletePlacementRuleGroup mocks base method.
-func (m *MockPDClient) DeletePlacementRuleGroup(ctx context.Context, groupID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeletePlacementRuleGroup", ctx, groupID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeletePlacementRuleGroup indicates an expected call of DeletePlacementRuleGroup.
-func (mr *MockPDClientMockRecorder) DeletePlacementRuleGroup(ctx, groupID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePlacementRuleGroup", reflect.TypeOf((*MockPDClient)(nil).DeletePlacementRuleGroup), ctx, groupID)
-}
-
 // DeletePlacementRuleGroupRulesByIDPrefix mocks base method.
 func (m *MockPDClient) DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string) error {
 	m.ctrl.T.Helper()
@@ -417,21 +389,6 @@ func (mr *MockPDClientMockRecorder) ListKeyspaceRegions(ctx, keyspaceID any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyspaceRegions", reflect.TypeOf((*MockPDClient)(nil).ListKeyspaceRegions), ctx, keyspaceID)
 }
 
-// ListPlacementRuleBundles mocks base method.
-func (m *MockPDClient) ListPlacementRuleBundles(ctx context.Context) ([]*PlacementRuleGroupBundle, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListPlacementRuleBundles", ctx)
-	ret0, _ := ret[0].([]*PlacementRuleGroupBundle)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListPlacementRuleBundles indicates an expected call of ListPlacementRuleBundles.
-func (mr *MockPDClientMockRecorder) ListPlacementRuleBundles(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPlacementRuleBundles", reflect.TypeOf((*MockPDClient)(nil).ListPlacementRuleBundles), ctx)
-}
-
 // ListPlacementRulesByGroupIDPrefix mocks base method.
 func (m *MockPDClient) ListPlacementRulesByGroupIDPrefix(ctx context.Context, groupID, idPrefix string) ([]PlacementRule, error) {
 	m.ctrl.T.Helper()
@@ -460,20 +417,6 @@ func (m *MockPDClient) ListRegions(ctx context.Context) (*RegionsInfo, error) {
 func (mr *MockPDClientMockRecorder) ListRegions(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRegions", reflect.TypeOf((*MockPDClient)(nil).ListRegions), ctx)
-}
-
-// SetPlacementRuleBundle mocks base method.
-func (m *MockPDClient) SetPlacementRuleBundle(ctx context.Context, bundle *PlacementRuleGroupBundle, partial bool) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetPlacementRuleBundle", ctx, bundle, partial)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetPlacementRuleBundle indicates an expected call of SetPlacementRuleBundle.
-func (mr *MockPDClientMockRecorder) SetPlacementRuleBundle(ctx, bundle, partial any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPlacementRuleBundle", reflect.TypeOf((*MockPDClient)(nil).SetPlacementRuleBundle), ctx, bundle, partial)
 }
 
 // SetPlacementRuleGroup mocks base method.

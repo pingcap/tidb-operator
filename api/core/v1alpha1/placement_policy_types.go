@@ -110,9 +110,11 @@ type PlacementPolicyKeyspaceSelector struct {
 	// Keyspaces selects PD keyspace IDs. Database and table selectors are reserved
 	// for a later version because their key ranges are unstable today.
 	// +listType=set
+	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:UniqueItems=true
 	// +kubebuilder:validation:items:Pattern=`^(0|[1-9][0-9]*)$`
-	IDs []string `json:"ids,omitempty"`
+	IDs []string `json:"ids"`
 }
 
 // PlacementPolicyStatus records synced PD placement bundles.

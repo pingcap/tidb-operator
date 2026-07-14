@@ -55,8 +55,6 @@ type PDWriter interface {
 	SetStoreLabels(ctx context.Context, storeID string, labels map[string]string) error
 	// DeleteStoreLabel deletes one label key from a store.
 	DeleteStoreLabel(ctx context.Context, storeID, labelKey string) error
-	// SetPlacementRuleBundle sets PD placement rule bundles.
-	SetPlacementRuleBundle(ctx context.Context, bundle *PlacementRuleGroupBundle, partial bool) error
 	// SetPlacementRulesInBatch applies placement rule add/delete operations in one request.
 	SetPlacementRulesInBatch(ctx context.Context, ruleOps []PlacementRuleOp) error
 	// SetPlacementRuleGroupRulesByIDPrefix reconciles placement rules with the specified ID prefix in a group.
@@ -66,10 +64,6 @@ type PDWriter interface {
 	DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, groupID, idPrefix string) error
 	// SetPlacementRuleGroup creates or updates a placement rule group.
 	SetPlacementRuleGroup(ctx context.Context, group *PlacementRuleGroup) error
-	// DeletePlacementRuleGroup deletes a placement rule group by ID.
-	DeletePlacementRuleGroup(ctx context.Context, groupID string) error
-	// DeletePlacementRuleBundle deletes a PD placement rule bundle by group ID.
-	DeletePlacementRuleBundle(ctx context.Context, groupID string) error
 	// CreateKeyspace creates a PD keyspace and returns its metadata.
 	CreateKeyspace(ctx context.Context, name string, config map[string]string) (*KeyspaceMeta, error)
 	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
@@ -104,8 +98,6 @@ type PDClient interface {
 	GetMembers(ctx context.Context) (*MembersInfo, error)
 	// GetStores lists all TiKV/TiFlash stores of the cluster.
 	GetStores(ctx context.Context) (*StoresInfo, error)
-	// ListPlacementRuleBundles lists all PD placement rule bundles.
-	ListPlacementRuleBundles(ctx context.Context) ([]*PlacementRuleGroupBundle, error)
 	// ListPlacementRulesByGroupIDPrefix lists placement rules with the specified ID prefix in a group.
 	ListPlacementRulesByGroupIDPrefix(ctx context.Context, groupID, idPrefix string) ([]PlacementRule, error)
 	// GetPlacementRuleBundle gets a PD placement rule bundle by group ID.
@@ -430,21 +422,6 @@ func (c *pdClient) DeleteStoreLabel(ctx context.Context, storeID, labelKey strin
 	return fmt.Errorf("failed to delete store label %s from store %s: %s", labelKey, storeID, body)
 }
 
-func (c *pdClient) SetPlacementRuleBundle(ctx context.Context, bundle *PlacementRuleGroupBundle, partial bool) error {
-	apiURL := fmt.Sprintf("%s/%s?partial=%t", c.url, placementRulePrefix, partial)
-	bundles := []*PlacementRuleGroupBundle{
-		bundle,
-	}
-	data, err := json.Marshal(bundles)
-	if err != nil {
-		return err
-	}
-	if _, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(data)); err != nil {
-		return fmt.Errorf("failed to set placement rule bundles: %w", err)
-	}
-	return nil
-}
-
 func (c *pdClient) SetPlacementRuleGroup(ctx context.Context, group *PlacementRuleGroup) error {
 	apiURL := fmt.Sprintf("%s/%s", c.url, placementRuleGroupPrefix)
 	data, err := json.Marshal(group)
@@ -501,30 +478,6 @@ func (c *pdClient) DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, 
 		return nil
 	}
 	return c.SetPlacementRulesInBatch(ctx, ruleOps)
-}
-
-func (c *pdClient) DeletePlacementRuleGroup(ctx context.Context, groupID string) error {
-	apiURL := fmt.Sprintf("%s/%s/%s", c.url, placementRuleGroupPrefix, url.PathEscape(groupID))
-	req, err := http.NewRequestWithContext(ctx, "DELETE", apiURL, http.NoBody)
-	if err != nil {
-		return err
-	}
-
-	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer httputil.DeferClose(res.Body)
-
-	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
-		return nil
-	}
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	return fmt.Errorf("failed to delete placement rule group %s: %s", groupID, body)
 }
 
 func placementRuleAddOps(rules []PlacementRule) []PlacementRuleOp {
@@ -622,19 +575,6 @@ func (c *pdClient) GetPlacementRuleBundle(ctx context.Context, groupID string) (
 	return bundle, nil
 }
 
-func (c *pdClient) ListPlacementRuleBundles(ctx context.Context) ([]*PlacementRuleGroupBundle, error) {
-	apiURL := fmt.Sprintf("%s/%s", c.url, placementRulePrefix)
-	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
-	if err != nil {
-		return nil, err
-	}
-	bundles := []*PlacementRuleGroupBundle{}
-	if err := json.Unmarshal(body, &bundles); err != nil {
-		return nil, err
-	}
-	return bundles, nil
-}
-
 func (c *pdClient) ListPlacementRulesByGroupIDPrefix(ctx context.Context, groupID, idPrefix string) ([]PlacementRule, error) {
 	apiURL := fmt.Sprintf("%s/%s/%s", c.url, placementRulesGroupPrefix, url.PathEscape(groupID))
 	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
@@ -656,30 +596,6 @@ func (c *pdClient) ListPlacementRulesByGroupIDPrefix(ctx context.Context, groupI
 		}
 	}
 	return rules, nil
-}
-
-func (c *pdClient) DeletePlacementRuleBundle(ctx context.Context, groupID string) error {
-	apiURL := fmt.Sprintf("%s/%s/%s", c.url, placementRulePrefix, url.PathEscape(groupID))
-	req, err := http.NewRequestWithContext(ctx, "DELETE", apiURL, http.NoBody)
-	if err != nil {
-		return err
-	}
-
-	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer httputil.DeferClose(res.Body)
-
-	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
-		return nil
-	}
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	return fmt.Errorf("failed to delete placement rule bundle %s: %s", groupID, body)
 }
 
 func (c *pdClient) DeleteStore(ctx context.Context, storeID string) error {

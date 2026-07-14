@@ -133,7 +133,10 @@ spec:
                                 type: string
                               minItems: 1
                               type: array
+                              uniqueItems: true
                               x-kubernetes-list-type: set
+                          required:
+                          - ids
                           type: object
                       type: object
                       x-kubernetes-validations:

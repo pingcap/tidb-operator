@@ -132,6 +132,42 @@ func PlacementPolicyRules() []Case {
 				`spec.rules[0].selector: Invalid value: "object": selector.keyspace is required`,
 			},
 		},
+		{
+			desc:     "selector keyspace ids is required",
+			isCreate: true,
+			current: []any{
+				map[string]any{
+					"name":  "r1",
+					"role":  "voter",
+					"count": int64(3),
+					"selector": map[string]any{
+						"keyspace": map[string]any{},
+					},
+				},
+			},
+			wantErrs: []string{
+				`spec.rules[0].selector.keyspace.ids: Required value`,
+			},
+		},
+		{
+			desc:     "selector keyspace ids cannot contain duplicates",
+			isCreate: true,
+			current: []any{
+				map[string]any{
+					"name":  "r1",
+					"role":  "voter",
+					"count": int64(3),
+					"selector": map[string]any{
+						"keyspace": map[string]any{
+							"ids": []any{"1", "1"},
+						},
+					},
+				},
+			},
+			wantErrs: []string{
+				`spec.rules[0].selector.keyspace.ids: Invalid value: "": spec.rules[0].selector.keyspace.ids in body shouldn't contain duplicates`,
+			},
+		},
 	}
 }
 
