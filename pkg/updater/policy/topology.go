@@ -89,9 +89,12 @@ func (p *topologyPolicy[R]) Add(update R) R {
 func (p *topologyPolicy[R]) Update(update, outdated R) R {
 	update.SetTopology(outdated.GetTopology())
 
-	p.all.Add(update.GetName(), update.GetTopology())
+	// Update hooks run before KeepName, so use the existing instance name to
+	// keep the in-memory scheduler keyed by the instance being updated.
+	name := outdated.GetName()
+	p.all.Add(name, update.GetTopology())
 	if update.GetUpdateRevision() == p.rev {
-		p.updated.Add(update.GetName(), update.GetTopology())
+		p.updated.Add(name, update.GetTopology())
 	}
 
 	return update

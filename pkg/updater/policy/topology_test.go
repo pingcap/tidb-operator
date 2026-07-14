@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -229,4 +230,55 @@ func fakePD(name, rev, zone string) *v1alpha1.PD {
 		}
 	}
 	return pd
+}
+
+func fakeTiKV(name, rev, zone string, offline bool) *v1alpha1.TiKV {
+	tikv := fake.FakeObj(name, fake.Label[v1alpha1.TiKV](v1alpha1.LabelKeyInstanceRevisionHash, rev))
+	if zone != "" {
+		tikv.Spec.Topology = v1alpha1.Topology{
+			"zone": zone,
+		}
+	}
+	if offline {
+		tikv.Spec.Offline = ptr.To(true)
+	}
+	return tikv
+}
+
+// TestTopologyPolicyUpdateKeysSchedulerByOutdatedName ensures Update keys
+// the in-memory schedulers by the outdated instance's name. Custom update
+// hooks run before KeepName, so the new object's name is still empty; using
+// update.GetName() would corrupt the scheduler state across repeated
+// updates in one updater execution.
+func TestTopologyPolicyUpdateKeysSchedulerByOutdatedName(t *testing.T) {
+	const rev = "rev"
+
+	const (
+		zoneA = "us-west-1a"
+		zoneB = "us-west-1b"
+	)
+
+	p, err := NewTopologyPolicy[*runtime.TiKV]([]v1alpha1.ScheduleTopology{
+		{Topology: v1alpha1.Topology{"zone": zoneA}},
+		{Topology: v1alpha1.Topology{"zone": zoneB}},
+	}, rev)
+	require.NoError(t, err)
+
+	concrete, ok := p.(*topologyPolicy[*runtime.TiKV])
+	require.True(t, ok)
+
+	outdatedA := runtime.FromTiKV(fakeTiKV("tikv-a", "old", zoneA, false))
+	outdatedB := runtime.FromTiKV(fakeTiKV("tikv-b", "old", zoneB, false))
+	// TiKVNewer/TiFlashNewer produce a new object whose name is initially
+	// empty; KeepName fills it in after update hooks have already run.
+	newA := runtime.FromTiKV(fakeTiKV("", rev, "", false))
+	newB := runtime.FromTiKV(fakeTiKV("", rev, "", false))
+
+	p.Update(newA, outdatedA)
+	p.Update(newB, outdatedB)
+
+	assert.NotContains(t, concrete.all.NextDel(), "")
+	assert.NotContains(t, concrete.updated.NextDel(), "")
+	assert.Equal(t, []string{"tikv-a", "tikv-b"}, concrete.all.NextDel())
+	assert.Equal(t, []string{"tikv-a", "tikv-b"}, concrete.updated.NextDel())
 }
