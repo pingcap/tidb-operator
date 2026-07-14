@@ -37,6 +37,7 @@ type Builder[R runtime.Instance] interface {
 	WithDelHooks(hooks ...DelHook[R]) Builder[R]
 	WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
+	WithCancelOfflinePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
 	// MinReadySeconds means instances are available only when they keep ready more than minReadySeconds
@@ -62,8 +63,9 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 	updateHooks []UpdateHook[R]
 	delHooks    []DelHook[R]
 
-	scaleInPreferPolicies []PreferPolicy[R]
-	updatePreferPolicies  []PreferPolicy[R]
+	scaleInPreferPolicies       []PreferPolicy[R]
+	updatePreferPolicies        []PreferPolicy[R]
+	cancelOfflinePreferPolicies []PreferPolicy[R]
 }
 
 func (b *builder[T, O, R]) Build() Executor {
@@ -100,6 +102,10 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		scaleInSelector: NewSelector(scaleInPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
+		// Cancel-offline restores an instance, so the deletion/update
+		// preference defaults above have the wrong meaning here and are not
+		// prepended.
+		cancelOfflineSelector: NewSelector(b.cancelOfflinePreferPolicies...),
 	}
 	return NewExecutor(
 		actor,
@@ -174,6 +180,11 @@ func (b *builder[T, O, R]) WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builde
 
 func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R] {
 	b.updatePreferPolicies = append(b.updatePreferPolicies, ps...)
+	return b
+}
+
+func (b *builder[T, O, R]) WithCancelOfflinePreferPolicy(ps ...PreferPolicy[R]) Builder[R] {
+	b.cancelOfflinePreferPolicies = append(b.cancelOfflinePreferPolicies, ps...)
 	return b
 }
 

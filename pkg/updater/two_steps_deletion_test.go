@@ -50,6 +50,20 @@ func newMockPreferPolicy(items []*runtime.TiKV) PreferPolicy[*runtime.TiKV] {
 	return &mockPreferPolicy{items: items}
 }
 
+// mockNamePreferPolicy prefers the allowed instance matching name, if present.
+type mockNamePreferPolicy struct {
+	name string
+}
+
+func (m *mockNamePreferPolicy) Prefer(items []*runtime.TiKV) []*runtime.TiKV {
+	for _, item := range items {
+		if item.GetName() == m.name {
+			return []*runtime.TiKV{item}
+		}
+	}
+	return nil
+}
+
 // assertTiKVState verifies the expected TiKV count and offline status
 func assertTiKVState(t *testing.T, cli client.Client, expectedTotal, expectedOffline int) {
 	var tikvs v1alpha1.TiKVList
@@ -131,9 +145,10 @@ func testTiKVNewer() NewFactory[*runtime.TiKV] {
 
 func TestExecutorForCancelableScaleIn(t *testing.T) {
 	tests := []struct {
-		name                  string
-		setupStates           func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object)
-		scaleInPreferPolicies []PreferPolicy[*runtime.TiKV]
+		name                        string
+		setupStates                 func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object)
+		scaleInPreferPolicies       []PreferPolicy[*runtime.TiKV]
+		cancelOfflinePreferPolicies []PreferPolicy[*runtime.TiKV]
 
 		desired             int
 		unavailableUpdate   int
@@ -144,6 +159,11 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 		expectedError   bool
 		expectedTotal   int
 		expectedOffline int
+		// expectedCanceledName and expectedStillOfflineName, when set, assert
+		// which specific instance the cancel-offline selector chose, not just
+		// the resulting offline count.
+		expectedCanceledName     string
+		expectedStillOfflineName string
 	}{
 		// Normal scale in scenarios
 		{
@@ -332,6 +352,30 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			expectedWait:    true,
 		},
 		{
+			name: "cancel offline prefers the instance chosen by a custom cancel-offline policy",
+			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
+				t1 := buildTestTiKV("1", 1, false, offline())
+				t2 := buildTestTiKV("2", 1, false, offline())
+				t3 := buildTestTiKV("3", 1, true)
+				update = []*runtime.TiKV{t3}
+				beingOffline = []*runtime.TiKV{t1, t2}
+				objs = buildObjects(t1, t2, t3)
+				return
+			},
+			desired: 2,
+			cancelOfflinePreferPolicies: []PreferPolicy[*runtime.TiKV]{
+				&mockNamePreferPolicy{name: "tikv-2"},
+			},
+			expectedActions: []action{
+				actionCancelOffline,
+			},
+			expectedTotal:            3,
+			expectedOffline:          1,
+			expectedWait:             true,
+			expectedCanceledName:     "tikv-2",
+			expectedStillOfflineName: "tikv-1",
+		},
+		{
 			name: "scale in from 3 to 1, cancel partially it by increasing desired to 2 (2)",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
 				t1 := buildTestTiKV("1", 1, false)
@@ -357,16 +401,17 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			update, outdated, beingOffline, deleted, objs := tt.setupStates()
 			fakeCli := client.NewFakeClient(objs...)
 			act := &actor[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]{
-				f:               testTiKVNewer(),
-				c:               fakeCli,
-				update:          NewState(update),
-				outdated:        NewState(outdated),
-				beingOffline:    NewState(beingOffline),
-				deleted:         NewState(deleted),
-				scaleInSelector: NewSelector(newMockPreferPolicy(update)),
-				updateSelector:  NewSelector(newMockPreferPolicy(outdated)),
-				updateHooks:     []UpdateHook[*runtime.TiKV]{KeepName[*runtime.TiKV]()},
-				actions:         make([]action, 0),
+				f:                     testTiKVNewer(),
+				c:                     fakeCli,
+				update:                NewState(update),
+				outdated:              NewState(outdated),
+				beingOffline:          NewState(beingOffline),
+				deleted:               NewState(deleted),
+				scaleInSelector:       NewSelector(newMockPreferPolicy(update)),
+				updateSelector:        NewSelector(newMockPreferPolicy(outdated)),
+				cancelOfflineSelector: NewSelector(tt.cancelOfflinePreferPolicies...),
+				updateHooks:           []UpdateHook[*runtime.TiKV]{KeepName[*runtime.TiKV]()},
+				actions:               make([]action, 0),
 			}
 			e := NewExecutor(act, len(update), len(outdated), tt.desired,
 				tt.unavailableUpdate, tt.unavailableOutdated, 0, 1)
@@ -381,6 +426,21 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			assert.Equal(t, tt.expectedActions, act.RecordedActions(), "actions mismatch")
 
 			assertTiKVState(t, fakeCli, tt.expectedTotal, tt.expectedOffline)
+
+			if tt.expectedCanceledName != "" {
+				var tikv v1alpha1.TiKV
+				require.NoError(t, fakeCli.Get(context.TODO(),
+					client.ObjectKey{Name: tt.expectedCanceledName}, &tikv))
+				assert.False(t, coreutil.IsOffline[scope.TiKV](&tikv),
+					"expected %s to be canceled (offline=false)", tt.expectedCanceledName)
+			}
+			if tt.expectedStillOfflineName != "" {
+				var tikv v1alpha1.TiKV
+				require.NoError(t, fakeCli.Get(context.TODO(),
+					client.ObjectKey{Name: tt.expectedStillOfflineName}, &tikv))
+				assert.True(t, coreutil.IsOffline[scope.TiKV](&tikv),
+					"expected %s to remain offline", tt.expectedStillOfflineName)
+			}
 		})
 	}
 }

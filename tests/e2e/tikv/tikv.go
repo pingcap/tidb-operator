@@ -15,8 +15,10 @@
 package tikv
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -359,7 +361,7 @@ replica-schedule-limit = 8
 			}
 		})
 
-		ginkgo.It("should handle partial cancellation of scale-in", func(ctx context.Context) {
+		ginkgo.It("should handle partial cancellation of scale-in", label.MultipleAZ, label.Scale, func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
 			pdg := f.MustCreatePD(ctx, data.GroupPatchFunc[*v1alpha1.PDGroup](func(pdg *v1alpha1.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
@@ -367,7 +369,12 @@ region-schedule-limit = 32
 replica-schedule-limit = 16
 `
 			}))
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](5))
+			kvg := f.MustCreateTiKV(ctx,
+				data.WithReplicas[scope.TiKVGroup](5),
+				data.GroupPatchFunc[*v1alpha1.TiKVGroup](func(kvg *v1alpha1.TiKVGroup) {
+					setTwoAZTiKVEvenlySpreadPolicy(kvg, 1, 1)
+				}),
+			)
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -375,26 +382,59 @@ replica-schedule-limit = 16
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
-			ginkgo.By("Scaling in TiKV from 5 to 3 replicas")
+			ginkgo.By("Changing weights to 2:1 and scaling in TiKV from 5 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())
+			setTwoAZTiKVEvenlySpreadPolicy(kvg, 2, 1)
 			kvg.Spec.Replicas = ptr.To[int32](3)
 			f.Must(f.Client.Patch(ctx, kvg, patch))
 
-			ginkgo.By("Verifying 2 TiKV instances are marked for offline")
+			ginkgo.By("Verifying 2 TiKV instances are marked for offline, one per zone")
 			offliningKVs := findOffliningTiKVs(ctx, f, kvg, 2)
 			gomega.Expect(offliningKVs).To(gomega.HaveLen(2))
+			gomega.Expect(zonesOf(offliningKVs)).To(gomega.ConsistOf(zoneA, zoneB))
 
-			ginkgo.By("Partially cancelling by scaling up to 4 replicas")
+			// Instance names are random, so choose the final weights after
+			// sorting the offlining instances. This makes the old
+			// list-first cancellation pick the wrong topology
+			// deterministically: the old code always cancels
+			// sortedCandidates[0], while the correct topology-aware choice
+			// is sortedCandidates[1] under the weights picked below.
+			sortedCandidates := append([]*v1alpha1.TiKV{}, offliningKVs...)
+			slices.SortFunc(sortedCandidates, func(a, b *v1alpha1.TiKV) int {
+				return cmp.Compare(a.GetName(), b.GetName())
+			})
+			firstZone := sortedCandidates[0].Spec.Topology["zone"]
+
+			var finalWeightA, finalWeightB int32
+			var expectedCanceledZone, expectedStillOfflineZone string
+			var expectedFinalCountA, expectedFinalCountB int
+			switch firstZone {
+			case zoneA:
+				finalWeightA, finalWeightB = 3, 2
+				expectedCanceledZone = zoneB
+				expectedStillOfflineZone = zoneA
+				expectedFinalCountA, expectedFinalCountB = 2, 2
+			case zoneB:
+				finalWeightA, finalWeightB = 3, 1
+				expectedCanceledZone = zoneA
+				expectedStillOfflineZone = zoneB
+				expectedFinalCountA, expectedFinalCountB = 3, 1
+			default:
+				ginkgo.Fail(fmt.Sprintf("unexpected zone %q for offlining candidate", firstZone))
+			}
+
+			ginkgo.By("Setting the final weights and partially cancelling by scaling up to 4 replicas")
 			patch = client.MergeFrom(kvg.DeepCopy())
+			setTwoAZTiKVEvenlySpreadPolicy(kvg, finalWeightA, finalWeightB)
 			kvg.Spec.Replicas = ptr.To[int32](4)
 			f.Must(f.Client.Patch(ctx, kvg, patch))
 
-			ginkgo.By("Verifying one offline operation is cancelled and the other continue")
+			ginkgo.By("Verifying the topology-aware candidate is cancelled and the other continues")
 			var cancelledKVs, remainingOffliningKVs []*v1alpha1.TiKV
 			gomega.Eventually(func(g gomega.Gomega) {
 				cancelledKVs = nil
 				remainingOffliningKVs = nil
-				for _, kv := range offliningKVs {
+				for _, kv := range sortedCandidates {
 					instance := &v1alpha1.TiKV{}
 					g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(kv), instance)).To(gomega.Succeed())
 					if !coreutil.IsOffline[scope.TiKV](instance) {
@@ -406,6 +446,13 @@ replica-schedule-limit = 16
 				g.Expect(cancelledKVs).To(gomega.HaveLen(1), "Expected 1 offline operation to be cancelled")
 				g.Expect(remainingOffliningKVs).To(gomega.HaveLen(1), "Expected 1 offline operations to continue")
 			}, 5*time.Minute, 5*time.Second).Should(gomega.Succeed())
+
+			gomega.Expect(cancelledKVs[0].GetName()).To(gomega.Equal(sortedCandidates[1].GetName()),
+				"the second name-sorted candidate should be the one cancelled")
+			gomega.Expect(cancelledKVs[0].Spec.Topology["zone"]).To(gomega.Equal(expectedCanceledZone))
+			gomega.Expect(remainingOffliningKVs[0].GetName()).To(gomega.Equal(sortedCandidates[0].GetName()),
+				"the first name-sorted candidate should remain offline")
+			gomega.Expect(remainingOffliningKVs[0].Spec.Topology["zone"]).To(gomega.Equal(expectedStillOfflineZone))
 
 			ginkgo.By("Verifying the cancelled instance status is updated")
 			// When offline operation is cancelled, the TiKV instance should no longer be marked for offline
@@ -440,11 +487,23 @@ replica-schedule-limit = 16
 			cancel()
 			<-ch
 
-			ginkgo.By("Verifying TiKVGroup stabilizes at 4 replicas")
+			ginkgo.By("Verifying TiKVGroup stabilizes at 4 replicas with the expected topology")
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			finalTiKVs, err := apicall.ListInstances[scope.TiKVGroup](ctx, f.Client, kvg)
 			f.Must(err)
 			gomega.Expect(finalTiKVs).To(gomega.HaveLen(4))
+
+			var finalCountA, finalCountB int
+			for _, kv := range finalTiKVs {
+				switch kv.Spec.Topology["zone"] {
+				case zoneA:
+					finalCountA++
+				case zoneB:
+					finalCountB++
+				}
+			}
+			gomega.Expect(finalCountA).To(gomega.Equal(expectedFinalCountA))
+			gomega.Expect(finalCountB).To(gomega.Equal(expectedFinalCountB))
 		})
 	})
 })
@@ -480,4 +539,41 @@ func newPDClient(ctx context.Context, f *framework.Framework, pdg *v1alpha1.PDGr
 	ginkgo.DeferCleanup(cancel)
 	ports := framework.PortForwardGroup[scope.PDGroup](forwardCtx, f, pdg, []string{fmt.Sprintf(":%d", v1alpha1.DefaultPDPortClient)})
 	return pdapi.NewPDClient(fmt.Sprintf("http://127.0.0.1:%d", ports[0].Local), 30*time.Second, nil)
+}
+
+const (
+	zoneA = "zone-a"
+	zoneB = "zone-b"
+)
+
+// setTwoAZTiKVEvenlySpreadPolicy replaces kvg.Spec.SchedulePolicies with a
+// single EvenlySpread policy across zone-a and zone-b at the given weights,
+// so a runtime weight change cannot leave stale policies behind.
+func setTwoAZTiKVEvenlySpreadPolicy(kvg *v1alpha1.TiKVGroup, zoneAWeight, zoneBWeight int32) {
+	kvg.Spec.SchedulePolicies = []v1alpha1.SchedulePolicy{
+		{
+			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
+				Topologies: []v1alpha1.ScheduleTopology{
+					{
+						Topology: v1alpha1.Topology{"zone": zoneA},
+						Weight:   ptr.To(zoneAWeight),
+					},
+					{
+						Topology: v1alpha1.Topology{"zone": zoneB},
+						Weight:   ptr.To(zoneBWeight),
+					},
+				},
+			},
+		},
+	}
+}
+
+// zonesOf returns the "zone" topology label of each TiKV instance.
+func zonesOf(kvs []*v1alpha1.TiKV) []string {
+	zones := make([]string, 0, len(kvs))
+	for _, kv := range kvs {
+		zones = append(zones, kv.Spec.Topology["zone"])
+	}
+	return zones
 }

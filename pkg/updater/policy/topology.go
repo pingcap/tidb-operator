@@ -38,6 +38,7 @@ type TopologyPolicy[R runtime.Instance] interface {
 	updater.UpdateHook[R]
 	PolicyScaleIn() updater.PreferPolicy[R]
 	PolicyUpdate() updater.PreferPolicy[R]
+	PolicyCancelOffline() updater.PreferPolicy[R]
 }
 
 func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev string, rs ...R) (TopologyPolicy[R], error) {
@@ -117,6 +118,12 @@ func (p *topologyPolicy[R]) PolicyUpdate() updater.PreferPolicy[R] {
 	}
 }
 
+func (p *topologyPolicy[R]) PolicyCancelOffline() updater.PreferPolicy[R] {
+	return &cancelOfflinePreferPolicy[R]{
+		p: p,
+	}
+}
+
 type deletePreferPolicy[R runtime.Instance] struct {
 	p *topologyPolicy[R]
 }
@@ -162,6 +169,40 @@ func (p *updatePreferPolicy[R]) Prefer(allowed []R) []R {
 			if maps.Equal(topo, item.GetTopology()) {
 				preferred = append(preferred, item)
 			}
+		}
+	}
+
+	return preferred
+}
+
+type cancelOfflinePreferPolicy[R runtime.Instance] struct {
+	p *topologyPolicy[R]
+}
+
+// Prefer chooses the best topology among the candidates that can still be
+// canceled, rather than the global best topology, which may have no
+// cancelable candidate at all.
+func (p *cancelOfflinePreferPolicy[R]) Prefer(allowed []R) []R {
+	if len(allowed) == 0 {
+		return nil
+	}
+
+	candidates := make([]v1alpha1.Topology, 0, len(allowed))
+	for _, item := range allowed {
+		candidates = append(candidates, item.GetTopology())
+	}
+
+	all := p.p.all.NextAdd(candidates...)
+	updated := p.p.updated.NextAdd(candidates...)
+	topo := choose(all, updated)
+	if topo == nil {
+		return nil
+	}
+
+	var preferred []R
+	for _, item := range allowed {
+		if maps.Equal(topo, item.GetTopology()) {
+			preferred = append(preferred, item)
 		}
 	}
 

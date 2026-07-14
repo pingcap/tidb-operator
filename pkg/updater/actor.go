@@ -97,8 +97,9 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	updateHooks []UpdateHook[R]
 	delHooks    []DelHook[R]
 
-	scaleInSelector Selector[R]
-	updateSelector  Selector[R]
+	scaleInSelector       Selector[R]
+	updateSelector        Selector[R]
+	cancelOfflineSelector Selector[R]
 
 	actions []action
 }
@@ -127,6 +128,18 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	return name, nil
 }
 
+// chooseToCancelOffline selects a beingOffline instance to restore.
+// Uses the cancelOfflineSelector to determine which instance should be canceled next.
+// Returns the name of the selected instance or an error if no instance can be canceled.
+func (act *actor[T, O, R]) chooseToCancelOffline(s []R) (string, error) {
+	name := act.cancelOfflineSelector.Choose(s)
+	if name == "" {
+		return "", fmt.Errorf("no instance can be canceled offline")
+	}
+
+	return name, nil
+}
+
 // cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
 func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error {
 	logger := logr.FromContextOrDiscard(ctx)
@@ -147,8 +160,11 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		// TODO: could implement more sophisticated selection logic
-		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
+		name, err := act.chooseToCancelOffline(act.beingOffline.List())
+		if err != nil {
+			return err
+		}
+		if err := act.cancelOneOfflining(ctx, act.beingOffline.Get(name)); err != nil {
 			return err
 		}
 		return nil

@@ -28,8 +28,12 @@ type Scheduler interface {
 	// Add adds an scheduled instance.
 	// All scheduled instances should be added before calling Next()
 	Add(name string, topo v1alpha1.Topology)
-	// NextAdd returns available topologies of the next pending instance
-	NextAdd() []v1alpha1.Topology
+	// NextAdd returns available topologies of the next pending instance.
+	// An empty candidate list means all configured topologies are eligible.
+	// A non-empty candidate list restricts the choice to the supplied
+	// topologies while still scoring them against the full active counts
+	// and weights.
+	NextAdd(candidates ...v1alpha1.Topology) []v1alpha1.Topology
 	// Del removes an scheduled instance.
 	Del(name string)
 	// NextDel returns names which can be choosed to del
@@ -123,14 +127,51 @@ func (s *topologyScheduler) Del(name string) {
 	}
 }
 
-func (s *topologyScheduler) NextAdd() []v1alpha1.Topology {
+func (s *topologyScheduler) NextAdd(candidates ...v1alpha1.Topology) []v1alpha1.Topology {
 	// only unknown topo
 	if len(s.info) == 1 {
 		return nil
 	}
+
+	if len(candidates) == 0 {
+		return s.nextAdd(nil)
+	}
+
+	// Restrict scoring to known candidate topologies. Multiple offlining
+	// instances may share a topology, so dedup via the set.
+	allowed := sets.New[int]()
+	for _, c := range candidates {
+		hash := s.e.Encode(c)
+		index, ok := s.hashToIndex[hash]
+		if !ok {
+			// ignore unknown topology
+			continue
+		}
+		allowed.Insert(index)
+	}
+	if allowed.Len() == 0 {
+		return nil
+	}
+
+	return s.nextAdd(allowed)
+}
+
+// nextAdd scores configured topologies using the existing add score:
+// score = weight*totalCount - effectiveCount*totalWeight.
+//
+// allowed == nil means every configured topology is eligible and the
+// maximum starts at zero, matching the historical unrestricted behavior.
+// A non-nil allowed set restricts eligible topologies; the maximum is then
+// seeded from the first eligible candidate instead of zero, since a
+// restricted candidate set can have every score be negative.
+func (s *topologyScheduler) nextAdd(allowed sets.Set[int]) []v1alpha1.Topology {
 	maximum := int64(0)
+	seeded := allowed == nil
 	var choosed []int
 	for i, v := range s.info[:len(s.info)-1] {
+		if allowed != nil && !allowed.Has(i) {
+			continue
+		}
 		count := v.names.Len()
 		// avoid some topos are starved
 		if v.names.Len() == 0 {
@@ -141,10 +182,16 @@ func (s *topologyScheduler) NextAdd() []v1alpha1.Topology {
 			count = -len(s.info) + 1
 		}
 		score := int64(v.weight)*int64(s.totalCount) - int64(count)*s.totalWeight
-		if score > maximum {
+
+		switch {
+		case !seeded:
 			maximum = score
 			choosed = []int{i}
-		} else if score == maximum {
+			seeded = true
+		case score > maximum:
+			maximum = score
+			choosed = []int{i}
+		case score == maximum:
 			choosed = append(choosed, i)
 		}
 	}

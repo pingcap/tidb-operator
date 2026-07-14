@@ -245,6 +245,48 @@ func fakeTiKV(name, rev, zone string, offline bool) *v1alpha1.TiKV {
 	return tikv
 }
 
+// TestPolicyCancelOfflinePreferBestAvailableTopology ensures cancel-offline
+// selection scores only the cancelable candidates rather than the global
+// best topology, which may have no cancelable candidate at all.
+func TestPolicyCancelOfflinePreferBestAvailableTopology(t *testing.T) {
+	const rev = "rev"
+
+	const (
+		zoneA = "us-west-1a"
+		zoneB = "us-west-1b"
+		zoneC = "us-west-1c"
+	)
+
+	active := []*v1alpha1.TiKV{
+		fakeTiKV("active-b0", rev, zoneB, false),
+		fakeTiKV("active-b1", rev, zoneB, false),
+		fakeTiKV("active-b2", rev, zoneB, false),
+		fakeTiKV("active-c0", rev, zoneC, false),
+	}
+
+	// The zone-b candidate has the lexicographically smaller name, so the
+	// old list-first cancellation would incorrectly prefer it over zone-c.
+	candidateB := fakeTiKV("candidate-b", rev, zoneB, true)
+	candidateC := fakeTiKV("candidate-c", rev, zoneC, true)
+
+	all := append(append([]*v1alpha1.TiKV{}, active...), candidateB, candidateC)
+
+	// IsDeleting excludes offline objects, so the active scheduler counts
+	// stay at a=0,b=3,c=1 even though the candidates are passed in here.
+	policy, err := NewTopologyPolicy([]v1alpha1.ScheduleTopology{
+		{Topology: v1alpha1.Topology{"zone": zoneA}},
+		{Topology: v1alpha1.Topology{"zone": zoneB}},
+		{Topology: v1alpha1.Topology{"zone": zoneC}},
+	}, rev, runtime.FromTiKVSlice(all)...)
+	require.NoError(t, err)
+
+	allowed := runtime.FromTiKVSlice([]*v1alpha1.TiKV{candidateB, candidateC})
+	preferred := policy.PolicyCancelOffline().Prefer(allowed)
+
+	require.Len(t, preferred, 1)
+	assert.Equal(t, candidateC.GetName(), preferred[0].GetName())
+}
+
 // TestTopologyPolicyUpdateKeysSchedulerByOutdatedName ensures Update keys
 // the in-memory schedulers by the outdated instance's name. Custom update
 // hooks run before KeepName, so the new object's name is still empty; using
