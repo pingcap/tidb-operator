@@ -27,7 +27,11 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
     V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh $TARGET
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.3@sha256:d062f058122370102e55fab5dd25b89f67a8bd27ad18c70197fc348c1653e596 AS tidb-operator
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.12.0@sha256:a9c4c9922df8ff8581fdc0ccdf77fe0bb6646d7852e85bda3ef4c80bc368f861 AS tidb-operator
+>>>>>>> 110697e96 (chore(deps): bump pingcap-qe/bases/pingcap-base from v1.11.4 to v1.12.0 in /image (#6997))
 
 ARG TARGETPLATFORM
 
@@ -43,7 +47,11 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/ti
 
 ENTRYPOINT ["/tidb-operator"]
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.3@sha256:d062f058122370102e55fab5dd25b89f67a8bd27ad18c70197fc348c1653e596 AS prestop-checker
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.12.0@sha256:a9c4c9922df8ff8581fdc0ccdf77fe0bb6646d7852e85bda3ef4c80bc368f861 AS prestop-checker
+>>>>>>> 110697e96 (chore(deps): bump pingcap-qe/bases/pingcap-base from v1.11.4 to v1.12.0 in /image (#6997))
 
 ARG TARGETPLATFORM
 
@@ -55,7 +63,11 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/pr
 
 ENTRYPOINT ["/prestop-checker"]
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.3@sha256:d062f058122370102e55fab5dd25b89f67a8bd27ad18c70197fc348c1653e596 AS testing-workload
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.12.0@sha256:a9c4c9922df8ff8581fdc0ccdf77fe0bb6646d7852e85bda3ef4c80bc368f861 AS testing-workload
+>>>>>>> 110697e96 (chore(deps): bump pingcap-qe/bases/pingcap-base from v1.11.4 to v1.12.0 in /image (#6997))
 
 ARG TARGETPLATFORM
 
@@ -69,7 +81,11 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/te
 ENTRYPOINT ["/testing-workload"]
 
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.3@sha256:d062f058122370102e55fab5dd25b89f67a8bd27ad18c70197fc348c1653e596 AS tidb-backup-manager
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.12.0@sha256:a9c4c9922df8ff8581fdc0ccdf77fe0bb6646d7852e85bda3ef4c80bc368f861 AS tidb-backup-manager
+>>>>>>> 110697e96 (chore(deps): bump pingcap-qe/bases/pingcap-base from v1.11.4 to v1.12.0 in /image (#6997))
 
 ARG TARGETPLATFORM
 
@@ -82,7 +98,11 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/ti
 ENTRYPOINT ["/tidb-backup-manager"]
 
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.3@sha256:d062f058122370102e55fab5dd25b89f67a8bd27ad18c70197fc348c1653e596 AS resource-syncer
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.12.0@sha256:a9c4c9922df8ff8581fdc0ccdf77fe0bb6646d7852e85bda3ef4c80bc368f861 AS resource-syncer
+>>>>>>> 110697e96 (chore(deps): bump pingcap-qe/bases/pingcap-base from v1.11.4 to v1.12.0 in /image (#6997))
 
 ARG TARGETPLATFORM
 
