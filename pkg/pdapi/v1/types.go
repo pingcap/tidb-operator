@@ -161,6 +161,7 @@ type PlacementRule struct {
 	EndKeyHex        string                     `json:"end_key"`
 	Role             string                     `json:"role"`
 	Count            int32                      `json:"count"`
+	LocationLabels   []string                   `json:"location_labels,omitempty"`
 	LabelConstraints []PlacementLabelConstraint `json:"label_constraints,omitempty"`
 }
 

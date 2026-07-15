@@ -49,6 +49,8 @@ import (
 
 const (
 	pdPlacementRuleGroupIndex = 99
+	pdDefaultRuleGroupID      = "pd"
+	pdDefaultRuleID           = "default"
 
 	reasonSynced     = "Synced"
 	reasonSyncFailed = "SyncFailed"
@@ -396,10 +398,43 @@ func syncPolicyRules(
 	rulePrefix string,
 	rules []pdapi.PlacementRule,
 ) error {
+	if len(rules) > 0 {
+		locationLabels, err := defaultRuleLocationLabels(ctx, pdc)
+		if err != nil {
+			return err
+		}
+		setPlacementRulesLocationLabels(rules, locationLabels)
+	}
+
 	if err := pdc.SetPlacementRuleGroup(ctx, placementRuleGroup()); err != nil {
 		return err
 	}
 	return pdc.SetPlacementRuleGroupRulesByIDPrefix(ctx, coreutil.PlacementPolicyGroupID(), rulePrefix, rules)
+}
+
+func defaultRuleLocationLabels(ctx context.Context, pdc pdapi.PDClient) ([]string, error) {
+	bundle, err := pdc.GetPlacementRuleBundle(ctx, pdDefaultRuleGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get default placement rule bundle: %w", err)
+	}
+	if bundle == nil {
+		return nil, fmt.Errorf("default placement rule bundle %q is nil", pdDefaultRuleGroupID)
+	}
+
+	for _, rule := range bundle.Rules {
+		if rule.ID == pdDefaultRuleID {
+			return rule.LocationLabels, nil
+		}
+	}
+
+	// not found, return empty location labels
+	return nil, nil
+}
+
+func setPlacementRulesLocationLabels(rules []pdapi.PlacementRule, locationLabels []string) {
+	for i := range rules {
+		rules[i].LocationLabels = locationLabels
+	}
 }
 
 func placementRuleGroup() *pdapi.PlacementRuleGroup {
@@ -427,6 +462,9 @@ func comparePlacementRule(a, b pdapi.PlacementRule) int { //nolint:gocritic // s
 	}
 	if a.Count > b.Count {
 		return 1
+	}
+	if c := slices.Compare(a.LocationLabels, b.LocationLabels); c != 0 {
+		return c
 	}
 
 	return slices.CompareFunc(a.LabelConstraints, b.LabelConstraints, comparePlacementLabelConstraint)

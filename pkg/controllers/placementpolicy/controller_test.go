@@ -229,6 +229,76 @@ func TestTiKVGroupEventHandlerEnqueuesOnCreateDeleteAndExclusiveChange(t *testin
 
 func TestSyncPolicyRulesPostsRuleGroup(t *testing.T) {
 	ctx := context.Background()
+	locationLabels := []string{"zone", "rack"}
+	rules := []pdapi.PlacementRule{
+		{
+			GroupID: "tidb-operator",
+			ID:      "p:r1-1-raw",
+			Role:    v1alpha1.PlacementPolicyRoleVoter,
+			Count:   3,
+		},
+	}
+	expectedRules := []pdapi.PlacementRule{
+		{
+			GroupID:        "tidb-operator",
+			ID:             "p:r1-1-raw",
+			Role:           v1alpha1.PlacementPolicyRoleVoter,
+			Count:          3,
+			LocationLabels: locationLabels,
+		},
+	}
+	pdc := pdapi.NewMockPDClient(gomock.NewController(t))
+	gomock.InOrder(
+		pdc.EXPECT().GetPlacementRuleBundle(gomock.Any(), "pd").Return(&pdapi.PlacementRuleGroupBundle{
+			ID: "pd",
+			Rules: []pdapi.PlacementRule{
+				{
+					GroupID:        "pd",
+					ID:             "default",
+					LocationLabels: locationLabels,
+				},
+			},
+		}, nil),
+		pdc.EXPECT().SetPlacementRuleGroup(gomock.Any(), &pdapi.PlacementRuleGroup{
+			ID:       "tidb-operator",
+			Index:    pdPlacementRuleGroupIndex,
+			Override: true,
+		}).Return(nil),
+		pdc.EXPECT().SetPlacementRuleGroupRulesByIDPrefix(gomock.Any(), "tidb-operator", "p:", expectedRules).Return(nil),
+	)
+
+	err := syncPolicyRules(ctx, pdc, "p:", rules)
+	require.NoError(t, err)
+}
+
+func TestSyncPolicyRulesRequiresDefaultRule(t *testing.T) {
+	ctx := context.Background()
+	rules := []pdapi.PlacementRule{
+		{
+			GroupID: "tidb-operator",
+			ID:      "p:r1-1-raw",
+			Role:    v1alpha1.PlacementPolicyRoleVoter,
+			Count:   3,
+		},
+	}
+	pdc := pdapi.NewMockPDClient(gomock.NewController(t))
+	pdc.EXPECT().GetPlacementRuleBundle(gomock.Any(), "pd").Return(&pdapi.PlacementRuleGroupBundle{
+		ID: "pd",
+		Rules: []pdapi.PlacementRule{
+			{
+				GroupID: "pd",
+				ID:      "other",
+			},
+		},
+	}, nil)
+
+	err := syncPolicyRules(ctx, pdc, "p:", rules)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "default placement rule pd/default not found")
+}
+
+func TestSyncPolicyRulesNormalizesEmptyDefaultLocationLabels(t *testing.T) {
+	ctx := context.Background()
 	rules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
@@ -239,6 +309,16 @@ func TestSyncPolicyRulesPostsRuleGroup(t *testing.T) {
 	}
 	pdc := pdapi.NewMockPDClient(gomock.NewController(t))
 	gomock.InOrder(
+		pdc.EXPECT().GetPlacementRuleBundle(gomock.Any(), "pd").Return(&pdapi.PlacementRuleGroupBundle{
+			ID: "pd",
+			Rules: []pdapi.PlacementRule{
+				{
+					GroupID:        "pd",
+					ID:             "default",
+					LocationLabels: []string{},
+				},
+			},
+		}, nil),
 		pdc.EXPECT().SetPlacementRuleGroup(gomock.Any(), &pdapi.PlacementRuleGroup{
 			ID:       "tidb-operator",
 			Index:    pdPlacementRuleGroupIndex,
@@ -248,6 +328,27 @@ func TestSyncPolicyRulesPostsRuleGroup(t *testing.T) {
 	)
 
 	err := syncPolicyRules(ctx, pdc, "p:", rules)
+	require.NoError(t, err)
+}
+
+func TestSyncPolicyRulesSkipsDefaultRuleLookupWhenNoRules(t *testing.T) {
+	ctx := context.Background()
+	pdc := pdapi.NewMockPDClient(gomock.NewController(t))
+	gomock.InOrder(
+		pdc.EXPECT().SetPlacementRuleGroup(gomock.Any(), &pdapi.PlacementRuleGroup{
+			ID:       "tidb-operator",
+			Index:    pdPlacementRuleGroupIndex,
+			Override: true,
+		}).Return(nil),
+		pdc.EXPECT().SetPlacementRuleGroupRulesByIDPrefix(
+			gomock.Any(),
+			"tidb-operator",
+			"p:",
+			[]pdapi.PlacementRule(nil),
+		).Return(nil),
+	)
+
+	err := syncPolicyRules(ctx, pdc, "p:", nil)
 	require.NoError(t, err)
 }
 
