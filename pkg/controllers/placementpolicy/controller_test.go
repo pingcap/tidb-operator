@@ -271,7 +271,7 @@ func TestSyncPolicyRulesPostsRuleGroup(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSyncPolicyRulesRequiresDefaultRule(t *testing.T) {
+func TestSyncPolicyRulesUsesEmptyLocationLabelsWhenDefaultRuleMissing(t *testing.T) {
 	ctx := context.Background()
 	rules := []pdapi.PlacementRule{
 		{
@@ -291,10 +291,17 @@ func TestSyncPolicyRulesRequiresDefaultRule(t *testing.T) {
 			},
 		},
 	}, nil)
+	gomock.InOrder(
+		pdc.EXPECT().SetPlacementRuleGroup(gomock.Any(), &pdapi.PlacementRuleGroup{
+			ID:       "tidb-operator",
+			Index:    pdPlacementRuleGroupIndex,
+			Override: true,
+		}).Return(nil),
+		pdc.EXPECT().SetPlacementRuleGroupRulesByIDPrefix(gomock.Any(), "tidb-operator", "p:", rules).Return(nil),
+	)
 
 	err := syncPolicyRules(ctx, pdc, "p:", rules)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "default placement rule pd/default not found")
+	require.NoError(t, err)
 }
 
 func TestSyncPolicyRulesNormalizesEmptyDefaultLocationLabels(t *testing.T) {

@@ -421,9 +421,9 @@ func defaultRuleLocationLabels(ctx context.Context, pdc pdapi.PDClient) ([]strin
 		return nil, fmt.Errorf("default placement rule bundle %q is nil", pdDefaultRuleGroupID)
 	}
 
-	for _, rule := range bundle.Rules {
-		if rule.ID == pdDefaultRuleID {
-			return rule.LocationLabels, nil
+	for i := range bundle.Rules {
+		if bundle.Rules[i].ID == pdDefaultRuleID {
+			return bundle.Rules[i].LocationLabels, nil
 		}
 	}
 
