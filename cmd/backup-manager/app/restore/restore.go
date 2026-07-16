@@ -184,14 +184,20 @@ func (ro *Options) restoreData(
 	}
 
 	observer := newRestoreLogObserver(restore, statusUpdater)
-	err = backupUtil.RunBRCommandWithLineHandler(ctx, brBinPath, fmt.Sprint(ro), fullArgs, func(stream backupUtil.BRLogStream, line string) {
-		if stream == backupUtil.BRLogStreamStdout && !brlog.IsErrorLine(line) {
-			if !useProgressFile {
-				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+	err = backupUtil.RunBRCommandWithLineHandler(ctx, backupUtil.BRCommandOptions{
+		BRBinPath:        brBinPath,
+		Cluster:          fmt.Sprint(ro),
+		Args:             fullArgs,
+		GracefulShutdown: true,
+		LineHandler: func(stream backupUtil.BRLogStream, line string) {
+			if stream == backupUtil.BRLogStreamStdout && !brlog.IsErrorLine(line) {
+				if !useProgressFile {
+					ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+				}
+				ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 			}
-			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
-		}
-		observer.observeLine(line)
+			observer.observeLine(line)
+		},
 	})
 	if err != nil {
 		return err
@@ -240,20 +246,17 @@ func newRestoreLogObserver(
 }
 
 func (o *restoreLogObserver) observeLine(line string) {
-	event := brlog.ParseLine(line)
-	switch event.Type {
-	case brlog.EventOperationStarted:
-		if event.Operation == nil {
-			return
-		}
-		if event.Operation.ObservedAt.IsZero() {
-			event.Operation.ObservedAt = metav1.Now()
-		}
-		if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
-			BROperation: event.Operation,
-		}); err != nil {
-			klog.Errorf("Failed to update BR operation status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
-		}
+	operation, ok := brlog.ParseOperationStartedLine(line)
+	if !ok {
+		return
+	}
+	if operation.ObservedAt.IsZero() {
+		operation.ObservedAt = metav1.Now()
+	}
+	if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
+		BROperation: operation,
+	}); err != nil {
+		klog.Errorf("Failed to update BR operation status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
 	}
 }
 

@@ -22,13 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type EventType string
-
-const (
-	EventNone             EventType = ""
-	EventOperationStarted EventType = "operation-started"
-)
-
 const (
 	messageOperationStarted = "BR operation started"
 
@@ -40,27 +33,13 @@ const (
 	fieldCommand            = "command"
 )
 
-// Event is one parsed BR structured-log event.
-type Event struct {
-	Type      EventType
-	Operation *v1alpha1.BROperation
-}
-
-// ParseLine extracts a BR operation event from one BR log line.
-func ParseLine(line string) Event {
+// ParseOperationStartedLine extracts a BR operation-started record from one BR log line.
+func ParseOperationStartedLine(line string) (*v1alpha1.BROperation, bool) {
 	fields := parseFields(line)
 	if len(fields) == 0 {
-		return Event{}
+		return nil, false
 	}
-
-	if operation, ok := parseOperationStarted(fields); ok {
-		return Event{
-			Type:      EventOperationStarted,
-			Operation: operation,
-		}
-	}
-
-	return Event{}
+	return parseOperationStarted(fields)
 }
 
 // IsErrorLine reports whether a BR log line should be included in command error output.

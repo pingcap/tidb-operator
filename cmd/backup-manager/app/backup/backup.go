@@ -14,14 +14,10 @@
 package backup
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -301,62 +297,21 @@ func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
 
 // brCommandRun run br binary to do backup work with log callback.
 func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []string, logCallback func(line string)) error {
-	if len(fullArgs) == 0 {
-		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
-	}
-	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := filepath.Join(brBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
-
-	stdOut, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
-	}
-	stdErr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
-	}
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
-	}
-
-	// only the initialization command of volume snapshot backup use gracefully shutting down
-	// because it should resume gc and pd scheduler immediately
-	if bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize {
-		go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
-	}
-
-	var errMsg string
-	stdErrCh := make(chan []byte, 1)
-	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
-
-	reader := bufio.NewReader(stdOut)
-	for {
-		line, err := reader.ReadString('\n')
-		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
-		}
-		if logCallback != nil {
-			logCallback(line)
-		}
-
-		klog.Info(strings.ReplaceAll(line, "\n", ""))
-		if err != nil {
-			if err != io.EOF {
-				klog.Errorf("read stdout error: %s", err.Error())
+	err := backupUtil.RunBRCommandWithLineHandler(ctx, backupUtil.BRCommandOptions{
+		BRBinPath:        brBinPath,
+		Cluster:          fmt.Sprint(bo),
+		Args:             fullArgs,
+		GracefulShutdown: bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize,
+		LineHandler: func(stream backupUtil.BRLogStream, line string) {
+			if stream != backupUtil.BRLogStreamStdout || logCallback == nil {
+				return
 			}
-			break
-		}
-	}
-	tmpErr := <-stdErrCh
-	if len(tmpErr) > 0 {
-		klog.Info(string(tmpErr))
-		errMsg += string(tmpErr)
-	}
-	err = cmd.Wait()
+			// The legacy callback read stdout with ReadString('\n'), so keep newline-suffixed lines for callers.
+			logCallback(line + "\n")
+		},
+	})
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+		return err
 	}
 
 	e2eTestSimulate(bo)
@@ -370,10 +325,16 @@ func (bo *Options) brCommandRunWithLogObserver(
 	fullArgs []string,
 	logObserver func(line string),
 ) error {
-	err := backupUtil.RunBRCommandWithLineHandler(ctx, brBinPath, fmt.Sprint(bo), fullArgs, func(_ backupUtil.BRLogStream, line string) {
-		if logObserver != nil {
-			logObserver(line)
-		}
+	err := backupUtil.RunBRCommandWithLineHandler(ctx, backupUtil.BRCommandOptions{
+		BRBinPath:        brBinPath,
+		Cluster:          fmt.Sprint(bo),
+		Args:             fullArgs,
+		GracefulShutdown: true,
+		LineHandler: func(_ backupUtil.BRLogStream, line string) {
+			if logObserver != nil {
+				logObserver(line)
+			}
+		},
 	})
 	if err != nil {
 		return err
@@ -401,20 +362,17 @@ func newBackupLogTruncateObserver(
 }
 
 func (o *backupLogTruncateObserver) observeLine(line string) {
-	event := brlog.ParseLine(line)
-	switch event.Type {
-	case brlog.EventOperationStarted:
-		if event.Operation == nil {
-			return
-		}
-		if event.Operation.ObservedAt.IsZero() {
-			event.Operation.ObservedAt = metav1.Now()
-		}
-		if err := o.statusUpdater.Update(o.backup, nil, &controller.BackupUpdateStatus{
-			BROperation: event.Operation,
-		}); err != nil {
-			klog.Errorf("Failed to update BR operation status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
-		}
+	operation, ok := brlog.ParseOperationStartedLine(line)
+	if !ok {
+		return
+	}
+	if operation.ObservedAt.IsZero() {
+		operation.ObservedAt = metav1.Now()
+	}
+	if err := o.statusUpdater.Update(o.backup, nil, &controller.BackupUpdateStatus{
+		BROperation: operation,
+	}); err != nil {
+		klog.Errorf("Failed to update BR operation status for backup %s/%s, %v", o.backup.Namespace, o.backup.Name, err)
 	}
 }
 

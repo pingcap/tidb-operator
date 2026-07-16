@@ -149,7 +149,10 @@ func TestBRCommandRunWithLogObserverGracefullyStopsOnContextCancel(t *testing.T)
 	})
 
 	script := `#!/bin/sh
-exec sleep 1
+trap 'touch "$0.term"; kill "$child" 2>/dev/null; exit 143' TERM
+sleep 1 &
+child=$!
+wait "$child"
 `
 	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
 		t.Fatalf("failed to write fake br: %v", err)
@@ -167,8 +170,122 @@ exec sleep 1
 	if err == nil {
 		t.Fatal("expected br command to fail after context cancellation")
 	}
+	if _, statErr := os.Stat(filepath.Join(dir, "br.term")); statErr != nil {
+		t.Fatalf("expected graceful shutdown to send SIGTERM, got %v", statErr)
+	}
 	if elapsed > 500*time.Millisecond {
 		t.Fatalf("expected context cancellation to stop br quickly, took %s", elapsed)
+	}
+}
+
+func TestBRCommandRunWithLogCallbackLeavesCommandRunningWithoutVolumeSnapshotInitialize(t *testing.T) {
+	dir := t.TempDir()
+	oldBRBinPath := brBinPath
+	brBinPath = dir
+	t.Cleanup(func() {
+		brBinPath = oldBRBinPath
+	})
+
+	script := `#!/bin/sh
+trap 'touch "$0.term"; kill "$child" 2>/dev/null; exit 143' TERM
+sleep 0.2 &
+child=$!
+wait "$child"
+`
+	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
+		t.Fatalf("failed to write fake br: %v", err)
+	}
+
+	tests := []struct {
+		name       string
+		mode       string
+		initialize bool
+	}{
+		{
+			name: "ordinary backup",
+		},
+		{
+			name: "volume snapshot without initialize",
+			mode: string(v1alpha1.BackupModeVolumeSnapshot),
+		},
+		{
+			name:       "initialize without volume snapshot",
+			initialize: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			termMarker := filepath.Join(dir, "br.term")
+			if err := os.Remove(termMarker); err != nil && !os.IsNotExist(err) {
+				t.Fatalf("failed to remove term marker: %v", err)
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			go func() {
+				time.Sleep(20 * time.Millisecond)
+				cancel()
+			}()
+
+			bo := &Options{}
+			bo.Mode = tt.mode
+			bo.Initialize = tt.initialize
+
+			start := time.Now()
+			err := bo.brCommandRunWithLogCallback(ctx, []string{"backup", "full"}, nil)
+			elapsed := time.Since(start)
+			if err != nil {
+				t.Fatalf("expected br command to finish normally, got %v", err)
+			}
+			if _, statErr := os.Stat(termMarker); !os.IsNotExist(statErr) {
+				t.Fatalf("expected command to keep running without SIGTERM, statErr: %v", statErr)
+			}
+			if elapsed < 150*time.Millisecond {
+				t.Fatalf("expected command to keep running without graceful shutdown, took %s", elapsed)
+			}
+		})
+	}
+}
+
+func TestBRCommandRunWithLogCallbackGracefullyStopsVolumeSnapshotInitialize(t *testing.T) {
+	dir := t.TempDir()
+	oldBRBinPath := brBinPath
+	brBinPath = dir
+	t.Cleanup(func() {
+		brBinPath = oldBRBinPath
+	})
+
+	script := `#!/bin/sh
+trap 'touch "$0.term"; kill "$child" 2>/dev/null; exit 143' TERM
+sleep 1 &
+child=$!
+wait "$child"
+`
+	if err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755); err != nil {
+		t.Fatalf("failed to write fake br: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	bo := &Options{}
+	bo.Mode = string(v1alpha1.BackupModeVolumeSnapshot)
+	bo.Initialize = true
+
+	start := time.Now()
+	err := bo.brCommandRunWithLogCallback(ctx, []string{"backup", "full"}, nil)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected br command to fail after context cancellation")
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "br.term")); statErr != nil {
+		t.Fatalf("expected graceful shutdown to send SIGTERM, got %v", statErr)
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("expected context cancellation to stop volume snapshot initialize quickly, took %s", elapsed)
 	}
 }
 

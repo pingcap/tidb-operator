@@ -782,8 +782,13 @@ exit 1
 	g.Expect(err).To(Succeed())
 
 	var observed []string
-	err = RunBRCommandWithLineHandler(context.Background(), dir, "test-cluster", []string{"log", "truncate"}, func(stream BRLogStream, line string) {
-		observed = append(observed, string(stream)+":"+line)
+	err = RunBRCommandWithLineHandler(context.Background(), BRCommandOptions{
+		BRBinPath: dir,
+		Cluster:   "test-cluster",
+		Args:      []string{"log", "truncate"},
+		LineHandler: func(stream BRLogStream, line string) {
+			observed = append(observed, string(stream)+":"+line)
+		},
 	})
 
 	g.Expect(err).To(HaveOccurred())
@@ -816,9 +821,42 @@ exec sleep 1
 	}()
 
 	start := time.Now()
-	err = RunBRCommandWithLineHandler(ctx, dir, "test-cluster", []string{"restore", "full"}, nil)
+	err = RunBRCommandWithLineHandler(ctx, BRCommandOptions{
+		BRBinPath:        dir,
+		Cluster:          "test-cluster",
+		Args:             []string{"restore", "full"},
+		GracefulShutdown: true,
+	})
 	elapsed := time.Since(start)
 
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(elapsed).To(BeNumerically("<", 500*time.Millisecond))
+}
+
+func TestRunBRCommandWithLineHandlerLeavesProcessRunningWhenGracefulShutdownDisabled(t *testing.T) {
+	g := NewGomegaWithT(t)
+	dir := t.TempDir()
+
+	script := `#!/bin/sh
+exec sleep 0.2
+`
+	err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755)
+	g.Expect(err).To(Succeed())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err = RunBRCommandWithLineHandler(ctx, BRCommandOptions{
+		BRBinPath: dir,
+		Cluster:   "test-cluster",
+		Args:      []string{"backup", "full"},
+	})
+	elapsed := time.Since(start)
+
+	g.Expect(err).To(Succeed())
+	g.Expect(elapsed).To(BeNumerically(">", 150*time.Millisecond))
 }

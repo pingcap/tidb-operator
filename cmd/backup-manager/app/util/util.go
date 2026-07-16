@@ -556,37 +556,47 @@ const (
 // BRLogLineHandler handles one line read from BR stdout or stderr.
 type BRLogLineHandler func(stream BRLogStream, line string)
 
+// BRCommandOptions controls how to run a BR command and consume its output.
+type BRCommandOptions struct {
+	BRBinPath string
+	Cluster   string
+	Args      []string
+	// GracefulShutdown controls whether ctx cancellation sends SIGTERM to the BR process.
+	GracefulShutdown bool
+	LineHandler      BRLogLineHandler
+}
+
 // RunBRCommandWithLineHandler runs BR and streams stdout/stderr lines to lineHandler.
 //
 // The returned error preserves legacy diagnostic behavior: stderr is included in
 // errMsg in full, while stdout contributes only BR error/fatal/panic lines.
+// The context only stops the BR process when opts.GracefulShutdown is true.
 func RunBRCommandWithLineHandler(
 	ctx context.Context,
-	brBinPath string,
-	cluster string,
-	fullArgs []string,
-	lineHandler BRLogLineHandler,
+	opts BRCommandOptions,
 ) error {
-	if len(fullArgs) == 0 {
-		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
+	if len(opts.Args) == 0 {
+		return fmt.Errorf("command is invalid, args: %v", opts.Args)
 	}
-	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := filepath.Join(brBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
+	klog.Infof("Running br command with args: %v", opts.Args)
+	bin := filepath.Join(opts.BRBinPath, "br")
+	cmd := exec.Command(bin, opts.Args...)
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", cluster, err)
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", opts.Cluster, err)
 	}
 	stdErr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", cluster, err)
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", opts.Cluster, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", cluster, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %v, err: %v", opts.Cluster, opts.Args, err)
 	}
-	go GracefullyShutDownSubProcess(ctx, cmd)
+	if opts.GracefulShutdown {
+		go GracefullyShutDownSubProcess(ctx, cmd)
+	}
 
 	var errMsg string
 	stdOutLineCh := make(chan string)
@@ -606,14 +616,14 @@ func RunBRCommandWithLineHandler(
 				stdOutLineCh = nil
 				continue
 			}
-			processBRCommandOutputLine(BRLogStreamStdout, line, &errMsg, lineHandler)
+			processBRCommandOutputLine(BRLogStreamStdout, line, &errMsg, opts.LineHandler)
 		case line, ok := <-stdErrLineCh:
 			if !ok {
 				stdErrOpen = false
 				stdErrLineCh = nil
 				continue
 			}
-			processBRCommandOutputLine(BRLogStreamStderr, line, &errMsg, lineHandler)
+			processBRCommandOutputLine(BRLogStreamStderr, line, &errMsg, opts.LineHandler)
 		}
 	}
 
@@ -626,7 +636,7 @@ func RunBRCommandWithLineHandler(
 
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", cluster, errMsg, err)
+		return fmt.Errorf("cluster %s, wait br command failed, errMsg %s, err: %v", opts.Cluster, errMsg, err)
 	}
 	return nil
 }
@@ -644,16 +654,6 @@ func processBRCommandOutputLine(
 		lineHandler(stream, line)
 	}
 	klog.Info(line)
-}
-
-// ReadAllStdErrToChannel read the stdErr and send the output to channel
-func ReadAllStdErrToChannel(stdErr io.Reader, errMsgCh chan []byte) {
-	errMsg, err := io.ReadAll(stdErr)
-	if err != nil {
-		klog.Errorf("read stderr error: %s", err.Error())
-	}
-	errMsgCh <- errMsg
-	close(errMsgCh)
 }
 
 // GracefullyShutDownSubProcess just send SIGTERM to the process of cmd when context done
