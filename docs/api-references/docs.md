@@ -3611,7 +3611,7 @@ bool
 <h3 id="broperation">BROperation</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupstatus">BackupStatus</a>,
+<a href="#backupstatus">BackupStatus</a>, 
 <a href="#restorestatus">RestoreStatus</a>)
 </p>
 <p>
