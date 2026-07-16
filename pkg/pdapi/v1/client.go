@@ -482,9 +482,9 @@ func (c *pdClient) DeletePlacementRuleGroupRulesByIDPrefix(ctx context.Context, 
 
 func placementRuleAddOps(rules []PlacementRule) []PlacementRuleOp {
 	ruleOps := make([]PlacementRuleOp, 0, len(rules))
-	for _, rule := range rules {
+	for i := range rules {
 		ruleOps = append(ruleOps, PlacementRuleOp{
-			PlacementRule: rule,
+			PlacementRule: rules[i],
 			Action:        PlacementRuleOpAdd,
 		})
 	}
@@ -494,7 +494,8 @@ func placementRuleAddOps(rules []PlacementRule) []PlacementRuleOp {
 
 func placementRuleDiffOps(groupID string, currentRules, expectedRules []PlacementRule) ([]PlacementRuleOp, error) {
 	currentByID := make(map[string]PlacementRule, len(currentRules))
-	for _, rule := range currentRules {
+	for i := range currentRules {
+		rule := currentRules[i]
 		if _, ok := currentByID[rule.ID]; ok {
 			return nil, fmt.Errorf("duplicate current placement rule %q", rule.ID)
 		}
@@ -502,7 +503,8 @@ func placementRuleDiffOps(groupID string, currentRules, expectedRules []Placemen
 	}
 
 	expectedByID := make(map[string]PlacementRule, len(expectedRules))
-	for _, rule := range expectedRules {
+	for i := range expectedRules {
+		rule := expectedRules[i]
 		if _, ok := expectedByID[rule.ID]; ok {
 			return nil, fmt.Errorf("duplicate expected placement rule %q", rule.ID)
 		}
@@ -511,26 +513,26 @@ func placementRuleDiffOps(groupID string, currentRules, expectedRules []Placemen
 
 	ruleOps := []PlacementRuleOp{}
 	staleRules := make([]PlacementRule, 0, len(currentRules))
-	for _, rule := range currentRules {
-		if _, ok := expectedByID[rule.ID]; !ok {
-			staleRules = append(staleRules, rule)
+	for i := range currentRules {
+		if _, ok := expectedByID[currentRules[i].ID]; !ok {
+			staleRules = append(staleRules, currentRules[i])
 		}
 	}
-	for _, rule := range staleRules {
+	for i := range staleRules {
 		ruleOps = append(ruleOps, PlacementRuleOp{
 			PlacementRule: PlacementRule{
 				GroupID: groupID,
-				ID:      rule.ID,
+				ID:      staleRules[i].ID,
 			},
 			Action: PlacementRuleOpDel,
 		})
 	}
 
 	addRules := make([]PlacementRule, 0, len(expectedRules))
-	for _, rule := range expectedRules {
-		current, ok := currentByID[rule.ID]
-		if !ok || !reflect.DeepEqual(current, rule) {
-			addRules = append(addRules, rule)
+	for i := range expectedRules {
+		current, ok := currentByID[expectedRules[i].ID]
+		if !ok || !reflect.DeepEqual(current, expectedRules[i]) {
+			addRules = append(addRules, expectedRules[i])
 		}
 	}
 	addOps := placementRuleAddOps(addRules)
@@ -590,9 +592,9 @@ func (c *pdClient) ListPlacementRulesByGroupIDPrefix(ctx context.Context, groupI
 	}
 
 	rules := make([]PlacementRule, 0, len(allRules))
-	for _, rule := range allRules {
-		if strings.HasPrefix(rule.ID, idPrefix) {
-			rules = append(rules, rule)
+	for i := range allRules {
+		if strings.HasPrefix(allRules[i].ID, idPrefix) {
+			rules = append(rules, allRules[i])
 		}
 	}
 	return rules, nil

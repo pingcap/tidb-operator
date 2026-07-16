@@ -1026,7 +1026,8 @@ func TestPDClient_GetPlacementRuleBundle(t *testing.T) {
       "start_key": "7800000100000000fb",
       "end_key": "7800000200000000fb",
       "role": "voter",
-      "count": 3
+      "count": 3,
+      "location_labels": ["zone", "rack"]
     }
   ]
 }`))
@@ -1047,6 +1048,7 @@ func TestPDClient_GetPlacementRuleBundle(t *testing.T) {
 	assert.Equal(t, "7800000200000000fb", bundle.Rules[0].EndKeyHex)
 	assert.Equal(t, "voter", bundle.Rules[0].Role)
 	assert.Equal(t, int32(3), bundle.Rules[0].Count)
+	assert.Equal(t, []string{"zone", "rack"}, bundle.Rules[0].LocationLabels)
 }
 
 func TestPDClient_DeleteStore(t *testing.T) {
