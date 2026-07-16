@@ -43,5 +43,5 @@ func TestPlacementPolicyRuleIDPrefix(t *testing.T) {
 }
 
 func TestPlacementPolicyRuleID(t *testing.T) {
-	require.Equal(t, "policy:voters-1-raw", PlacementPolicyRuleID("policy", "voters", "1", "raw"))
+	require.Equal(t, "policy:voters-1-txn", PlacementPolicyRuleID("policy", "voters", "1", "txn"))
 }

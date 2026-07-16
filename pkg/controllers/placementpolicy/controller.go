@@ -60,6 +60,8 @@ const (
 	// nonexistent value makes exclusive stores eligible without filtering out
 	// normal stores or stores labeled $k/exclusive=true.
 	placementExclusiveConstraintNonexistentValue = "__null__"
+
+	placementPolicyKeyRangeTypeTxn = "txn"
 )
 
 type Reconciler struct {
@@ -326,6 +328,9 @@ func (r *Reconciler) buildRules(ctx context.Context, policy *v1alpha1.PlacementP
 			}
 			groupID := coreutil.PlacementPolicyGroupID()
 			for _, keyRange := range keyRanges {
+				if keyRange.Type != placementPolicyKeyRangeTypeTxn {
+					continue
+				}
 				rules = append(rules, pdapi.PlacementRule{
 					GroupID:     groupID,
 					ID:          coreutil.PlacementPolicyRuleID(policy.Name, rule.Name, keyspaceID, keyRange.Type),

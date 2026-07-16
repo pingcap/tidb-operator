@@ -51,11 +51,13 @@ func TestBuildRulesUsesTiKVGroupLabelForAllTargets(t *testing.T) {
 
 	rules, err := r.buildRules(context.Background(), policy)
 	require.NoError(t, err)
-	require.Len(t, rules, 2)
+	require.Len(t, rules, 1)
 
 	for _, rule := range rules {
 		assert.Equal(t, "tidb-operator", rule.GroupID)
-		assert.Contains(t, rule.ID, "p:r1-1-")
+		assert.Equal(t, "p:r1-1-txn", rule.ID)
+		assert.Equal(t, "7800000100000000fb", rule.StartKeyHex)
+		assert.Equal(t, "7800000200000000fb", rule.EndKeyHex)
 		assert.Equal(t, v1alpha1.PlacementPolicyRoleVoter, rule.Role)
 		assert.Equal(t, int32(3), rule.Count)
 		require.Len(t, rule.LabelConstraints, 2)
@@ -233,7 +235,7 @@ func TestSyncPolicyRulesPostsRuleGroup(t *testing.T) {
 	rules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
-			ID:      "p:r1-1-raw",
+			ID:      "p:r1-1-txn",
 			Role:    v1alpha1.PlacementPolicyRoleVoter,
 			Count:   3,
 		},

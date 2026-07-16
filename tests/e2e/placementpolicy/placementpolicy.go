@@ -226,7 +226,6 @@ func expectedPlacementRuleBundle(rules ...pdapi.PlacementRule) *pdapi.PlacementR
 func expectedKeyspacePlacementRules(policyName, ruleName, keyspaceID string) []pdapi.PlacementRule {
 	groupID := coreutil.PlacementPolicyGroupID()
 	return []pdapi.PlacementRule{
-		{GroupID: groupID, ID: coreutil.PlacementPolicyRuleID(policyName, ruleName, keyspaceID, "raw")},
 		{GroupID: groupID, ID: coreutil.PlacementPolicyRuleID(policyName, ruleName, keyspaceID, "txn")},
 	}
 }

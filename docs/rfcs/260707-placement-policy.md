@@ -121,7 +121,7 @@ For each user rule and each selected keyspace:
 - `group_id` is the shared operator-owned group: `tidb-operator`.
 - each policy owns only rules whose ID starts with the policy prefix: `<policyName>:`.
 - each generated rule ID is `<policyName>:<ruleName>-<keyspaceID>-<rangeType>` to avoid collisions in the shared group.
-- generate one PD rule for each keyspace range with `k/tikvgroup in [...]`; a selected keyspace expands to both raw and txn ranges.
+- generate one txn PD rule for each selected keyspace with `k/tikvgroup in [...]`.
 - every generated rule also adds `$k/exclusive notIn ["__null__"]`. This explicitly references the `$k/exclusive` key so PD can consider exclusive stores, while `__null__` is an intentionally nonexistent value so the constraint does not filter out normal stores or stores labeled `$k/exclusive=true`.
 - `count` is copied as-is to every generated PD rule.
 
@@ -158,7 +158,7 @@ The controller reconciles `PlacementPolicy` as follows:
 1. Resolve `spec.cluster.name` and all `spec.groupRefs`.
 2. Skip PD rule writes while the referenced Cluster is paused or `suspendAction.suspendCompute` is true.
 3. Validate every `groupRef` points to a `TiKVGroup` in the same cluster.
-4. Build both raw and txn keyspace ranges for every selected keyspace ID using PD's keyspace prefix encoding.
+4. Build the txn keyspace range for every selected keyspace ID using PD's keyspace prefix encoding.
 5. Build target values for the shared label key `k/tikvgroup`.
 6. Put all generated PD rules in the shared `tidb-operator` rule group.
 7. Post the PD rule group before writing rules. The rule group API is idempotent.
@@ -221,26 +221,6 @@ If `groupRefs` contains one normal TiKVGroup and one exclusive TiKVGroup, the ge
 [
   {
     "group_id": "tidb-operator",
-    "id": "ks1-to-kvg:voter-1-raw",
-    "role": "voter",
-    "count": 3,
-    "start_key": "<keyspace-1-raw-start-hex>",
-    "end_key": "<keyspace-1-raw-end-hex>",
-    "label_constraints": [
-      {
-        "key": "k/tikvgroup",
-        "op": "in",
-        "values": ["ns.kvg-normal", "ns.kvg-exclusive"]
-      },
-      {
-        "key": "$k/exclusive",
-        "op": "notIn",
-        "values": ["__null__"]
-      }
-    ]
-  },
-  {
-    "group_id": "tidb-operator",
     "id": "ks1-to-kvg:voter-1-txn",
     "role": "voter",
     "count": 3,
@@ -262,7 +242,7 @@ If `groupRefs` contains one normal TiKVGroup and one exclusive TiKVGroup, the ge
 ]
 ```
 
-For every selected keyspace ID, the operator generates two key ranges: raw mode and txn mode. Each range produces one PD rule whose ID ends with the range type, for example `-raw` and `-txn`. The operator only accepts keyspace IDs in PD's valid 24-bit keyspace ID range.
+For every selected keyspace ID, the operator generates one txn key range. The generated PD rule ID ends with `-txn`. The operator only accepts keyspace IDs in PD's valid 24-bit keyspace ID range.
 
 ### Test Plan
 
@@ -272,7 +252,7 @@ For every selected keyspace ID, the operator generates two key ranges: raw mode 
   - reject TiKV and TiFlash server labels with `k/` and `$k/` prefixes.
 - Unit tests:
   - verify normal and exclusive targets use the shared TiKVGroup label constraint.
-  - verify raw and txn keyspace range encodings.
+  - verify txn keyspace range encoding.
 - E2E:
   - create normal and exclusive `TiKVGroup`s.
   - create a `PlacementPolicy` for a keyspace.
