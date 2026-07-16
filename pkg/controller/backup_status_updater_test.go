@@ -169,7 +169,7 @@ func TestUpdateBROperations(t *testing.T) {
 	g.Expect(operations).Should(HaveLen(1))
 
 	originalStartedAt := observed.StartedAt.Time
-	observed.StartedAt.Time = observed.StartedAt.Time.Add(time.Hour)
+	observed.StartedAt.Time = observed.StartedAt.Add(time.Hour)
 	g.Expect(operations[0].StartedAt.Time).Should(Equal(originalStartedAt))
 }
 
