@@ -243,7 +243,7 @@ func TestSyncPolicyRulesPostsRuleGroup(t *testing.T) {
 	expectedRules := []pdapi.PlacementRule{
 		{
 			GroupID:        "tidb-operator",
-			ID:             "p:r1-1-raw",
+			ID:             "p:r1-1-txn",
 			Role:           v1alpha1.PlacementPolicyRoleVoter,
 			Count:          3,
 			LocationLabels: locationLabels,
@@ -278,7 +278,7 @@ func TestSyncPolicyRulesUsesEmptyLocationLabelsWhenDefaultRuleMissing(t *testing
 	rules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
-			ID:      "p:r1-1-raw",
+			ID:      "p:r1-1-txn",
 			Role:    v1alpha1.PlacementPolicyRoleVoter,
 			Count:   3,
 		},
@@ -286,7 +286,7 @@ func TestSyncPolicyRulesUsesEmptyLocationLabelsWhenDefaultRuleMissing(t *testing
 	expectedRules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
-			ID:      "p:r1-1-raw",
+			ID:      "p:r1-1-txn",
 			Role:    v1alpha1.PlacementPolicyRoleVoter,
 			Count:   3,
 		},
@@ -319,7 +319,7 @@ func TestSyncPolicyRulesNormalizesEmptyDefaultLocationLabels(t *testing.T) {
 	rules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
-			ID:      "p:r1-1-raw",
+			ID:      "p:r1-1-txn",
 			Role:    v1alpha1.PlacementPolicyRoleVoter,
 			Count:   3,
 		},
@@ -327,7 +327,7 @@ func TestSyncPolicyRulesNormalizesEmptyDefaultLocationLabels(t *testing.T) {
 	expectedRules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
-			ID:      "p:r1-1-raw",
+			ID:      "p:r1-1-txn",
 			Role:    v1alpha1.PlacementPolicyRoleVoter,
 			Count:   3,
 		},
@@ -361,7 +361,7 @@ func TestSyncPolicyRulesReturnsDefaultRuleLookupError(t *testing.T) {
 	rules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
-			ID:      "p:r1-1-raw",
+			ID:      "p:r1-1-txn",
 			Role:    v1alpha1.PlacementPolicyRoleVoter,
 			Count:   3,
 		},
