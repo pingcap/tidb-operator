@@ -281,6 +281,14 @@ func TestSyncPolicyRulesUsesEmptyLocationLabelsWhenDefaultRuleMissing(t *testing
 			Count:   3,
 		},
 	}
+	expectedRules := []pdapi.PlacementRule{
+		{
+			GroupID: "tidb-operator",
+			ID:      "p:r1-1-raw",
+			Role:    v1alpha1.PlacementPolicyRoleVoter,
+			Count:   3,
+		},
+	}
 	pdc := pdapi.NewMockPDClient(gomock.NewController(t))
 	pdc.EXPECT().GetPlacementRuleBundle(gomock.Any(), "pd").Return(&pdapi.PlacementRuleGroupBundle{
 		ID: "pd",
@@ -297,7 +305,7 @@ func TestSyncPolicyRulesUsesEmptyLocationLabelsWhenDefaultRuleMissing(t *testing
 			Index:    pdPlacementRuleGroupIndex,
 			Override: true,
 		}).Return(nil),
-		pdc.EXPECT().SetPlacementRuleGroupRulesByIDPrefix(gomock.Any(), "tidb-operator", "p:", rules).Return(nil),
+		pdc.EXPECT().SetPlacementRuleGroupRulesByIDPrefix(gomock.Any(), "tidb-operator", "p:", expectedRules).Return(nil),
 	)
 
 	err := syncPolicyRules(ctx, pdc, "p:", rules)
@@ -307,6 +315,14 @@ func TestSyncPolicyRulesUsesEmptyLocationLabelsWhenDefaultRuleMissing(t *testing
 func TestSyncPolicyRulesNormalizesEmptyDefaultLocationLabels(t *testing.T) {
 	ctx := context.Background()
 	rules := []pdapi.PlacementRule{
+		{
+			GroupID: "tidb-operator",
+			ID:      "p:r1-1-raw",
+			Role:    v1alpha1.PlacementPolicyRoleVoter,
+			Count:   3,
+		},
+	}
+	expectedRules := []pdapi.PlacementRule{
 		{
 			GroupID: "tidb-operator",
 			ID:      "p:r1-1-raw",
@@ -331,11 +347,29 @@ func TestSyncPolicyRulesNormalizesEmptyDefaultLocationLabels(t *testing.T) {
 			Index:    pdPlacementRuleGroupIndex,
 			Override: true,
 		}).Return(nil),
-		pdc.EXPECT().SetPlacementRuleGroupRulesByIDPrefix(gomock.Any(), "tidb-operator", "p:", rules).Return(nil),
+		pdc.EXPECT().SetPlacementRuleGroupRulesByIDPrefix(gomock.Any(), "tidb-operator", "p:", expectedRules).Return(nil),
 	)
 
 	err := syncPolicyRules(ctx, pdc, "p:", rules)
 	require.NoError(t, err)
+}
+
+func TestSyncPolicyRulesReturnsDefaultRuleLookupError(t *testing.T) {
+	ctx := context.Background()
+	rules := []pdapi.PlacementRule{
+		{
+			GroupID: "tidb-operator",
+			ID:      "p:r1-1-raw",
+			Role:    v1alpha1.PlacementPolicyRoleVoter,
+			Count:   3,
+		},
+	}
+	pdc := pdapi.NewMockPDClient(gomock.NewController(t))
+	pdc.EXPECT().GetPlacementRuleBundle(gomock.Any(), "pd").Return(nil, errors.New("pd unavailable"))
+
+	err := syncPolicyRules(ctx, pdc, "p:", rules)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get default placement rule bundle")
 }
 
 func TestSyncPolicyRulesSkipsDefaultRuleLookupWhenNoRules(t *testing.T) {

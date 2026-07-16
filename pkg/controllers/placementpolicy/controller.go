@@ -432,6 +432,10 @@ func defaultRuleLocationLabels(ctx context.Context, pdc pdapi.PDClient) ([]strin
 }
 
 func setPlacementRulesLocationLabels(rules []pdapi.PlacementRule, locationLabels []string) {
+	if len(locationLabels) == 0 {
+		locationLabels = nil
+	}
+
 	for i := range rules {
 		rules[i].LocationLabels = locationLabels
 	}
