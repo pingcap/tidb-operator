@@ -242,9 +242,16 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		}
 
 		ginkgo.By("Create restore")
-		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, nil)
+		checkRestoreBROperations := shouldCheckRestoreBROperations(tcase)
+		var configureRestore func(*v1alpha1.Restore)
+		if checkRestoreBROperations {
+			configureRestore = func(restore *v1alpha1.Restore) {
+				restore.Spec.ToolImage = fmt.Sprintf("pingcap/br:%s", utilimage.TiDBNightlyVersion)
+			}
+		}
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, configureRestore)
 		framework.ExpectNoError(err)
-		if shouldCheckRestoreBROperations(tcase) {
+		if checkRestoreBROperations {
 			ginkgo.By("Check BR operation status for restore")
 			err = waitForRestoreBROperationsObserved(f, restoreName, restoreCompleteTimeout)
 			framework.ExpectNoError(err)
