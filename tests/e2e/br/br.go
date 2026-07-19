@@ -130,9 +130,8 @@ func shouldCheckRestoreBROperations(tcase *testcase) bool {
 		!tcase.enableXK8sMode
 }
 
-func brOperationToolImage() string {
-	return fmt.Sprintf("pingcap/br:%s", utilimage.TiDBNightlyVersion)
-}
+// brOperationToolImage pins the first release-8.5 patch containing BR operation metadata.
+const brOperationToolImage = "pingcap/br:v8.5.7"
 
 var _ = ginkgo.Describe("Backup and Restore", func() {
 	f := e2eframework.NewFramework("br")
@@ -250,7 +249,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		var configureRestore func(*v1alpha1.Restore)
 		if checkRestoreBROperations {
 			configureRestore = func(restore *v1alpha1.Restore) {
-				restore.Spec.ToolImage = brOperationToolImage()
+				restore.Spec.ToolImage = brOperationToolImage
 			}
 		}
 		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, configureRestore)
@@ -532,7 +531,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.ToolImage = brOperationToolImage()
+				backup.Spec.ToolImage = brOperationToolImage
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
