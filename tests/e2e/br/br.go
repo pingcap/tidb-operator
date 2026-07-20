@@ -122,6 +122,17 @@ func (t *testcase) description() string {
 	return builder.String()
 }
 
+func shouldCheckRestoreBROperations(tcase *testcase) bool {
+	return tcase.typ == typeBR &&
+		tcase.backupVersion == utilimage.TiDBLatest &&
+		tcase.restoreVersion == utilimage.TiDBLatest &&
+		!tcase.enableTLS &&
+		!tcase.enableXK8sMode
+}
+
+// brOperationToolImage pins the first release-8.5 patch containing BR operation metadata.
+const brOperationToolImage = "pingcap/br:v8.5.7"
+
 var _ = ginkgo.Describe("Backup and Restore", func() {
 	f := e2eframework.NewFramework("br")
 
@@ -234,8 +245,20 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		}
 
 		ginkgo.By("Create restore")
-		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, nil)
+		checkRestoreBROperations := shouldCheckRestoreBROperations(tcase)
+		var configureRestore func(*v1alpha1.Restore)
+		if checkRestoreBROperations {
+			configureRestore = func(restore *v1alpha1.Restore) {
+				restore.Spec.ToolImage = brOperationToolImage
+			}
+		}
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, configureRestore)
 		framework.ExpectNoError(err)
+		if checkRestoreBROperations {
+			ginkgo.By("Check BR operation status for restore")
+			err = waitForRestoreBROperationsObserved(f, restoreName, restoreCompleteTimeout)
+			framework.ExpectNoError(err)
+		}
 
 		ginkgo.By("Forward restore TiDB cluster service")
 		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), int(v1alpha1.DefaultTiDBServerPort))
@@ -508,10 +531,14 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.ToolImage = brOperationToolImage
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+			ginkgo.By("Check BR operation status for log truncate")
+			backup, err = waitForBackupBROperationsObserved(f, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Truncate log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -1939,6 +1966,67 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 		return err
 	}
 
+	return nil
+}
+
+func waitForBackupBROperationsObserved(f *e2eframework.Framework, name string, timeout time.Duration) (*v1alpha1.Backup, error) {
+	ns := f.Namespace.Name
+	var backup *v1alpha1.Backup
+	var validationErr error
+	if err := wait.PollImmediate(2*time.Second, timeout, func() (bool, error) {
+		observed, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		validationErr = validateBROperations(fmt.Sprintf("backup %s/%s", ns, name), observed.Status.BROperations)
+		if validationErr != nil {
+			return false, nil
+		}
+		backup = observed
+		return true, nil
+	}); err != nil {
+		if validationErr != nil {
+			return backup, fmt.Errorf("can't wait for backup BR operations observed: %v", validationErr)
+		}
+		return backup, fmt.Errorf("can't wait for backup BR operations observed: %v", err)
+	}
+	return backup, nil
+}
+
+func waitForRestoreBROperationsObserved(f *e2eframework.Framework, name string, timeout time.Duration) error {
+	ns := f.Namespace.Name
+	var validationErr error
+	if err := wait.PollImmediate(2*time.Second, timeout, func() (bool, error) {
+		restore, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		validationErr = validateBROperations(fmt.Sprintf("restore %s/%s", ns, name), restore.Status.BROperations)
+		return validationErr == nil, nil
+	}); err != nil {
+		if validationErr != nil {
+			return fmt.Errorf("can't wait for restore BR operations observed: %v", validationErr)
+		}
+		return fmt.Errorf("can't wait for restore BR operations observed: %v", err)
+	}
+	return nil
+}
+
+func validateBROperations(resource string, operations []v1alpha1.BROperation) error {
+	if len(operations) == 0 {
+		return fmt.Errorf("%s has no observed BR operations", resource)
+	}
+	for i, operation := range operations {
+		if operation.OperationID == "" {
+			return fmt.Errorf("%s BR operation %d has empty operationID", resource, i)
+		}
+		if operation.Command == "" {
+			return fmt.Errorf("%s BR operation %d has empty command", resource, i)
+		}
+		if operation.ObservedAt.IsZero() {
+			return fmt.Errorf("%s BR operation %d has empty observedAt", resource, i)
+		}
+	}
 	return nil
 }
 

@@ -48,6 +48,8 @@ type RestoreUpdateStatus struct {
 	ProgressUpdateTime *metav1.Time
 	// ReplicationStep identifies the current replication restore step.
 	ReplicationStep *string
+	// BROperation appends or refreshes one observed BR operation.
+	BROperation *v1alpha1.BROperation
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -133,6 +135,10 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 	}
 	if newStatus.ReplicationStep != nil && status.ReplicationStep != *newStatus.ReplicationStep {
 		status.ReplicationStep = *newStatus.ReplicationStep
+		isUpdate = true
+	}
+	if operations, updated := updateBROperations(status.BROperations, newStatus.BROperation); updated {
+		status.BROperations = operations
 		isUpdate = true
 	}
 

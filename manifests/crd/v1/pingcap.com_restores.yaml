@@ -3187,6 +3187,22 @@ spec:
             type: object
           status:
             properties:
+              brOperations:
+                items:
+                  properties:
+                    command:
+                      type: string
+                    observedAt:
+                      format: date-time
+                      type: string
+                    operationID:
+                      type: string
+                    startedAt:
+                      format: date-time
+                      type: string
+                  type: object
+                nullable: true
+                type: array
               commitTs:
                 type: string
               conditions:

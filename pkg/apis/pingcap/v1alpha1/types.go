@@ -2495,6 +2495,14 @@ type Progress struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
+// BROperation records one observed BR process execution for this CR.
+type BROperation struct {
+	OperationID string       `json:"operationID,omitempty"`
+	StartedAt   *metav1.Time `json:"startedAt,omitempty"`
+	Command     string       `json:"command,omitempty"`
+	ObservedAt  metav1.Time  `json:"observedAt,omitempty"`
+}
+
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
 // +kubebuilder:validation:XValidation:rule="has(self.logSubcommand) ? !has(self.logStop) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
@@ -2858,6 +2866,9 @@ type BackupStatus struct {
 	// Progresses is the progress of backup.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
+	// BROperations records recently observed BR process executions owned by this Backup.
+	// +nullable
+	BROperations []BROperation `json:"brOperations,omitempty"`
 	// BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
 	BackoffRetryStatus []BackoffRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
@@ -3301,6 +3312,9 @@ type RestoreStatus struct {
 	// Progresses is the progress of restore.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
+	// BROperations records recently observed BR process executions owned by this Restore.
+	// +nullable
+	BROperations []BROperation `json:"brOperations,omitempty"`
 	// ReplicationStep identifies the current phase of replication restore.
 	// Values: "" (not replication), "snapshot-restore", "log-restore".
 	// Set by the controller when creating each phase's Job.

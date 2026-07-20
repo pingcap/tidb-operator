@@ -14,6 +14,7 @@
 package util
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -32,6 +33,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/pingcap/errors"
 	kvbackup "github.com/pingcap/kvproto/pkg/brpb"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/brlog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -520,14 +522,138 @@ func ParseRestoreProgress(line string) (step, progress string) {
 	return
 }
 
-// ReadAllStdErrToChannel read the stdErr and send the output to channel
-func ReadAllStdErrToChannel(stdErr io.Reader, errMsgCh chan []byte) {
-	errMsg, err := io.ReadAll(stdErr)
+func ReadLinesToChannel(reader io.Reader, lineCh chan<- string, errCh chan<- error) {
+	defer close(lineCh)
+	bufReader := bufio.NewReader(reader)
+	for {
+		line, err := bufReader.ReadString('\n')
+		if len(line) > 0 {
+			line = strings.TrimSuffix(line, "\n")
+			line = strings.TrimSuffix(line, "\r")
+			lineCh <- line
+		}
+		if err != nil {
+			if err == io.EOF {
+				errCh <- nil
+				return
+			}
+			errCh <- err
+			return
+		}
+	}
+}
+
+// BRLogStream identifies which BR process output stream produced a log line.
+type BRLogStream string
+
+const (
+	// BRLogStreamStdout marks a line read from BR stdout.
+	BRLogStreamStdout BRLogStream = "stdout"
+	// BRLogStreamStderr marks a line read from BR stderr.
+	BRLogStreamStderr BRLogStream = "stderr"
+)
+
+// BRLogLineHandler handles one line read from BR stdout or stderr.
+type BRLogLineHandler func(stream BRLogStream, line string)
+
+// BRCommandOptions controls how to run a BR command and consume its output.
+type BRCommandOptions struct {
+	BRBinPath string
+	Cluster   string
+	Args      []string
+	// GracefulShutdown controls whether ctx cancellation sends SIGTERM to the BR process.
+	GracefulShutdown bool
+	LineHandler      BRLogLineHandler
+}
+
+// RunBRCommandWithLineHandler runs BR and streams stdout/stderr lines to lineHandler.
+//
+// The returned error preserves legacy diagnostic behavior: stderr is included in
+// errMsg in full, while stdout contributes only BR error/fatal/panic lines.
+// The context only stops the BR process when opts.GracefulShutdown is true.
+func RunBRCommandWithLineHandler(
+	ctx context.Context,
+	opts BRCommandOptions,
+) error {
+	if len(opts.Args) == 0 {
+		return fmt.Errorf("command is invalid, args: %v", opts.Args)
+	}
+	klog.Infof("Running br command with args: %v", opts.Args)
+	bin := filepath.Join(opts.BRBinPath, "br")
+	cmd := exec.Command(bin, opts.Args...)
+
+	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", opts.Cluster, err)
+	}
+	stdErr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", opts.Cluster, err)
+	}
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute br command failed, args: %v, err: %v", opts.Cluster, opts.Args, err)
+	}
+	if opts.GracefulShutdown {
+		go GracefullyShutDownSubProcess(ctx, cmd)
+	}
+
+	var errMsg string
+	stdOutLineCh := make(chan string)
+	stdOutErrCh := make(chan error, 1)
+	go ReadLinesToChannel(stdOut, stdOutLineCh, stdOutErrCh)
+
+	stdErrLineCh := make(chan string)
+	stdErrErrCh := make(chan error, 1)
+	go ReadLinesToChannel(stdErr, stdErrLineCh, stdErrErrCh)
+
+	stdOutOpen, stdErrOpen := true, true
+	for stdOutOpen || stdErrOpen {
+		select {
+		case line, ok := <-stdOutLineCh:
+			if !ok {
+				stdOutOpen = false
+				stdOutLineCh = nil
+				continue
+			}
+			processBRCommandOutputLine(BRLogStreamStdout, line, &errMsg, opts.LineHandler)
+		case line, ok := <-stdErrLineCh:
+			if !ok {
+				stdErrOpen = false
+				stdErrLineCh = nil
+				continue
+			}
+			processBRCommandOutputLine(BRLogStreamStderr, line, &errMsg, opts.LineHandler)
+		}
+	}
+
+	if err := <-stdOutErrCh; err != nil {
+		klog.Errorf("read stdout error: %s", err.Error())
+	}
+	if err := <-stdErrErrCh; err != nil {
 		klog.Errorf("read stderr error: %s", err.Error())
 	}
-	errMsgCh <- errMsg
-	close(errMsgCh)
+
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("cluster %s, wait br command failed, errMsg %s, err: %v", opts.Cluster, errMsg, err)
+	}
+	return nil
+}
+
+func processBRCommandOutputLine(
+	stream BRLogStream,
+	line string,
+	errMsg *string,
+	lineHandler BRLogLineHandler,
+) {
+	if stream == BRLogStreamStderr || brlog.IsErrorLine(line) {
+		*errMsg += line + "\n"
+	}
+	if lineHandler != nil {
+		lineHandler(stream, line)
+	}
+	klog.Info(line)
 }
 
 // GracefullyShutDownSubProcess just send SIGTERM to the process of cmd when context done
