@@ -14,12 +14,9 @@
 package restore
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -27,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/brlog"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -37,6 +35,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
+
+var brBinPath = util.BRBinPath
 
 type Options struct {
 	backupUtil.GenericOptions
@@ -130,22 +130,6 @@ func (ro *Options) restoreData(
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := path.Join(util.BRBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
-
-	stdOut, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
-	}
-	stdErr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
-	}
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
-	}
 
 	var (
 		progressWg     sync.WaitGroup
@@ -163,38 +147,24 @@ func (ro *Options) restoreData(
 		}()
 	}
 
-	stdErrCh := make(chan []byte, 1)
-	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
-
-	var errMsg string
-	reader := bufio.NewReader(stdOut)
-	for {
-		line, err := reader.ReadString('\n')
-		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
-		} else {
-			if !useProgressFile {
-				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+	observer := newRestoreLogObserver(restore, statusUpdater)
+	err = backupUtil.RunBRCommandWithLineHandler(ctx, backupUtil.BRCommandOptions{
+		BRBinPath:        brBinPath,
+		Cluster:          fmt.Sprint(ro),
+		Args:             fullArgs,
+		GracefulShutdown: true,
+		LineHandler: func(stream backupUtil.BRLogStream, line string) {
+			if stream == backupUtil.BRLogStreamStdout && !brlog.IsErrorLine(line) {
+				if !useProgressFile {
+					ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+				}
+				ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 			}
-			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
-		}
-		klog.Info(strings.ReplaceAll(line, "\n", ""))
-		if err != nil {
-			if err != io.EOF {
-				klog.Errorf("read stdout error: %s", err.Error())
-			}
-			break
-		}
-	}
-	tmpErr := <-stdErrCh
-	if len(tmpErr) > 0 {
-		klog.Info(string(tmpErr))
-		errMsg += string(tmpErr)
-	}
-
-	err = cmd.Wait()
+			observer.observeLine(line)
+		},
+	})
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+		return err
 	}
 
 	if csbPath != "" {
@@ -222,6 +192,36 @@ func (ro *Options) restoreData(
 
 	klog.Infof("Restore data for cluster %s successfully", ro)
 	return nil
+}
+
+type restoreLogObserver struct {
+	restore       *v1alpha1.Restore
+	statusUpdater controller.RestoreConditionUpdaterInterface
+}
+
+func newRestoreLogObserver(
+	restore *v1alpha1.Restore,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+) *restoreLogObserver {
+	return &restoreLogObserver{
+		restore:       restore,
+		statusUpdater: statusUpdater,
+	}
+}
+
+func (o *restoreLogObserver) observeLine(line string) {
+	operation, ok := brlog.ParseOperationStartedLine(line)
+	if !ok {
+		return
+	}
+	if operation.ObservedAt.IsZero() {
+		operation.ObservedAt = metav1.Now()
+	}
+	if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
+		BROperation: operation,
+	}); err != nil {
+		klog.Errorf("Failed to update BR operation status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
+	}
 }
 
 // copy the restore meta to remote storage since k8s has limit to handle massive data pass between pods
