@@ -122,6 +122,7 @@ func TestGenerateRemoteWrite(t *testing.T) {
 	}
 	remoteWriteConfig, err := generateRemoteWrite(&monitor, store)
 	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(remoteWriteConfig).NotTo(BeNil())
 
 	prometheusYaml, err := yaml.Marshal(remoteWriteConfig.Value)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -227,6 +228,7 @@ func TestGenerateRemoteWriteWithHighVersion(t *testing.T) {
 	}
 	remoteWriteConfig, err := generateRemoteWrite(&monitor, store)
 	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(remoteWriteConfig).NotTo(BeNil())
 
 	prometheusYaml, err := yaml.Marshal(remoteWriteConfig.Value)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -235,6 +237,90 @@ func TestGenerateRemoteWriteWithHighVersion(t *testing.T) {
 	var expectedContentBytes bytes.Buffer
 	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
 	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
+}
+
+func TestGenerateRemoteWriteWithEmptyRemoteWrite(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	// A non-semver prometheus image tag (such as a SHA256 digest) must not break
+	// reconciliation when remote_write is not configured, because the version is only
+	// used inside the remote_write loop, which never runs when the list is empty. The
+	// function returns nil so the renderer does not emit a remote_write key.
+	monitor := v1alpha1.TidbMonitor{
+		Spec: v1alpha1.TidbMonitorSpec{
+			Prometheus: v1alpha1.PrometheusSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					Version: "sha256:356f96b6c85a0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6",
+				},
+			},
+		},
+	}
+	store := &Store{
+		secretLister: nil,
+		TLSAssets:    make(map[TLSAssetKey]TLSAsset),
+	}
+
+	remoteWriteCfg, err := generateRemoteWrite(&monitor, store)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(remoteWriteCfg).To(BeNil())
+}
+
+func TestGenerateRemoteWriteWithNonSemVerVersionAndRemoteWrite(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	// When remote_write IS configured, the prometheus version must be parsed to gate
+	// version-specific fields, so a non-semver tag remains a real error here. This is
+	// the intended boundary: parsing is only skipped when remote_write is unused; it is
+	// not relaxed for users who actually configure remote_write.
+	monitor := v1alpha1.TidbMonitor{
+		Spec: v1alpha1.TidbMonitorSpec{
+			Prometheus: v1alpha1.PrometheusSpec{
+				RemoteWrite: []*v1alpha1.RemoteWriteSpec{
+					{URL: "http://127.0.0.1/a/b/c"},
+				},
+				MonitorContainer: v1alpha1.MonitorContainer{
+					Version: "sha256:356f96b6c85a0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6",
+				},
+			},
+		},
+	}
+	store := &Store{
+		secretLister: nil,
+		TLSAssets:    make(map[TLSAssetKey]TLSAsset),
+	}
+
+	_, err := generateRemoteWrite(&monitor, store)
+	g.Expect(err).To(HaveOccurred())
+}
+
+func TestGetPromConfigMapWithoutRemoteWrite(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	// End-to-end check: when remote_write is not configured and the prometheus image
+	// tag is not a semver string, getPromConfigMap must not fail. The rendered
+	// prometheus.yml should not contain a remote_write key; we prefer to omit it
+	// rather than emit a redundant `remote_write: []`.
+	monitor := v1alpha1.TidbMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "ns",
+		},
+		Spec: v1alpha1.TidbMonitorSpec{
+			Prometheus: v1alpha1.PrometheusSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					Version: "sha256:356f96b6c85a0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6",
+				},
+			},
+		},
+	}
+
+	cm, err := getPromConfigMap(&monitor, []ClusterRegexInfo{{Name: "basic", Namespace: "ns"}}, nil, 0, nil)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(cm).NotTo(BeNil())
+
+	content, ok := cm.Data["prometheus.yml"]
+	g.Expect(ok).To(BeTrue())
+	g.Expect(content).NotTo(ContainSubstring("remote_write"))
 }
 
 func TestGetMonitorConfigMap(t *testing.T) {
