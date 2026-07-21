@@ -170,7 +170,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 	if err != nil {
 		return nil, err
 	}
-	model.RemoteWriteCfg = &remoteWriteCfg
+	model.RemoteWriteCfg = remoteWriteCfg
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
@@ -1501,12 +1501,31 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 	return m
 }
 
-func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapItem, error) {
-	var cfgs []yaml.MapSlice
+func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (*yaml.MapItem, error) {
+	// remote_write is optional. The prometheus version is only used inside the loop
+	// below, to decide whether version-specific remote_write fields (headers, name,
+	// min_shards, metadata_config) should be rendered. So the version only needs to be
+	// parsed when at least one remote_write spec is configured.
+	//
+	// Parsing the version unconditionally is wrong because the prometheus image tag is
+	// not always a semver string. We have seen real deployments reference the prometheus
+	// image by a SHA256 digest instead of a version tag, and parsing such a value fails.
+	// When that happens while remote_write is unused, reconciliation fails with an
+	// "Invalid Semantic version" error and the basic-monitor StatefulSet is never
+	// created, even though remote_write plays no part in the failure.
+	//
+	// Returning nil here also lets the renderer omit the remote_write key entirely.
+	// It is not strictly required: Prometheus tolerates a redundant `remote_write: []`
+	// (yaml.v2 writes a nil slice as an empty list), but omitting the key keeps the
+	// rendered config cleaner.
+	if len(monitor.Spec.Prometheus.RemoteWrite) == 0 {
+		return nil, nil
+	}
 	version, err := semver.NewVersion(monitor.Spec.Prometheus.Version)
 	if err != nil {
-		return yaml.MapItem{}, err
+		return nil, err
 	}
+	var cfgs []yaml.MapSlice
 	for i, spec := range monitor.Spec.Prometheus.RemoteWrite {
 		//defaults
 		if spec.RemoteTimeout == "" {
@@ -1638,7 +1657,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 		cfgs = append(cfgs, cfg)
 	}
 
-	return yaml.MapItem{
+	return &yaml.MapItem{
 		Key:   "remote_write",
 		Value: cfgs,
 	}, nil
