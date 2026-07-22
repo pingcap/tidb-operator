@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -736,4 +737,126 @@ func TestGetSliceExcludeOneString(t *testing.T) {
 			g.Expect(strs).To(Equal(tt.expect))
 		})
 	}
+}
+
+func TestReadLinesToChannel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	lineCh := make(chan string)
+	errCh := make(chan error)
+
+	go ReadLinesToChannel(strings.NewReader("a\nb\n"), lineCh, errCh)
+
+	g.Expect(<-lineCh).To(Equal("a"))
+	g.Expect(<-lineCh).To(Equal("b"))
+	g.Expect(<-errCh).To(Succeed())
+	_, ok := <-lineCh
+	g.Expect(ok).To(BeFalse())
+}
+
+func TestReadLinesToChannelReadsLongLines(t *testing.T) {
+	g := NewGomegaWithT(t)
+	lineCh := make(chan string)
+	errCh := make(chan error)
+	longLine := strings.Repeat("x", 5*1024*1024)
+
+	go ReadLinesToChannel(strings.NewReader(longLine+"\n"), lineCh, errCh)
+
+	g.Expect(<-lineCh).To(Equal(longLine))
+	g.Expect(<-errCh).To(Succeed())
+	_, ok := <-lineCh
+	g.Expect(ok).To(BeFalse())
+}
+
+func TestRunBRCommandWithLineHandlerStreamsBothOutputsAndPreservesErrMsg(t *testing.T) {
+	g := NewGomegaWithT(t)
+	dir := t.TempDir()
+
+	script := `#!/bin/sh
+printf 'stdout [ERROR] one\n'
+printf 'stdout ordinary\n'
+printf 'stderr ordinary\n' >&2
+printf '{"level":"info","message":"stderr info"}\n' >&2
+exit 1
+`
+	err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755)
+	g.Expect(err).To(Succeed())
+
+	var observed []string
+	err = RunBRCommandWithLineHandler(context.Background(), BRCommandOptions{
+		BRBinPath: dir,
+		Cluster:   "test-cluster",
+		Args:      []string{"log", "truncate"},
+		LineHandler: func(stream BRLogStream, line string) {
+			observed = append(observed, string(stream)+":"+line)
+		},
+	})
+
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(observed).To(ConsistOf(
+		`stdout:stdout [ERROR] one`,
+		`stdout:stdout ordinary`,
+		`stderr:stderr ordinary`,
+		`stderr:{"level":"info","message":"stderr info"}`,
+	))
+	g.Expect(err.Error()).To(ContainSubstring("stdout [ERROR] one"))
+	g.Expect(err.Error()).To(ContainSubstring("stderr ordinary"))
+	g.Expect(err.Error()).To(ContainSubstring(`{"level":"info","message":"stderr info"}`))
+	g.Expect(err.Error()).NotTo(ContainSubstring("stdout ordinary"))
+}
+
+func TestRunBRCommandWithLineHandlerGracefullyStopsOnContextCancel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	dir := t.TempDir()
+
+	script := `#!/bin/sh
+exec sleep 1
+`
+	err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755)
+	g.Expect(err).To(Succeed())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err = RunBRCommandWithLineHandler(ctx, BRCommandOptions{
+		BRBinPath:        dir,
+		Cluster:          "test-cluster",
+		Args:             []string{"restore", "full"},
+		GracefulShutdown: true,
+	})
+	elapsed := time.Since(start)
+
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(elapsed).To(BeNumerically("<", 500*time.Millisecond))
+}
+
+func TestRunBRCommandWithLineHandlerLeavesProcessRunningWhenGracefulShutdownDisabled(t *testing.T) {
+	g := NewGomegaWithT(t)
+	dir := t.TempDir()
+
+	script := `#!/bin/sh
+exec sleep 0.2
+`
+	err := os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755)
+	g.Expect(err).To(Succeed())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err = RunBRCommandWithLineHandler(ctx, BRCommandOptions{
+		BRBinPath: dir,
+		Cluster:   "test-cluster",
+		Args:      []string{"backup", "full"},
+	})
+	elapsed := time.Since(start)
+
+	g.Expect(err).To(Succeed())
+	g.Expect(elapsed).To(BeNumerically(">", 150*time.Millisecond))
 }

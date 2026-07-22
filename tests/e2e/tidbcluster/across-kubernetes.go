@@ -38,6 +38,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -237,10 +238,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Deploy the basic cluster-1 with empty cluster domain")
 			tc1.Spec.ClusterDomain = ""
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
+			pdPodName := fmt.Sprintf("%s-pd-0", tc1.Name)
+			pdPodBeforeUpdate, err := c.CoreV1().Pods(tc1.Namespace).Get(context.TODO(), pdPodName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get pd pod of cluster-1 %s/%s", tc1.Namespace, pdPodName)
 
 			ginkgo.By("Update cluster domain of cluster-1")
-			timeBeforeUpdate := metav1.Now()
-			err := controller.GuaranteedUpdate(genericCli, tc1, func() error {
+			err = controller.GuaranteedUpdate(genericCli, tc1, func() error {
 				tc1.Spec.ClusterDomain = defaultClusterDomain
 				return nil
 			})
@@ -248,51 +251,46 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Wait for updating cluster domain of cluster-1")
 			// the PD pod should be restarted after updating cluster domain
-			err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-				pdPods, err := c.CoreV1().Pods(tc1.Namespace).List(context.TODO(), metav1.ListOptions{
-					LabelSelector: labels.SelectorFromSet(map[string]string{
-						"app.kubernetes.io/component": "pd",
-						"app.kubernetes.io/instance":  tc1.Name,
-					}).String(),
-				})
-				if err != nil {
-					return false, err
-				}
-				if len(pdPods.Items) == 0 {
-					return false, nil
-				}
-				log.Logf("time before update: %v, pd pod creation time: %v", timeBeforeUpdate, pdPods.Items[0].CreationTimestamp)
-				if pdPods.Items[0].CreationTimestamp.Before(&timeBeforeUpdate) {
-					return false, nil
-				}
-				return true, nil
-			})
+			err = waitForPodRecreated(c, tc1.Namespace, pdPodName, pdPodBeforeUpdate.UID, 5*time.Second, 5*time.Minute)
 			framework.ExpectNoError(err, "failed to wait for updating cluster domain of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
 
 			err = oa.WaitForTidbClusterReady(tc1, 25*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "failed to wait for cluster-1 ready: %s/%s", tc1.Namespace, tc1.Name)
 
-			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, tc1.Namespace, fmt.Sprintf("svc/%s-pd", tc1.Name), uint16(v1alpha1.DefaultPDClientPort))
-			framework.ExpectNoError(err, "failed to port-forward pd server of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			defer cancel()
-
 			ginkgo.By("Update pd's peerURL of cluster-1")
-			pdAddr := fmt.Sprintf("%s:%d", localHost, localPort)
-			var resp *pdutil.GetMembersResponse
+			var (
+				pdAddr string
+				resp   *pdutil.GetMembersResponse
+				cancel context.CancelFunc
+			)
 			err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 				// it seems the above `WaitForTidbClusterReady` may return before the pd server is ready
-				// so we need to retry here
-				resp, err = pdutil.GetMembersV2(pdAddr)
-				if err != nil {
-					log.Logf("failed to get pd members of cluster-1 %s/%s, %v", tc1.Namespace, tc1.Name, err)
+				// so both the port-forward and the request need to be retried here
+				localHost, localPort, forwardCancel, forwardErr := portforward.ForwardOnePort(fw, tc1.Namespace, fmt.Sprintf("svc/%s-pd", tc1.Name), uint16(v1alpha1.DefaultPDClientPort))
+				if forwardErr != nil {
+					log.Logf("failed to port-forward pd server of cluster-1 %s/%s, %v", tc1.Namespace, tc1.Name, forwardErr)
 					return false, nil
 				}
-				if len(resp.Members) == 0 {
+
+				addr := fmt.Sprintf("%s:%d", localHost, localPort)
+				members, requestErr := pdutil.GetMembersV2(addr)
+				if requestErr != nil {
+					forwardCancel()
+					log.Logf("failed to get pd members of cluster-1 %s/%s, %v", tc1.Namespace, tc1.Name, requestErr)
 					return false, nil
 				}
+				if len(members.Members) == 0 {
+					forwardCancel()
+					return false, nil
+				}
+
+				pdAddr = addr
+				resp = members
+				cancel = forwardCancel
 				return true, nil
 			})
 			framework.ExpectNoError(err, " failed to get pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+			defer cancel()
 			for _, member := range resp.Members {
 				peerURLs := []string{}
 				for _, url := range member.PeerURLs {
@@ -518,14 +516,34 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
 
 			ginkgo.By("Waiting for tikv pod to be unavailable")
-			err = utiltc.WaitForTCCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, time.Second,
-				func(tc *v1alpha1.TidbCluster) (bool, error) {
-					down := true
-					for _, store := range tc.Status.TiKV.Stores {
-						down = down && (store.State == "Disconnected" || store.State == v1alpha1.TiKVStateDown)
+			tikvSelector := labels.SelectorFromSet(map[string]string{
+				"app.kubernetes.io/component": "tikv",
+				"app.kubernetes.io/instance":  tc1.Name,
+			}).String()
+			err = wait.PollImmediate(time.Second, 5*time.Minute, func() (bool, error) {
+				tikvPods, err := c.CoreV1().Pods(tc1.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: tikvSelector})
+				if err != nil {
+					return false, err
+				}
+				if len(tikvPods.Items) != int(tc1.Spec.TiKV.Replicas) {
+					return false, nil
+				}
+
+				for i := range tikvPods.Items {
+					pod := &tikvPods.Items[i]
+					usesInexistentImage := false
+					for _, container := range pod.Spec.Containers {
+						if container.Name == "tikv" && strings.HasPrefix(container.Image, inexistentBaseImage+":") {
+							usesInexistentImage = true
+							break
+						}
 					}
-					return down, nil
-				})
+					if !usesInexistentImage || k8s.IsPodReady(pod) {
+						return false, nil
+					}
+				}
+				return true, nil
+			})
 			framework.ExpectNoError(err, "waiting for tikv pod to be unavailable")
 
 			ginkgo.By("Restart other component pods")
@@ -753,9 +771,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 				oldTC, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
+				pdPodName := fmt.Sprintf("%s-pd-0", tc.Name)
+				pdPodBeforeUpdate, err := c.CoreV1().Pods(tc.Namespace).Get(context.TODO(), pdPodName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get pd pod of tc %s/%s", tc.Namespace, pdPodName)
 
 				ginkgo.By("Update tc to use start script v2")
-				timeBeforeUpdate := metav1.Now()
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.StartScriptVersion = v1alpha1.StartScriptV2
 					return nil
@@ -763,25 +783,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				framework.ExpectNoError(err, "failed to start script version to v2")
 
 				ginkgo.By("Wait for PD to be recreated") // MustWaitForComponentPhase may not observe the UpgradePhase
-				err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-					pdPods, err := c.CoreV1().Pods(tc.Namespace).List(context.TODO(), metav1.ListOptions{
-						LabelSelector: labels.SelectorFromSet(map[string]string{
-							"app.kubernetes.io/component": "pd",
-							"app.kubernetes.io/instance":  tc.Name,
-						}).String(),
-					})
-					if err != nil {
-						return false, err
-					}
-					if len(pdPods.Items) == 0 {
-						return false, nil
-					}
-					log.Logf("time before update: %v, pd pod creation time: %v", timeBeforeUpdate, pdPods.Items[0].CreationTimestamp)
-					if pdPods.Items[0].CreationTimestamp.Before(&timeBeforeUpdate) {
-						return false, nil
-					}
-					return true, nil
-				})
+				err = waitForPodRecreated(c, tc.Namespace, pdPodName, pdPodBeforeUpdate.UID, 5*time.Second, 5*time.Minute)
 				framework.ExpectNoError(err, "failed to wait for pd pod of tc %s/%s to be recreated", ns, tcName)
 
 				ginkgo.By("Wait for cluster is ready")
@@ -796,6 +798,20 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 	})
 })
+
+func waitForPodRecreated(c clientset.Interface, namespace, podName string, previousUID types.UID, pollInterval, timeout time.Duration) error {
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		pod, err := c.CoreV1().Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		log.Logf("previous pod uid: %s, current pod uid: %s", previousUID, pod.UID)
+		return pod.UID != previousUID, nil
+	})
+}
 
 func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
 	checkTidbCluster := v1alpha1.TidbCluster{}

@@ -46,6 +46,8 @@ type RestoreUpdateStatus struct {
 	Progress *float64
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
+	// BROperation appends or refreshes one observed BR operation.
+	BROperation *v1alpha1.BROperation
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -128,6 +130,10 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 			status.Progresses = progresses
 			isUpdate = true
 		}
+	}
+	if operations, updated := updateBROperations(status.BROperations, newStatus.BROperation); updated {
+		status.BROperations = operations
+		isUpdate = true
 	}
 
 	return isUpdate

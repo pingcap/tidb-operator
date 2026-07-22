@@ -661,7 +661,7 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.doTruncateLogBackup(ctx, backup)
+	backupErr := bm.doTruncateLogBackup(ctx, backup, bm.StatusUpdater)
 
 	if backupErr != nil {
 		klog.Errorf("Truncate log backup of cluster %s failed, err: %s", bm, backupErr)
