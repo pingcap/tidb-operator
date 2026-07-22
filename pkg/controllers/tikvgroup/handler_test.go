@@ -38,8 +38,8 @@ func TestPlacementPolicyEventHandlerEnqueuesTiKVGroupRefs(t *testing.T) {
 	createQueue := newTiKVGroupRequestQueue()
 	eventHandler.Create(ctx, event.TypedCreateEvent[client.Object]{Object: policy}, createQueue)
 	assert.ElementsMatch(t, []reconcile.Request{
-		newTiKVGroupRequest("ns", "g1"),
-		newTiKVGroupRequest("ns", "g2"),
+		newTiKVGroupRequest("g1"),
+		newTiKVGroupRequest("g2"),
 	}, drainTiKVGroupRequestQueue(createQueue))
 
 	unchangedQueue := newTiKVGroupRequestQueue()
@@ -52,15 +52,15 @@ func TestPlacementPolicyEventHandlerEnqueuesTiKVGroupRefs(t *testing.T) {
 	removedRef := newTiKVGroupPlacementPolicy("p", "g2")
 	eventHandler.Update(ctx, event.TypedUpdateEvent[client.Object]{ObjectOld: policy, ObjectNew: removedRef}, removedRefQueue)
 	assert.ElementsMatch(t, []reconcile.Request{
-		newTiKVGroupRequest("ns", "g1"),
-		newTiKVGroupRequest("ns", "g2"),
+		newTiKVGroupRequest("g1"),
+		newTiKVGroupRequest("g2"),
 	}, drainTiKVGroupRequestQueue(removedRefQueue))
 
 	deleteQueue := newTiKVGroupRequestQueue()
 	eventHandler.Delete(ctx, event.TypedDeleteEvent[client.Object]{Object: policy}, deleteQueue)
 	assert.ElementsMatch(t, []reconcile.Request{
-		newTiKVGroupRequest("ns", "g1"),
-		newTiKVGroupRequest("ns", "g2"),
+		newTiKVGroupRequest("g1"),
+		newTiKVGroupRequest("g2"),
 	}, drainTiKVGroupRequestQueue(deleteQueue))
 }
 
@@ -86,10 +86,10 @@ func newTiKVGroupPlacementPolicy(name string, groups ...string) *v1alpha1.Placem
 	}
 }
 
-func newTiKVGroupRequest(namespace, name string) reconcile.Request {
+func newTiKVGroupRequest(name string) reconcile.Request {
 	return reconcile.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: namespace,
+			Namespace: "ns",
 			Name:      name,
 		},
 	}
