@@ -16,6 +16,7 @@ package coreutil
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
@@ -40,4 +41,27 @@ func PlacementPolicyRuleID(policyName, ruleName, keyspaceID, keyRangeType string
 	id := fmt.Sprintf("%s%s-%s-%s", PlacementPolicyRuleIDPrefix(policyName), ruleName, keyspaceID, keyRangeType)
 
 	return id
+}
+
+func PlacementPolicyTiKVGroupRefNames(policy *v1alpha1.PlacementPolicy) []string {
+	names := []string{}
+	seen := map[string]struct{}{}
+	for _, ref := range policy.Spec.GroupRefs {
+		if ref.Group != v1alpha1.GroupName || ref.Kind != "TiKVGroup" || ref.Name == "" {
+			continue
+		}
+		if _, ok := seen[ref.Name]; ok {
+			continue
+		}
+		seen[ref.Name] = struct{}{}
+		names = append(names, ref.Name)
+	}
+	slices.Sort(names)
+
+	return names
+}
+
+func PlacementPolicyReferencesTiKVGroup(policy *v1alpha1.PlacementPolicy, name string) bool {
+	_, ok := slices.BinarySearch(PlacementPolicyTiKVGroupRefNames(policy), name)
+	return ok
 }

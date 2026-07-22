@@ -217,6 +217,49 @@ func TestIfBreak(t *testing.T) {
 	}
 }
 
+func TestBreakOnWait(t *testing.T) {
+	cases := []struct {
+		desc           string
+		task           Task
+		expectedResult Result
+		expectedDone   bool
+	}{
+		{
+			desc: "complete does not break",
+			task: NameTaskFunc("aaa", func(context.Context) Result {
+				return Complete().With("success")
+			}),
+			expectedResult: newAggregate(
+				nameResult("aaa", Complete().With("success")),
+			),
+			expectedDone: false,
+		},
+		{
+			desc: "wait breaks",
+			task: NameTaskFunc("aaa", func(context.Context) Result {
+				return Wait().With("wait")
+			}),
+			expectedResult: newAggregate(
+				nameResult("aaa", Wait().With("wait")),
+			),
+			expectedDone: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctx := context.Background()
+			task := BreakOnWait(c.task)
+			res, done := task.sync(ctx)
+			assert.Equal(tt, c.expectedResult, res, c.desc)
+			assert.Equal(tt, c.expectedDone, done, c.desc)
+		})
+	}
+}
+
 func TestBlock(t *testing.T) {
 	cases := []struct {
 		desc           string

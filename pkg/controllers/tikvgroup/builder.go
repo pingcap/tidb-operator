@@ -39,6 +39,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextSlice[scope.TiKVGroup](state, r.Client),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiKVGroup](state),
+			task.BreakOnWait(tasks.TaskPlacementPolicyRefBlock(state, r.Client)),
 			common.TaskGroupFinalizerDel[scope.TiKVGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.TiKVGroup](state),
 			common.TaskGroupConditionSynced[scope.TiKVGroup](state),
