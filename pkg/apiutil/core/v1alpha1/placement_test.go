@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -44,4 +45,24 @@ func TestPlacementPolicyRuleIDPrefix(t *testing.T) {
 
 func TestPlacementPolicyRuleID(t *testing.T) {
 	require.Equal(t, "policy:voters-1-raw", PlacementPolicyRuleID("policy", "voters", "1", "raw"))
+}
+
+func TestPlacementPolicyTiKVGroupRefNames(t *testing.T) {
+	policy := &v1alpha1.PlacementPolicy{
+		ObjectMeta: metav1.ObjectMeta{Name: "p"},
+		Spec: v1alpha1.PlacementPolicySpec{
+			GroupRefs: []v1alpha1.PlacementPolicyGroupRef{
+				{Group: v1alpha1.GroupName, Kind: "TiKVGroup", Name: "g2"},
+				{Group: "other.pingcap.com", Kind: "TiKVGroup", Name: "other"},
+				{Group: v1alpha1.GroupName, Kind: "PDGroup", Name: "pd"},
+				{Group: v1alpha1.GroupName, Kind: "TiKVGroup", Name: "g1"},
+				{Group: v1alpha1.GroupName, Kind: "TiKVGroup", Name: "g1"},
+				{Group: v1alpha1.GroupName, Kind: "TiKVGroup"},
+			},
+		},
+	}
+
+	require.Equal(t, []string{"g1", "g2"}, PlacementPolicyTiKVGroupRefNames(policy))
+	require.True(t, PlacementPolicyReferencesTiKVGroup(policy, "g1"))
+	require.False(t, PlacementPolicyReferencesTiKVGroup(policy, "pd"))
 }

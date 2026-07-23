@@ -21,10 +21,12 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -195,6 +197,72 @@ max-replicas = 1
 		f.Must(err)
 		ginkgo.By("Checking keyspace regions scheduling result")
 		f.Must(waiter.WaitForKeyspaceRegionsScheduled(ctx, f.Client, pdc, keyspaceID, exclusive, 1, waiter.LongTaskTimeout))
+	})
+
+	ginkgo.It("blocks TiKVGroup cleanup while referenced by placement policy", label.Delete, func(ctx context.Context) {
+		o := desc.DefaultOptions()
+		pdg := action.MustCreatePD(ctx, f, o,
+			data.WithReplicas[scope.PDGroup](1),
+			data.GroupPatchFunc[*v1alpha1.PDGroup](func(pdg *v1alpha1.PDGroup) {
+				pdg.Spec.Template.Spec.Config = `[replication]
+enable-placement-rules = true
+`
+			}),
+		)
+		blocked := action.MustCreateTiKV(ctx, f, o, data.WithName[scope.TiKVGroup]("kvg-blocked"))
+		remaining := action.MustCreateTiKV(ctx, f, o, data.WithName[scope.TiKVGroup]("kvg-remaining"))
+
+		f.WaitForPDGroupReady(ctx, pdg)
+		f.WaitForTiKVGroupReady(ctx, blocked)
+		f.WaitForTiKVGroupReady(ctx, remaining)
+
+		policy := action.MustCreatePlacementPolicy(ctx, f,
+			data.WithPlacementPolicyName("block-kvg-delete"),
+			data.WithPlacementPolicyTiKVGroups(blocked.Name, remaining.Name),
+			data.WithPlacementPolicyKeyspaceRule("voters", 1, "1"),
+		)
+		ginkgo.By("Waiting for placement policy synced")
+		f.Must(waiter.WaitForPlacementPolicySynced(ctx, f.Client, policy, waiter.LongTaskTimeout))
+
+		ginkgo.By("Deleting the referenced TiKVGroup")
+		action.MustDelete(ctx, f, blocked)
+		f.Must(waiter.WaitForObject(ctx, f.Client, blocked, func() error {
+			if blocked.DeletionTimestamp.IsZero() {
+				return fmt.Errorf("TiKVGroup %s/%s is not deleting", blocked.Namespace, blocked.Name)
+			}
+			return nil
+		}, waiter.ShortTaskTimeout))
+
+		ginkgo.By("Verifying TiKVGroup cleanup stays blocked while the ref exists")
+		gomega.Consistently(func(g gomega.Gomega) {
+			var latest v1alpha1.TiKVGroup
+			g.Expect(f.Client.Get(ctx, k8stypes.NamespacedName{Namespace: blocked.Namespace, Name: blocked.Name}, &latest)).To(gomega.Succeed())
+			g.Expect(latest.DeletionTimestamp.IsZero()).To(gomega.BeFalse())
+
+			tikvs, err := apicall.ListInstances[scope.TiKVGroup](ctx, f.Client, &latest)
+			g.Expect(err).To(gomega.Succeed())
+			g.Expect(tikvs).NotTo(gomega.BeEmpty())
+			for _, tikv := range tikvs {
+				g.Expect(tikv.DeletionTimestamp.IsZero()).To(gomega.BeTrue())
+			}
+		}).WithTimeout(30 * time.Second).WithPolling(5 * time.Second).Should(gomega.Succeed())
+
+		ginkgo.By("Removing the deleting TiKVGroup from placement policy refs")
+		var latestPolicy v1alpha1.PlacementPolicy
+		f.Must(f.Client.Get(ctx, k8stypes.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}, &latestPolicy))
+		latestPolicy.Spec.GroupRefs = []v1alpha1.PlacementPolicyGroupRef{
+			{
+				Group: v1alpha1.GroupName,
+				Kind:  "TiKVGroup",
+				Name:  remaining.Name,
+			},
+		}
+		f.Must(f.Client.Update(ctx, &latestPolicy))
+		ginkgo.By("Waiting for placement policy synced after ref removal")
+		f.Must(waiter.WaitForPlacementPolicySynced(ctx, f.Client, &latestPolicy, waiter.LongTaskTimeout))
+
+		ginkgo.By("Verifying the TiKVGroup is deleted after the ref is removed")
+		f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, blocked, waiter.LongTaskTimeout))
 	})
 })
 

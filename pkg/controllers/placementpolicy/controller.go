@@ -144,19 +144,15 @@ func (r *Reconciler) enqueuePoliciesForCluster(
 	queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 	namespace, clusterName string,
 ) {
-	var list v1alpha1.PlacementPolicyList
-	if err := r.Client.List(ctx, &list,
-		client.InNamespace(namespace),
-		client.MatchingFields{"spec.cluster.name": clusterName},
-	); err != nil {
+	policies, err := apicall.ListPlacementPolicies(ctx, r.Client, namespace, clusterName)
+	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			r.Logger.Error(err, "cannot list placement policies", "ns", namespace, "cluster", clusterName)
 		}
 		return
 	}
 
-	for i := range list.Items {
-		policy := &list.Items[i]
+	for _, policy := range policies {
 		queue.Add(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      policy.Name,
@@ -171,22 +167,15 @@ func (r *Reconciler) enqueuePoliciesForTiKVGroup(
 	queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 	kvg *v1alpha1.TiKVGroup,
 ) {
-	var list v1alpha1.PlacementPolicyList
-	if err := r.Client.List(ctx, &list,
-		client.InNamespace(kvg.Namespace),
-		client.MatchingFields{"spec.cluster.name": kvg.Spec.Cluster.Name},
-	); err != nil {
+	policies, err := apicall.ListPlacementPoliciesReferencingTiKVGroup(ctx, r.Client, kvg)
+	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			r.Logger.Error(err, "cannot list placement policies", "ns", kvg.Namespace, "cluster", kvg.Spec.Cluster.Name)
 		}
 		return
 	}
 
-	for i := range list.Items {
-		policy := &list.Items[i]
-		if !policyReferencesTiKVGroup(policy, kvg.Name) {
-			continue
-		}
+	for _, policy := range policies {
 		queue.Add(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      policy.Name,
@@ -514,15 +503,4 @@ func (r *Reconciler) updateStatus(ctx context.Context, policy *v1alpha1.Placemen
 		return errors.Join(err, fmt.Errorf("failed to update placement policy status: %w", updateErr))
 	}
 	return err
-}
-
-func policyReferencesTiKVGroup(policy *v1alpha1.PlacementPolicy, name string) bool {
-	for _, ref := range policy.Spec.GroupRefs {
-		if ref.Group == v1alpha1.GroupName &&
-			ref.Kind == "TiKVGroup" &&
-			ref.Name == name {
-			return true
-		}
-	}
-	return false
 }

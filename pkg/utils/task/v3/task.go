@@ -111,6 +111,28 @@ func IfBreak(cond Condition, tasks ...Task) Task {
 	return If(cond, Break(tasks...))
 }
 
+type breakOnWaitTask struct {
+	Task
+}
+
+func (e *breakOnWaitTask) sync(ctx context.Context) (Result, bool) {
+	r, done := e.Task.sync(ctx)
+	if done {
+		return r, true
+	}
+	if r != nil && r.Status() == SWait {
+		return r, true
+	}
+
+	return r, false
+}
+
+func BreakOnWait(tasks ...Task) Task {
+	return &breakOnWaitTask{
+		Task: Block(tasks...),
+	}
+}
+
 type blockTask struct {
 	tasks []Task
 }
