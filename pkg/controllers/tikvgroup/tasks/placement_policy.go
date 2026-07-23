@@ -23,8 +23,18 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskPlacementPolicyRefBlock(state common.TiKVGroupState, c client.Client) task.Task {
+type PlacementPolicyRefBlockState interface {
+	common.TiKVGroupState
+	common.ClusterState
+}
+
+func TaskPlacementPolicyRefBlock(state PlacementPolicyRefBlockState, c client.Client) task.Task {
 	return task.NameTaskFunc("PlacementPolicyRefBlock", func(ctx context.Context) task.Result {
+		cluster := state.Cluster()
+		if cluster != nil && !cluster.DeletionTimestamp.IsZero() {
+			return task.Complete().With("cluster is deleting")
+		}
+
 		kvg := state.TiKVGroup()
 		policies, err := apicall.ListPlacementPoliciesReferencingTiKVGroup(ctx, c, kvg)
 		if err != nil {

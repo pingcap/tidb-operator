@@ -54,6 +54,25 @@ func TestTaskPlacementPolicyRefBlock(t *testing.T) {
 	assert.Contains(t, res.Message(), "[p1]")
 }
 
+func TestTaskPlacementPolicyRefBlockCompletesWhenClusterDeleting(t *testing.T) {
+	ctx := context.Background()
+	kvg := newPlacementPolicyBlockTiKVGroup("g1", "c")
+	policy := newPlacementPolicyForTiKVGroup("p1", "c", "g1")
+	s := &ReconcileContext{
+		State: &state{
+			key:     types.NamespacedName{Namespace: kvg.Namespace, Name: kvg.Name},
+			cluster: newDeletingPlacementPolicyBlockCluster("c"),
+			kvg:     kvg,
+		},
+	}
+	fc := client.NewFakeClient(kvg, policy)
+
+	res, done := task.RunTask(ctx, TaskPlacementPolicyRefBlock(s, fc))
+
+	require.Equal(t, task.SComplete, res.Status())
+	assert.False(t, done)
+}
+
 func TestTaskPlacementPolicyRefBlockCompletesWithoutRefs(t *testing.T) {
 	ctx := context.Background()
 	kvg := newPlacementPolicyBlockTiKVGroup("g1", "c")
@@ -114,6 +133,18 @@ func newPlacementPolicyBlockTiKVGroup(name, clusterName string) *v1alpha1.TiKVGr
 			Cluster: v1alpha1.ClusterReference{Name: clusterName},
 		},
 	}
+}
+
+func newDeletingPlacementPolicyBlockCluster(name string) *v1alpha1.Cluster {
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      name,
+		},
+	}
+	now := metav1.Now()
+	cluster.DeletionTimestamp = &now
+	return cluster
 }
 
 func newDeletingPlacementPolicyBlockTiKVGroup(name, clusterName string) *v1alpha1.TiKVGroup {
