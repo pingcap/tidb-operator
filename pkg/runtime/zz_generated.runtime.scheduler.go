@@ -245,7 +245,7 @@ func (in *Scheduler) IsOffline() bool {
 	return false
 }
 
-func (in *Scheduler) IsStore() bool {
+func (in *Scheduler) SupportsOffline() bool {
 	return false
 }
 

@@ -245,7 +245,7 @@ func (in *TiCDC) IsOffline() bool {
 	return false
 }
 
-func (in *TiCDC) IsStore() bool {
+func (in *TiCDC) SupportsOffline() bool {
 	return false
 }
 

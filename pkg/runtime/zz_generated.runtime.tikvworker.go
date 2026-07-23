@@ -245,7 +245,7 @@ func (in *TiKVWorker) IsOffline() bool {
 	return false
 }
 
-func (in *TiKVWorker) IsStore() bool {
+func (in *TiKVWorker) SupportsOffline() bool {
 	return false
 }
 

@@ -245,7 +245,7 @@ func (in *TSO) IsOffline() bool {
 	return false
 }
 
-func (in *TSO) IsStore() bool {
+func (in *TSO) SupportsOffline() bool {
 	return false
 }
 

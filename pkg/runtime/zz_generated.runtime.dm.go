@@ -245,7 +245,7 @@ func (in *DM) IsOffline() bool {
 	return false
 }
 
-func (in *DM) IsStore() bool {
+func (in *DM) SupportsOffline() bool {
 	return false
 }
 

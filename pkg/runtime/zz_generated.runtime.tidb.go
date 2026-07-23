@@ -245,7 +245,7 @@ func (in *TiDB) IsOffline() bool {
 	return false
 }
 
-func (in *TiDB) IsStore() bool {
+func (in *TiDB) SupportsOffline() bool {
 	return false
 }
 

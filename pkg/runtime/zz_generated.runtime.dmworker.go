@@ -245,7 +245,7 @@ func (in *DMWorker) IsOffline() bool {
 	return false
 }
 
-func (in *DMWorker) IsStore() bool {
+func (in *DMWorker) SupportsOffline() bool {
 	return false
 }
 

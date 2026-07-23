@@ -44,6 +44,9 @@ type Instance interface {
 	// TODO: may be change a more meaningful name?
 	IsUpToDate() bool
 	IsOffline() bool
+	// SupportsOffline indicates whether deleteInstance should mark spec.offline
+	// instead of deleting the CR immediately (TiKV/TiFlash).
+	SupportsOffline() bool
 
 	CurrentRevision() string
 	SetCurrentRevision(rev string)
@@ -58,10 +61,6 @@ type Instance interface {
 	// ServerLabels return spec.server.labels
 	// If no server labels, return nil
 	ServerLabels() map[string]string
-
-	// IsStore indicates whether the instance is a store.
-	// For TiKV and TiFlash, it returns true, otherwise it returns false.
-	IsStore() bool
 }
 
 type InstanceT[T InstanceSet] interface {

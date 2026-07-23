@@ -245,7 +245,7 @@ func (in *PD) IsOffline() bool {
 	return false
 }
 
-func (in *PD) IsStore() bool {
+func (in *PD) SupportsOffline() bool {
 	return false
 }
 

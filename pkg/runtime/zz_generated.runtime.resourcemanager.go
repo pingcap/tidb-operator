@@ -245,7 +245,7 @@ func (in *ResourceManager) IsOffline() bool {
 	return false
 }
 
-func (in *ResourceManager) IsStore() bool {
+func (in *ResourceManager) SupportsOffline() bool {
 	return false
 }
 

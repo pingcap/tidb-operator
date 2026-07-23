@@ -27,6 +27,9 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
+    - jsonPath: .spec.offline
+      name: Offline
+      type: boolean
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -103,6 +106,12 @@ spec:
                   If tag is omitted, version will be used as the image tag.
                   Default is pingcap/tiproxy
                 type: string
+              offline:
+                description: |-
+                  Offline marks the TiProxy instance for graceful scale-in.
+                  When true, the instance stops accepting new connections and waits for the graceful shutdown delay
+                  before being deleted. Setting it back to false revives the instance during scale-out.
+                type: boolean
               overlay:
                 description: |-
                   Overlay defines a k8s native resource template patch.

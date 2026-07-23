@@ -305,15 +305,11 @@ func (in *$.|pub$) ClusterCASecretName() string {
 }
 `, t)
 
-	// Generate Store interface methods for TiKV and TiFlash
-	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
+	// Generate offline methods for components that support spec.offline.
+	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") || strings.EqualFold(t.Name.Name, "TiProxy") {
 		sw.Do(`
 func (in *$.|pub$) IsOffline() bool {
 	return in.Spec.Offline != nil && *in.Spec.Offline
-}
-
-func (in *$.|pub$) IsStore() bool {
-	return true
 }
 `, t)
 	} else {
@@ -321,8 +317,24 @@ func (in *$.|pub$) IsStore() bool {
 func (in *$.|pub$) IsOffline() bool {
 	return false
 }
+`, t)
+	}
 
-func (in *$.|pub$) IsStore() bool {
+	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
+		sw.Do(`
+func (in *$.|pub$) SupportsOffline() bool {
+	return true
+}
+`, t)
+	} else if strings.EqualFold(t.Name.Name, "TiProxy") {
+		sw.Do(`
+func (in *TiProxy) SupportsOffline() bool {
+	return GracefulOfflineScaleInEnabled(in.GetAnnotations())
+}
+`, t)
+	} else {
+		sw.Do(`
+func (in *$.|pub$) SupportsOffline() bool {
 	return false
 }
 `, t)

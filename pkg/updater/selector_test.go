@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -29,10 +30,23 @@ import (
 func TestSelector(t *testing.T) {
 	cases := []struct {
 		desc     string
+		filters  []FilterPolicy[*runtime.PD]
 		ps       []PreferPolicy[*runtime.PD]
 		allowed  []*runtime.PD
 		expected string
 	}{
+		{
+			desc: "filter rejects when no eligible instance",
+			filters: []FilterPolicy[*runtime.PD]{
+				FilterPolicyFunc[*runtime.PD](func([]*runtime.PD) []*runtime.PD {
+					return []*runtime.PD{}
+				}),
+			},
+			allowed: []*runtime.PD{
+				fakePD("aaa", true, true),
+			},
+			expected: "",
+		},
 		{
 			desc: "no policy",
 			allowed: []*runtime.PD{
@@ -185,7 +199,7 @@ func TestSelector(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			s := NewSelector(c.ps...)
+			s := NewSelectorWithFilter(c.filters, c.ps...)
 			choosed := s.Choose(c.allowed)
 			assert.Equal(tt, c.expected, choosed)
 		})
@@ -338,4 +352,69 @@ func TestPreferPriority(t *testing.T) {
 			assert.ElementsMatch(tt, c.expected, resultNames)
 		})
 	}
+}
+
+func TestFilterOutdated(t *testing.T) {
+	t.Parallel()
+
+	const rev = "rev-current"
+	filter := FilterOutdated[*runtime.PD](rev)
+
+	current := fakePD("pd-a", true, true)
+	current.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: rev,
+	}
+	outdated := fakePD("pd-old", true, true)
+	outdated.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: "rev-old",
+	}
+
+	assert.Equal(t, []*runtime.PD{current}, filter.Filter([]*runtime.PD{current, outdated}))
+	assert.Empty(t, filter.Filter([]*runtime.PD{outdated}))
+}
+
+func TestFilterOutdatedCancelOfflineSelector(t *testing.T) {
+	t.Parallel()
+
+	const rev = "rev-current"
+	selector := NewSelectorWithFilter(
+		[]FilterPolicy[*runtime.PD]{
+			FilterOutdated[*runtime.PD](rev),
+		},
+	)
+
+	current := fakePD("pd-a", true, true)
+	current.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: rev,
+	}
+	outdated := fakePD("pd-old", true, true)
+	outdated.Labels = map[string]string{
+		v1alpha1.LabelKeyInstanceRevisionHash: "rev-old",
+	}
+
+	assert.Equal(t, "pd-a", selector.Choose([]*runtime.PD{current, outdated}))
+	assert.Empty(t, selector.Choose([]*runtime.PD{outdated}))
+}
+
+func TestFilterReviveAbandoned(t *testing.T) {
+	t.Parallel()
+
+	filter := FilterReviveAbandoned[*runtime.TiProxy]()
+
+	revivable := &runtime.TiProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tiproxy-a",
+		},
+	}
+	abandoned := &runtime.TiProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tiproxy-b",
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyTiProxyReviveAbandoned: v1alpha1.AnnoValTrue,
+			},
+		},
+	}
+
+	assert.Equal(t, []*runtime.TiProxy{revivable}, filter.Filter([]*runtime.TiProxy{revivable, abandoned}))
+	assert.Empty(t, filter.Filter([]*runtime.TiProxy{abandoned}))
 }

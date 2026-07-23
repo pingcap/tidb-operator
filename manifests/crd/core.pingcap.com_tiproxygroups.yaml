@@ -9035,6 +9035,11 @@ spec:
                 description: CurrentRevision is the revision of the Controller that
                   created the resource.
                 type: string
+              drainingReplicas:
+                description: DrainingReplicas is the number of TiProxy instances in
+                  graceful scale-in drain.
+                format: int32
+                type: integer
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.
