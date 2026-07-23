@@ -1503,24 +1503,14 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 }
 
 func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (*yaml.MapItem, error) {
-	// remote_write is optional. The prometheus version is only used inside the loop
-	// below, to decide whether version-specific remote_write fields (headers, name,
-	// min_shards, metadata_config) should be rendered. So the version only needs to be
-	// parsed when at least one remote_write spec is configured.
+	// Operator expects a semver tag in the common case, but it's not guaranteed (for example a git commit hash pinned
+	// as the image tag), and we see such cases in some OP customers. So we choose not to parse the version
+	// unconditionally. Otherwise, if the version is not a semver tag, reconciliation fails with an "Invalid Semantic
+	// version" error and the basic-monitor StatefulSet is never created, even though remote_write is not configured
+	// and the version is not needed at all.
 	//
-	// Parsing the version unconditionally is wrong because the prometheus image tag
-	// is not guaranteed to be a semver string. Operator expects a semver tag in the
-	// common case, but the tag is ultimately user-supplied and may be a non-semver
-	// value such as a hex string (for example a git commit hash pinned as the image
-	// tag, i.e. image:<hex>). Parsing such a value fails. When that happens while
-	// remote_write is unused, reconciliation fails with an "Invalid Semantic version"
-	// error and the basic-monitor StatefulSet is never created, even though
-	// remote_write plays no part in the failure.
-	//
-	// Returning nil here also lets the renderer omit the remote_write key entirely.
-	// It is not strictly required: Prometheus tolerates a redundant `remote_write: []`
-	// (yaml.v2 writes a nil slice as an empty list), but omitting the key keeps the
-	// rendered config cleaner.
+	// Returning nil here also lets the renderer omit the remote_write key entirely, i.e. the rendered config will
+	// not contain a `remote_write: []` entry, which is the cleaner.
 	if len(monitor.Spec.Prometheus.RemoteWrite) == 0 {
 		return nil, nil
 	}
