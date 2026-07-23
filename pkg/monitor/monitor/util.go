@@ -1507,12 +1507,14 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (*yaml.Map
 	// min_shards, metadata_config) should be rendered. So the version only needs to be
 	// parsed when at least one remote_write spec is configured.
 	//
-	// Parsing the version unconditionally is wrong because the prometheus image tag is
-	// not always a semver string. We have seen real deployments reference the prometheus
-	// image by a SHA256 digest instead of a version tag, and parsing such a value fails.
-	// When that happens while remote_write is unused, reconciliation fails with an
-	// "Invalid Semantic version" error and the basic-monitor StatefulSet is never
-	// created, even though remote_write plays no part in the failure.
+	// Parsing the version unconditionally is wrong because the prometheus image tag
+	// is not guaranteed to be a semver string. Operator expects a semver tag in the
+	// common case, but the tag is ultimately user-supplied and may be a non-semver
+	// value such as a hex string (for example a git commit hash pinned as the image
+	// tag, i.e. image:<hex>). Parsing such a value fails. When that happens while
+	// remote_write is unused, reconciliation fails with an "Invalid Semantic version"
+	// error and the basic-monitor StatefulSet is never created, even though
+	// remote_write plays no part in the failure.
 	//
 	// Returning nil here also lets the renderer omit the remote_write key entirely.
 	// It is not strictly required: Prometheus tolerates a redundant `remote_write: []`
