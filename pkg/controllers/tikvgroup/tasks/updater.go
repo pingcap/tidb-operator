@@ -103,6 +103,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithScaleInPreferPolicy(
 				topoPolicy.PolicyScaleIn(),
 			).
+			WithCancelOfflinePreferPolicy(
+				topoPolicy.PolicyCancelOffline(),
+			).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiKVGroup](kvg)).
 			Build().
 			Do(ctx)

@@ -422,6 +422,53 @@ func TestSchedulerAdd(t *testing.T) {
 	}
 }
 
+func TestSchedulerNextAddCandidates(t *testing.T) {
+	st := []v1alpha1.ScheduleTopology{
+		{Topology: v1alpha1.Topology{"zone": "aaa"}},
+		{Topology: v1alpha1.Topology{"zone": "bbb"}},
+		{Topology: v1alpha1.Topology{"zone": "ccc"}},
+	}
+
+	newSchedulerWithCounts := func(tt *testing.T, counts []int) Scheduler {
+		s, err := New(st)
+		require.NoError(tt, err)
+		for topoIndex, count := range counts {
+			for i := range count {
+				s.Add(genInstanceName(topoIndex, i), st[topoIndex].Topology)
+			}
+		}
+		return s
+	}
+
+	t.Run("best available candidate when global best is unavailable", func(tt *testing.T) {
+		// a=0,b=3,c=1: global NextAdd() would choose a, but a has no
+		// cancelable candidate.
+		s := newSchedulerWithCounts(tt, []int{0, 3, 1})
+		topos := s.NextAdd(st[1].Topology, st[2].Topology)
+		assert.Equal(tt, []v1alpha1.Topology{st[2].Topology}, topos)
+	})
+
+	t.Run("all restricted scores negative still returns the tied candidates", func(tt *testing.T) {
+		// a=0,b=2,c=2: both candidate scores are negative, which must not
+		// be dropped by a maximum initialized to zero.
+		s := newSchedulerWithCounts(tt, []int{0, 2, 2})
+		topos := s.NextAdd(st[1].Topology, st[2].Topology)
+		assert.Equal(tt, []v1alpha1.Topology{st[1].Topology, st[2].Topology}, topos)
+	})
+
+	t.Run("unknown candidate topology returns no preference", func(tt *testing.T) {
+		s := newSchedulerWithCounts(tt, []int{0, 3, 1})
+		topos := s.NextAdd(v1alpha1.Topology{"zone": "ddd"})
+		assert.Nil(tt, topos)
+	})
+
+	t.Run("no arguments keeps the existing global behavior", func(tt *testing.T) {
+		s := newSchedulerWithCounts(tt, []int{0, 3, 1})
+		topos := s.NextAdd()
+		assert.Equal(tt, []v1alpha1.Topology{st[0].Topology}, topos)
+	})
+}
+
 func genInstanceName(topoIndex, round int) string {
 	return strconv.Itoa(topoIndex) + ":" + strconv.Itoa(round)
 }

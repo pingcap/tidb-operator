@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -229,4 +230,97 @@ func fakePD(name, rev, zone string) *v1alpha1.PD {
 		}
 	}
 	return pd
+}
+
+func fakeTiKV(name, rev, zone string, offline bool) *v1alpha1.TiKV {
+	tikv := fake.FakeObj(name, fake.Label[v1alpha1.TiKV](v1alpha1.LabelKeyInstanceRevisionHash, rev))
+	if zone != "" {
+		tikv.Spec.Topology = v1alpha1.Topology{
+			"zone": zone,
+		}
+	}
+	if offline {
+		tikv.Spec.Offline = ptr.To(true)
+	}
+	return tikv
+}
+
+// TestPolicyCancelOfflinePreferBestAvailableTopology ensures cancel-offline
+// selection scores only the cancelable candidates rather than the global
+// best topology, which may have no cancelable candidate at all.
+func TestPolicyCancelOfflinePreferBestAvailableTopology(t *testing.T) {
+	const rev = "rev"
+
+	const (
+		zoneA = "us-west-1a"
+		zoneB = "us-west-1b"
+		zoneC = "us-west-1c"
+	)
+
+	active := []*v1alpha1.TiKV{
+		fakeTiKV("active-b0", rev, zoneB, false),
+		fakeTiKV("active-b1", rev, zoneB, false),
+		fakeTiKV("active-b2", rev, zoneB, false),
+		fakeTiKV("active-c0", rev, zoneC, false),
+	}
+
+	// The zone-b candidate has the lexicographically smaller name, so the
+	// old list-first cancellation would incorrectly prefer it over zone-c.
+	candidateB := fakeTiKV("candidate-b", rev, zoneB, true)
+	candidateC := fakeTiKV("candidate-c", rev, zoneC, true)
+
+	all := append(append([]*v1alpha1.TiKV{}, active...), candidateB, candidateC)
+
+	// IsDeleting excludes offline objects, so the active scheduler counts
+	// stay at a=0,b=3,c=1 even though the candidates are passed in here.
+	policy, err := NewTopologyPolicy([]v1alpha1.ScheduleTopology{
+		{Topology: v1alpha1.Topology{"zone": zoneA}},
+		{Topology: v1alpha1.Topology{"zone": zoneB}},
+		{Topology: v1alpha1.Topology{"zone": zoneC}},
+	}, rev, runtime.FromTiKVSlice(all)...)
+	require.NoError(t, err)
+
+	allowed := runtime.FromTiKVSlice([]*v1alpha1.TiKV{candidateB, candidateC})
+	preferred := policy.PolicyCancelOffline().Prefer(allowed)
+
+	require.Len(t, preferred, 1)
+	assert.Equal(t, candidateC.GetName(), preferred[0].GetName())
+}
+
+// TestTopologyPolicyUpdateKeysSchedulerByOutdatedName ensures Update keys
+// the in-memory schedulers by the outdated instance's name. Custom update
+// hooks run before KeepName, so the new object's name is still empty; using
+// update.GetName() would corrupt the scheduler state across repeated
+// updates in one updater execution.
+func TestTopologyPolicyUpdateKeysSchedulerByOutdatedName(t *testing.T) {
+	const rev = "rev"
+
+	const (
+		zoneA = "us-west-1a"
+		zoneB = "us-west-1b"
+	)
+
+	p, err := NewTopologyPolicy[*runtime.TiKV]([]v1alpha1.ScheduleTopology{
+		{Topology: v1alpha1.Topology{"zone": zoneA}},
+		{Topology: v1alpha1.Topology{"zone": zoneB}},
+	}, rev)
+	require.NoError(t, err)
+
+	concrete, ok := p.(*topologyPolicy[*runtime.TiKV])
+	require.True(t, ok)
+
+	outdatedA := runtime.FromTiKV(fakeTiKV("tikv-a", "old", zoneA, false))
+	outdatedB := runtime.FromTiKV(fakeTiKV("tikv-b", "old", zoneB, false))
+	// TiKVNewer/TiFlashNewer produce a new object whose name is initially
+	// empty; KeepName fills it in after update hooks have already run.
+	newA := runtime.FromTiKV(fakeTiKV("", rev, "", false))
+	newB := runtime.FromTiKV(fakeTiKV("", rev, "", false))
+
+	p.Update(newA, outdatedA)
+	p.Update(newB, outdatedB)
+
+	assert.NotContains(t, concrete.all.NextDel(), "")
+	assert.NotContains(t, concrete.updated.NextDel(), "")
+	assert.Equal(t, []string{"tikv-a", "tikv-b"}, concrete.all.NextDel())
+	assert.Equal(t, []string{"tikv-a", "tikv-b"}, concrete.updated.NextDel())
 }

@@ -289,6 +289,107 @@ func TestTaskUpdater(t *testing.T) {
 	}
 }
 
+// TestTaskUpdaterCancelOfflinePrefersTopologyAwareCandidate ensures that when
+// scaling out can be satisfied by canceling an offlining instance, the
+// topology-aware candidate is chosen instead of the lexicographically first
+// one. Without the cancel-offline topology wiring, "00-offline-a" would be
+// picked because it sorts first, even though "10-offline-b" is the
+// topology-correct choice under 1:2 zone weights.
+func TestTaskUpdaterCancelOfflinePrefersTopologyAwareCandidate(t *testing.T) {
+	const (
+		zoneA = "us-west-1a"
+		zoneB = "us-west-1b"
+	)
+
+	kvg := fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+		obj.Spec.Replicas = ptr.To[int32](3)
+		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
+			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
+				Topologies: []v1alpha1.ScheduleTopology{
+					{
+						Topology: v1alpha1.Topology{"zone": zoneA},
+						Weight:   ptr.To[int32](1),
+					},
+					{
+						Topology: v1alpha1.Topology{"zone": zoneB},
+						Weight:   ptr.To[int32](2),
+					},
+				},
+			},
+		})
+		return obj
+	})
+
+	activeA := fakeAvailableTiKVWithTopology("active-a", kvg, zoneA, false)
+	activeB := fakeAvailableTiKVWithTopology("active-b", kvg, zoneB, false)
+	offlineA := fakeAvailableTiKVWithTopology("00-offline-a", kvg, zoneA, true)
+	offlineB := fakeAvailableTiKVWithTopology("10-offline-b", kvg, zoneB, true)
+
+	st := &ReconcileContext{
+		State: &state{
+			kvg:     kvg,
+			cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+			kvs:     []*v1alpha1.TiKV{activeA, activeB, offlineA, offlineB},
+
+			updateRevision: newRevision,
+		},
+	}
+	s := st.State.(*state)
+	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKVGroup](s)
+
+	ctx := context.Background()
+	objs := []client.Object{st.TiKVGroup(), st.Cluster()}
+	fc := client.NewFakeClient(objs...)
+	for _, obj := range st.TiKVSlice() {
+		require.NoError(t, fc.Apply(ctx, obj.DeepCopy()))
+		require.NoError(t, fc.Status().Update(ctx, obj.DeepCopy()))
+	}
+
+	af := tracker.New().AllocateFactory("tikv")
+	res, done := task.RunTask(ctx, TaskUpdater(st, fc, af))
+	assert.Equal(t, task.SWait.String(), res.Status().String())
+	assert.False(t, done)
+
+	kvs := v1alpha1.TiKVList{}
+	require.NoError(t, fc.List(ctx, &kvs))
+	assert.Len(t, kvs.Items, 4, "no new TiKV should be created")
+
+	var got00, got10 *v1alpha1.TiKV
+	for i := range kvs.Items {
+		switch kvs.Items[i].Name {
+		case "00-offline-a":
+			got00 = &kvs.Items[i]
+		case "10-offline-b":
+			got10 = &kvs.Items[i]
+		}
+	}
+	require.NotNil(t, got00)
+	require.NotNil(t, got10)
+
+	assert.True(t, ptr.Deref(got00.Spec.Offline, false), "00-offline-a should remain offline")
+	assert.False(t, ptr.Deref(got10.Spec.Offline, false), "10-offline-b should be canceled")
+}
+
+func fakeAvailableTiKVWithTopology(name string, kvg *v1alpha1.TiKVGroup, zone string, offline bool) *v1alpha1.TiKV {
+	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+		tikv := runtime.ToTiKV(TiKVNewer(kvg, newRevision, features.NewFromFeatures(nil)).New())
+		tikv.Name = ""
+		tikv.Spec.Topology = v1alpha1.Topology{"zone": zone}
+		tikv.Spec.Offline = ptr.To(offline)
+		if !offline {
+			tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
+				Type:               v1alpha1.CondReady,
+				Status:             metav1.ConditionTrue,
+				LastTransitionTime: metav1.Unix(0, 0),
+			})
+			tikv.Status.CurrentRevision = newRevision
+		}
+		tikv.DeepCopyInto(obj)
+		return obj
+	})
+}
+
 func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alpha1.TiKV {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev, features.NewFromFeatures(nil)).New())

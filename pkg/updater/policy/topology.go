@@ -15,7 +15,6 @@
 package policy
 
 import (
-	"fmt"
 	"maps"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -38,6 +37,7 @@ type TopologyPolicy[R runtime.Instance] interface {
 	updater.UpdateHook[R]
 	PolicyScaleIn() updater.PreferPolicy[R]
 	PolicyUpdate() updater.PreferPolicy[R]
+	PolicyCancelOffline() updater.PreferPolicy[R]
 }
 
 func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev string, rs ...R) (TopologyPolicy[R], error) {
@@ -60,7 +60,6 @@ func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev s
 			continue
 		}
 		p.all.Add(r.GetName(), r.GetTopology())
-		fmt.Println("preferred delete, add:", r.GetName(), r.GetTopology())
 		if r.GetUpdateRevision() == rev {
 			p.updated.Add(r.GetName(), r.GetTopology())
 		}
@@ -89,9 +88,12 @@ func (p *topologyPolicy[R]) Add(update R) R {
 func (p *topologyPolicy[R]) Update(update, outdated R) R {
 	update.SetTopology(outdated.GetTopology())
 
-	p.all.Add(update.GetName(), update.GetTopology())
+	// Update hooks run before KeepName, so use the existing instance name to
+	// keep the in-memory scheduler keyed by the instance being updated.
+	name := outdated.GetName()
+	p.all.Add(name, update.GetTopology())
 	if update.GetUpdateRevision() == p.rev {
-		p.updated.Add(update.GetName(), update.GetTopology())
+		p.updated.Add(name, update.GetTopology())
 	}
 
 	return update
@@ -114,6 +116,12 @@ func (p *topologyPolicy[R]) PolicyUpdate() updater.PreferPolicy[R] {
 	}
 }
 
+func (p *topologyPolicy[R]) PolicyCancelOffline() updater.PreferPolicy[R] {
+	return &cancelOfflinePreferPolicy[R]{
+		p: p,
+	}
+}
+
 type deletePreferPolicy[R runtime.Instance] struct {
 	p *topologyPolicy[R]
 }
@@ -124,18 +132,14 @@ func (p *deletePreferPolicy[R]) Prefer(allowed []R) []R {
 	}
 	names := p.p.all.NextDel()
 
-	fmt.Println("preferred delete, next del:", names)
-
 	var preferred []R
 	for _, item := range allowed {
 		for _, name := range names {
 			if item.GetName() == name {
-				fmt.Println("preferred delete: ", name)
 				preferred = append(preferred, item)
 			}
 		}
 	}
-	fmt.Println("preferred delete done")
 
 	return preferred
 }
@@ -159,6 +163,40 @@ func (p *updatePreferPolicy[R]) Prefer(allowed []R) []R {
 			if maps.Equal(topo, item.GetTopology()) {
 				preferred = append(preferred, item)
 			}
+		}
+	}
+
+	return preferred
+}
+
+type cancelOfflinePreferPolicy[R runtime.Instance] struct {
+	p *topologyPolicy[R]
+}
+
+// Prefer chooses the best topology among the candidates that can still be
+// canceled, rather than the global best topology, which may have no
+// cancelable candidate at all.
+func (p *cancelOfflinePreferPolicy[R]) Prefer(allowed []R) []R {
+	if len(allowed) == 0 {
+		return nil
+	}
+
+	candidates := make([]v1alpha1.Topology, 0, len(allowed))
+	for _, item := range allowed {
+		candidates = append(candidates, item.GetTopology())
+	}
+
+	all := p.p.all.NextAdd(candidates...)
+	updated := p.p.updated.NextAdd(candidates...)
+	topo := choose(all, updated)
+	if topo == nil {
+		return nil
+	}
+
+	var preferred []R
+	for _, item := range allowed {
+		if maps.Equal(topo, item.GetTopology()) {
+			preferred = append(preferred, item)
 		}
 	}
 
