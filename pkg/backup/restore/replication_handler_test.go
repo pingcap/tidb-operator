@@ -778,9 +778,9 @@ func TestSync_NoCBYet_SnapshotPhaseDrivesIndependently(t *testing.T) {
 }
 
 // CompactSettled with a non-success Reason (e.g. CompactBackupWaitTimeout from
-// the top block) must NOT block the gate at B9. BR phase-2 reads the reason
-// and decides fallback; the controller's responsibility ends at "marker is
-// True", regardless of why.
+// the top block) must NOT block the gate at B9. The phase-2 Job args are
+// derived from the reason; the gate itself only requires "marker is True",
+// regardless of why.
 func TestSync_CompactSettledFailure_DoesNotBlockGate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
@@ -978,6 +978,29 @@ func TestApplyReplicationPhase_AppendsReplicationPhaseArg(t *testing.T) {
 	out = applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepLogRestoreVal)
 	g.Expect(out.Spec.Template.Spec.Containers[0].Args).
 		To(Equal([]string{"restore", "--mode=pitr", "--replicationPhase=2"}))
+}
+
+func TestApplyReplicationPhase_LogRestoreDisablesRetainLatestMVCCVersionUnlessAllShardsComplete(t *testing.T) {
+	g := NewGomegaWithT(t)
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "ShardsPartialFailed", "")
+
+	out := applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepLogRestoreVal)
+	g.Expect(out.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{
+		"restore",
+		"--mode=pitr",
+		"--replicationPhase=2",
+		"--replicationRetainLatestMVCCVersion=false",
+	}))
+
+	r = newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "AllShardsComplete", "")
+	out = applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepLogRestoreVal)
+	g.Expect(out.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{
+		"restore",
+		"--mode=pitr",
+		"--replicationPhase=2",
+	}))
 }
 
 // TestMakeReplicationBRJob_DelegatesToBuilder verifies that the handler's
