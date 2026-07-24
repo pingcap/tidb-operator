@@ -170,7 +170,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 	if err != nil {
 		return nil, err
 	}
-	model.RemoteWriteCfg = &remoteWriteCfg
+	model.RemoteWriteCfg = remoteWriteCfg
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
@@ -1501,12 +1501,23 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 	return m
 }
 
-func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapItem, error) {
-	var cfgs []yaml.MapSlice
+func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (*yaml.MapItem, error) {
+	// Operator expects a semver tag in the common case, but it's not guaranteed (for example a git commit hash pinned
+	// as the image tag), and we see such cases in some OP customers. So we choose not to parse the version
+	// unconditionally. Otherwise, if the version is not a semver tag, reconciliation fails with an "Invalid Semantic
+	// version" error and the basic-monitor StatefulSet is never created, even though remote_write is not configured
+	// and the version is not needed at all.
+	//
+	// Returning nil here also lets the renderer omit the remote_write key entirely, i.e. the rendered config will
+	// not contain a `remote_write: []` entry, which is the cleaner.
+	if len(monitor.Spec.Prometheus.RemoteWrite) == 0 {
+		return nil, nil
+	}
 	version, err := semver.NewVersion(monitor.Spec.Prometheus.Version)
 	if err != nil {
-		return yaml.MapItem{}, err
+		return nil, err
 	}
+	var cfgs []yaml.MapSlice
 	for i, spec := range monitor.Spec.Prometheus.RemoteWrite {
 		//defaults
 		if spec.RemoteTimeout == "" {
@@ -1638,7 +1649,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 		cfgs = append(cfgs, cfg)
 	}
 
-	return yaml.MapItem{
+	return &yaml.MapItem{
 		Key:   "remote_write",
 		Value: cfgs,
 	}, nil
