@@ -4,7 +4,7 @@ metadata:
   name: cluster2
   namespace: pingcap
 spec:
-  version: v8.5.5
+  version: v8.5.7
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true

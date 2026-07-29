@@ -5,7 +5,7 @@ go 1.25.0
 toolchain go1.25.8
 
 require (
-	github.com/pingcap/tidb-operator/pkg/apis v1.6.5
+	github.com/pingcap/tidb-operator/pkg/apis v1.6.6
 	k8s.io/apimachinery v0.29.15
 	k8s.io/client-go v0.29.15
 )
