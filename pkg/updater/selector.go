@@ -36,9 +36,7 @@ func (f PreferPolicyFunc[R]) Prefer(in []R) []R {
 
 // FilterPolicy narrows the allowed instances before prefer policies run.
 type FilterPolicy[R runtime.Instance] interface {
-	// Filter returns eligible instances.
-	// Return nil to abstain and keep the current allowed set.
-	// Return a non-nil empty slice when no instance is eligible.
+	// Filter returns eligible instances. An empty slice means no instance is eligible.
 	Filter([]R) []R
 }
 
@@ -69,14 +67,7 @@ func NewSelectorWithFilter[R runtime.Instance](filters []FilterPolicy[R], ps ...
 
 func applyFilters[R runtime.Instance](allowed []R, filters []FilterPolicy[R]) []R {
 	for _, f := range filters {
-		filtered := f.Filter(allowed)
-		if filtered == nil {
-			continue
-		}
-		if len(filtered) == 0 {
-			return filtered
-		}
-		allowed = filtered
+		allowed = f.Filter(allowed)
 	}
 	return allowed
 }
@@ -173,12 +164,12 @@ func PreferPriority[R runtime.Instance]() PreferPolicy[R] {
 	})
 }
 
-// FilterReviveAbandoned excludes instances whose scale-in revive was abandoned.
-func FilterReviveAbandoned[R runtime.Instance]() FilterPolicy[R] {
+// FilterAnnotationAbsent excludes instances that have the given annotation key set.
+func FilterAnnotationAbsent[R runtime.Instance](key string) FilterPolicy[R] {
 	return FilterPolicyFunc[R](func(s []R) []R {
 		var eligible []R
 		for _, in := range s {
-			if in.GetAnnotations()[v1alpha1.AnnoKeyTiProxyReviveAbandoned] == v1alpha1.AnnoValTrue {
+			if _, ok := in.GetAnnotations()[key]; ok {
 				continue
 			}
 			eligible = append(eligible, in)

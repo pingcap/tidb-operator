@@ -53,6 +53,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
 			common.TaskInstanceConditionReady[scope.TiProxy](state),
 			common.TaskInstanceConditionRunning[scope.TiProxy](state),
+			// Drain may keep the pod deliberately unhealthy. Persist status here instead
+			// of tasks.TaskStatus, which would Retry on not-ready and fight drain requeue.
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
 
@@ -65,6 +67,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
 			common.TaskInstanceConditionReady[scope.TiProxy](state),
 			common.TaskInstanceConditionRunning[scope.TiProxy](state),
+			// See offline drain branch: avoid TaskStatus not-ready Retry during graceful delete.
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),

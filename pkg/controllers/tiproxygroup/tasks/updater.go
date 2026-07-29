@@ -119,7 +119,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			).
 			WithCancelOfflineFilterPolicy(
 				updater.FilterOutdated[*runtime.TiProxy](updateRevision),
-				updater.FilterReviveAbandoned[*runtime.TiProxy](),
+				updater.FilterAnnotationAbsent[*runtime.TiProxy](v1alpha1.AnnoKeyTiProxyReviveAbandoned),
 			).
 			WithUpdatePreferPolicy(
 				topoPolicy.PolicyUpdate(),

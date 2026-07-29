@@ -66,7 +66,7 @@ func newGracefulExecutor(
 		WithRevision(testUpdateRevision).
 		WithCancelOfflineFilterPolicy(
 			updater.FilterOutdated[*runtime.TiProxy](testUpdateRevision),
-			updater.FilterReviveAbandoned[*runtime.TiProxy](),
+			updater.FilterAnnotationAbsent[*runtime.TiProxy](v1alpha1.AnnoKeyTiProxyReviveAbandoned),
 		).
 		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
 			return &runtime.TiProxy{

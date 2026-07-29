@@ -396,10 +396,10 @@ func TestFilterOutdatedCancelOfflineSelector(t *testing.T) {
 	assert.Empty(t, selector.Choose([]*runtime.PD{outdated}))
 }
 
-func TestFilterReviveAbandoned(t *testing.T) {
+func TestFilterAnnotationAbsent(t *testing.T) {
 	t.Parallel()
 
-	filter := FilterReviveAbandoned[*runtime.TiProxy]()
+	filter := FilterAnnotationAbsent[*runtime.TiProxy](v1alpha1.AnnoKeyTiProxyReviveAbandoned)
 
 	revivable := &runtime.TiProxy{
 		ObjectMeta: metav1.ObjectMeta{
