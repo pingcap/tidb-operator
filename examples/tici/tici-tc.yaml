@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: tici-demo
 spec:
-  version: v8.5.5
+  version: v8.5.7
   imagePullPolicy: IfNotPresent
   timezone: UTC
   pvReclaimPolicy: Retain
