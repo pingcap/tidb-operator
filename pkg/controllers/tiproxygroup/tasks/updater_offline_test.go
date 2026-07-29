@@ -109,11 +109,6 @@ func TestExecutorScaleInUpdateMarksOfflineDuringRollingReplace(t *testing.T) {
 	).Do(ctx)
 	require.NoError(t, err)
 
-	for _, name := range []string{"tiproxy-a", "tiproxy-b", "tiproxy-old"} {
-		actual := &v1alpha1.TiProxy{}
-		require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: name}, actual))
-	}
-
 	offlineA := &v1alpha1.TiProxy{}
 	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: "tiproxy-a"}, offlineA))
 	require.NotNil(t, offlineA.Spec.Offline)

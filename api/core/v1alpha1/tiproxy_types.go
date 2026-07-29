@@ -291,7 +291,8 @@ type TiProxySpec struct {
 
 	// Offline marks the TiProxy instance for graceful scale-in.
 	// When true, the instance stops accepting new connections and waits for the graceful shutdown delay
-	// before being deleted. Setting it back to false revives the instance during scale-out.
+	// before being deleted. TiProxyGroup-managed instances are reconciled via server-side apply and
+	// manual edits to this field are overwritten; scale-out revive is driven by the group updater.
 	// +optional
 	Offline *bool `json:"offline,omitempty"`
 

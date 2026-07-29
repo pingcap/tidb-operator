@@ -45,7 +45,8 @@ type Instance interface {
 	IsUpToDate() bool
 	IsOffline() bool
 	// SupportsOffline indicates whether deleteInstance should mark spec.offline
-	// instead of deleting the CR immediately (TiKV/TiFlash).
+	// instead of deleting the CR immediately. TiKV/TiFlash always support it;
+	// TiProxy supports it only when graceful offline scale-in is enabled.
 	SupportsOffline() bool
 
 	CurrentRevision() string

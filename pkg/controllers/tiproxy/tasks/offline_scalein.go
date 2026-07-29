@@ -70,10 +70,6 @@ func CondOfflineScaleInDrainComplete(state State) task.Condition {
 func TaskOfflineScaleInDrain(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("OfflineScaleInDrain", func(ctx context.Context) task.Result {
 		pod := state.Pod()
-		if pod == nil {
-			return task.Wait().With("wait for tiproxy pod before graceful scale-in drain")
-		}
-
 		retryAfter, err := drainPodForGracefulShutdown(ctx, c, state, pod, state.TiProxyClient)
 		if err != nil {
 			return task.Fail().With("cannot drain tiproxy pod for graceful scale-in: %v", err)
@@ -139,6 +135,9 @@ func TaskReviveFromScaleIn(state *ReconcileContext, c client.Client) task.Task {
 					"error", err,
 				)
 				if err := abandonRevive(ctx, c, tiproxy); err != nil {
+					if apierrors.IsConflict(err) {
+						return task.Retry(task.DefaultRequeueAfter).With("tiproxy changed before abandon revive, retry")
+					}
 					return task.Fail().With("cannot abandon revive: %v", err)
 				}
 				return task.Complete().With("abandon revive: health override API unsupported")

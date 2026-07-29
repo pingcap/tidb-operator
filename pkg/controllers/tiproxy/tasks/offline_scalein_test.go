@@ -18,8 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"sync"
 	"testing"
@@ -33,7 +35,9 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	tiproxyapi "github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -83,15 +87,16 @@ func newReviveTestHealthServer(t *testing.T) *reviveTestHealthServer {
 
 func (s *reviveTestHealthServer) port(t *testing.T) int32 {
 	t.Helper()
-	host := s.server.URL
-	host = host[len("http://"):]
-	colon := len(host) - 1
-	for colon >= 0 && host[colon] != ':' {
-		colon--
-	}
-	value, err := strconv.ParseInt(host[colon+1:], 10, 32)
+
+	u, err := url.Parse(s.server.URL)
 	require.NoError(t, err)
-	return int32(value)
+
+	_, portStr, err := net.SplitHostPort(u.Host)
+	require.NoError(t, err)
+
+	port, err := strconv.ParseInt(portStr, 10, 32)
+	require.NoError(t, err)
+	return int32(port)
 }
 
 func revivableTiProxyWithAPI(apiPort int32) *v1alpha1.TiProxy {
@@ -188,6 +193,67 @@ func TestTaskReviveFromScaleInAbandonOnUnsupportedHealthOverride(t *testing.T) {
 	assert.Equal(t, beginTime, actualPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
 	assert.False(t, s.IsHealthy())
 	assert.Equal(t, 1, healthServer.clearHealthCalls)
+}
+
+func TestTaskReviveFromScaleInAbandonOnMethodNotAllowedHealthOverride(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	healthServer := newReviveTestHealthServer(t)
+	healthServer.clearHealthStatus = http.StatusMethodNotAllowed
+
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(healthServer.port(t))
+	beginTime := time.Now().Format(time.RFC3339Nano)
+	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := reviveTestReconcileContext(t, s, healthServer)
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(rc, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SComplete.String(), res.Status().String())
+	assert.Contains(t, res.Message(), "abandon revive")
+
+	actual := &v1alpha1.TiProxy{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual))
+	require.NotNil(t, actual.Spec.Offline)
+	assert.True(t, *actual.Spec.Offline)
+	assert.Equal(t, v1alpha1.AnnoValTrue, actual.Annotations[v1alpha1.AnnoKeyTiProxyReviveAbandoned])
+	assert.Equal(t, 1, healthServer.clearHealthCalls)
+}
+
+func TestTaskReviveFromScaleInAbandonRetriesOnConflict(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	healthServer := newReviveTestHealthServer(t)
+	healthServer.clearHealthStatus = http.StatusNotFound
+
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(healthServer.port(t))
+	beginTime := time.Now().Format(time.RFC3339Nano)
+	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	fc.WithError("patch", "*", apierrors.NewConflict(
+		schema.GroupResource{Group: "core.pingcap.com", Resource: "tiproxies"},
+		tiproxy.Name,
+		errors.New("resource version conflict"),
+	))
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := reviveTestReconcileContext(t, s, healthServer)
+
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(rc, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.Contains(t, res.Message(), "abandon revive")
+
+	actual := &v1alpha1.TiProxy{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual))
+	assert.Empty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyReviveAbandoned])
+	assert.False(t, coreutil.IsOffline[scope.TiProxy](actual))
 }
 
 func TestTaskReviveFromScaleInRetriesHealthClearBeforePodAnnotationCleanup(t *testing.T) {
