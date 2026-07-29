@@ -89,6 +89,7 @@ func drainPodForGracefulShutdown(
 	c client.Client,
 	state State,
 	pod *corev1.Pod,
+	tpClient tiproxyapi.TiProxyClient,
 ) (time.Duration, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	tiproxy := state.Object()
@@ -107,7 +108,7 @@ func drainPodForGracefulShutdown(
 
 	startAt, ok := gracefulShutdownBeginTime(pod)
 	if !ok {
-		if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger) {
+		if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, tpClient) {
 			return task.DefaultRequeueAfter, nil
 		}
 		startAt = time.Now()
@@ -121,7 +122,7 @@ func drainPodForGracefulShutdown(
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
-	if tiProxyConnectionsDrained(ctx, state, c, logger) {
+	if tiProxyConnectionsDrained(ctx, state, c, logger, tpClient) {
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
@@ -174,10 +175,16 @@ func deleteTiProxyPod(ctx context.Context, c client.Client, pod *corev1.Pod) (ti
 	return task.DefaultRequeueAfter, nil
 }
 
-func tiProxyConnectionsDrained(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {
+func tiProxyConnectionsDrained(
+	ctx context.Context,
+	state State,
+	c client.Client,
+	logger logr.Logger,
+	tpClient tiproxyapi.TiProxyClient,
+) bool {
 	tiproxy := state.Object()
 
-	tpClient, err := newTiProxyAPIClient(ctx, state, c)
+	apiClient, err := resolveTiProxyAPIClient(ctx, state, c, tpClient)
 	if err != nil {
 		logger.Info(
 			"failed to build TiProxy API client before checking connections, continue waiting",
@@ -188,7 +195,7 @@ func tiProxyConnectionsDrained(ctx context.Context, state State, c client.Client
 		return false
 	}
 
-	connectionCount, err := tpClient.ConnectionCount(ctx)
+	connectionCount, err := apiClient.ConnectionCount(ctx)
 	if err != nil {
 		logger.Info(
 			"failed to query TiProxy connections before graceful delete, continue waiting",
@@ -216,10 +223,16 @@ func tiProxyConnectionsDrained(ctx context.Context, state State, c client.Client
 	return true
 }
 
-func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {
+func ensureTiProxyMarkedUnhealthy(
+	ctx context.Context,
+	state State,
+	c client.Client,
+	logger logr.Logger,
+	tpClient tiproxyapi.TiProxyClient,
+) bool {
 	tiproxy := state.Object()
 
-	tpClient, err := newTiProxyAPIClient(ctx, state, c)
+	apiClient, err := resolveTiProxyAPIClient(ctx, state, c, tpClient)
 	if err != nil {
 		logger.Info(
 			"failed to build TiProxy API client before graceful delete, continue retrying",
@@ -230,7 +243,7 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 		return false
 	}
 
-	healthy, err := tpClient.IsHealthy(ctx)
+	healthy, err := apiClient.IsHealthy(ctx)
 	if err != nil {
 		logger.Info(
 			"failed to query TiProxy health before graceful delete retry, continue retrying",
@@ -244,7 +257,7 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 		return true
 	}
 
-	if err := tpClient.MarkUnhealthy(ctx); err != nil {
+	if err := apiClient.MarkUnhealthy(ctx); err != nil {
 		logger.Info(
 			"failed to mark TiProxy unhealthy before graceful delete, continue retrying",
 			"namespace", tiproxy.Namespace,
@@ -254,7 +267,7 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 		return false
 	}
 
-	healthy, err = tpClient.IsHealthy(ctx)
+	healthy, err = apiClient.IsHealthy(ctx)
 	if err != nil {
 		logger.Info(
 			"failed to re-check TiProxy health after graceful delete action, continue retrying",
@@ -273,6 +286,18 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 		return false
 	}
 	return true
+}
+
+func resolveTiProxyAPIClient(
+	ctx context.Context,
+	state State,
+	c client.Client,
+	tpClient tiproxyapi.TiProxyClient,
+) (tiproxyapi.TiProxyClient, error) {
+	if tpClient != nil {
+		return tpClient, nil
+	}
+	return newTiProxyAPIClient(ctx, state, c)
 }
 
 func newTiProxyAPIClient(ctx context.Context, state State, c client.Client) (tiproxyapi.TiProxyClient, error) {

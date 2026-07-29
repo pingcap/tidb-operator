@@ -16,6 +16,8 @@ package tasks
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -26,10 +28,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	tiproxyapi "github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -112,6 +117,20 @@ func revivableTiProxyPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy, b
 	return pod
 }
 
+func reviveTestReconcileContext(t *testing.T, s *state, healthServer *reviveTestHealthServer) *ReconcileContext {
+	t.Helper()
+
+	rc := &ReconcileContext{State: s}
+	if healthServer != nil {
+		rc.TiProxyClient = tiproxyapi.NewTiProxyClient(
+			fmt.Sprintf("127.0.0.1:%d", healthServer.port(t)),
+			tiproxyRequestTimeout,
+			nil,
+		)
+	}
+	return rc
+}
+
 func TestTaskReviveFromScaleInClearsPodDrainState(t *testing.T) {
 	t.Parallel()
 
@@ -123,9 +142,10 @@ func TestTaskReviveFromScaleInClearsPodDrainState(t *testing.T) {
 	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
 
 	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := reviveTestReconcileContext(t, s, healthServer)
 	fc := client.NewFakeClient(cluster, tiproxy, pod)
 
-	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(s, fc))
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(rc, fc))
 	require.False(t, done)
 	assert.Equal(t, task.SComplete.String(), res.Status().String())
 
@@ -149,9 +169,10 @@ func TestTaskReviveFromScaleInAbandonOnUnsupportedHealthOverride(t *testing.T) {
 	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
 
 	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := reviveTestReconcileContext(t, s, healthServer)
 	fc := client.NewFakeClient(cluster, tiproxy, pod)
 
-	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(s, fc))
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(rc, fc))
 	require.False(t, done)
 	assert.Equal(t, task.SComplete.String(), res.Status().String())
 	assert.Contains(t, res.Message(), "abandon revive")
@@ -182,9 +203,10 @@ func TestTaskReviveFromScaleInRetriesHealthClearBeforePodAnnotationCleanup(t *te
 	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
 
 	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := reviveTestReconcileContext(t, s, healthServer)
 	fc := client.NewFakeClient(cluster, tiproxy, pod)
 
-	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(s, fc))
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(rc, fc))
 	require.False(t, done)
 	assert.Equal(t, task.SRetry.String(), res.Status().String())
 
@@ -204,9 +226,10 @@ func TestTaskReviveFromScaleInUsesPodDrainState(t *testing.T) {
 	pod := revivableTiProxyPod(cluster, tiproxy, time.Now().Format(time.RFC3339Nano))
 
 	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := reviveTestReconcileContext(t, s, healthServer)
 	fc := client.NewFakeClient(cluster, tiproxy, pod)
 
-	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(s, fc))
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(rc, fc))
 	require.False(t, done)
 	assert.Equal(t, task.SComplete.String(), res.Status().String())
 	assert.True(t, s.IsHealthy())
@@ -221,12 +244,172 @@ func TestTaskReviveFromScaleInPodGoneSkipsHealthClear(t *testing.T) {
 	tiproxy := revivableTiProxyWithAPI(healthServer.port(t))
 
 	s := &state{cluster: cluster, tiproxy: tiproxy, pod: nil}
+	rc := reviveTestReconcileContext(t, s, nil)
 	fc := client.NewFakeClient(cluster, tiproxy)
 
-	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(s, fc))
+	res, done := task.RunTask(ctx, TaskReviveFromScaleIn(rc, fc))
 	require.False(t, done)
 	assert.Equal(t, task.SComplete.String(), res.Status().String())
 	assert.Contains(t, res.Message(), "does not need scale-in revive")
 	assert.Equal(t, 0, healthServer.clearHealthCalls)
 	assert.False(t, s.IsHealthy())
+}
+
+func TestCondTiProxyNeedsScaleInRevive(t *testing.T) {
+	t.Parallel()
+
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(1234)
+	beginTime := time.Now().Format(time.RFC3339Nano)
+	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
+
+	cases := []struct {
+		desc     string
+		state    *state
+		expected bool
+	}{
+		{
+			desc:     "pod has graceful shutdown begin time",
+			state:    &state{tiproxy: tiproxy, pod: pod},
+			expected: true,
+		},
+		{
+			desc:     "pod missing begin time annotation",
+			state:    &state{tiproxy: tiproxy, pod: fakePod(cluster, tiproxy)},
+			expected: false,
+		},
+		{
+			desc:     "pod is nil",
+			state:    &state{tiproxy: tiproxy, pod: nil},
+			expected: false,
+		},
+		{
+			desc: "tiproxy is offline",
+			state: func() *state {
+				offline := tiproxy.DeepCopy()
+				offline.Spec.Offline = ptr.To(true)
+				return &state{tiproxy: offline, pod: pod}
+			}(),
+			expected: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.expected, CondTiProxyNeedsScaleInRevive(tc.state).Satisfy())
+		})
+	}
+}
+
+func TestReviveFromScaleInRetryStopsFollowingTasks(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	healthServer := newReviveTestHealthServer(t)
+	healthServer.clearHealthStatus = http.StatusInternalServerError
+
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(healthServer.port(t))
+	beginTime := time.Now().Format(time.RFC3339Nano)
+	pod := revivableTiProxyPod(cluster, tiproxy, beginTime)
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := reviveTestReconcileContext(t, s, healthServer)
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+
+	var followingTaskRan bool
+	pipeline := task.Block(
+		task.IfBreak(CondTiProxyNeedsScaleInRevive(s),
+			TaskReviveFromScaleIn(rc, fc),
+		),
+		task.NameTaskFunc("Following", func(context.Context) task.Result {
+			followingTaskRan = true
+			return task.Complete().With("following task ran")
+		}),
+	)
+
+	res, done := task.RunTask(ctx, pipeline)
+	require.True(t, done)
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, followingTaskRan)
+}
+
+func offlinedTiProxyForDelete() *v1alpha1.TiProxy {
+	return fake.FakeObj("aaa-proxy-0", func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
+		obj.Namespace = corev1.NamespaceDefault
+		obj.Spec.Cluster.Name = "aaa"
+		obj.Spec.Version = fakeVersion
+		obj.Spec.Offline = ptr.To(true)
+		obj.Annotations = map[string]string{
+			v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
+		}
+		return obj
+	})
+}
+
+func TestTaskDeleteOfflinedTiProxyDeletesWhenOffline(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cluster := localTestCluster()
+	tiproxy := offlinedTiProxyForDelete()
+
+	s := &state{cluster: cluster, tiproxy: tiproxy}
+	fc := client.NewFakeClient(cluster, tiproxy)
+
+	res, done := task.RunTask(ctx, TaskDeleteOfflinedTiProxy(s, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SWait.String(), res.Status().String())
+
+	actual := &v1alpha1.TiProxy{}
+	err := fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual)
+	if err == nil {
+		assert.False(t, actual.GetDeletionTimestamp().IsZero())
+	}
+}
+
+func TestTaskDeleteOfflinedTiProxySkipsWhenNoLongerOffline(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cluster := localTestCluster()
+	tiproxy := offlinedTiProxyForDelete()
+	tiproxy.Spec.Offline = ptr.To(false)
+
+	s := &state{cluster: cluster, tiproxy: tiproxy}
+	fc := client.NewFakeClient(cluster, tiproxy)
+
+	res, done := task.RunTask(ctx, TaskDeleteOfflinedTiProxy(s, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SComplete.String(), res.Status().String())
+	assert.Contains(t, res.Message(), "skip delete")
+
+	actual := &v1alpha1.TiProxy{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual))
+	assert.True(t, actual.GetDeletionTimestamp().IsZero())
+}
+
+func TestTaskDeleteOfflinedTiProxyRetriesOnConflict(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cluster := localTestCluster()
+	tiproxy := offlinedTiProxyForDelete()
+	fc := client.NewFakeClient(cluster, tiproxy)
+	fc.WithError("delete", "*", apierrors.NewConflict(
+		schema.GroupResource{Group: "core.pingcap.com", Resource: "tiproxies"},
+		tiproxy.Name,
+		errors.New("resource version conflict"),
+	))
+
+	s := &state{cluster: cluster, tiproxy: tiproxy}
+	res, done := task.RunTask(ctx, TaskDeleteOfflinedTiProxy(s, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.Contains(t, res.Message(), "retry")
+
+	actual := &v1alpha1.TiProxy{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual))
+	assert.True(t, actual.GetDeletionTimestamp().IsZero())
 }

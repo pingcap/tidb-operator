@@ -28,7 +28,7 @@ func TaskDrainPodForDelete(state State, c client.Client) task.Task {
 			return task.Complete().With("pod doesn't exist")
 		}
 
-		retryAfter, err := drainPodForGracefulShutdown(ctx, c, state, pod)
+		retryAfter, err := drainPodForGracefulShutdown(ctx, c, state, pod, nil)
 		if err != nil {
 			return task.Fail().With("cannot delete pod of tiproxy: %v", err)
 		}

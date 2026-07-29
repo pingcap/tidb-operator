@@ -18,6 +18,8 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -37,6 +39,20 @@ func CondObjectIsOfflineForGracefulScaleIn(state State) task.Condition {
 	})
 }
 
+func CondTiProxyNeedsScaleInRevive(state State) task.Condition {
+	return task.CondFunc(func() bool {
+		tiproxy := state.Object()
+		if tiproxy == nil || !tiproxy.GetDeletionTimestamp().IsZero() {
+			return false
+		}
+		if coreutil.IsOffline[scope.TiProxy](tiproxy) {
+			return false
+		}
+		pod := state.Pod()
+		return pod != nil && pod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime] != ""
+	})
+}
+
 func CondOfflineScaleInDrainComplete(state State) task.Condition {
 	return task.CondFunc(func() bool {
 		tiproxy := state.Object()
@@ -51,14 +67,14 @@ func CondOfflineScaleInDrainComplete(state State) task.Condition {
 	})
 }
 
-func TaskOfflineScaleInDrain(state State, c client.Client) task.Task {
+func TaskOfflineScaleInDrain(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("OfflineScaleInDrain", func(ctx context.Context) task.Result {
 		pod := state.Pod()
 		if pod == nil {
 			return task.Wait().With("wait for tiproxy pod before graceful scale-in drain")
 		}
 
-		retryAfter, err := drainPodForGracefulShutdown(ctx, c, state, pod)
+		retryAfter, err := drainPodForGracefulShutdown(ctx, c, state, pod, state.TiProxyClient)
 		if err != nil {
 			return task.Fail().With("cannot drain tiproxy pod for graceful scale-in: %v", err)
 		}
@@ -72,16 +88,32 @@ func TaskOfflineScaleInDrain(state State, c client.Client) task.Task {
 func TaskDeleteOfflinedTiProxy(state State, c client.Client) task.Task {
 	return task.NameTaskFunc("DeleteOfflinedTiProxy", func(ctx context.Context) task.Result {
 		tiproxy := state.Object()
-		if tiproxy.GetDeletionTimestamp().IsZero() {
-			if err := c.Delete(ctx, tiproxy); err != nil {
-				return task.Fail().With("cannot delete offlined tiproxy: %v", err)
+		if !tiproxy.GetDeletionTimestamp().IsZero() {
+			return task.Wait().With("wait until offlined tiproxy deletion is watched")
+		}
+		if !coreutil.IsOffline[scope.TiProxy](tiproxy) {
+			return task.Complete().With("tiproxy is no longer offline, skip delete")
+		}
+
+		if err := c.Delete(ctx, tiproxy,
+			client.Preconditions{
+				UID:             ptr.To(tiproxy.GetUID()),
+				ResourceVersion: ptr.To(tiproxy.GetResourceVersion()),
+			},
+		); err != nil {
+			if apierrors.IsConflict(err) {
+				return task.Retry(task.DefaultRequeueAfter).With("tiproxy changed before delete, retry")
 			}
+			if apierrors.IsNotFound(err) {
+				return task.Complete().With("offlined tiproxy already deleted")
+			}
+			return task.Fail().With("cannot delete offlined tiproxy: %v", err)
 		}
 		return task.Wait().With("wait until offlined tiproxy deletion is watched")
 	})
 }
 
-func TaskReviveFromScaleIn(state State, c client.Client) task.Task {
+func TaskReviveFromScaleIn(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ReviveFromScaleIn", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		tiproxy := state.Object()
@@ -94,9 +126,8 @@ func TaskReviveFromScaleIn(state State, c client.Client) task.Task {
 			return task.Complete().With("tiproxy does not need scale-in revive")
 		}
 
-		tpClient, err := newTiProxyAPIClient(ctx, state, c)
-		if err != nil {
-			logger.Info("failed to build TiProxy API client before revive, continue retrying", "error", err)
+		tpClient := state.TiProxyClient
+		if tpClient == nil {
 			return task.Retry(task.DefaultRequeueAfter).With("wait for tiproxy health override to be cleared")
 		}
 

@@ -80,8 +80,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// normal process
+		task.IfBreak(tasks.CondTiProxyNeedsScaleInRevive(state),
+			tasks.TaskContextInfoFromTiProxy(state, r.Client),
+			tasks.TaskReviveFromScaleIn(state, r.Client),
+		),
 		tasks.TaskContextInfoFromTiProxy(state, r.Client),
-		tasks.TaskReviveFromScaleIn(state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiProxy](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
