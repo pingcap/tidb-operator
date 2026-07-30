@@ -33,3 +33,17 @@ func GracefulOfflineScaleInEnabled(annotations map[string]string) bool {
 	seconds, err := strconv.ParseInt(raw, 10, 32)
 	return err == nil && seconds > 0
 }
+
+func TiProxySupportsOfflineBeforeDelete(annotations map[string]string) bool {
+	if !GracefulOfflineScaleInEnabled(annotations) {
+		return false
+	}
+	// Do not mark offline in rolling restart, just delete the instance.
+	if _, ok := annotations[v1alpha1.AnnoKeyDeferDelete]; ok {
+		return false
+	}
+	if annotations[v1alpha1.AnnoKeyTiProxyReviveAbandoned] == v1alpha1.AnnoValTrue {
+		return false
+	}
+	return true
+}

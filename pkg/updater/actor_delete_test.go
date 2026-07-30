@@ -62,6 +62,32 @@ func TestDeleteInstanceDoesNotOrphanTiProxyDependents(t *testing.T) {
 	require.Nil(t, cli.lastDeleteOptions.PropagationPolicy)
 }
 
+func TestDeleteInstanceGracefulTiProxyDeferDeleteDeletesCR(t *testing.T) {
+	t.Parallel()
+
+	obj := &v1alpha1.TiProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "tiproxy-old",
+			Namespace:       "ns",
+			ResourceVersion: "1",
+			UID:             types.UID("tiproxy-old"),
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyDeferDelete:                               v1alpha1.AnnoValTrue,
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
+			},
+		},
+	}
+	cli := &deleteOptionRecorderClient{Client: pkgclient.NewFakeClient(obj)}
+	act := actor[runtime.TiProxyTuple, *v1alpha1.TiProxy, *runtime.TiProxy]{
+		c:         cli,
+		converter: runtime.TiProxyTuple{},
+	}
+
+	err := act.deleteInstance(context.Background(), runtime.FromTiProxy(obj))
+	require.NoError(t, err)
+	require.Nil(t, cli.lastDeleteOptions.PropagationPolicy)
+}
+
 func TestDeleteInstanceDoesNotOrphanNonTiProxyDependents(t *testing.T) {
 	t.Parallel()
 
