@@ -33,6 +33,8 @@ import (
 	backupUtil "github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/util"
 )
 
+const brLogCommand = "log"
+
 // Options contains the input arguments to the backup command
 type Options struct {
 	backupUtil.GenericOptions
@@ -99,7 +101,7 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 // doStartLogBackup generates br args about log backup start and runs br binary to do the real backup work.
 func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
-		"log",
+		brLogCommand,
 		"start",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
@@ -116,7 +118,7 @@ func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup
 // doResumeLogBackup generates br args about log backup resume and runs br binary to do the real backup work.
 func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
-		"log",
+		brLogCommand,
 		"resume",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
@@ -130,7 +132,7 @@ func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backu
 // doStoplogBackup generates br args about log backup stop and runs br binary to do the real backup work.
 func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
-		"log",
+		brLogCommand,
 		"stop",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
@@ -144,7 +146,7 @@ func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 // doPauselogBackup generates br args about log backup pause and runs br binary to do the real backup work.
 func (bo *Options) doPauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
-		"log",
+		brLogCommand,
 		"pause",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
@@ -158,7 +160,7 @@ func (bo *Options) doPauseLogBackup(ctx context.Context, backup *v1alpha1.Backup
 // doTruncateLogBackup generates br args about log backup truncate and runs br binary to do the real backup work.
 func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
-		"log",
+		brLogCommand,
 		"truncate",
 	}
 	if bo.TruncateUntil != "" && bo.TruncateUntil != "0" {

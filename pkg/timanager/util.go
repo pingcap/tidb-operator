@@ -127,7 +127,7 @@ func (c *cached[Client, UnderlayClient]) Start(ctx context.Context) {
 		return
 	}
 
-	nctx, cancel := context.WithCancel(ctx)
+	nctx, cancel := context.WithCancel(ctx) //nolint:gosec // cancel is stored and called by Stop.
 	c.cancel = cancel
 	c.started = true
 

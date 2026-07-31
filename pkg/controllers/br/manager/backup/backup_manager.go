@@ -43,6 +43,8 @@ import (
 
 var _ BackupManager = &backupManager{}
 
+const brBinVolumeName = "br-bin"
+
 // BackupUpdateStatus represents the status of a backup to be updated.
 // This structure should keep synced with the fields in `BackupStatus`
 // except for `Phase` and `Conditions`.
@@ -478,14 +480,14 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 	}
 
 	brVolumeMount := corev1.VolumeMount{
-		Name:      "br-bin",
+		Name:      brBinVolumeName,
 		ReadOnly:  false,
 		MountPath: v1alpha1.DirPathBRBin,
 	}
 	volumeMounts = append(volumeMounts, brVolumeMount)
 
 	volumes = append(volumes, corev1.Volume{
-		Name: "br-bin",
+		Name: brBinVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
