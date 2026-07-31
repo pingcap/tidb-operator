@@ -55,15 +55,15 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),
+		common.TaskInstanceConditionSuspended[scope.TiProxy](state),
 
 		// check whether the cluster is suspending
 		task.IfBreak(common.CondClusterIsSuspending(state),
-			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.TiProxy](state),
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
 			common.TaskInstanceConditionReady[scope.TiProxy](state),
 			common.TaskInstanceConditionRunning[scope.TiProxy](state),
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
+			common.TaskSuspendPod(state, r.Client),
 		),
 
 		// normal process

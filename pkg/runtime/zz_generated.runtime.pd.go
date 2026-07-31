@@ -169,6 +169,14 @@ func (in *PD) SetObservedGeneration(gen int64) {
 	in.Status.ObservedGeneration = gen
 }
 
+func (in *PD) ObservedClusterGeneration() int64 {
+	return in.Status.ObservedClusterGeneration
+}
+
+func (in *PD) SetObservedClusterGeneration(gen int64) {
+	in.Status.ObservedClusterGeneration = gen
+}
+
 func (in *PD) SetCluster(cluster string) {
 	in.Spec.Cluster.Name = cluster
 }
@@ -348,6 +356,14 @@ func (g *PDGroup) ObservedGeneration() int64 {
 
 func (g *PDGroup) SetObservedGeneration(gen int64) {
 	g.Status.ObservedGeneration = gen
+}
+
+func (g *PDGroup) ObservedClusterGeneration() int64 {
+	return g.Status.ObservedClusterGeneration
+}
+
+func (g *PDGroup) SetObservedClusterGeneration(gen int64) {
+	g.Status.ObservedClusterGeneration = gen
 }
 
 func (g *PDGroup) SetStatusVersion(version string) {

@@ -169,6 +169,14 @@ func (in *Router) SetObservedGeneration(gen int64) {
 	in.Status.ObservedGeneration = gen
 }
 
+func (in *Router) ObservedClusterGeneration() int64 {
+	return in.Status.ObservedClusterGeneration
+}
+
+func (in *Router) SetObservedClusterGeneration(gen int64) {
+	in.Status.ObservedClusterGeneration = gen
+}
+
 func (in *Router) SetCluster(cluster string) {
 	in.Spec.Cluster.Name = cluster
 }
@@ -348,6 +356,14 @@ func (g *RouterGroup) ObservedGeneration() int64 {
 
 func (g *RouterGroup) SetObservedGeneration(gen int64) {
 	g.Status.ObservedGeneration = gen
+}
+
+func (g *RouterGroup) ObservedClusterGeneration() int64 {
+	return g.Status.ObservedClusterGeneration
+}
+
+func (g *RouterGroup) SetObservedClusterGeneration(gen int64) {
+	g.Status.ObservedClusterGeneration = gen
 }
 
 func (g *RouterGroup) SetStatusVersion(version string) {

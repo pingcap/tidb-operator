@@ -68,6 +68,38 @@ func SetStatusObservedGeneration[
 	return false
 }
 
+func SetStatusObservedClusterGeneration[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.ClusterObservedObject,
+](f F, generation int64) bool {
+	t := scope.From[S](f)
+	observed := t.ObservedClusterGeneration()
+	if compare.SetIfChanged(&observed, generation) {
+		t.SetObservedClusterGeneration(observed)
+		return true
+	}
+
+	return false
+}
+
+func IsStatusConditionTrueForCluster[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.ClusterObservedObject,
+](f F, conditionType string, clusterGeneration int64) bool {
+	t := scope.From[S](f)
+	if t.ObservedGeneration() != t.GetGeneration() ||
+		t.ObservedClusterGeneration() != clusterGeneration {
+		return false
+	}
+
+	condition := meta.FindStatusCondition(t.Conditions(), conditionType)
+	return condition != nil &&
+		condition.Status == metav1.ConditionTrue &&
+		condition.ObservedGeneration == t.GetGeneration()
+}
+
 func SetStatusCondition[
 	S scope.Object[F, T],
 	F client.Object,

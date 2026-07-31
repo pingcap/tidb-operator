@@ -51,13 +51,13 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.DM](state, r.Client),
+		common.TaskInstanceConditionSuspended[scope.DM](state),
 		task.IfBreak(common.CondClusterIsSuspending(state),
-			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.DM](state),
 			common.TaskInstanceConditionSynced[scope.DM](state),
 			common.TaskInstanceConditionReady[scope.DM](state),
 			common.TaskInstanceConditionRunning[scope.DM](state),
 			common.TaskStatusPersister[scope.DM](state, r.Client),
+			common.TaskSuspendPod(state, r.Client),
 		),
 
 		// list peer DM instances (for config generation)

@@ -50,13 +50,13 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.DMWorker](state, r.Client),
+		common.TaskInstanceConditionSuspended[scope.DMWorker](state),
 		task.IfBreak(common.CondClusterIsSuspending(state),
-			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.DMWorker](state),
 			common.TaskInstanceConditionSynced[scope.DMWorker](state),
 			common.TaskInstanceConditionReady[scope.DMWorker](state),
 			common.TaskInstanceConditionRunning[scope.DMWorker](state),
 			common.TaskStatusPersister[scope.DMWorker](state, r.Client),
+			common.TaskSuspendPod(state, r.Client),
 		),
 
 		// health check

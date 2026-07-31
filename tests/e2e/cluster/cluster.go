@@ -67,6 +67,21 @@ const (
 	logLevelConfig = "log.level = 'warn'"
 )
 
+func expectCommonSuspendStatus(
+	g Gomega,
+	status v1alpha1.CommonStatus,
+	resourceGeneration int64,
+	clusterGeneration int64,
+	conditionStatus metav1.ConditionStatus,
+) {
+	g.Expect(status.ObservedGeneration).To(Equal(resourceGeneration))
+	g.Expect(status.ObservedClusterGeneration).To(Equal(clusterGeneration))
+	condition := meta.FindStatusCondition(status.Conditions, v1alpha1.CondSuspended)
+	g.Expect(condition).NotTo(BeNil())
+	g.Expect(condition.Status).To(Equal(conditionStatus))
+	g.Expect(condition.ObservedGeneration).To(Equal(resourceGeneration))
+}
+
 func initK8sClient() (kubernetes.Interface, client.Client, *rest.Config) {
 	restConfig, err := k8s.LoadConfig()
 	Expect(err).NotTo(HaveOccurred())
@@ -438,27 +453,28 @@ var _ = Describe("TiDB Cluster", func() {
 
 		It("should suspend and resume the tidb cluster", func() {
 			checkSuspendCondtion := func(g Gomega, condStatus metav1.ConditionStatus) {
+				var tcGet v1alpha1.Cluster
+				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: tc.Name}, &tcGet)).To(Succeed())
+
 				var pdGroup v1alpha1.PDGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "pdg"}, &pdGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(pdGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, pdGroup.Status.CommonStatus, pdGroup.Generation, tcGet.Generation, condStatus)
 
 				var tikvGroup v1alpha1.TiKVGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "kvg"}, &tikvGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tikvGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, tikvGroup.Status.CommonStatus, tikvGroup.Generation, tcGet.Generation, condStatus)
 
 				var tidbGroup v1alpha1.TiDBGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "dbg"}, &tidbGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tidbGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, tidbGroup.Status.CommonStatus, tidbGroup.Generation, tcGet.Generation, condStatus)
 
 				var flashGroup v1alpha1.TiFlashGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "flashg"}, &flashGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(
-					flashGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, flashGroup.Status.CommonStatus, flashGroup.Generation, tcGet.Generation, condStatus)
 
 				var cdcGroup v1alpha1.TiCDCGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "cdcg"}, &cdcGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(
-					cdcGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, cdcGroup.Status.CommonStatus, cdcGroup.Generation, tcGet.Generation, condStatus)
 
 				var pdList v1alpha1.PDList
 				g.Expect(k8sClient.List(ctx, &pdList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -470,7 +486,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(pdList.Items)).To(Equal(1))
 				pd := pdList.Items[0]
 				g.Expect(pd.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, pd.Status.CommonStatus, pd.Generation, tcGet.Generation, condStatus)
 
 				var tikvList v1alpha1.TiKVList
 				g.Expect(k8sClient.List(ctx, &tikvList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -482,7 +498,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(tikvList.Items)).To(Equal(1))
 				tikv := tikvList.Items[0]
 				g.Expect(tikv.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tikv.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, tikv.Status.CommonStatus, tikv.Generation, tcGet.Generation, condStatus)
 
 				var tidbList v1alpha1.TiDBList
 				g.Expect(k8sClient.List(ctx, &tidbList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -494,7 +510,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(tidbList.Items)).To(Equal(1))
 				tidb := tidbList.Items[0]
 				g.Expect(tidb.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tidb.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, tidb.Status.CommonStatus, tidb.Generation, tcGet.Generation, condStatus)
 
 				var flashList v1alpha1.TiFlashList
 				g.Expect(k8sClient.List(ctx, &flashList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -506,7 +522,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(flashList.Items)).To(Equal(1))
 				flash := flashList.Items[0]
 				g.Expect(flash.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(flash.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, flash.Status.CommonStatus, flash.Generation, tcGet.Generation, condStatus)
 
 				var cdcList v1alpha1.TiCDCList
 				g.Expect(k8sClient.List(ctx, &cdcList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -518,11 +534,12 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(cdcList.Items)).To(Equal(1))
 				cdc := cdcList.Items[0]
 				g.Expect(cdc.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(cdc.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
+				expectCommonSuspendStatus(g, cdc.Status.CommonStatus, cdc.Generation, tcGet.Generation, condStatus)
 
-				var tcGet v1alpha1.Cluster
-				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: tc.Name}, &tcGet)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tcGet.Status.Conditions, v1alpha1.ClusterCondSuspended, condStatus)).To(BeTrue())
+				clusterCondition := meta.FindStatusCondition(tcGet.Status.Conditions, v1alpha1.ClusterCondSuspended)
+				g.Expect(clusterCondition).NotTo(BeNil())
+				g.Expect(clusterCondition.Status).To(Equal(condStatus))
+				g.Expect(clusterCondition.ObservedGeneration).To(Equal(tcGet.Generation))
 			}
 
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)

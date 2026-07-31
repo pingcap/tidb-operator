@@ -18,7 +18,6 @@ package common
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -96,6 +95,10 @@ func TaskInstanceConditionSuspended[
 				*coreutil.Unsuspended(),
 			) || needUpdate
 		}
+		needUpdate = coreutil.SetStatusObservedClusterGeneration[S](
+			instance,
+			cluster.Generation,
+		) || needUpdate
 
 		if needUpdate {
 			state.SetStatusChanged()
@@ -329,7 +332,11 @@ func TaskGroupConditionSuspended[
 		if coreutil.ShouldSuspendCompute(cluster) {
 			suspended := true
 			for _, obj := range objs {
-				if !meta.IsStatusConditionTrue(coreutil.StatusConditions[IS](obj), v1alpha1.CondSuspended) {
+				if !coreutil.IsStatusConditionTrueForCluster[IS](
+					obj,
+					v1alpha1.CondSuspended,
+					cluster.Generation,
+				) {
 					suspended = false
 				}
 			}
@@ -350,6 +357,10 @@ func TaskGroupConditionSuspended[
 				*coreutil.Unsuspended(),
 			) || needUpdate
 		}
+		needUpdate = coreutil.SetStatusObservedClusterGeneration[S](
+			g,
+			cluster.Generation,
+		) || needUpdate
 
 		if needUpdate {
 			state.SetStatusChanged()

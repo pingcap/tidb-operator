@@ -54,14 +54,14 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiKVWorker](state, r.Client),
+		common.TaskInstanceConditionSuspended[scope.TiKVWorker](state),
 
 		task.IfBreak(common.CondClusterIsSuspending(state),
-			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.TiKVWorker](state),
 			common.TaskInstanceConditionSynced[scope.TiKVWorker](state),
 			common.TaskInstanceConditionReady[scope.TiKVWorker](state),
 			common.TaskInstanceConditionRunning[scope.TiKVWorker](state),
 			common.TaskStatusPersister[scope.TiKVWorker](state, r.Client),
+			common.TaskSuspendPod(state, r.Client),
 		),
 
 		// normal process

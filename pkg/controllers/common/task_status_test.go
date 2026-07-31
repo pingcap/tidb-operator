@@ -231,6 +231,35 @@ func TestTaskInstanceConditionSuspended(t *testing.T) {
 				return obj
 			}),
 		},
+		{
+			desc: "existing pod invalidates old suspended condition and advances cluster generation",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Generation = 7
+				cond := coreutil.Suspended()
+				cond.ObservedGeneration = obj.Generation
+				obj.Status.Conditions = []metav1.Condition{*cond}
+				obj.Status.ObservedClusterGeneration = 10
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Generation = 11
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				return obj
+			}),
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Generation = 7
+				cond := coreutil.Suspending()
+				cond.ObservedGeneration = obj.Generation
+				obj.Status.Conditions = []metav1.Condition{*cond}
+				obj.Status.ObservedClusterGeneration = 11
+				return obj
+			}),
+		},
 	}
 
 	for i := range cases {
@@ -891,6 +920,72 @@ func TestTaskGroupConditionSuspended(t *testing.T) {
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Suspending(),
 				}
+				return obj
+			}),
+		},
+		{
+			desc: "stale parent cluster generation is not suspended",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Generation = 4
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Generation = 11
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Generation = 7
+					obj.Status.ObservedGeneration = obj.Generation
+					obj.Status.ObservedClusterGeneration = 10
+					cond := coreutil.Suspended()
+					cond.ObservedGeneration = obj.Generation
+					obj.Status.Conditions = []metav1.Condition{*cond}
+					return obj
+				}),
+			},
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Generation = 4
+				obj.Status.ObservedClusterGeneration = 11
+				cond := coreutil.Suspending()
+				cond.ObservedGeneration = obj.Generation
+				obj.Status.Conditions = []metav1.Condition{*cond}
+				return obj
+			}),
+		},
+		{
+			desc: "all instance and parent generations are current",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Generation = 4
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Generation = 11
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Generation = 7
+					obj.Status.ObservedGeneration = obj.Generation
+					obj.Status.ObservedClusterGeneration = 11
+					cond := coreutil.Suspended()
+					cond.ObservedGeneration = obj.Generation
+					obj.Status.Conditions = []metav1.Condition{*cond}
+					return obj
+				}),
+			},
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Generation = 4
+				obj.Status.ObservedClusterGeneration = 11
+				cond := coreutil.Suspended()
+				cond.ObservedGeneration = obj.Generation
+				obj.Status.Conditions = []metav1.Condition{*cond}
 				return obj
 			}),
 		},
