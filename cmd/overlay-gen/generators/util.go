@@ -204,6 +204,18 @@ const (
 	typeSet      = "set"
 )
 
+const (
+	snippetArgAnnoType = "annoType"
+	snippetArgDst      = "dst"
+	snippetArgIndex    = "index"
+	snippetArgKey      = "key"
+	snippetArgName     = "name"
+	snippetArgPolicy   = "policy"
+	snippetArgPrefix   = "prefix"
+	snippetArgSrc      = "src"
+	snippetArgType     = "type"
+)
+
 //nolint:gocyclo // refactor if possible
 func parseComment(t *types.Type, comments []string) *params {
 	p := &params{}

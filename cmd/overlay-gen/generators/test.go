@@ -197,29 +197,29 @@ func (g *overlayTestGenerator) generateConstructStructFunc(sw *generator.Snippet
 		case AtomicStruct:
 			// all fields will be overrided by src
 			DoLine(sw, "", "nc.expected.$.name$ = c$.index$.src", generator.Args{
-				"name":  m.Member().Name,
-				"index": index,
+				snippetArgName:  m.Member().Name,
+				snippetArgIndex: index,
 			})
 			DoLine(sw, "", "nc.dst.$.name$ = c$.index$.dst", generator.Args{
-				"name":  m.Member().Name,
-				"index": index,
+				snippetArgName:  m.Member().Name,
+				snippetArgIndex: index,
 			})
 			DoLine(sw, "", "nc.src.$.name$ = c$.index$.src", generator.Args{
-				"name":  m.Member().Name,
-				"index": index,
+				snippetArgName:  m.Member().Name,
+				snippetArgIndex: index,
 			})
 		case GranularStruct:
 			DoLine(sw, "", "nc.expected.$.name$ = c$.index$.expected", generator.Args{
-				"name":  m.Member().Name,
-				"index": index,
+				snippetArgName:  m.Member().Name,
+				snippetArgIndex: index,
 			})
 			DoLine(sw, "", "nc.dst.$.name$ = c$.index$.dst", generator.Args{
-				"name":  m.Member().Name,
-				"index": index,
+				snippetArgName:  m.Member().Name,
+				snippetArgIndex: index,
 			})
 			DoLine(sw, "", "nc.src.$.name$ = c$.index$.src", generator.Args{
-				"name":  m.Member().Name,
-				"index": index,
+				snippetArgName:  m.Member().Name,
+				snippetArgIndex: index,
 			})
 		}
 	}
@@ -355,19 +355,19 @@ func (g *overlayTestGenerator) generateConstructSliceFunc(sw *generator.SnippetW
 func (*overlayTestGenerator) generateConstructFuncCall(sw *generator.SnippetWriter,
 	prefix, policy string, t *types.Type, at AnnotateType, keys ...string) {
 	DoLine(sw, "", "$.prefix$ construct$.annoType$$.type|public$$.key$($.policy$)", generator.Args{
-		"prefix":   prefix,
-		"policy":   policy,
-		"type":     t,
-		"annoType": at.FuncPrefix(),
-		"key":      IgnoreKeys(keys...),
+		snippetArgPrefix:   prefix,
+		snippetArgPolicy:   policy,
+		snippetArgType:     t,
+		snippetArgAnnoType: at.FuncPrefix(),
+		snippetArgKey:      IgnoreKeys(keys...),
 	})
 }
 
 func (*overlayTestGenerator) generateConstructFuncName(sw *generator.SnippetWriter, t *types.Type, at AnnotateType, keys ...string) {
 	DoLine(sw, "", "func construct$.annoType$$.type|public$$.key$(p Policy) []Case[$.type|raw$] {", generator.Args{
-		"type":     t,
-		"annoType": at.FuncPrefix(),
-		"key":      IgnoreKeys(keys...),
+		snippetArgType:     t,
+		snippetArgAnnoType: at.FuncPrefix(),
+		snippetArgKey:      IgnoreKeys(keys...),
 	})
 }
 

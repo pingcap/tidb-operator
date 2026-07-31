@@ -358,9 +358,9 @@ func getFieldsByKeys(t *types.Type, keys ...string) ([]StructField, error) {
 
 func (g *overlayGenerator) generateAssignment(sw *generator.SnippetWriter, p Params) {
 	args := generator.Args{
-		"type": p.Type(),
-		"dst":  p.Dst(),
-		"src":  p.Src(),
+		snippetArgType: p.Type(),
+		snippetArgDst:  p.Dst(),
+		snippetArgSrc:  p.Src(),
 	}
 
 	p.CheckNil()
@@ -416,9 +416,9 @@ func (g *overlayGenerator) generatePointerAssignment(sw *generator.SnippetWriter
 
 func (*overlayGenerator) generateSliceAssignment(sw *generator.SnippetWriter, p Params) {
 	args := generator.Args{
-		"type": p.Type(),
-		"dst":  p.Dst(),
-		"src":  p.Src(),
+		snippetArgType: p.Type(),
+		snippetArgDst:  p.Dst(),
+		snippetArgSrc:  p.Src(),
 	}
 	switch p.AnnotateType() {
 	case AtomicList:
@@ -434,9 +434,9 @@ func (*overlayGenerator) generateSliceAssignment(sw *generator.SnippetWriter, p 
 
 func (*overlayGenerator) generateMapAssignment(sw *generator.SnippetWriter, p Params) {
 	args := generator.Args{
-		"type": p.Type(),
-		"dst":  p.Dst(),
-		"src":  p.Src(),
+		snippetArgType: p.Type(),
+		snippetArgDst:  p.Dst(),
+		snippetArgSrc:  p.Src(),
 	}
 	switch p.AnnotateType() {
 	case AtomicMap:
@@ -450,9 +450,9 @@ func (*overlayGenerator) generateMapAssignment(sw *generator.SnippetWriter, p Pa
 
 func (*overlayGenerator) generateStructAssignment(sw *generator.SnippetWriter, p Params) {
 	args := generator.Args{
-		"type": p.Type(),
-		"dst":  p.Dst(),
-		"src":  p.Src(),
+		snippetArgType: p.Type(),
+		snippetArgDst:  p.Dst(),
+		snippetArgSrc:  p.Src(),
 	}
 	switch p.AnnotateType() {
 	case AtomicStruct:
@@ -466,9 +466,9 @@ func (*overlayGenerator) generateStructAssignment(sw *generator.SnippetWriter, p
 
 func (*overlayGenerator) generateAliasAssignment(sw *generator.SnippetWriter, p Params) {
 	args := generator.Args{
-		"type": p.Type(),
-		"dst":  p.Dst(),
-		"src":  p.Src(),
+		snippetArgType: p.Type(),
+		snippetArgDst:  p.Dst(),
+		snippetArgSrc:  p.Src(),
 	}
 	DoLine(sw, "1", `overlay$.type|public$($.dst$, $.src$)`, args)
 }
@@ -486,8 +486,8 @@ func (*overlayGenerator) generateBuiltinAssignment(sw *generator.SnippetWriter, 
 		Panic("unhandled builtin assignment", "dst", p.Dst(), "src", p.Src(), "typeName", p.Type())
 	}
 	DoLine(sw, "22", `$.dst$ = $.src$`, generator.Args{
-		"dst": p.Dst(),
-		"src": p.Src(),
+		snippetArgDst: p.Dst(),
+		snippetArgSrc: p.Src(),
 	})
 	DoLine(sw, "1", `}`, nil)
 }

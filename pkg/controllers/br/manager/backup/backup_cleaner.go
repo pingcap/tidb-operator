@@ -423,14 +423,14 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 	}
 
 	brVolumeMount := corev1.VolumeMount{
-		Name:      "br-bin",
+		Name:      brBinVolumeName,
 		ReadOnly:  false,
 		MountPath: v1alpha1.DirPathBRBin,
 	}
 	volumeMounts = append(volumeMounts, brVolumeMount)
 
 	volumes = append(volumes, corev1.Volume{
-		Name: "br-bin",
+		Name: brBinVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
