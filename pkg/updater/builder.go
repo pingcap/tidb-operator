@@ -40,6 +40,11 @@ type Builder[R runtime.Instance] interface {
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
+	// DirectDeleteOutdated if true, deleting outdated instances (rolling replace /
+	// Cleanup) skips offline-before-delete and removes the CR immediately.
+	// Pure scale-in of updated instances still honors SupportsOffline().
+	// TiProxy sets this so rolling restart does not enter a long drain window.
+	WithDirectDeleteOutdated(direct bool) Builder[R]
 	// MinReadySeconds means instances are available only when they keep ready more than minReadySeconds
 	WithMinReadySeconds(minReadySeconds int64) Builder[R]
 	Build() Executor
@@ -52,8 +57,9 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 	maxUnavailable int
 	rev            string
 
-	noInPlaceUpdate bool
-	minReadySeconds int64
+	noInPlaceUpdate      bool
+	directDeleteOutdated bool
+	minReadySeconds      int64
 
 	c client.Client
 
@@ -93,7 +99,8 @@ func (b *builder[T, O, R]) Build() Executor {
 		c: b.c,
 		f: b.f,
 
-		noInPlaceUpdate: b.noInPlaceUpdate,
+		noInPlaceUpdate:      b.noInPlaceUpdate,
+		directDeleteOutdated: b.directDeleteOutdated,
 
 		update:       NewState(update),
 		outdated:     NewState(outdated),
@@ -192,6 +199,12 @@ func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder
 // NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 	b.noInPlaceUpdate = noUpdate
+	return b
+}
+
+// DirectDeleteOutdated if true, deleting outdated instances skips offline-before-delete.
+func (b *builder[T, O, R]) WithDirectDeleteOutdated(direct bool) Builder[R] {
+	b.directDeleteOutdated = direct
 	return b
 }
 

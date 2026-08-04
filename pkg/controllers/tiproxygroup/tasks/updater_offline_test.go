@@ -68,6 +68,7 @@ func newGracefulExecutor(
 			updater.FilterOutdated[*runtime.TiProxy](testUpdateRevision),
 			updater.FilterAnnotationAbsent[*runtime.TiProxy](v1alpha1.AnnoKeyTiProxyReviveAbandoned),
 		).
+		WithDirectDeleteOutdated(true).
 		WithNewFactory(updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
 			return &runtime.TiProxy{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
@@ -118,9 +119,12 @@ func TestExecutorScaleInUpdateMarksOfflineDuringRollingReplace(t *testing.T) {
 	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: "tiproxy-b"}, kept))
 	assert.False(t, coreutil.IsOffline[scope.TiProxy](kept))
 
+	// Outdated is defer-deleted; Cleanup (direct delete) runs on a later reconcile
+	// after available recovers. This reconcile returns wait before Cleanup.
 	deferDeleted := &v1alpha1.TiProxy{}
 	require.NoError(t, cli.Get(ctx, ctrlclient.ObjectKey{Namespace: "ns", Name: "tiproxy-old"}, deferDeleted))
 	assert.Equal(t, v1alpha1.AnnoValTrue, deferDeleted.Annotations[v1alpha1.AnnoKeyDeferDelete])
+	assert.False(t, coreutil.IsOffline[scope.TiProxy](deferDeleted))
 }
 
 func TestExecutorScaleOutRevivesGracefulOfflineInstance(t *testing.T) {

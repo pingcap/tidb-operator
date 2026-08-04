@@ -329,7 +329,7 @@ func (in *$.|pub$) SupportsOffline() bool {
 	} else if strings.EqualFold(t.Name.Name, "TiProxy") {
 		sw.Do(`
 func (in *TiProxy) SupportsOffline() bool {
-	return TiProxySupportsOfflineBeforeDelete(in.GetAnnotations())
+	return GracefulOfflineScaleInEnabled(in.GetAnnotations())
 }
 `, t)
 	} else {

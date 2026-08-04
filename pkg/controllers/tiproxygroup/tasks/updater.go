@@ -125,6 +125,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 				topoPolicy.PolicyUpdate(),
 			).
 			WithNoInPaceUpdate(noUpdate).
+			WithDirectDeleteOutdated(true).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiProxyGroup](proxyg)).
 			Build().
 			Do(ctx)

@@ -35,23 +35,6 @@ func TestGracefulOfflineScaleInEnabled(t *testing.T) {
 	}))
 }
 
-func TestTiProxySupportsOfflineBeforeDelete(t *testing.T) {
-	t.Parallel()
-
-	assert.False(t, TiProxySupportsOfflineBeforeDelete(nil))
-	assert.False(t, TiProxySupportsOfflineBeforeDelete(map[string]string{
-		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
-		v1alpha1.AnnoKeyDeferDelete:                               v1alpha1.AnnoValTrue,
-	}))
-	assert.False(t, TiProxySupportsOfflineBeforeDelete(map[string]string{
-		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
-		v1alpha1.AnnoKeyTiProxyReviveAbandoned:                    v1alpha1.AnnoValTrue,
-	}))
-	assert.True(t, TiProxySupportsOfflineBeforeDelete(map[string]string{
-		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
-	}))
-}
-
 func TestTiProxySupportsOffline(t *testing.T) {
 	t.Parallel()
 
@@ -63,9 +46,17 @@ func TestTiProxySupportsOffline(t *testing.T) {
 	})
 	assert.True(t, proxy.SupportsOffline())
 
+	// defer-delete / revive-abandoned no longer affect SupportsOffline; rolling
+	// replace skips offline via updater.WithDirectDeleteOutdated instead.
 	proxy.SetAnnotations(map[string]string{
 		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
 		v1alpha1.AnnoKeyDeferDelete:                               v1alpha1.AnnoValTrue,
 	})
-	assert.False(t, proxy.SupportsOffline())
+	assert.True(t, proxy.SupportsOffline())
+
+	proxy.SetAnnotations(map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "3600",
+		v1alpha1.AnnoKeyTiProxyReviveAbandoned:                    v1alpha1.AnnoValTrue,
+	})
+	assert.True(t, proxy.SupportsOffline())
 }

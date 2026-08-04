@@ -246,7 +246,7 @@ func (in *TiProxy) IsOffline() bool {
 }
 
 func (in *TiProxy) SupportsOffline() bool {
-	return TiProxySupportsOfflineBeforeDelete(in.GetAnnotations())
+	return GracefulOfflineScaleInEnabled(in.GetAnnotations())
 }
 
 type (
