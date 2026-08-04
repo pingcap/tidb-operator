@@ -398,7 +398,7 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 // skip offline-before-delete. Scale-in of updated instances always passes outdated=false
 // so SupportsOffline() still controls graceful drain.
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R, outdated bool) error {
-	if !(outdated && act.directDeleteOutdated) &&
+	if (!outdated || !act.directDeleteOutdated) &&
 		obj.SupportsOffline() &&
 		!obj.IsOffline() &&
 		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
