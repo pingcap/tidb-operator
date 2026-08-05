@@ -175,3 +175,17 @@ tiproxy_server_connections 7
 	require.NoError(t, err)
 	assert.InDelta(t, 7, count, 0)
 }
+
+func TestTiProxyClient_ClearHealthOverride(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/debug/health", r.URL.Path)
+		assert.Equal(t, http.MethodDelete, r.Method)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	addr := stringutil.RemoveHTTPPrefix(server.URL)
+	client := NewTiProxyClient(addr, 5*time.Second, nil)
+	err := client.ClearHealthOverride(context.Background())
+	require.NoError(t, err)
+}

@@ -79,7 +79,8 @@ const (
 type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	c client.Client
 
-	noInPlaceUpdate bool
+	noInPlaceUpdate      bool
+	directDeleteOutdated bool
 
 	f NewFactory[R]
 
@@ -97,8 +98,9 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	updateHooks []UpdateHook[R]
 	delHooks    []DelHook[R]
 
-	scaleInSelector Selector[R]
-	updateSelector  Selector[R]
+	scaleInSelector       Selector[R]
+	updateSelector        Selector[R]
+	cancelOfflineSelector Selector[R]
 
 	actions []action
 }
@@ -127,6 +129,15 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	return name, nil
 }
 
+// chooseToCancelOffline selects a being-offline instance to revive during scale-out.
+func (act *actor[T, O, R]) chooseToCancelOffline(s []R) (string, bool) {
+	name := act.cancelOfflineSelector.Choose(s)
+	if name == "" {
+		return "", false
+	}
+	return name, true
+}
+
 // cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
 func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error {
 	logger := logr.FromContextOrDiscard(ctx)
@@ -147,11 +158,12 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		// TODO: could implement more sophisticated selection logic
-		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
-			return err
+		if name, ok := act.chooseToCancelOffline(act.beingOffline.List()); ok {
+			if err := act.cancelOneOfflining(ctx, act.beingOffline.Get(name)); err != nil {
+				return err
+			}
+			return nil
 		}
-		return nil
 	}
 
 	obj, unlock, exists := act.f.Adopt()
@@ -200,7 +212,7 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	)
 	act.actions = append(act.actions, actionScaleInUpdate)
 
-	if err := act.deleteInstance(ctx, obj); err != nil {
+	if err := act.deleteInstance(ctx, obj, false); err != nil {
 		return false, err
 	}
 
@@ -243,7 +255,7 @@ func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, name string, def
 		}
 	} else {
 		act.actions = append(act.actions, actionScaleInOutdated)
-		if err := act.deleteInstance(ctx, obj); err != nil {
+		if err := act.deleteInstance(ctx, obj, true); err != nil {
 			return false, err
 		}
 	}
@@ -368,7 +380,7 @@ func (act *actor[T, O, R]) Cleanup(ctx context.Context) error {
 	for _, item := range act.deleted.List() {
 		logger.Info("act cleanup", "namespace", item.GetNamespace(), "name", item.GetName())
 		act.actions = append(act.actions, actionCleanup)
-		if err := act.deleteInstance(ctx, item); err != nil {
+		if err := act.deleteInstance(ctx, item, true); err != nil {
 			return err
 		}
 	}
@@ -381,8 +393,13 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 	return act.actions
 }
 
-func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
-	if obj.IsStore() &&
+// deleteInstance removes an instance. outdated is true for rolling-replace paths
+// (scaleInOutdated / Cleanup). When directDeleteOutdated is also set, those paths
+// skip offline-before-delete. Scale-in of updated instances always passes outdated=false
+// so SupportsOffline() still controls graceful drain.
+func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R, outdated bool) error {
+	if (!outdated || !act.directDeleteOutdated) &&
+		obj.SupportsOffline() &&
 		!obj.IsOffline() &&
 		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
 		if err := act.setOffline(ctx, obj); err != nil {

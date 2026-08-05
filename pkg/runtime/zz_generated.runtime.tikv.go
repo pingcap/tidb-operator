@@ -253,7 +253,7 @@ func (in *TiKV) IsOffline() bool {
 	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
-func (in *TiKV) IsStore() bool {
+func (in *TiKV) SupportsOffline() bool {
 	return true
 }
 

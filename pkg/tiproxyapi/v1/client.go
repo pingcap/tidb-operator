@@ -51,6 +51,8 @@ type TiProxyClient interface {
 	MarkUnhealthy(ctx context.Context) error
 	// ConnectionCount returns the current number of TiProxy SQL client connections.
 	ConnectionCount(ctx context.Context) (float64, error)
+	// ClearHealthOverride clears the operator health override via DELETE.
+	ClearHealthOverride(ctx context.Context) error
 	// SetLabels sets the labels for TiProxy.
 	SetLabels(ctx context.Context, labels map[string]string) error
 }
@@ -168,6 +170,12 @@ func parseConnectionCount(metrics io.Reader) (float64, error) {
 	}
 
 	return count, nil
+}
+
+func (c *tiproxyClient) ClearHealthOverride(ctx context.Context) error {
+	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
+	_, err := httputil.DeleteBodyOK(ctx, c.httpClient, apiURL)
+	return err
 }
 
 func (c *tiproxyClient) SetLabels(ctx context.Context, labels map[string]string) error {

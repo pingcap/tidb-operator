@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -35,7 +36,11 @@ func TaskStatusAvailable(state State) task.Task {
 		reason := "Unavailable"
 		msg := "no tiproxy instance is available"
 
+		var drainingReplicas int32
 		for _, db := range dbs {
+			if coreutil.IsOffline[scope.TiProxy](db) && db.GetDeletionTimestamp().IsZero() {
+				drainingReplicas++
+			}
 			if coreutil.IsReady[scope.TiProxy](db) {
 				status = metav1.ConditionTrue
 				reason = "Available"
@@ -43,13 +48,14 @@ func TaskStatusAvailable(state State) task.Task {
 			}
 		}
 
-		needUpdate := meta.SetStatusCondition(&dbg.Status.Conditions, metav1.Condition{
+		needUpdate := compare.SetIfChanged(&dbg.Status.DrainingReplicas, drainingReplicas)
+		needUpdate = meta.SetStatusCondition(&dbg.Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.TiProxyGroupCondAvailable,
 			Status:             status,
 			ObservedGeneration: dbg.Generation,
 			Reason:             reason,
 			Message:            msg,
-		})
+		}) || needUpdate
 		if needUpdate {
 			state.SetStatusChanged()
 		}

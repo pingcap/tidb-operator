@@ -253,7 +253,7 @@ func (in *Router) IsOffline() bool {
 	return false
 }
 
-func (in *Router) IsStore() bool {
+func (in *Router) SupportsOffline() bool {
 	return false
 }
 

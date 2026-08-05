@@ -36,9 +36,15 @@ type Builder[R runtime.Instance] interface {
 	WithUpdateHooks(hooks ...UpdateHook[R]) Builder[R]
 	WithDelHooks(hooks ...DelHook[R]) Builder[R]
 	WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builder[R]
+	WithCancelOfflineFilterPolicy(fs ...FilterPolicy[R]) Builder[R]
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
+	// DirectDeleteOutdated if true, deleting outdated instances (rolling replace /
+	// Cleanup) skips offline-before-delete and removes the CR immediately.
+	// Pure scale-in of updated instances still honors SupportsOffline().
+	// TiProxy sets this so rolling restart does not enter a long drain window.
+	WithDirectDeleteOutdated(direct bool) Builder[R]
 	// MinReadySeconds means instances are available only when they keep ready more than minReadySeconds
 	WithMinReadySeconds(minReadySeconds int64) Builder[R]
 	Build() Executor
@@ -51,8 +57,9 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 	maxUnavailable int
 	rev            string
 
-	noInPlaceUpdate bool
-	minReadySeconds int64
+	noInPlaceUpdate      bool
+	directDeleteOutdated bool
+	minReadySeconds      int64
 
 	c client.Client
 
@@ -62,8 +69,9 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 	updateHooks []UpdateHook[R]
 	delHooks    []DelHook[R]
 
-	scaleInPreferPolicies []PreferPolicy[R]
-	updatePreferPolicies  []PreferPolicy[R]
+	scaleInPreferPolicies       []PreferPolicy[R]
+	cancelOfflineFilterPolicies []FilterPolicy[R]
+	updatePreferPolicies        []PreferPolicy[R]
 }
 
 func (b *builder[T, O, R]) Build() Executor {
@@ -83,11 +91,16 @@ func (b *builder[T, O, R]) Build() Executor {
 	}
 	scaleInPolicies = append(scaleInPolicies, b.scaleInPreferPolicies...)
 
+	cancelOfflinePolicies := []PreferPolicy[R]{
+		PreferPriority[R](),
+	}
+
 	actor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,
 
-		noInPlaceUpdate: b.noInPlaceUpdate,
+		noInPlaceUpdate:      b.noInPlaceUpdate,
+		directDeleteOutdated: b.directDeleteOutdated,
 
 		update:       NewState(update),
 		outdated:     NewState(outdated),
@@ -98,8 +111,9 @@ func (b *builder[T, O, R]) Build() Executor {
 		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R](), KeepResourceVersion[R]()),
 		delHooks:    b.delHooks,
 
-		scaleInSelector: NewSelector(scaleInPolicies...),
-		updateSelector:  NewSelector(updatePolicies...),
+		scaleInSelector:       NewSelector(scaleInPolicies...),
+		updateSelector:        NewSelector(updatePolicies...),
+		cancelOfflineSelector: NewSelectorWithFilter(b.cancelOfflineFilterPolicies, cancelOfflinePolicies...),
 	}
 	return NewExecutor(
 		actor,
@@ -172,6 +186,11 @@ func (b *builder[T, O, R]) WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builde
 	return b
 }
 
+func (b *builder[T, O, R]) WithCancelOfflineFilterPolicy(fs ...FilterPolicy[R]) Builder[R] {
+	b.cancelOfflineFilterPolicies = append(b.cancelOfflineFilterPolicies, fs...)
+	return b
+}
+
 func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R] {
 	b.updatePreferPolicies = append(b.updatePreferPolicies, ps...)
 	return b
@@ -180,6 +199,12 @@ func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder
 // NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 	b.noInPlaceUpdate = noUpdate
+	return b
+}
+
+// DirectDeleteOutdated if true, deleting outdated instances skips offline-before-delete.
+func (b *builder[T, O, R]) WithDirectDeleteOutdated(direct bool) Builder[R] {
+	b.directDeleteOutdated = direct
 	return b
 }
 

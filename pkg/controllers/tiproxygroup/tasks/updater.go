@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -116,10 +117,15 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithScaleInPreferPolicy(
 				topoPolicy.PolicyScaleIn(),
 			).
+			WithCancelOfflineFilterPolicy(
+				updater.FilterOutdated[*runtime.TiProxy](updateRevision),
+				updater.FilterAnnotationAbsent[*runtime.TiProxy](v1alpha1.AnnoKeyTiProxyReviveAbandoned),
+			).
 			WithUpdatePreferPolicy(
 				topoPolicy.PolicyUpdate(),
 			).
 			WithNoInPaceUpdate(noUpdate).
+			WithDirectDeleteOutdated(true).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiProxyGroup](proxyg)).
 			Build().
 			Do(ctx)
@@ -138,10 +144,16 @@ func needVersionUpgrade(proxyg *v1alpha1.TiProxyGroup) bool {
 }
 
 func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProxy, updateRevision string) (needUpdate, needRestart bool) {
-	if len(proxies) != int(coreutil.Replicas[scope.TiProxyGroup](proxyg)) {
+	desired := int(coreutil.Replicas[scope.TiProxyGroup](proxyg))
+	if len(proxies) != desired {
 		needUpdate = true
 	}
+
+	available := 0
 	for _, proxy := range proxies {
+		if proxy.GetDeletionTimestamp().IsZero() && !coreutil.IsOffline[scope.TiProxy](proxy) {
+			available++
+		}
 		if coreutil.UpdateRevision[scope.TiProxy](proxy) == updateRevision {
 			continue
 		}
@@ -150,6 +162,11 @@ func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProx
 		if !reloadable.CheckTiProxy(proxyg, proxy) {
 			needRestart = true
 		}
+	}
+	// Scale-out may revive draining offline instances instead of creating new ones.
+	// Instance count can already match desired while some replicas are still offline.
+	if available < desired {
+		needUpdate = true
 	}
 
 	return needUpdate, needRestart
@@ -175,6 +192,7 @@ func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string, fg features.Gates) 
 				Features:            proxyg.Spec.Features,
 				Subdomain:           coreutil.HeadlessServiceName[scope.TiProxyGroup](proxyg), // same as headless service
 				TiProxyTemplateSpec: *spec,
+				Offline:             ptr.To(false),
 			},
 		}
 

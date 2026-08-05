@@ -300,3 +300,51 @@ func fakeAvailableTiProxy(name string, proxyg *v1alpha1.TiProxyGroup, rev string
 		return obj
 	})
 }
+
+func TestPrecheckInstancesNeedsUpdateWhenOfflineReplicasRemain(t *testing.T) {
+	t.Parallel()
+
+	proxyg := fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
+		obj.Spec.Replicas = ptr.To[int32](3)
+		return obj
+	})
+	rev := "rev-1"
+	proxies := []*v1alpha1.TiProxy{
+		fakeAvailableTiProxy("aaa-0", proxyg, rev),
+		fake.FakeObj("aaa-1", func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
+			tp := fakeAvailableTiProxy("aaa-1", proxyg, rev)
+			tp.DeepCopyInto(obj)
+			obj.Spec.Offline = ptr.To(true)
+			return obj
+		}),
+		fake.FakeObj("aaa-2", func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
+			tp := fakeAvailableTiProxy("aaa-2", proxyg, rev)
+			tp.DeepCopyInto(obj)
+			obj.Spec.Offline = ptr.To(true)
+			return obj
+		}),
+	}
+
+	needUpdate, needRestart := precheckInstances(proxyg, proxies, rev)
+	assert.True(t, needUpdate)
+	assert.False(t, needRestart)
+}
+
+func TestPrecheckInstancesNoUpdateWhenAllDesiredReplicasAreAvailable(t *testing.T) {
+	t.Parallel()
+
+	proxyg := fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
+		obj.Spec.Replicas = ptr.To[int32](3)
+		return obj
+	})
+	rev := "rev-1"
+	proxies := []*v1alpha1.TiProxy{
+		fakeAvailableTiProxy("aaa-0", proxyg, rev),
+		fakeAvailableTiProxy("aaa-1", proxyg, rev),
+		fakeAvailableTiProxy("aaa-2", proxyg, rev),
+	}
+
+	needUpdate, needRestart := precheckInstances(proxyg, proxies, rev)
+	assert.False(t, needUpdate)
+	assert.False(t, needRestart)
+}

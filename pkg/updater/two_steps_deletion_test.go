@@ -357,16 +357,17 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			update, outdated, beingOffline, deleted, objs := tt.setupStates()
 			fakeCli := client.NewFakeClient(objs...)
 			act := &actor[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]{
-				f:               testTiKVNewer(),
-				c:               fakeCli,
-				update:          NewState(update),
-				outdated:        NewState(outdated),
-				beingOffline:    NewState(beingOffline),
-				deleted:         NewState(deleted),
-				scaleInSelector: NewSelector(newMockPreferPolicy(update)),
-				updateSelector:  NewSelector(newMockPreferPolicy(outdated)),
-				updateHooks:     []UpdateHook[*runtime.TiKV]{KeepName[*runtime.TiKV]()},
-				actions:         make([]action, 0),
+				f:                     testTiKVNewer(),
+				c:                     fakeCli,
+				update:                NewState(update),
+				outdated:              NewState(outdated),
+				beingOffline:          NewState(beingOffline),
+				deleted:               NewState(deleted),
+				scaleInSelector:       NewSelector(newMockPreferPolicy(update)),
+				updateSelector:        NewSelector(newMockPreferPolicy(outdated)),
+				cancelOfflineSelector: NewSelector(PreferPriority[*runtime.TiKV]()),
+				updateHooks:           []UpdateHook[*runtime.TiKV]{KeepName[*runtime.TiKV]()},
+				actions:               make([]action, 0),
 			}
 			e := NewExecutor(act, len(update), len(outdated), tt.desired,
 				tt.unavailableUpdate, tt.unavailableOutdated, 0, 1)
