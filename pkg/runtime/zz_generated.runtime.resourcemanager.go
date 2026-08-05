@@ -169,6 +169,14 @@ func (in *ResourceManager) SetObservedGeneration(gen int64) {
 	in.Status.ObservedGeneration = gen
 }
 
+func (in *ResourceManager) ObservedClusterGeneration() int64 {
+	return in.Status.ObservedClusterGeneration
+}
+
+func (in *ResourceManager) SetObservedClusterGeneration(gen int64) {
+	in.Status.ObservedClusterGeneration = gen
+}
+
 func (in *ResourceManager) SetCluster(cluster string) {
 	in.Spec.Cluster.Name = cluster
 }
@@ -348,6 +356,14 @@ func (g *ResourceManagerGroup) ObservedGeneration() int64 {
 
 func (g *ResourceManagerGroup) SetObservedGeneration(gen int64) {
 	g.Status.ObservedGeneration = gen
+}
+
+func (g *ResourceManagerGroup) ObservedClusterGeneration() int64 {
+	return g.Status.ObservedClusterGeneration
+}
+
+func (g *ResourceManagerGroup) SetObservedClusterGeneration(gen int64) {
+	g.Status.ObservedClusterGeneration = gen
 }
 
 func (g *ResourceManagerGroup) SetStatusVersion(version string) {

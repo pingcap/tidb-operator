@@ -69,19 +69,19 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
+		common.TaskInstanceConditionSuspended[scope.TiKV](state),
 
 		// check whether the cluster is suspending
 		// if cluster is suspending, we cannot handle any tikv deletion
 		task.IfBreak(common.CondClusterIsSuspending(state),
 			// NOTE: suspend tikv pod should delete with grace peroid
 			// TODO(liubo02): combine with the common one
-			tasks.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.TiKV](state),
 			common.TaskInstanceConditionSynced[scope.TiKV](state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
 			common.TaskInstanceConditionRunning[scope.TiKV](state),
 			common.TaskInstanceConditionOffline[scope.TiKV](state),
 			common.TaskStatusPersister[scope.TiKV](state, r.Client),
+			tasks.TaskSuspendPod(state, r.Client),
 		),
 
 		// normal process

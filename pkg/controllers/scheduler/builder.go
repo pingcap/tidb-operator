@@ -55,15 +55,15 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get pod
 		common.TaskContextPod[scope.Scheduler](state, r.Client),
+		common.TaskInstanceConditionSuspended[scope.Scheduler](state),
 
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
-			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.Scheduler](state),
 			common.TaskInstanceConditionSynced[scope.Scheduler](state),
 			common.TaskInstanceConditionReady[scope.Scheduler](state),
 			common.TaskInstanceConditionRunning[scope.Scheduler](state),
 			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
+			common.TaskSuspendPod(state, r.Client),
 		),
 
 		tasks.TaskConfigMap(state, r.Client),

@@ -8657,6 +8657,13 @@ spec:
               memberID:
                 description: MemberID is the etcd member ID of this DM master instance
                 type: string
+              observedClusterGeneration:
+                description: |-
+                  ObservedClusterGeneration is the most recent generation of the referenced
+                  Cluster for which the controller completed its cluster-dependent status
+                  calculations.
+                format: int64
+                type: integer
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.

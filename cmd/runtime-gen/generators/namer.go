@@ -39,6 +39,16 @@ func GroupToInstanceName(t *types.Type) string {
 	return strings.TrimSuffix(t.Name.Name, "Group")
 }
 
+// GroupToComponentName returns the component constant suffix for an instance
+// or group type. DM masters use DMMaster in the public component constants.
+func GroupToComponentName(t *types.Type) string {
+	name := GroupToInstanceName(t)
+	if name == "DM" {
+		return "DMMaster"
+	}
+	return name
+}
+
 // GroupToSecurityTypeName returns security type name from group type
 // TiDB and TiProxy have their own security type
 // Others: Security

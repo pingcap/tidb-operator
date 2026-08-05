@@ -8594,6 +8594,13 @@ spec:
                 description: IsDefaultPrimary indicates whether this TSO instance
                   is the primary for the default keyspace group.
                 type: boolean
+              observedClusterGeneration:
+                description: |-
+                  ObservedClusterGeneration is the most recent generation of the referenced
+                  Cluster for which the controller completed its cluster-dependent status
+                  calculations.
+                format: int64
+                type: integer
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.

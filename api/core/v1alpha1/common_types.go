@@ -375,6 +375,11 @@ type CommonStatus struct {
 	// It's used to determine whether the controller has reconciled the latest spec.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// ObservedClusterGeneration is the most recent generation of the referenced
+	// Cluster for which the controller completed its cluster-dependent status
+	// calculations.
+	ObservedClusterGeneration int64 `json:"observedClusterGeneration,omitempty"`
+
 	// CurrentRevision is the revision of the Controller that created the resource.
 	CurrentRevision string `json:"currentRevision,omitempty"`
 

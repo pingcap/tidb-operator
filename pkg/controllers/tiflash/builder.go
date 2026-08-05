@@ -62,16 +62,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),
+		common.TaskInstanceConditionSuspended[scope.TiFlash](state),
 
 		// check whether the cluster is suspending
 		task.IfBreak(common.CondClusterIsSuspending(state),
-			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.TiFlash](state),
 			common.TaskInstanceConditionSynced[scope.TiFlash](state),
 			common.TaskInstanceConditionReady[scope.TiFlash](state),
 			common.TaskInstanceConditionRunning[scope.TiFlash](state),
 			common.TaskInstanceConditionOffline[scope.TiFlash](state),
 			common.TaskStatusPersister[scope.TiFlash](state, r.Client),
+			common.TaskSuspendPod(state, r.Client),
 		),
 
 		// normal process

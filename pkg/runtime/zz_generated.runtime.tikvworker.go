@@ -169,6 +169,14 @@ func (in *TiKVWorker) SetObservedGeneration(gen int64) {
 	in.Status.ObservedGeneration = gen
 }
 
+func (in *TiKVWorker) ObservedClusterGeneration() int64 {
+	return in.Status.ObservedClusterGeneration
+}
+
+func (in *TiKVWorker) SetObservedClusterGeneration(gen int64) {
+	in.Status.ObservedClusterGeneration = gen
+}
+
 func (in *TiKVWorker) SetCluster(cluster string) {
 	in.Spec.Cluster.Name = cluster
 }
@@ -348,6 +356,14 @@ func (g *TiKVWorkerGroup) ObservedGeneration() int64 {
 
 func (g *TiKVWorkerGroup) SetObservedGeneration(gen int64) {
 	g.Status.ObservedGeneration = gen
+}
+
+func (g *TiKVWorkerGroup) ObservedClusterGeneration() int64 {
+	return g.Status.ObservedClusterGeneration
+}
+
+func (g *TiKVWorkerGroup) SetObservedClusterGeneration(gen int64) {
+	g.Status.ObservedClusterGeneration = gen
 }
 
 func (g *TiKVWorkerGroup) SetStatusVersion(version string) {

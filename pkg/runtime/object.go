@@ -47,6 +47,13 @@ type Object interface {
 	ClusterCASecretName() string
 }
 
+type ClusterObservedObject interface {
+	Object
+
+	SetObservedClusterGeneration(int64)
+	ObservedClusterGeneration() int64
+}
+
 type ObjectT[T ObjectSet] interface {
 	Object
 

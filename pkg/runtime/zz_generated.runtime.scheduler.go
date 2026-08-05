@@ -169,6 +169,14 @@ func (in *Scheduler) SetObservedGeneration(gen int64) {
 	in.Status.ObservedGeneration = gen
 }
 
+func (in *Scheduler) ObservedClusterGeneration() int64 {
+	return in.Status.ObservedClusterGeneration
+}
+
+func (in *Scheduler) SetObservedClusterGeneration(gen int64) {
+	in.Status.ObservedClusterGeneration = gen
+}
+
 func (in *Scheduler) SetCluster(cluster string) {
 	in.Spec.Cluster.Name = cluster
 }
@@ -348,6 +356,14 @@ func (g *SchedulerGroup) ObservedGeneration() int64 {
 
 func (g *SchedulerGroup) SetObservedGeneration(gen int64) {
 	g.Status.ObservedGeneration = gen
+}
+
+func (g *SchedulerGroup) ObservedClusterGeneration() int64 {
+	return g.Status.ObservedClusterGeneration
+}
+
+func (g *SchedulerGroup) SetObservedClusterGeneration(gen int64) {
+	g.Status.ObservedClusterGeneration = gen
 }
 
 func (g *SchedulerGroup) SetStatusVersion(version string) {
