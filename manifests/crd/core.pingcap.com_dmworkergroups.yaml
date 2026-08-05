@@ -8937,6 +8937,13 @@ spec:
                 description: CurrentRevision is the revision of the Controller that
                   created the resource.
                 type: string
+              observedClusterGeneration:
+                description: |-
+                  ObservedClusterGeneration is the most recent generation of the referenced
+                  Cluster for which the controller completed its cluster-dependent status
+                  calculations.
+                format: int64
+                type: integer
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.

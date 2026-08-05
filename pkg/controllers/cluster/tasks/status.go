@@ -29,6 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/compare"
@@ -203,7 +205,6 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 		Reason:             v1alpha1.ClusterAvailableReason,
 		Message:            "Cluster is not available",
 	}
-	suspended := true
 	for _, tidbg := range rtx.TiDBGroups {
 		if meta.IsStatusConditionTrue(tidbg.Status.Conditions, v1alpha1.TiDBGroupCondAvailable) {
 			// if any tidb group is available, the cluster is available
@@ -211,46 +212,24 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 			availCond.Message = "Cluster is available"
 			break
 		}
-		if !meta.IsStatusConditionTrue(tidbg.Status.Conditions, v1alpha1.CondSuspended) {
-			// if any group is not suspended, the cluster is not suspended
-			suspended = false
-		}
 	}
 	changed = meta.SetStatusCondition(&rtx.Cluster.Status.Conditions, availCond) || changed
 
-	if suspended {
-		for _, pdg := range rtx.PDGroups {
-			if !meta.IsStatusConditionTrue(pdg.Status.Conditions, v1alpha1.CondSuspended) {
-				suspended = false
-				break
-			}
-		}
-
-		for _, tikvGroup := range rtx.TiKVGroups {
-			if !meta.IsStatusConditionTrue(tikvGroup.Status.Conditions, v1alpha1.CondSuspended) {
-				suspended = false
-				break
-			}
-		}
-		for _, tiflashGroup := range rtx.TiFlashGroups {
-			if !meta.IsStatusConditionTrue(tiflashGroup.Status.Conditions, v1alpha1.CondSuspended) {
-				suspended = false
-				break
-			}
-		}
-		for _, ticdcGroup := range rtx.TiCDCGroups {
-			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.CondSuspended) {
-				suspended = false
-				break
-			}
-		}
-		for _, wg := range rtx.TiKVWorkerGroups {
-			if !meta.IsStatusConditionTrue(wg.Status.Conditions, v1alpha1.CondSuspended) {
-				suspended = false
-				break
-			}
-		}
-	}
+	clusterGeneration := rtx.Cluster.Generation
+	suspended := groupsSuspended[scope.PDGroup](rtx.PDGroups, clusterGeneration) &&
+		groupsSuspended[scope.ResourceManagerGroup](rtx.ResourceManagerGroups, clusterGeneration) &&
+		groupsSuspended[scope.RouterGroup](rtx.RouterGroups, clusterGeneration) &&
+		groupsSuspended[scope.TSOGroup](rtx.TSOGroups, clusterGeneration) &&
+		groupsSuspended[scope.SchedulingGroup](rtx.SchedulingGroups, clusterGeneration) &&
+		groupsSuspended[scope.SchedulerGroup](rtx.SchedulerGroups, clusterGeneration) &&
+		groupsSuspended[scope.TiKVGroup](rtx.TiKVGroups, clusterGeneration) &&
+		groupsSuspended[scope.TiFlashGroup](rtx.TiFlashGroups, clusterGeneration) &&
+		groupsSuspended[scope.TiDBGroup](rtx.TiDBGroups, clusterGeneration) &&
+		groupsSuspended[scope.TiCDCGroup](rtx.TiCDCGroups, clusterGeneration) &&
+		groupsSuspended[scope.TiProxyGroup](rtx.TiProxyGroups, clusterGeneration) &&
+		groupsSuspended[scope.TiKVWorkerGroup](rtx.TiKVWorkerGroups, clusterGeneration) &&
+		groupsSuspended[scope.DMGroup](rtx.DMGroups, clusterGeneration) &&
+		groupsSuspended[scope.DMWorkerGroup](rtx.DMWorkerGroups, clusterGeneration)
 	var (
 		suspendStatus  = metav1.ConditionFalse
 		suspendMessage = "Cluster is not suspended"
@@ -271,6 +250,24 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 		Reason:             v1alpha1.ClusterSuspendReason,
 		Message:            suspendMessage,
 	}) || changed
+}
+
+func groupsSuspended[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](groups []F, clusterGeneration int64) bool {
+	for _, group := range groups {
+		if !coreutil.IsStatusConditionTrueForCluster[S](
+			group,
+			v1alpha1.CondSuspended,
+			clusterGeneration,
+		) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (t *TaskStatus) syncClusterID(ctx context.Context, rtx *ReconcileContext) bool {

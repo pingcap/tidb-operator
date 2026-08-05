@@ -27,7 +27,7 @@ import (
 )
 
 type Instance interface {
-	Object
+	ClusterObservedObject
 
 	GetTopology() v1alpha1.Topology
 	SetTopology(topo v1alpha1.Topology)

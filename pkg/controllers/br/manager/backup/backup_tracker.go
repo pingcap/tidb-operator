@@ -143,6 +143,7 @@ func (bt *backupTracker) StartTrackLogBackupProgress(ctx context.Context, backup
 		return err
 	}
 	bt.logBackups[logkey] = true
+	//nolint:gosec // Tracking outlives the request context.
 	go bt.refreshLogBackupCheckpointTs(ns, name)
 	return nil
 }

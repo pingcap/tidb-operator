@@ -56,6 +56,7 @@ func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {
 	return namer.NameSystems{
 		"pub":          namer.NewPublicNamer(0),
 		"instance":     NameFunc(GroupToInstanceName),
+		"component":    NameFunc(GroupToComponentName),
 		"security":     NameFunc(GroupToSecurityTypeName),
 		"tls":          NameFunc(GroupToTLSTypeName),
 		"internaltls":  NameFunc(GroupToInternalTLSTypeName),
@@ -232,6 +233,14 @@ func (in *$.|pub$) SetObservedGeneration(gen int64) {
 	in.Status.ObservedGeneration = gen
 }
 
+func (in *$.|pub$) ObservedClusterGeneration() int64 {
+	return in.Status.ObservedClusterGeneration
+}
+
+func (in *$.|pub$) SetObservedClusterGeneration(gen int64) {
+	in.Status.ObservedClusterGeneration = gen
+}
+
 func (in *$.|pub$) SetCluster(cluster string) {
 	in.Spec.Cluster.Name = cluster
 }
@@ -241,7 +250,7 @@ func (in *$.|pub$) Cluster() string {
 }
 
 func (*$.|pub$) Component() string {
-	return v1alpha1.LabelValComponent$.|pub$
+	return v1alpha1.LabelValComponent$.|component$
 }
 
 func (in *$.|pub$) Volumes() []v1alpha1.Volume {
@@ -429,7 +438,7 @@ func (g *$.|pub$) Cluster() string {
 }
 
 func (*$.|pub$) Component() string {
-	return v1alpha1.LabelValComponent$.|instance$
+	return v1alpha1.LabelValComponent$.|component$
 }
 
 func (g *$.|pub$) Conditions() []metav1.Condition {
@@ -446,6 +455,14 @@ func (g *$.|pub$) ObservedGeneration() int64 {
 
 func (g *$.|pub$) SetObservedGeneration(gen int64) {
 	g.Status.ObservedGeneration = gen
+}
+
+func (g *$.|pub$) ObservedClusterGeneration() int64 {
+	return g.Status.ObservedClusterGeneration
+}
+
+func (g *$.|pub$) SetObservedClusterGeneration(gen int64) {
+	g.Status.ObservedClusterGeneration = gen
 }
 
 func (g *$.|pub$) SetStatusVersion(version string) {

@@ -460,6 +460,20 @@ func (mr *MockInstanceMockRecorder) IsUpToDate() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUpToDate", reflect.TypeOf((*MockInstance)(nil).IsUpToDate))
 }
 
+// ObservedClusterGeneration mocks base method.
+func (m *MockInstance) ObservedClusterGeneration() int64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ObservedClusterGeneration")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+// ObservedClusterGeneration indicates an expected call of ObservedClusterGeneration.
+func (mr *MockInstanceMockRecorder) ObservedClusterGeneration() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObservedClusterGeneration", reflect.TypeOf((*MockInstance)(nil).ObservedClusterGeneration))
+}
+
 // ObservedGeneration mocks base method.
 func (m *MockInstance) ObservedGeneration() int64 {
 	m.ctrl.T.Helper()
@@ -694,6 +708,18 @@ func (m *MockInstance) SetNamespace(namespace string) {
 func (mr *MockInstanceMockRecorder) SetNamespace(namespace any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNamespace", reflect.TypeOf((*MockInstance)(nil).SetNamespace), namespace)
+}
+
+// SetObservedClusterGeneration mocks base method.
+func (m *MockInstance) SetObservedClusterGeneration(arg0 int64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetObservedClusterGeneration", arg0)
+}
+
+// SetObservedClusterGeneration indicates an expected call of SetObservedClusterGeneration.
+func (mr *MockInstanceMockRecorder) SetObservedClusterGeneration(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetObservedClusterGeneration", reflect.TypeOf((*MockInstance)(nil).SetObservedClusterGeneration), arg0)
 }
 
 // SetObservedGeneration mocks base method.

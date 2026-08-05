@@ -46,6 +46,8 @@ import (
 
 type fakeParser struct{}
 
+const selectableFieldClusterName = "spec.cluster.name"
+
 func (*fakeParser) Type(schema.GroupVersionKind) *typed.ParseableType {
 	return &typed.DeducedParseableType
 }
@@ -523,47 +525,47 @@ func objToSelectableFields(obj runtime.Object) fields.Fields {
 	switch t := obj.(type) {
 	case *v1alpha1.PDGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.TiDBGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.TiKVGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.TiFlashGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.TiCDCGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.TiProxyGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.TSOGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.SchedulerGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.SchedulingGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.ResourceManagerGroup:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	case *v1alpha1.PlacementPolicy:
 		return fields.Set{
-			"spec.cluster.name": t.Spec.Cluster.Name,
+			selectableFieldClusterName: t.Spec.Cluster.Name,
 		}
 	}
 

@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -118,6 +119,101 @@ func TestStatusUpdater(t *testing.T) {
 			}
 			assert.Equal(tt, c.conditions, conditions)
 			assert.Equal(tt, strconv.FormatUint(c.clusterID, 10), c.cluster.Status.ID)
+		})
+	}
+}
+
+func TestSyncSuspendedConditionCoversAllGroupTypes(t *testing.T) {
+	const (
+		groupGeneration   = int64(7)
+		clusterGeneration = int64(11)
+	)
+
+	newStatus := func() v1alpha1.CommonStatus {
+		return v1alpha1.CommonStatus{
+			ObservedGeneration:        groupGeneration,
+			ObservedClusterGeneration: clusterGeneration,
+			Conditions: []metav1.Condition{{
+				Type:               v1alpha1.CondSuspended,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: groupGeneration,
+			}},
+		}
+	}
+	objectMeta := func() metav1.ObjectMeta {
+		return metav1.ObjectMeta{Generation: groupGeneration}
+	}
+
+	pdg := &v1alpha1.PDGroup{ObjectMeta: objectMeta(), Status: v1alpha1.PDGroupStatus{CommonStatus: newStatus()}}
+	rmg := &v1alpha1.ResourceManagerGroup{ObjectMeta: objectMeta(), Status: v1alpha1.ResourceManagerGroupStatus{CommonStatus: newStatus()}}
+	rg := &v1alpha1.RouterGroup{ObjectMeta: objectMeta(), Status: v1alpha1.RouterGroupStatus{CommonStatus: newStatus()}}
+	tsog := &v1alpha1.TSOGroup{ObjectMeta: objectMeta(), Status: v1alpha1.TSOGroupStatus{CommonStatus: newStatus()}}
+	schedulingg := &v1alpha1.SchedulingGroup{ObjectMeta: objectMeta(), Status: v1alpha1.SchedulingGroupStatus{CommonStatus: newStatus()}}
+	schedulerg := &v1alpha1.SchedulerGroup{ObjectMeta: objectMeta(), Status: v1alpha1.SchedulerGroupStatus{CommonStatus: newStatus()}}
+	tikvg := &v1alpha1.TiKVGroup{ObjectMeta: objectMeta(), Status: v1alpha1.TiKVGroupStatus{CommonStatus: newStatus()}}
+	tiflashg := &v1alpha1.TiFlashGroup{ObjectMeta: objectMeta(), Status: v1alpha1.TiFlashGroupStatus{CommonStatus: newStatus()}}
+	tidbg := &v1alpha1.TiDBGroup{ObjectMeta: objectMeta(), Status: v1alpha1.TiDBGroupStatus{CommonStatus: newStatus()}}
+	ticdcg := &v1alpha1.TiCDCGroup{ObjectMeta: objectMeta(), Status: v1alpha1.TiCDCGroupStatus{CommonStatus: newStatus()}}
+	tiproxyg := &v1alpha1.TiProxyGroup{ObjectMeta: objectMeta(), Status: v1alpha1.TiProxyGroupStatus{CommonStatus: newStatus()}}
+	tikvworkerg := &v1alpha1.TiKVWorkerGroup{ObjectMeta: objectMeta(), Status: v1alpha1.TiKVWorkerGroupStatus{CommonStatus: newStatus()}}
+	dmg := &v1alpha1.DMGroup{ObjectMeta: objectMeta(), Status: v1alpha1.DMGroupStatus{CommonStatus: newStatus()}}
+	dmworkerg := &v1alpha1.DMWorkerGroup{ObjectMeta: objectMeta(), Status: v1alpha1.DMWorkerGroupStatus{CommonStatus: newStatus()}}
+
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Generation: clusterGeneration},
+		Spec: v1alpha1.ClusterSpec{SuspendAction: &v1alpha1.SuspendAction{
+			SuspendCompute: true,
+		}},
+	}
+	rtx := &ReconcileContext{
+		Cluster:               cluster,
+		PDGroups:              []*v1alpha1.PDGroup{pdg},
+		ResourceManagerGroups: []*v1alpha1.ResourceManagerGroup{rmg},
+		RouterGroups:          []*v1alpha1.RouterGroup{rg},
+		TSOGroups:             []*v1alpha1.TSOGroup{tsog},
+		SchedulingGroups:      []*v1alpha1.SchedulingGroup{schedulingg},
+		SchedulerGroups:       []*v1alpha1.SchedulerGroup{schedulerg},
+		TiKVGroups:            []*v1alpha1.TiKVGroup{tikvg},
+		TiFlashGroups:         []*v1alpha1.TiFlashGroup{tiflashg},
+		TiDBGroups:            []*v1alpha1.TiDBGroup{tidbg},
+		TiCDCGroups:           []*v1alpha1.TiCDCGroup{ticdcg},
+		TiProxyGroups:         []*v1alpha1.TiProxyGroup{tiproxyg},
+		TiKVWorkerGroups:      []*v1alpha1.TiKVWorkerGroup{tikvworkerg},
+		DMGroups:              []*v1alpha1.DMGroup{dmg},
+		DMWorkerGroups:        []*v1alpha1.DMWorkerGroup{dmworkerg},
+	}
+
+	statusByType := map[string]*v1alpha1.CommonStatus{
+		"PDGroup":              &pdg.Status.CommonStatus,
+		"ResourceManagerGroup": &rmg.Status.CommonStatus,
+		"RouterGroup":          &rg.Status.CommonStatus,
+		"TSOGroup":             &tsog.Status.CommonStatus,
+		"SchedulingGroup":      &schedulingg.Status.CommonStatus,
+		"SchedulerGroup":       &schedulerg.Status.CommonStatus,
+		"TiKVGroup":            &tikvg.Status.CommonStatus,
+		"TiFlashGroup":         &tiflashg.Status.CommonStatus,
+		"TiDBGroup":            &tidbg.Status.CommonStatus,
+		"TiCDCGroup":           &ticdcg.Status.CommonStatus,
+		"TiProxyGroup":         &tiproxyg.Status.CommonStatus,
+		"TiKVWorkerGroup":      &tikvworkerg.Status.CommonStatus,
+		"DMGroup":              &dmg.Status.CommonStatus,
+		"DMWorkerGroup":        &dmworkerg.Status.CommonStatus,
+	}
+
+	taskStatus := &TaskStatus{}
+	taskStatus.syncConditions(rtx)
+	require.True(t, meta.IsStatusConditionTrue(cluster.Status.Conditions, v1alpha1.ClusterCondSuspended))
+	suspendedCondition := meta.FindStatusCondition(cluster.Status.Conditions, v1alpha1.ClusterCondSuspended)
+	require.NotNil(t, suspendedCondition)
+	assert.Equal(t, clusterGeneration, suspendedCondition.ObservedGeneration)
+
+	for groupType, status := range statusByType {
+		t.Run(groupType+" stale", func(t *testing.T) {
+			status.ObservedClusterGeneration--
+			cluster.Status.Conditions = nil
+			taskStatus.syncConditions(rtx)
+			assert.False(t, meta.IsStatusConditionTrue(cluster.Status.Conditions, v1alpha1.ClusterCondSuspended))
+			status.ObservedClusterGeneration++
 		})
 	}
 }

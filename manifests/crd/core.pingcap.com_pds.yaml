@@ -8614,6 +8614,13 @@ spec:
                   IsLeader indicates whether this pd is the leader
                   NOTE: it's a snapshot from PD, not always up to date
                 type: boolean
+              observedClusterGeneration:
+                description: |-
+                  ObservedClusterGeneration is the most recent generation of the referenced
+                  Cluster for which the controller completed its cluster-dependent status
+                  calculations.
+                format: int64
+                type: integer
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.

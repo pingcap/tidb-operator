@@ -21,7 +21,7 @@ import (
 )
 
 type Group interface {
-	Object
+	ClusterObservedObject
 
 	SetReplicas(replicas int32)
 	Replicas() int32

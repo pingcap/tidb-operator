@@ -8627,6 +8627,13 @@ spec:
                   should we need to save IsOwner in status?
                   but this value may be changed when scaling in or rolling update
                 type: boolean
+              observedClusterGeneration:
+                description: |-
+                  ObservedClusterGeneration is the most recent generation of the referenced
+                  Cluster for which the controller completed its cluster-dependent status
+                  calculations.
+                format: int64
+                type: integer
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.

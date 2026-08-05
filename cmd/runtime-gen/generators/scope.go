@@ -54,8 +54,9 @@ func (g *scopeGenerator) Filter(_ *generator.Context, t *types.Type) bool {
 
 func (g *scopeGenerator) Namers(*generator.Context) namer.NameSystems {
 	return namer.NameSystems{
-		"pub":      namer.NewPublicNamer(0),
-		"instance": NameFunc(GroupToInstanceName),
+		"pub":       namer.NewPublicNamer(0),
+		"instance":  NameFunc(GroupToInstanceName),
+		"component": NameFunc(GroupToComponentName),
 	}
 }
 
@@ -96,7 +97,7 @@ func ($.|pub$) To(t *runtime.$.|pub$) *v1alpha1.$.|pub$ {
 }
 
 func ($.|pub$) Component() string {
-	return v1alpha1.LabelValComponent$.|pub$
+	return v1alpha1.LabelValComponent$.|component$
 }
 
 func ($.|pub$) GVK() schema.GroupVersionKind {
@@ -134,7 +135,7 @@ func ($.|pub$) To(t *runtime.$.|pub$) *v1alpha1.$.|pub$ {
 }
 
 func ($.|pub$) Component() string {
-	return v1alpha1.LabelValComponent$.|instance$
+	return v1alpha1.LabelValComponent$.|component$
 }
 
 func ($.|pub$) GVK() schema.GroupVersionKind {

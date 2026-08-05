@@ -94,7 +94,7 @@ func (p *poller[T, PT, L]) renew(ctx context.Context) context.Context {
 	p.stop()
 	p.resultCh = make(chan watch.Event, bufSize)
 
-	nctx, cancel := context.WithCancel(ctx)
+	nctx, cancel := context.WithCancel(ctx) //nolint:gosec // cancel is stored and called by stop or Stop.
 	p.cancel = cancel
 
 	return nctx
