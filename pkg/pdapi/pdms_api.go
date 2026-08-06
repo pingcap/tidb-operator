@@ -35,6 +35,7 @@ type PDMSClient interface {
 
 var (
 	pdMSHealthPrefix          = "api/v1/health"
+	pdMSPrimaryEvictPrefix    = "api/v1/primary/evict"
 	pdMSPrimaryTransferPrefix = "api/v1/primary/transfer"
 )
 
@@ -76,7 +77,6 @@ func (c *pdMSClient) GetHealth() error {
 }
 
 func (c *pdMSClient) TransferPrimary(newPrimary string) error {
-	apiURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSPrimaryTransferPrefix)
 	data, err := json.Marshal(struct {
 		NewPrimary string `json:"new_primary"`
 	}{
@@ -85,10 +85,14 @@ func (c *pdMSClient) TransferPrimary(newPrimary string) error {
 	if err != nil {
 		return err
 	}
-	_, err = httputil.PostBodyOK(c.httpClient, apiURL, bytes.NewBuffer(data))
-	if err != nil {
-		return err
+	if c.serviceName == TSOServiceName {
+		evictURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSPrimaryEvictPrefix)
+		_, err := httputil.PostBodyOK(c.httpClient, evictURL, bytes.NewBuffer(data))
+		if err == nil {
+			return nil
+		}
 	}
-
-	return nil
+	apiURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSPrimaryTransferPrefix)
+	_, err = httputil.PostBodyOK(c.httpClient, apiURL, bytes.NewBuffer(data))
+	return err
 }
