@@ -26,6 +26,10 @@ func TestDMWorkerGroup(t *testing.T) {
 	cases = append(cases, transferDMWorkerGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferDMWorkerGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
 	cases = append(cases, transferDMWorkerGroupCases(t, DMGroupRefRequired(), "spec", "dmGroupRef")...)
+	cases = append(cases, transferDMWorkerGroupCases(t, BuiltInVolumeClaimsOverlay(
+		"relay",
+		`spec.template.spec: Invalid value: "object": overlay volumeClaims names must exist in relayVolume or volumes`,
+	), "spec", "template", "spec")...)
 	Validate(t, "crd/core.pingcap.com_dmworkergroups.yaml", cases)
 }
 

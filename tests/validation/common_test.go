@@ -699,6 +699,63 @@ func OverlayVolumeClaims(requireDataVolume bool) []Case {
 	return cases
 }
 
+func BuiltInVolumeClaimsOverlay(builtInVolumeName, errMsg string) []Case {
+	volumeClaimOverlay := func(name string) map[string]any {
+		return map[string]any{
+			"name": name,
+			"volumeClaim": map[string]any{
+				"metadata": map[string]any{
+					"labels": map[string]any{"test": "value"},
+				},
+			},
+		}
+	}
+
+	return []Case{
+		{
+			desc:     "overlay built-in volume claim",
+			isCreate: true,
+			mode:     PatchModeMerge,
+			current: map[string]any{
+				"overlay": map[string]any{
+					"volumeClaims": []any{volumeClaimOverlay(builtInVolumeName)},
+				},
+			},
+		},
+		{
+			desc:     "overlay built-in and additional volume claims",
+			isCreate: true,
+			mode:     PatchModeMerge,
+			current: map[string]any{
+				"volumes": []any{
+					map[string]any{
+						"name":    "extra",
+						"mounts":  []any{map[string]any{"mountPath": "/extra"}},
+						"storage": "5Gi",
+					},
+				},
+				"overlay": map[string]any{
+					"volumeClaims": []any{
+						volumeClaimOverlay(builtInVolumeName),
+						volumeClaimOverlay("extra"),
+					},
+				},
+			},
+		},
+		{
+			desc:     "reject unknown volume claim overlay",
+			isCreate: true,
+			mode:     PatchModeMerge,
+			current: map[string]any{
+				"overlay": map[string]any{
+					"volumeClaims": []any{volumeClaimOverlay("unknown")},
+				},
+			},
+			wantErrs: []string{errMsg},
+		},
+	}
+}
+
 func DataVolumeRequired() []Case {
 	baseSpec := map[string]any{
 		"cluster": map[string]any{

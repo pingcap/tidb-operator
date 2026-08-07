@@ -133,7 +133,7 @@ type DMTemplate struct {
 }
 
 // DMTemplateSpec can only be specified in DMGroup
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, vc.name == self.dataVolume.name || (has(self.volumes) && vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in dataVolume or volumes"
 type DMTemplateSpec struct {
 	// Version must be a semantic version.
 	// It can have a v prefix or not.
