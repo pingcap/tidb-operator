@@ -309,7 +309,9 @@ func appendGroupsNotSatisfyingCondition[
 func groupsNotSatisfyingCondition(rtx *ReconcileContext, clusterGeneration int64, conditionType string) []string {
 	var groups []string
 	groups = appendGroupsNotSatisfyingCondition[scope.PDGroup](groups, rtx.PDGroups, clusterGeneration, conditionType)
-	groups = appendGroupsNotSatisfyingCondition[scope.ResourceManagerGroup](groups, rtx.ResourceManagerGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.ResourceManagerGroup](
+		groups, rtx.ResourceManagerGroups, clusterGeneration, conditionType,
+	)
 	groups = appendGroupsNotSatisfyingCondition[scope.RouterGroup](groups, rtx.RouterGroups, clusterGeneration, conditionType)
 	groups = appendGroupsNotSatisfyingCondition[scope.TSOGroup](groups, rtx.TSOGroups, clusterGeneration, conditionType)
 	groups = appendGroupsNotSatisfyingCondition[scope.SchedulingGroup](groups, rtx.SchedulingGroups, clusterGeneration, conditionType)
