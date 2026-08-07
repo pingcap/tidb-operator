@@ -17801,6 +17801,29 @@ spec:
                       terminationGracePeriodSeconds:
                         format: int64
                         type: integer
+                      tidbAuth:
+                        properties:
+                          passwordSecret:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                            x-kubernetes-validations:
+                            - message: optional must be false because TiCI meta TiDB
+                                auth Secret is required
+                              rule: '!has(self.optional) || self.optional == false'
+                          user:
+                            type: string
+                        required:
+                        - passwordSecret
+                        type: object
                       tolerations:
                         items:
                           properties:
