@@ -230,14 +230,17 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	// Cluster aggregation validates observedClusterGeneration separately.
 	for _, condition := range []struct {
 		conditionType string
+		reason        string
 		allTrue       bool
 	}{
-		{v1alpha1.ClusterCondReady, groupCount > 0 && allGroupConditionsTrue(rtx, clusterGeneration, v1alpha1.CondReady)},
-		{v1alpha1.ClusterCondSynced, groupCount > 0 && allGroupConditionsTrue(rtx, clusterGeneration, v1alpha1.CondSynced)},
+		{v1alpha1.ClusterCondReady, v1alpha1.ClusterReadyReason, groupCount > 0 && allGroupConditionsTrue(rtx, clusterGeneration, v1alpha1.CondReady)},
+		{v1alpha1.ClusterCondSynced, v1alpha1.ClusterSyncedReason, groupCount > 0 && allGroupConditionsTrue(rtx, clusterGeneration, v1alpha1.CondSynced)},
 	} {
 		status := metav1.ConditionFalse
 		message := fmt.Sprintf("Not all Groups have %s=True for the current Cluster generation", condition.conditionType)
-		if condition.allTrue {
+		if groupCount == 0 {
+			message = "No Groups are currently observed by the controller cache"
+		} else if condition.allTrue {
 			status = metav1.ConditionTrue
 			message = fmt.Sprintf("All Groups have %s=True for the current Cluster generation", condition.conditionType)
 		}
@@ -245,7 +248,7 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 			Type:               condition.conditionType,
 			Status:             status,
 			ObservedGeneration: rtx.Cluster.Generation,
-			Reason:             "Cluster" + condition.conditionType,
+			Reason:             condition.reason,
 			Message:            message,
 		}) || changed
 	}

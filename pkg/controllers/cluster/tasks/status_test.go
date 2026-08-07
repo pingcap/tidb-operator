@@ -267,6 +267,11 @@ func TestSyncConditionsAggregatesGroupReadiness(t *testing.T) {
 	assertReadyAndSynced(false, true)
 	rtx.PDGroups = nil
 	assertReadyAndSynced(false, false)
+	for _, conditionType := range []string{v1alpha1.ClusterCondReady, v1alpha1.ClusterCondSynced} {
+		condition := meta.FindStatusCondition(cluster.Status.Conditions, conditionType)
+		require.NotNil(t, condition)
+		assert.Equal(t, "No Groups are currently observed by the controller cache", condition.Message)
+	}
 }
 
 func newFakePDClientManager(t *testing.T, c client.Client, acts ...action) pdm.PDClientManager {
