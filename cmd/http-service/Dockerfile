@@ -1,4 +1,4 @@
-FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.12.1@sha256:0afd78a822c3ac0d0d572d4f43b434981870a7a79d577fe20238536659605b51
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.12.2@sha256:07772021ca1a9e31f6f89c745c15a577a1cd752da3c6df0f64e9453b8091cfb9
 
 ARG TARGETARCH
 RUN dnf install -y tzdata bind-utils && dnf clean all
