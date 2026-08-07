@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -216,7 +217,7 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	changed = meta.SetStatusCondition(&rtx.Cluster.Status.Conditions, availCond) || changed
 
 	clusterGeneration := rtx.Cluster.Generation
-	suspended := allGroupConditionsTrue(rtx, clusterGeneration, v1alpha1.CondSuspended)
+	suspended := len(groupsNotSatisfyingCondition(rtx, clusterGeneration, v1alpha1.CondSuspended)) == 0
 	// Cluster does not own the desired Group topology, so Ready and Synced aggregate only Groups
 	// currently observed by the cache. Callers must keep the topology complete and stable while
 	// using these conditions as pause/resume completion signals.
@@ -228,29 +229,37 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	// TODO: Bind observedClusterGeneration to Group/Instance Ready and Synced updates, so lower-level
 	// conditions can become true only after reconciling the current Cluster generation. For now, the
 	// Cluster aggregation validates observedClusterGeneration separately.
+	groupsNotReady := groupsNotSatisfyingCondition(rtx, clusterGeneration, v1alpha1.CondReady)
+	groupsNotSynced := groupsNotSatisfyingCondition(rtx, clusterGeneration, v1alpha1.CondSynced)
 	for _, condition := range []struct {
 		conditionType string
 		reason        string
-		allTrue       bool
+		failedGroups  []string
 	}{
 		{
-			v1alpha1.ClusterCondReady,
+			v1alpha1.CondReady,
 			v1alpha1.ClusterReadyReason,
-			groupCount > 0 && allGroupConditionsTrue(rtx, clusterGeneration, v1alpha1.CondReady),
+			groupsNotReady,
 		},
 		{
-			v1alpha1.ClusterCondSynced,
+			v1alpha1.CondSynced,
 			v1alpha1.ClusterSyncedReason,
-			groupCount > 0 && allGroupConditionsTrue(rtx, clusterGeneration, v1alpha1.CondSynced),
+			groupsNotSynced,
 		},
 	} {
 		status := metav1.ConditionFalse
-		message := fmt.Sprintf("Not all Groups have %s=True for the current Cluster generation", condition.conditionType)
-		if groupCount == 0 {
-			message = "No Groups are currently observed by the controller cache"
-		} else if condition.allTrue {
-			status = metav1.ConditionTrue
-			message = fmt.Sprintf("All Groups have %s=True for the current Cluster generation", condition.conditionType)
+		message := "No Groups are currently observed by the controller cache"
+		if groupCount > 0 {
+			if len(condition.failedGroups) == 0 {
+				status = metav1.ConditionTrue
+				message = fmt.Sprintf("All Groups have %s=True for the current Cluster generation", condition.conditionType)
+			} else {
+				message = fmt.Sprintf(
+					"Groups not satisfying %s for the current Cluster generation: %s",
+					condition.conditionType,
+					strings.Join(condition.failedGroups, ", "),
+				)
+			}
 		}
 		changed = meta.SetStatusCondition(&rtx.Cluster.Status.Conditions, metav1.Condition{
 			Type:               condition.conditionType,
@@ -282,37 +291,38 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	}) || changed
 }
 
-func groupsConditionsTrue[
+func appendGroupsNotSatisfyingCondition[
 	S scope.Group[F, T],
 	F client.Object,
 	T runtime.Group,
-](groups []F, clusterGeneration int64, conditionTypes ...string) bool {
+](failedGroups []string, groups []F, clusterGeneration int64, conditionType string) []string {
+	kind := scope.GVK[S]().Kind
 	for _, group := range groups {
-		for _, conditionType := range conditionTypes {
-			if !coreutil.IsStatusConditionTrueForCluster[S](group, conditionType, clusterGeneration) {
-				return false
-			}
+		if !coreutil.IsStatusConditionTrueForCluster[S](group, conditionType, clusterGeneration) {
+			failedGroups = append(failedGroups, kind+"/"+group.GetName())
 		}
 	}
 
-	return true
+	return failedGroups
 }
 
-func allGroupConditionsTrue(rtx *ReconcileContext, clusterGeneration int64, conditionTypes ...string) bool {
-	return groupsConditionsTrue[scope.PDGroup](rtx.PDGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.ResourceManagerGroup](rtx.ResourceManagerGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.RouterGroup](rtx.RouterGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.TSOGroup](rtx.TSOGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.SchedulingGroup](rtx.SchedulingGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.SchedulerGroup](rtx.SchedulerGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.TiKVGroup](rtx.TiKVGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.TiFlashGroup](rtx.TiFlashGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.TiDBGroup](rtx.TiDBGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.TiCDCGroup](rtx.TiCDCGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.TiProxyGroup](rtx.TiProxyGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.TiKVWorkerGroup](rtx.TiKVWorkerGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.DMGroup](rtx.DMGroups, clusterGeneration, conditionTypes...) &&
-		groupsConditionsTrue[scope.DMWorkerGroup](rtx.DMWorkerGroups, clusterGeneration, conditionTypes...)
+func groupsNotSatisfyingCondition(rtx *ReconcileContext, clusterGeneration int64, conditionType string) []string {
+	var groups []string
+	groups = appendGroupsNotSatisfyingCondition[scope.PDGroup](groups, rtx.PDGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.ResourceManagerGroup](groups, rtx.ResourceManagerGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.RouterGroup](groups, rtx.RouterGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.TSOGroup](groups, rtx.TSOGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.SchedulingGroup](groups, rtx.SchedulingGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.SchedulerGroup](groups, rtx.SchedulerGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.TiKVGroup](groups, rtx.TiKVGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.TiFlashGroup](groups, rtx.TiFlashGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.TiDBGroup](groups, rtx.TiDBGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.TiCDCGroup](groups, rtx.TiCDCGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.TiProxyGroup](groups, rtx.TiProxyGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.TiKVWorkerGroup](groups, rtx.TiKVWorkerGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.DMGroup](groups, rtx.DMGroups, clusterGeneration, conditionType)
+	groups = appendGroupsNotSatisfyingCondition[scope.DMWorkerGroup](groups, rtx.DMWorkerGroups, clusterGeneration, conditionType)
+	return groups
 }
 
 func (t *TaskStatus) syncClusterID(ctx context.Context, rtx *ReconcileContext) bool {

@@ -260,8 +260,6 @@ const (
 	ClusterCondSuspended = "Suspended"
 	ClusterSuspendReason = "ClusterSuspend"
 
-	ClusterCondReady    = "Ready"
 	ClusterReadyReason  = "ClusterReady"
-	ClusterCondSynced   = "Synced"
 	ClusterSyncedReason = "ClusterSynced"
 )

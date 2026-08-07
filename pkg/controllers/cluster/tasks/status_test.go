@@ -79,11 +79,11 @@ func TestStatusUpdater(t *testing.T) {
 					Status: metav1.ConditionFalse,
 				},
 				{
-					Type:   v1alpha1.ClusterCondReady,
+					Type:   v1alpha1.CondReady,
 					Status: metav1.ConditionFalse,
 				},
 				{
-					Type:   v1alpha1.ClusterCondSynced,
+					Type:   v1alpha1.CondSynced,
 					Status: metav1.ConditionFalse,
 				},
 				{
@@ -229,7 +229,7 @@ func TestSyncSuspendedConditionCoversAllGroupTypes(t *testing.T) {
 func TestSyncConditionsAggregatesGroupReadiness(t *testing.T) {
 	const groupGeneration, clusterGeneration = int64(3), int64(7)
 	group := &v1alpha1.PDGroup{
-		ObjectMeta: metav1.ObjectMeta{Generation: groupGeneration},
+		ObjectMeta: metav1.ObjectMeta{Name: "pd-0", Generation: groupGeneration},
 		Status: v1alpha1.PDGroupStatus{CommonStatus: v1alpha1.CommonStatus{
 			ObservedGeneration:        groupGeneration,
 			ObservedClusterGeneration: clusterGeneration,
@@ -246,8 +246,8 @@ func TestSyncConditionsAggregatesGroupReadiness(t *testing.T) {
 		t.Helper()
 		taskStatus.syncConditions(rtx)
 		for conditionType, want := range map[string]bool{
-			v1alpha1.ClusterCondReady:  wantReady,
-			v1alpha1.ClusterCondSynced: wantSynced,
+			v1alpha1.CondReady:  wantReady,
+			v1alpha1.CondSynced: wantSynced,
 		} {
 			condition := meta.FindStatusCondition(cluster.Status.Conditions, conditionType)
 			require.NotNil(t, condition)
@@ -262,12 +262,13 @@ func TestSyncConditionsAggregatesGroupReadiness(t *testing.T) {
 	group.Status.ObservedClusterGeneration++
 	meta.FindStatusCondition(group.Status.Conditions, v1alpha1.CondSynced).Status = metav1.ConditionFalse
 	assertReadyAndSynced(true, false)
+	assert.Contains(t, meta.FindStatusCondition(cluster.Status.Conditions, v1alpha1.CondSynced).Message, "PDGroup/pd-0")
 	meta.FindStatusCondition(group.Status.Conditions, v1alpha1.CondReady).Status = metav1.ConditionFalse
 	meta.FindStatusCondition(group.Status.Conditions, v1alpha1.CondSynced).Status = metav1.ConditionTrue
 	assertReadyAndSynced(false, true)
 	rtx.PDGroups = nil
 	assertReadyAndSynced(false, false)
-	for _, conditionType := range []string{v1alpha1.ClusterCondReady, v1alpha1.ClusterCondSynced} {
+	for _, conditionType := range []string{v1alpha1.CondReady, v1alpha1.CondSynced} {
 		condition := meta.FindStatusCondition(cluster.Status.Conditions, conditionType)
 		require.NotNil(t, condition)
 		assert.Equal(t, "No Groups are currently observed by the controller cache", condition.Message)
