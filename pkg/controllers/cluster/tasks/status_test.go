@@ -79,6 +79,14 @@ func TestStatusUpdater(t *testing.T) {
 					Status: metav1.ConditionFalse,
 				},
 				{
+					Type:   v1alpha1.ClusterCondReady,
+					Status: metav1.ConditionFalse,
+				},
+				{
+					Type:   v1alpha1.ClusterCondSynced,
+					Status: metav1.ConditionFalse,
+				},
+				{
 					Type:   v1alpha1.ClusterCondSuspended,
 					Status: metav1.ConditionFalse,
 				},
@@ -216,6 +224,49 @@ func TestSyncSuspendedConditionCoversAllGroupTypes(t *testing.T) {
 			status.ObservedClusterGeneration++
 		})
 	}
+}
+
+func TestSyncConditionsAggregatesGroupReadiness(t *testing.T) {
+	const groupGeneration, clusterGeneration = int64(3), int64(7)
+	group := &v1alpha1.PDGroup{
+		ObjectMeta: metav1.ObjectMeta{Generation: groupGeneration},
+		Status: v1alpha1.PDGroupStatus{CommonStatus: v1alpha1.CommonStatus{
+			ObservedGeneration:        groupGeneration,
+			ObservedClusterGeneration: clusterGeneration,
+			Conditions: []metav1.Condition{
+				{Type: v1alpha1.CondReady, Status: metav1.ConditionTrue, ObservedGeneration: groupGeneration},
+				{Type: v1alpha1.CondSynced, Status: metav1.ConditionTrue, ObservedGeneration: groupGeneration},
+			},
+		}},
+	}
+	cluster := &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Generation: clusterGeneration}}
+	rtx := &ReconcileContext{Cluster: cluster, PDGroups: []*v1alpha1.PDGroup{group}}
+	taskStatus := &TaskStatus{}
+	assertReadyAndSynced := func(wantReady, wantSynced bool) {
+		t.Helper()
+		taskStatus.syncConditions(rtx)
+		for conditionType, want := range map[string]bool{
+			v1alpha1.ClusterCondReady:  wantReady,
+			v1alpha1.ClusterCondSynced: wantSynced,
+		} {
+			condition := meta.FindStatusCondition(cluster.Status.Conditions, conditionType)
+			require.NotNil(t, condition)
+			assert.Equal(t, want, condition.Status == metav1.ConditionTrue)
+			assert.Equal(t, clusterGeneration, condition.ObservedGeneration)
+		}
+	}
+
+	assertReadyAndSynced(true, true)
+	group.Status.ObservedClusterGeneration--
+	assertReadyAndSynced(false, false)
+	group.Status.ObservedClusterGeneration++
+	meta.FindStatusCondition(group.Status.Conditions, v1alpha1.CondSynced).Status = metav1.ConditionFalse
+	assertReadyAndSynced(true, false)
+	meta.FindStatusCondition(group.Status.Conditions, v1alpha1.CondReady).Status = metav1.ConditionFalse
+	meta.FindStatusCondition(group.Status.Conditions, v1alpha1.CondSynced).Status = metav1.ConditionTrue
+	assertReadyAndSynced(false, true)
+	rtx.PDGroups = nil
+	assertReadyAndSynced(false, false)
 }
 
 func newFakePDClientManager(t *testing.T, c client.Client, acts ...action) pdm.PDClientManager {
