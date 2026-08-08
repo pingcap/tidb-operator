@@ -65,6 +65,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskGroupConditionSynced[scope.TiDBGroup](state),
 		common.TaskStatusRevisionAndReplicas[scope.TiDBGroup](state),
 		tasks.TaskStatusAvailable(state),
+		tasks.TaskFinishSmoothUpgrade(state, r.Client),
 		common.TaskStatusPersister[scope.TiDBGroup](state, r.Client),
 	)
 
