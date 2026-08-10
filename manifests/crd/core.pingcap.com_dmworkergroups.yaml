@@ -8848,7 +8848,7 @@ spec:
                         or volumes
                       rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
                         || self.overlay.volumeClaims.all(vc, (has(self.relayVolume)
-                        && vc.name == self.relayVolume.name) || (has(self.volumes)
+                        && vc.name in [self.relayVolume.name]) || (has(self.volumes)
                         && vc.name in self.volumes.map(v, v.name)))'
                 required:
                 - spec

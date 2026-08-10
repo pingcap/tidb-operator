@@ -21,6 +21,9 @@ import (
 )
 
 func TestDMGroup(t *testing.T) {
+	validateCELStaticCosts(t, "crd/core.pingcap.com_dmgroups.yaml", "spec", "template", "spec")
+	validateCELStaticCosts(t, "crd/core.pingcap.com_dms.yaml", "spec")
+
 	var cases []Case
 	cases = append(cases, transferDMGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferDMGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)

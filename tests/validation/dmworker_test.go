@@ -21,6 +21,9 @@ import (
 )
 
 func TestDMWorkerGroup(t *testing.T) {
+	validateCELStaticCosts(t, "crd/core.pingcap.com_dmworkergroups.yaml", "spec", "template", "spec")
+	validateCELStaticCosts(t, "crd/core.pingcap.com_dmworkers.yaml", "spec")
+
 	var cases []Case
 	cases = append(cases, transferDMWorkerGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferDMWorkerGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)

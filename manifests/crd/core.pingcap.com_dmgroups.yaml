@@ -8844,7 +8844,7 @@ spec:
                     - message: overlay volumeClaims names must exist in dataVolume
                         or volumes
                       rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
-                        || self.overlay.volumeClaims.all(vc, vc.name == self.dataVolume.name
+                        || self.overlay.volumeClaims.all(vc, vc.name in [self.dataVolume.name]
                         || (has(self.volumes) && vc.name in self.volumes.map(v, v.name)))'
                 required:
                 - spec

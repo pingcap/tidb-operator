@@ -140,7 +140,7 @@ type DMWorkerTemplate struct {
 }
 
 // DMWorkerTemplateSpec can only be specified in DMWorkerGroup
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, (has(self.relayVolume) && vc.name == self.relayVolume.name) || (has(self.volumes) && vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in relayVolume or volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, (has(self.relayVolume) && vc.name in [self.relayVolume.name]) || (has(self.volumes) && vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in relayVolume or volumes"
 type DMWorkerTemplateSpec struct {
 	// Version must be a semantic version.
 	// It can have a v prefix or not.

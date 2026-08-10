@@ -17,6 +17,7 @@ package validation
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	celconfig "k8s.io/apiserver/pkg/apis/cel"
 	"k8s.io/apiserver/pkg/cel/common"
+	"k8s.io/apiserver/pkg/cel/environment"
 )
 
 type Case struct {
@@ -136,6 +138,37 @@ func structuralSchemaFromCRD(t *testing.T, crdPath, version string) *schema.Stru
 	require.FailNowf(t, "failed to find crd %s version %s", crdPath, version)
 
 	return nil
+}
+
+func validateCELStaticCosts(t *testing.T, crdPath string, fields ...string) {
+	t.Helper()
+
+	s := structuralSchemaFromCRD(t, crdPath, "v1alpha1")
+	for _, fieldName := range fields {
+		property, ok := s.Properties[fieldName]
+		require.True(t, ok, "field %s not found in %s", strings.Join(fields, "."), crdPath)
+		s = &property
+	}
+
+	results, err := cel.Compile(
+		s,
+		model.SchemaDeclType(s, false),
+		celconfig.PerCallLimit,
+		environment.MustBaseEnvSet(environment.DefaultCompatibilityVersion(), true),
+		cel.NewExpressionsEnvLoader(),
+	)
+	require.NoError(t, err, crdPath)
+	for i, result := range results {
+		require.Nil(t, result.Error, "%s validation rule %d", crdPath, i)
+		require.LessOrEqual(
+			t,
+			result.MaxCost,
+			uint64(celconfig.RuntimeCELCostBudget),
+			"%s validation rule %d exceeds the static CEL cost budget",
+			crdPath,
+			i,
+		)
+	}
 }
 
 type PatchMode string
