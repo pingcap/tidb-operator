@@ -76,6 +76,8 @@ ALLOWED_PREFIXES=(
     "go.uber.org/mock"
     "github.com/golangci/golangci-lint/v2"
     "github.com/apache/skywalking-eyes"
+    "go.opentelemetry.io/"
+    "google.golang.org/grpc"
 )
 # DENIED_PREFIXES: Modules matching these prefixes will NOT be updated, even if they match ALLOWED_PREFIXES.
 DENIED_PREFIXES=(
