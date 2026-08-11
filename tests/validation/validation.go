@@ -158,6 +158,7 @@ func validateCELStaticCosts(t *testing.T, crdPath string, fields ...string) {
 		cel.NewExpressionsEnvLoader(),
 	)
 	require.NoError(t, err, crdPath)
+	require.NotEmpty(t, results, "no CEL validation rules found in %s", crdPath)
 	for i, result := range results {
 		require.Nil(t, result.Error, "%s validation rule %d", crdPath, i)
 		require.LessOrEqual(
