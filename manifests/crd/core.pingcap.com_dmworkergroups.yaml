@@ -8844,10 +8844,12 @@ spec:
                     - version
                     type: object
                     x-kubernetes-validations:
-                    - message: overlay volumeClaims names must exist in volumes
+                    - message: overlay volumeClaims names must exist in relayVolume
+                        or volumes
                       rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
-                        || (has(self.volumes) && self.overlay.volumeClaims.all(vc,
-                        vc.name in self.volumes.map(v, v.name)))'
+                        || self.overlay.volumeClaims.all(vc, (has(self.relayVolume)
+                        && vc.name in [self.relayVolume.name]) || (has(self.volumes)
+                        && vc.name in self.volumes.map(v, v.name)))'
                 required:
                 - spec
                 type: object

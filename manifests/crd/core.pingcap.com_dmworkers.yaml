@@ -8578,10 +8578,10 @@ spec:
               message: topology can only be set when creating
               rule: (!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology)
                 && has(self.topology))
-            - message: overlay volumeClaims names must exist in volumes
-              rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes)
-                && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
-                v.name)))'
+            - message: overlay volumeClaims names must exist in relayVolume or volumes
+              rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc,
+                (has(self.relayVolume) && vc.name in [self.relayVolume.name]) || (has(self.volumes)
+                && vc.name in self.volumes.map(v, v.name)))'
           status:
             description: DMWorkerStatus defines the observed state of a DM worker
               instance

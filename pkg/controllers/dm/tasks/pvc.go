@@ -15,6 +15,8 @@
 package tasks
 
 import (
+	"slices"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -23,6 +25,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
@@ -59,13 +62,30 @@ func PVCNewer() common.PVCNewer[*v1alpha1.DM] {
 			if cluster.Status.ID != "" {
 				dataPVC.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
 			}
+			pvcOverlays := coreutil.PVCOverlay[scope.DM](dm)
+			for i := range pvcOverlays {
+				pvcOverlay := &pvcOverlays[i]
+				if pvcOverlay.Name == dataVol.Name {
+					overlay.OverlayPersistentVolumeClaim(dataPVC, &pvcOverlay.PersistentVolumeClaim)
+					break
+				}
+			}
 
 			pvcs := []*corev1.PersistentVolumeClaim{dataPVC}
 
 			// Additional volumes
+			additionalDM := dm.DeepCopy()
+			if additionalDM.Spec.Overlay != nil {
+				additionalDM.Spec.Overlay.PersistentVolumeClaims = slices.DeleteFunc(
+					additionalDM.Spec.Overlay.PersistentVolumeClaims,
+					func(item v1alpha1.NamedPersistentVolumeClaimOverlay) bool {
+						return item.Name == dataVol.Name
+					},
+				)
+			}
 			additionalPVCs := coreutil.PVCs[scope.DM](
 				cluster,
-				dm,
+				additionalDM,
 				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
 				coreutil.PVCPatchFunc(func(_ *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
 					// legacy labels in v1
