@@ -7,7 +7,7 @@ tool k8s.io/code-generator/cmd/register-gen
 require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/mod v0.39.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
 	k8s.io/code-generator v0.32.13 // indirect
