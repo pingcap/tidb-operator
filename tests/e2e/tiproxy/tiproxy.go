@@ -1155,7 +1155,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			},
 			ginkgo.Entry("offline pods stay healthy until delete-delay expires", false),
 			ginkgo.Entry("offline pods are marked unhealthy via SIGTERM", true),
-		)	})
+		)
+	})
 
 	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
 		f.SetupCluster(data.WithClusterTLSEnabled())
