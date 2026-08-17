@@ -627,19 +627,21 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					if gracefulShutdownBeginTime(pod) == "" {
 						continue
 					}
-					oldPodDraining = true
 
-					if backends < int(replicas) {
-						violated = fmt.Errorf("tiproxy service backends dropped below desired replicas after drain started: got %d, want >= %d", backends, replicas)
-						return violated
-					}
-
+					// begin-time is persisted before MarkUnhealthy; keep polling until the
+					// health override (or legacy SIGTERM) actually makes the pod unhealthy.
 					statusCode, err := tiproxyHealthStatusCode(ctx, f, pod)
 					if err != nil {
 						return fmt.Errorf("cannot query health of draining tiproxy pod %s/%s: %w", pod.Namespace, pod.Name, err)
 					}
 					if statusCode == http.StatusOK {
-						return fmt.Errorf("draining tiproxy pod %s/%s is still healthy after graceful shutdown begins", pod.Namespace, pod.Name)
+						return fmt.Errorf("waiting for draining tiproxy pod %s/%s to become unhealthy after graceful shutdown begin-time is set", pod.Namespace, pod.Name)
+					}
+					oldPodDraining = true
+
+					if backends < int(replicas) {
+						violated = fmt.Errorf("tiproxy service backends dropped below desired replicas after drain started: got %d, want >= %d", backends, replicas)
+						return violated
 					}
 
 					if pod.Name != targetOldPod.Name {
