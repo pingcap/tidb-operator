@@ -414,6 +414,78 @@ func offlinedTiProxyForDelete() *v1alpha1.TiProxy {
 	})
 }
 
+func TestTaskOfflineScaleInDrainPersistsBeginTimeBeforeMarkUnhealthy(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusOK, http.StatusOK)
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(server.port(t))
+	tiproxy.Spec.Offline = ptr.To(true)
+	pod := fakePod(cluster, tiproxy)
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := &ReconcileContext{
+		State: s,
+		TiProxyClient: tiproxyapi.NewTiProxyClient(
+			fmt.Sprintf("127.0.0.1:%d", server.port(t)),
+			tiproxyRequestTimeout,
+			nil,
+		),
+	}
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+
+	res, done := task.RunTask(ctx, TaskOfflineScaleInDrain(rc, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+
+	actualPod := &corev1.Pod{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actualPod))
+	assert.NotEmpty(t, actualPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+
+	healthCalls, markUnhealthyCalls := server.counts()
+	assert.Equal(t, 2, healthCalls)
+	assert.Equal(t, 1, markUnhealthyCalls)
+}
+
+func TestTaskOfflineScaleInDrainSkipsMarkUnhealthyWhenBeginTimeWriteFails(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusOK, http.StatusOK)
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(server.port(t))
+	tiproxy.Spec.Offline = ptr.To(true)
+	pod := fakePod(cluster, tiproxy)
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := &ReconcileContext{
+		State: s,
+		TiProxyClient: tiproxyapi.NewTiProxyClient(
+			fmt.Sprintf("127.0.0.1:%d", server.port(t)),
+			tiproxyRequestTimeout,
+			nil,
+		),
+	}
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	fc.WithError("update", "*", apierrors.NewConflict(
+		schema.GroupResource{Resource: "pods"},
+		pod.Name,
+		errors.New("resource version conflict"),
+	))
+
+	res, done := task.RunTask(ctx, TaskOfflineScaleInDrain(rc, fc))
+	require.False(t, done)
+	assert.Equal(t, task.SFail.String(), res.Status().String())
+
+	actualPod := &corev1.Pod{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actualPod))
+	assert.Empty(t, actualPod.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+
+	_, markUnhealthyCalls := server.counts()
+	assert.Equal(t, 0, markUnhealthyCalls)
+}
+
 func TestTaskDeleteOfflinedTiProxyDeletesWhenOffline(t *testing.T) {
 	t.Parallel()
 

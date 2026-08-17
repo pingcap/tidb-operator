@@ -211,14 +211,14 @@ func TestTaskDrainPodForDeleteDeletePodAfterDrainDelay(t *testing.T) {
 	assert.False(t, done)
 
 	healthCalls, markUnhealthyCalls := server.counts()
-	assert.Equal(t, 0, healthCalls)
+	assert.Equal(t, 1, healthCalls)
 	assert.Equal(t, 0, markUnhealthyCalls)
 
 	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
-func TestTaskDrainPodForDeleteContinueDeleteDelayWhenMarkUnhealthyFails(t *testing.T) {
+func TestTaskDrainPodForDeleteWritesBeginTimeEvenWhenMarkUnhealthyFails(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -239,10 +239,10 @@ func TestTaskDrainPodForDeleteContinueDeleteDelayWhenMarkUnhealthyFails(t *testi
 
 	actual := &corev1.Pod{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
-	assert.Empty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+	assert.NotEmpty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
 }
 
-func TestTaskDrainPodForDeleteDoNotStartDeleteDelayWhenUnhealthyAPIIsUnsupported(t *testing.T) {
+func TestTaskDrainPodForDeleteContinuesDeleteDelayWhenUnhealthyAPIIsUnsupported(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -261,10 +261,61 @@ func TestTaskDrainPodForDeleteDoNotStartDeleteDelayWhenUnhealthyAPIIsUnsupported
 	healthCalls, markUnhealthyCalls := server.counts()
 	assert.Equal(t, 1, healthCalls)
 	assert.Equal(t, 1, markUnhealthyCalls)
+	assert.Equal(t, 1, server.metricsCount())
 
 	actual := &corev1.Pod{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
-	assert.Empty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+	assert.NotEmpty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+	assert.True(t, actual.GetDeletionTimestamp().IsZero())
+}
+
+func TestTaskDrainPodForDeleteContinuesDeleteDelayWhenUnhealthyAPIMethodNotAllowed(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusOK, http.StatusMethodNotAllowed)
+	cluster := localTestCluster()
+	tiproxy := deletingTiProxyWithAPIAddress("3600", server.port(t))
+	pod := fakePod(cluster, tiproxy)
+
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := runDrainPodForDeleteTask(t, ctx, &state{cluster: cluster, tiproxy: tiproxy}, fc)
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+
+	_, markUnhealthyCalls := server.counts()
+	assert.Equal(t, 1, markUnhealthyCalls)
+	assert.Equal(t, 1, server.metricsCount())
+
+	actual := &corev1.Pod{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
+	assert.NotEmpty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+}
+
+func TestTaskDrainPodForDeleteDeletesAfterDelayWhenUnhealthyAPIIsUnsupported(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusOK, http.StatusNotFound)
+	cluster := localTestCluster()
+	tiproxy := deletingTiProxyWithAPIAddress("60", server.port(t))
+	pod := fakePod(cluster, tiproxy)
+	pod.Annotations = map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-2 * time.Minute).Format(time.RFC3339Nano),
+	}
+
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := runDrainPodForDeleteTask(t, ctx, &state{cluster: cluster, tiproxy: tiproxy}, fc)
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+
+	_, markUnhealthyCalls := server.counts()
+	assert.Equal(t, 1, markUnhealthyCalls)
+
+	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestTaskDrainPodForDeleteWaitForDeleteDelayAfterGracefulShutdownStarted(t *testing.T) {
@@ -286,8 +337,8 @@ func TestTaskDrainPodForDeleteWaitForDeleteDelayAfterGracefulShutdownStarted(t *
 	assert.False(t, done)
 
 	healthCalls, markUnhealthyCalls := server.counts()
-	assert.Equal(t, 0, healthCalls)
-	assert.Equal(t, 0, markUnhealthyCalls)
+	assert.Equal(t, 2, healthCalls)
+	assert.Equal(t, 1, markUnhealthyCalls)
 
 	actual := &corev1.Pod{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))

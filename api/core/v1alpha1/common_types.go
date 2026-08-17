@@ -182,9 +182,9 @@ const (
 	// Last instance template is recorded to check whether the pod should be restarted because of changes of instance template
 	AnnoKeyLastInstanceTemplate = AnnoKeyPrefix + "last-instance-template"
 
-	// TiProxy graceful shutdown begin time is recorded on the pod when graceful shutdown
-	// begins (after MarkUnhealthy succeeds). HPA and monitoring may exclude pods
-	// carrying this annotation.
+	// TiProxy graceful shutdown begin time is recorded on the pod when graceful
+	// shutdown starts, before MarkUnhealthy. It is the revive signal and the
+	// delete-delay clock; HPA and monitoring may exclude pods carrying this annotation.
 	AnnoKeyTiProxyGracefulShutdownBeginTime = AnnoKeyPrefix + "tiproxy-graceful-shutdown-begin-time"
 
 	// TiProxy graceful shutdown delete delay controls how long operator waits before deleting a TiProxy pod
