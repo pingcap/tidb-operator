@@ -369,6 +369,34 @@ func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
 	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group, ref
 }
 
+// IsOwnedByPingcapStatefulSet checks if the given object is controller-owned by
+// a pingcap.com kind whose StatefulSets go through the (possibly hijacked)
+// StatefulSet client, i.e. kinds that must participate in the Kubernetes
+// StatefulSet <-> Advanced StatefulSet migration.
+// Schema Kind and Group are checked, Version is ignored.
+func IsOwnedByPingcapStatefulSet(obj metav1.Object) (bool, *metav1.OwnerReference) {
+	ref := metav1.GetControllerOf(obj)
+	if ref == nil {
+		return false, nil
+	}
+	gv, err := schema.ParseGroupVersion(ref.APIVersion)
+	if err != nil {
+		return false, nil
+	}
+	if gv.Group != v1alpha1.SchemeGroupVersion.Group {
+		return false, nil
+	}
+	switch ref.Kind {
+	case v1alpha1.TiDBClusterKind,
+		v1alpha1.DMClusterKind,
+		v1alpha1.TiDBMonitorKind,
+		v1alpha1.TiDBDashboardKind,
+		v1alpha1.TiDBNGMonitoringKind:
+		return true, ref
+	}
+	return false, nil
+}
+
 // RetainManagedFields retains the fields in the old object that are managed by kube-controller-manager, such as node ports
 func RetainManagedFields(desiredSvc, existedSvc *corev1.Service) {
 	// Retain healthCheckNodePort if it has been filled by controller

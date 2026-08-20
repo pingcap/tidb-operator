@@ -24,8 +24,10 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -34,9 +36,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -426,6 +431,168 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		ginkgo.By("Make sure pods are not changed")
 		err = utilpod.WaitForPodsAreChanged(c, podListBeforeUpgrade.Items, time.Minute*3)
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed after the operator is upgraded")
+	})
+
+	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrade tidbmonitor to advanced statefulset", func() {
+		var ocfg *tests.OperatorConfig
+		var oa *tests.OperatorActions
+		var genericCli client.Client
+
+		ocfg = &tests.OperatorConfig{
+			Namespace:      ns,
+			ReleaseName:    "operator",
+			Image:          cfg.OperatorImage,
+			Tag:            cfg.OperatorTag,
+			SchedulerImage: "registry.k8s.io/kube-scheduler",
+			Features: []string{
+				"StableScheduling=true",
+				"AdvancedStatefulSet=false",
+			},
+			LogLevel:        "4",
+			ImagePullPolicy: v1.PullIfNotPresent,
+			TestMode:        true,
+		}
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
+		ginkgo.By("Installing CRDs")
+		oa.CleanCRDOrDie()
+		oa.CreateCRDOrDie(ocfg)
+		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
+		oa.CleanOperatorOrDie(ocfg)
+		oa.DeployOperatorOrDie(ocfg)
+		var err error
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		framework.ExpectNoError(err, "failed to create clientset")
+
+		// The TidbMonitor target TidbCluster is empty (all components scaled
+		// down to 0 replicas), so that only the monitor workload is created;
+		// this matches the customer scenario where the monitor StatefulSet
+		// is the only one missed by the TidbCluster-only migration filter.
+		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBLatest)
+		tc.Spec.PD.Replicas = 0
+		tc.Spec.TiKV.Replicas = 0
+		tc.Spec.TiDB.Replicas = 0
+		err = genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
+
+		tm := fixture.NewTidbMonitor("monitor-sts", ns, tc, false, false, false)
+		err = genericCli.Create(context.TODO(), tm)
+		framework.ExpectNoError(err, "failed to create TidbMonitor: %v", tm)
+
+		defer func() {
+			// Delete the TidbMonitor first while the operator is still
+			// running so that the protection finalizer is processed;
+			// otherwise the namespace teardown blocks forever.
+			ginkgo.By("Deleting the tidbmonitor")
+			_ = genericCli.Delete(context.TODO(), tm)
+			err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
+				tmGet := &v1alpha1.TidbMonitor{}
+				err := genericCli.Get(context.TODO(), types.NamespacedName{Namespace: tm.Namespace, Name: tm.Name}, tmGet)
+				if err != nil && apierrors.IsNotFound(err) {
+					return true, nil
+				}
+				if err != nil {
+					return false, err
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for TidbMonitor deleted")
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		}()
+
+		ginkgo.By("Waiting for the native monitor StatefulSet and its pod to be ready")
+		stsName := monitor.GetMonitorShardName(tm.Name, 0)
+		err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
+			sts, err := c.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			if sts.Status.ReadyReplicas != *sts.Spec.Replicas {
+				log.Logf("monitor sts %s/%s is not ready yet: %d/%d", ns, stsName, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "failed to wait for monitor StatefulSet %s/%s ready", ns, stsName)
+
+		stsBefore, err := c.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get monitor StatefulSet: %v", stsName)
+		podListBeforeUpgrade, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(stsBefore.Spec.Selector.MatchLabels).String(),
+		})
+		framework.ExpectNoError(err, "failed to list monitor pods before upgrade")
+		if len(podListBeforeUpgrade.Items) == 0 {
+			log.Failf("no pods found for monitor StatefulSet %s/%s", ns, stsName)
+		}
+
+		ginkgo.By("Upgrading tidb-operator with AdvancedStatefulSet feature")
+		ocfg.Features = []string{
+			"StableScheduling=true",
+			"AdvancedStatefulSet=true",
+		}
+		oa.ReplaceCRDOrDie(ocfg)
+		oa.UpgradeOperatorOrDie(ocfg)
+
+		ginkgo.By("Wait for the advanced statefulset is created and the Kubernetes statefulset is deleted")
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
+			asts, err := asCli.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			_, err = c.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+			if err == nil {
+				log.Logf("Kubernetes statefulset %s/%s still exists", ns, stsName)
+				return false, nil
+			}
+			if !apierrors.IsNotFound(err) {
+				return false, err
+			}
+			if asts.Status.ReadyReplicas != *asts.Spec.Replicas {
+				log.Logf("advanced statefulset %s/%s is not ready yet: %d/%d", ns, stsName, asts.Status.ReadyReplicas, *asts.Spec.Replicas)
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "failed to wait for the advanced statefulset %s/%s ready", ns, stsName)
+
+		ginkgo.By("Check the monitor pod is still owned by the advanced statefulset and is ready")
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
+			asts, err := asCli.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			podListAfterUpgrade, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(stsBefore.Spec.Selector.MatchLabels).String(),
+			})
+			if err != nil {
+				return false, err
+			}
+			if len(podListAfterUpgrade.Items) != len(podListBeforeUpgrade.Items) {
+				log.Logf("monitor pod count is %d, expects %d", len(podListAfterUpgrade.Items), len(podListBeforeUpgrade.Items))
+				return false, nil
+			}
+			for i := range podListAfterUpgrade.Items {
+				pod := &podListAfterUpgrade.Items[i]
+				if !k8s.IsPodReady(pod) {
+					log.Logf("monitor pod %s/%s is not ready", pod.Namespace, pod.Name)
+					return false, nil
+				}
+				if ref := metav1.GetControllerOf(pod); ref == nil || ref.UID != asts.UID {
+					log.Logf("monitor pod %s/%s is not controlled by advanced statefulset %s", pod.Namespace, pod.Name, asts.UID)
+					return false, nil
+				}
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "failed to wait for monitor pod ready under advanced statefulset")
 	})
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
