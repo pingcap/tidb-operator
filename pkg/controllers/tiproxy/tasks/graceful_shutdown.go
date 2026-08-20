@@ -59,6 +59,9 @@ func isHealthOverrideUnsupported(err error) bool {
 	if !errors.As(err, &httpErr) {
 		return false
 	}
+	// When the health override API exists, DELETE always succeeds whether or not an
+	// override is currently set and whether the instance is healthy. 404/405 therefore
+	// mean the API is absent on this TiProxy build.
 	return httpErr.Status == http.StatusNotFound ||
 		httpErr.Status == http.StatusMethodNotAllowed
 }
@@ -106,15 +109,19 @@ func drainPodForGracefulShutdown(
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
+	// Persist begin-time before MarkUnhealthy so a scale-out after the external
+	// side effect (or during MarkUnhealthy retries) can still revive via this signal.
 	startAt, ok := gracefulShutdownBeginTime(pod)
 	if !ok {
-		if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, tpClient) {
-			return task.DefaultRequeueAfter, nil
-		}
 		startAt = time.Now()
 		if err := markGracefulShutdownBeginTime(ctx, c, pod, startAt); err != nil {
 			return 0, err
 		}
+	}
+
+	// Keep calling MarkUnhealthy even after begin-time is written.
+	if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, tpClient) {
+		return task.DefaultRequeueAfter, nil
 	}
 
 	remaining := time.Until(startAt.Add(time.Duration(seconds) * time.Second))
@@ -258,6 +265,17 @@ func ensureTiProxyMarkedUnhealthy(
 	}
 
 	if err := apiClient.MarkUnhealthy(ctx); err != nil {
+		// When the health override API exists, PUT succeeds. 404/405 mean the API
+		// is absent — proceed with delete-delay instead of retrying forever.
+		if isHealthOverrideUnsupported(err) {
+			logger.Info(
+				"health override API unsupported, skip MarkUnhealthy and continue delete delay",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"error", err,
+			)
+			return true
+		}
 		logger.Info(
 			"failed to mark TiProxy unhealthy before graceful delete, continue retrying",
 			"namespace", tiproxy.Namespace,
