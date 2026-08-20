@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -90,6 +91,89 @@ func TestIsOwnedByTidbCluster(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sts := tt.sts
 			ok, _ := util.IsOwnedByTidbCluster(&sts)
+			if tt.wantOK != ok {
+				t.Errorf("got %v, want %v", ok, tt.wantOK)
+			}
+		})
+	}
+}
+
+func TestIsOwnedByPingcapStatefulSet(t *testing.T) {
+	ownerRef := func(apiVersion, kind string) []metav1.OwnerReference {
+		return []metav1.OwnerReference{
+			{
+				APIVersion: apiVersion,
+				Kind:       kind,
+				Controller: pointer.BoolPtr(true),
+			},
+		}
+	}
+	tests := []struct {
+		name   string
+		sts    appsv1.StatefulSet
+		wantOK bool
+	}{
+		{
+			name:   "owned by tidbcluster.pingcap.com/v1alpha1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("pingcap.com/v1alpha1", "TidbCluster")}},
+			wantOK: true,
+		},
+		{
+			name:   "owned by dmcluster.pingcap.com/v1alpha1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("pingcap.com/v1alpha1", "DMCluster")}},
+			wantOK: true,
+		},
+		{
+			name:   "owned by tidbmonitor.pingcap.com/v1alpha1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("pingcap.com/v1alpha1", "TidbMonitor")}},
+			wantOK: true,
+		},
+		{
+			name:   "owned by tidbdashboard.pingcap.com/v1alpha1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("pingcap.com/v1alpha1", "TidbDashboard")}},
+			wantOK: true,
+		},
+		{
+			name:   "owned by tidbngmonitoring.pingcap.com/v1alpha1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("pingcap.com/v1alpha1", "TidbNGMonitoring")}},
+			wantOK: true,
+		},
+		{
+			name:   "owned by tidbcluster.pingcap.com/v1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("pingcap.com/v1", "TidbCluster")}},
+			wantOK: true,
+		},
+		{
+			name:   "owned by tidbcluster.example.com/v1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("example.com/v1", "TidbCluster")}},
+			wantOK: false,
+		},
+		{
+			name:   "owned by backup.pingcap.com/v1alpha1",
+			sts:    appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: ownerRef("pingcap.com/v1alpha1", "Backup")}},
+			wantOK: false,
+		},
+		{
+			name:   "no owner references",
+			sts:    appsv1.StatefulSet{},
+			wantOK: false,
+		},
+		{
+			name: "owner reference is not controller",
+			sts: appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "pingcap.com/v1alpha1",
+					Kind:       "TidbCluster",
+				},
+			}}},
+			wantOK: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts := tt.sts
+			ok, _ := util.IsOwnedByPingcapStatefulSet(&sts)
 			if tt.wantOK != ok {
 				t.Errorf("got %v, want %v", ok, tt.wantOK)
 			}
@@ -173,6 +257,19 @@ var (
 		},
 	}
 	invalidOwnerRefs = []metav1.OwnerReference{}
+
+	// ownerRefsFor returns controller owner references of the given
+	// pingcap.com kind.
+	ownerRefsFor = func(kind string) []metav1.OwnerReference {
+		return []metav1.OwnerReference{
+			{
+				APIVersion: "pingcap.com/v1alpha1",
+				Kind:       kind,
+				Name:       ownerTCName,
+				Controller: pointer.BoolPtr(true),
+			},
+		}
+	}
 )
 
 func TestUpgrade(t *testing.T) {
@@ -187,6 +284,7 @@ func TestUpgrade(t *testing.T) {
 		wantAdvancedStatefulsets []asappsv1.StatefulSet
 		wantStatefulsets         []appsv1.StatefulSet
 		wantErr                  bool
+		wantErrMsg               string
 	}{
 		{
 			name: "basic",
@@ -625,6 +723,159 @@ func TestUpgrade(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "should migrate sts owned by TidbMonitor",
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("TidbMonitor"),
+					},
+				},
+			},
+			feature: "AdvancedStatefulSet=true",
+			ns:      metav1.NamespaceAll,
+			wantErr: false,
+			wantAdvancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("TidbMonitor"),
+					},
+				},
+			},
+			wantStatefulsets: nil,
+		},
+		{
+			name: "should migrate sts owned by DMCluster",
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("DMCluster"),
+					},
+				},
+			},
+			feature: "AdvancedStatefulSet=true",
+			ns:      metav1.NamespaceAll,
+			wantErr: false,
+			wantAdvancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("DMCluster"),
+					},
+				},
+			},
+			wantStatefulsets: nil,
+		},
+		{
+			name: "should migrate sts owned by TidbMonitor even if delete slot annotations exist on other resources",
+			tidbClusters: []v1alpha1.TidbCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "bar",
+						Namespace: "sts",
+						Annotations: map[string]string{
+							label.AnnTiDBDeleteSlots: "[1,2]",
+						},
+					},
+				},
+			},
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("TidbMonitor"),
+					},
+				},
+			},
+			feature: "AdvancedStatefulSet=true",
+			ns:      metav1.NamespaceAll,
+			wantErr: false,
+			wantAdvancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("TidbMonitor"),
+					},
+				},
+			},
+			wantStatefulsets: nil,
+		},
+		{
+			name:    "[AdvancedStatefulSet=false] should error listing asts owned by TidbMonitor",
+			feature: "AdvancedStatefulSet=false",
+			advancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("TidbMonitor"),
+					},
+				},
+			},
+			ns: metav1.NamespaceAll,
+			apiResourceList: []*metav1.APIResourceList{
+				{
+					GroupVersion: "apps.pingcap.com/v1",
+					APIResources: []metav1.APIResource{
+						{
+							Kind: "StatefulSet",
+						},
+					},
+				},
+			},
+			wantErr:    true,
+			wantErrMsg: "StatefulSet sts/sts1",
+			wantAdvancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("TidbMonitor"),
+					},
+				},
+			},
+		},
 	}
 
 	// these tests must run serially, because we share features.DefaultFeatureGate
@@ -668,6 +919,9 @@ func TestUpgrade(t *testing.T) {
 		if tt.wantErr {
 			if err == nil {
 				t.Errorf("expected err, got %v", err)
+			}
+			if tt.wantErrMsg != "" && !strings.Contains(err.Error(), tt.wantErrMsg) {
+				t.Errorf("expected err containing %q, got %q", tt.wantErrMsg, err.Error())
 			}
 		} else {
 			if err != nil {
