@@ -67,22 +67,28 @@ func (u *upgrader) Upgrade() error {
 		}
 		stsToMigrate := make([]appsv1.StatefulSet, 0)
 		tidbClusters := make([]*v1alpha1.TidbCluster, 0)
+		dmClusters := make([]*v1alpha1.DMCluster, 0)
 		for i := range stsList.Items {
 			sts := stsList.Items[i]
 			if ok, ownerRef := util.IsOwnedByPingcapStatefulSet(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
-				if ownerRef.Kind != v1alpha1.TiDBClusterKind {
-					// The delete slots safety check below only applies to
-					// TidbClusters; other pingcap.com owner kinds are migrated
-					// without it.
-					continue
-				}
-				tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(context.Background(), ownerRef.Name, metav1.GetOptions{})
-				if err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-				if tc != nil {
-					tidbClusters = append(tidbClusters, tc)
+				switch ownerRef.Kind {
+				case v1alpha1.TiDBClusterKind:
+					tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(context.Background(), ownerRef.Name, metav1.GetOptions{})
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					if tc != nil {
+						tidbClusters = append(tidbClusters, tc)
+					}
+				case v1alpha1.DMClusterKind:
+					dc, err := u.cli.PingcapV1alpha1().DMClusters(sts.Namespace).Get(context.Background(), ownerRef.Name, metav1.GetOptions{})
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					if dc != nil {
+						dmClusters = append(dmClusters, dc)
+					}
 				}
 			}
 		}
@@ -91,13 +97,18 @@ func (u *upgrader) Upgrade() error {
 			return nil
 		}
 		klog.Infof("Upgrader: %d Kubernetes Statefulsets owned by pingcap.com StatefulSet owners should be migrated to Advanced Statefulsets", len(stsToMigrate))
-		// Check if relavant TidbClusters have delete slots annotations set.
+		// Check if relevant TidbClusters or DMClusters have delete slots annotations set.
 		for _, tc := range tidbClusters {
 			// Existing delete slots annotations must be removed first. This is
 			// a safety check to ensure no pods are affected in upgrading
 			// process.
 			if anns := deleteSlotAnns(tc); len(anns) > 0 {
 				return fmt.Errorf("upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
+			}
+		}
+		for _, dc := range dmClusters {
+			if anns := dmDeleteSlotAnns(dc); len(anns) > 0 {
+				return fmt.Errorf("upgrader: DMCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", dc.Namespace, dc.Name, anns)
 			}
 		}
 		klog.Infof("upgrader: found %d Kubernetes StatefulSets owned by pingcap.com StatefulSet owners, trying to migrate one by one", len(stsToMigrate))
@@ -166,6 +177,20 @@ func deleteSlotAnns(tc *v1alpha1.TidbCluster) map[string]string {
 
 	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots, label.AnnTiProxyDeleteSlots, label.AnnTiCDCDeleteSlots} {
 		if v, ok := tc.Annotations[key]; ok {
+			anns[key] = v
+		}
+	}
+	return anns
+}
+
+func dmDeleteSlotAnns(dc *v1alpha1.DMCluster) map[string]string {
+	anns := make(map[string]string)
+	if dc == nil || dc.Annotations == nil {
+		return anns
+	}
+
+	for _, key := range []string{label.AnnDMMasterDeleteSlots, label.AnnDMWorkerDeleteSlots} {
+		if v, ok := dc.Annotations[key]; ok {
 			anns[key] = v
 		}
 	}

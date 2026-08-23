@@ -246,6 +246,83 @@ func TestDeleteSlotAnns(t *testing.T) {
 	}
 }
 
+func TestDMDeleteSlotAnns(t *testing.T) {
+	tests := []struct {
+		name string
+		dc   *v1alpha1.DMCluster
+		want map[string]string
+	}{
+		{
+			name: "dc nil",
+			want: map[string]string{},
+		},
+		{
+			name: "dc anns nil",
+			dc:   &v1alpha1.DMCluster{},
+			want: map[string]string{},
+		},
+		{
+			name: "dc anns no delete slots",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{"foo": "bar"},
+				},
+			},
+			want: map[string]string{},
+		},
+		{
+			name: "dc anns has dm-master delete slots",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnDMMasterDeleteSlots: "[1,2]",
+					},
+				},
+			},
+			want: map[string]string{
+				label.AnnDMMasterDeleteSlots: "[1,2]",
+			},
+		},
+		{
+			name: "dc anns has dm-worker delete slots",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnDMWorkerDeleteSlots: "[3]",
+					},
+				},
+			},
+			want: map[string]string{
+				label.AnnDMWorkerDeleteSlots: "[3]",
+			},
+		},
+		{
+			name: "dc anns has all delete slots",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnDMMasterDeleteSlots: "[1,2]",
+						label.AnnDMWorkerDeleteSlots: "[3]",
+					},
+				},
+			},
+			want: map[string]string{
+				label.AnnDMMasterDeleteSlots: "[1,2]",
+				label.AnnDMWorkerDeleteSlots: "[3]",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dmDeleteSlotAnns(tt.dc)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
 var (
 	ownerTCName    = "foo"
 	validOwnerRefs = []metav1.OwnerReference{
@@ -276,6 +353,7 @@ func TestUpgrade(t *testing.T) {
 	tests := []struct {
 		name                     string
 		tidbClusters             []v1alpha1.TidbCluster
+		dmClusters               []v1alpha1.DMCluster
 		statefulsets             []appsv1.StatefulSet
 		advancedStatefulsets     []asappsv1.StatefulSet
 		feature                  string
@@ -790,6 +868,52 @@ func TestUpgrade(t *testing.T) {
 			wantStatefulsets: nil,
 		},
 		{
+			name: "should not migrate sts owned by DMCluster with delete slot annotations",
+			dmClusters: []v1alpha1.DMCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ownerTCName,
+						Namespace: "sts",
+						Annotations: map[string]string{
+							label.AnnDMMasterDeleteSlots: "[1,2]",
+							label.AnnDMWorkerDeleteSlots: "[3]",
+						},
+					},
+				},
+			},
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("DMCluster"),
+					},
+				},
+			},
+			feature:                  "AdvancedStatefulSet=true",
+			ns:                       metav1.NamespaceAll,
+			wantErr:                  true,
+			wantErrMsg:               "DMCluster sts/foo has delete slot annotations",
+			wantAdvancedStatefulsets: nil,
+			wantStatefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: ownerRefsFor("DMCluster"),
+					},
+				},
+			},
+		},
+		{
 			name: "should migrate sts owned by TidbMonitor even if delete slot annotations exist on other resources",
 			tidbClusters: []v1alpha1.TidbCluster{
 				{
@@ -898,6 +1022,14 @@ func TestUpgrade(t *testing.T) {
 			}
 		}
 
+		for i := range tt.dmClusters {
+			dc := tt.dmClusters[i]
+			_, err = cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), &dc, metav1.CreateOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
 		for i := range tt.statefulsets {
 			sts := tt.statefulsets[i]
 			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(context.TODO(), &sts, metav1.CreateOptions{})
@@ -919,8 +1051,7 @@ func TestUpgrade(t *testing.T) {
 		if tt.wantErr {
 			if err == nil {
 				t.Errorf("expected err, got %v", err)
-			}
-			if tt.wantErrMsg != "" && !strings.Contains(err.Error(), tt.wantErrMsg) {
+			} else if tt.wantErrMsg != "" && !strings.Contains(err.Error(), tt.wantErrMsg) {
 				t.Errorf("expected err containing %q, got %q", tt.wantErrMsg, err.Error())
 			}
 		} else {
