@@ -455,9 +455,17 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
+		defer func() {
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		}()
 		oa.CreateCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
 		oa.CleanOperatorOrDie(ocfg)
+		defer func() {
+			ginkgo.By("Uninstalling tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+		}()
 		oa.DeployOperatorOrDie(ocfg)
 		var err error
 		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
@@ -478,13 +486,8 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		err = genericCli.Create(context.TODO(), tm)
 		framework.ExpectNoError(err, "failed to create TidbMonitor: %v", tm)
 
-		defer func() {
-			// Delete the TidbMonitor first while the operator is still
-			// running so that the protection finalizer is processed;
-			// otherwise the namespace teardown blocks forever.
-			ginkgo.By("Deleting the tidbmonitor")
-			_ = genericCli.Delete(context.TODO(), tm)
-			err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
+		waitForTidbMonitorDeleted := func(timeout time.Duration) error {
+			return wait.PollImmediate(time.Second*5, timeout, func() (bool, error) {
 				tmGet := &v1alpha1.TidbMonitor{}
 				err := genericCli.Get(context.TODO(), types.NamespacedName{Namespace: tm.Namespace, Name: tm.Name}, tmGet)
 				if err != nil && apierrors.IsNotFound(err) {
@@ -495,11 +498,27 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				}
 				return false, nil
 			})
+		}
+		defer func() {
+			// Delete the TidbMonitor first while the operator is still
+			// running so that the protection finalizer is processed;
+			// otherwise force-remove finalizers from this test resource so
+			// that the CRD and namespace teardown cannot be blocked.
+			ginkgo.By("Deleting the tidbmonitor")
+			if err := genericCli.Delete(context.TODO(), tm); err != nil && !apierrors.IsNotFound(err) {
+				log.Logf("failed to delete TidbMonitor %s/%s: %v", tm.Namespace, tm.Name, err)
+			}
+			err := waitForTidbMonitorDeleted(time.Minute * 5)
+			if err != nil {
+				log.Logf("TidbMonitor %s/%s was not deleted normally: %v; force-removing finalizers", tm.Namespace, tm.Name, err)
+				patch := []byte(`{"metadata":{"finalizers":[]}}`)
+				_, patchErr := cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Patch(context.TODO(), tm.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+				if patchErr != nil && !apierrors.IsNotFound(patchErr) {
+					framework.ExpectNoError(patchErr, "failed to force-remove finalizers from TidbMonitor %s/%s", tm.Namespace, tm.Name)
+				}
+				err = waitForTidbMonitorDeleted(time.Minute)
+			}
 			framework.ExpectNoError(err, "failed to wait for TidbMonitor deleted")
-			ginkgo.By("Uninstall tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-			ginkgo.By("Uninstalling CRDs")
-			oa.CleanCRDOrDie()
 		}()
 
 		ginkgo.By("Waiting for the native monitor StatefulSet and its pod to be ready")
@@ -528,6 +547,11 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to list monitor pods before upgrade")
 		if len(podListBeforeUpgrade.Items) == 0 {
 			log.Failf("no pods found for monitor StatefulSet %s/%s", ns, stsName)
+		}
+		podUIDsBeforeUpgrade := make(map[string]types.UID, len(podListBeforeUpgrade.Items))
+		for i := range podListBeforeUpgrade.Items {
+			pod := &podListBeforeUpgrade.Items[i]
+			podUIDsBeforeUpgrade[pod.Name] = pod.UID
 		}
 
 		ginkgo.By("Upgrading tidb-operator with AdvancedStatefulSet feature")
@@ -563,7 +587,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		})
 		framework.ExpectNoError(err, "failed to wait for the advanced statefulset %s/%s ready", ns, stsName)
 
-		ginkgo.By("Check the monitor pod is still owned by the advanced statefulset and is ready")
+		ginkgo.By("Check the monitor pod is not recreated, is owned by the advanced statefulset, and is ready")
 		err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
 			asts, err := asCli.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
 			if err != nil {
@@ -581,6 +605,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 			for i := range podListAfterUpgrade.Items {
 				pod := &podListAfterUpgrade.Items[i]
+				uidBeforeUpgrade, ok := podUIDsBeforeUpgrade[pod.Name]
+				if !ok {
+					return false, fmt.Errorf("monitor pod %s/%s did not exist before the operator upgrade", pod.Namespace, pod.Name)
+				}
+				if pod.UID != uidBeforeUpgrade {
+					return false, fmt.Errorf("monitor pod %s/%s was recreated during the operator upgrade: UID changed from %s to %s", pod.Namespace, pod.Name, uidBeforeUpgrade, pod.UID)
+				}
 				if !k8s.IsPodReady(pod) {
 					log.Logf("monitor pod %s/%s is not ready", pod.Namespace, pod.Name)
 					return false, nil
