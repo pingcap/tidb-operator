@@ -343,6 +343,64 @@ func TestValidateDMAnnotations(t *testing.T) {
 	}
 }
 
+func TestValidateTiCITiDBAuth(t *testing.T) {
+	tests := []struct {
+		name          string
+		auth          *v1alpha1.TiCITiDBAuth
+		expectedErrs  int
+		expectedField string
+	}{
+		{
+			name: "valid password secret",
+			auth: &v1alpha1.TiCITiDBAuth{
+				PasswordSecret: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "tidb-auth"},
+					Key:                  "auth",
+				},
+			},
+		},
+		{
+			name: "optional false is valid",
+			auth: &v1alpha1.TiCITiDBAuth{
+				PasswordSecret: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "tidb-auth"},
+					Key:                  "auth",
+					Optional:             pointer.BoolPtr(false),
+				},
+			},
+		},
+		{
+			name:          "password secret is required",
+			auth:          &v1alpha1.TiCITiDBAuth{},
+			expectedErrs:  1,
+			expectedField: "spec.tici.meta.tidbAuth.passwordSecret",
+		},
+		{
+			name: "optional true is forbidden",
+			auth: &v1alpha1.TiCITiDBAuth{
+				PasswordSecret: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "tidb-auth"},
+					Key:                  "auth",
+					Optional:             pointer.BoolPtr(true),
+				},
+			},
+			expectedErrs:  1,
+			expectedField: "spec.tici.meta.tidbAuth.passwordSecret.optional",
+		},
+	}
+
+	for _, tt := range tests {
+		errs := validateTiCITiDBAuth(tt.auth, field.NewPath("spec", "tici", "meta", "tidbAuth"))
+		if len(errs) != tt.expectedErrs {
+			t.Errorf("[%s]: expected %d failures, got %d failures: %v", tt.name, tt.expectedErrs, len(errs), errs)
+			continue
+		}
+		if tt.expectedField != "" && errs[0].Field != tt.expectedField {
+			t.Errorf("[%s]: expected error field %q, got %q", tt.name, tt.expectedField, errs[0].Field)
+		}
+	}
+}
+
 func TestValidatePumpSpec(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {

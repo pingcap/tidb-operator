@@ -127,6 +127,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIReaderSpec":                schema_pkg_apis_pingcap_v1alpha1_TiCIReaderSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIS3Spec":                    schema_pkg_apis_pingcap_v1alpha1_TiCIS3Spec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCISpec":                      schema_pkg_apis_pingcap_v1alpha1_TiCISpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCITiDBAuth":                  schema_pkg_apis_pingcap_v1alpha1_TiCITiDBAuth(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIWorkerSpec":                schema_pkg_apis_pingcap_v1alpha1_TiCIWorkerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig":              schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig":                    schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref),
@@ -10232,6 +10233,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIMetaSpec(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
+					"tidbAuth": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiDBAuth configures the TiDB auth used by TiCI meta. If it is set, passwordSecret must reference the Secret key that stores the TiDB auth data.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCITiDBAuth"),
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for TiCI meta data storage. Defaults to Kubernetes default storage class.",
@@ -10251,7 +10258,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIMetaSpec(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCITiDBAuth", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -10403,6 +10410,35 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCISpec(ref common.ReferenceCallback) com
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIChangefeedSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIMetaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIReaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIS3Spec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIWorkerSpec"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TiCITiDBAuth(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiCITiDBAuth contains TiDB auth settings used by TiCI.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"user": {
+						SchemaProps: spec.SchemaProps{
+							Description: "User is the TiDB user used by TiCI meta. Defaults to root.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"passwordSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PasswordSecret selects the Secret key that stores the TiDB auth data. The referenced Secret key is required; optional must not be true.",
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"passwordSecret"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
 	}
 }
 

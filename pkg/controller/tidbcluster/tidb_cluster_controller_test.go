@@ -194,6 +194,75 @@ func TestTidbClusterControllerUpdateStatefulSet(t *testing.T) {
 	}
 }
 
+func TestTidbClusterControllerEnqueueTiCIMetaAuthSecret(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name         string
+		secretName   string
+		useTombstone bool
+		expectedLen  int
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log("test: ", test.name)
+
+		tc := newTidbCluster()
+		tc.Spec.TiCI = &v1alpha1.TiCISpec{
+			Meta: &v1alpha1.TiCIMetaSpec{
+				TiDBAuth: &v1alpha1.TiCITiDBAuth{
+					PasswordSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "tidb-auth"},
+						Key:                  "auth",
+					},
+				},
+			},
+		}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      test.secretName,
+				Namespace: tc.Namespace,
+			},
+		}
+
+		fakeDeps := controller.NewFakeDependencies()
+		tcc := NewController(fakeDeps)
+		tcc.control = NewFakeTidbClusterControlInterface()
+		tcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
+		err := tcIndexer.Add(tc)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		var obj interface{} = secret
+		if test.useTombstone {
+			obj = cache.DeletedFinalStateUnknown{Obj: secret}
+		}
+		tcc.enqueueTidbClustersForTiCIMetaAuthSecret(obj)
+		g.Expect(tcc.queue.Len()).To(Equal(test.expectedLen))
+	}
+
+	tests := []testcase{
+		{
+			name:        "referenced auth secret",
+			secretName:  "tidb-auth",
+			expectedLen: 1,
+		},
+		{
+			name:        "unrelated secret",
+			secretName:  "other-auth",
+			expectedLen: 0,
+		},
+		{
+			name:         "referenced auth secret tombstone",
+			secretName:   "tidb-auth",
+			useTombstone: true,
+			expectedLen:  1,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func TestTidbClusterControllerSync(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
