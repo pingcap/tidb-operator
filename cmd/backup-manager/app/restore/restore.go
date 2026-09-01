@@ -51,16 +51,19 @@ var brBinPath = util.BRBinPath
 // (= not a replication restore), in which case the caller's
 // `append(args, replicationBRFlags(0)...)` is a no-op and standard
 // PiTR semantics apply unchanged. Spec §6.
-func replicationBRFlags(phase int) []string {
+func replicationBRFlags(phase int, retainLatestMVCCVersion bool) []string {
 	if phase == 0 {
 		return nil
 	}
-	return []string{
+	args := []string{
 		fmt.Sprintf("--restore-phase=%d", phase),
 		fmt.Sprintf("--pitr-concurrency=%d", replicationPiTRConcurrency),
 		fmt.Sprintf("--metadata-download-batch-size=%d", replicationMetadataDownloadBatchSize),
-		"--retain-latest-mvcc-version",
 	}
+	if retainLatestMVCCVersion {
+		args = append(args, "--retain-latest-mvcc-version")
+	}
+	return args
 }
 
 type Options struct {
@@ -83,6 +86,9 @@ type Options struct {
 	// CLI flag was not passed and standard PiTR / snapshot semantics
 	// apply. See spec §3 (Option B) and §6 (BR CLI surface).
 	ReplicationPhase int
+	// ReplicationRetainLatestMVCCVersion controls whether replication PiTR
+	// restore passes --retain-latest-mvcc-version to BR.
+	ReplicationRetainLatestMVCCVersion bool
 }
 
 func (ro *Options) restoreData(
@@ -139,7 +145,7 @@ func (ro *Options) restoreData(
 		} else {
 			args = append(args, fullBackupArgs...)
 		}
-		args = append(args, replicationBRFlags(ro.ReplicationPhase)...)
+		args = append(args, replicationBRFlags(ro.ReplicationPhase, ro.ReplicationRetainLatestMVCCVersion)...)
 		restoreType = "point"
 	case string(v1alpha1.RestoreModeVolumeSnapshot):
 		// Currently, we only support aws ebs volume snapshot.

@@ -95,6 +95,8 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&ro.Abort, "abort", false, "Whether to abort/cleanup a failed restore operation")
 	cmd.Flags().IntVar(&ro.ReplicationPhase, "replicationPhase", 0,
 		"Replication restore phase: 1 = snapshot, 2 = log. Omit (or 0) for standard PiTR / snapshot.")
+	cmd.Flags().BoolVar(&ro.ReplicationRetainLatestMVCCVersion, "replicationRetainLatestMVCCVersion", true,
+		"Whether replication restore passes --retain-latest-mvcc-version to BR.")
 	return cmd
 }
 
