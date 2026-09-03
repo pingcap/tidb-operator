@@ -63,9 +63,9 @@ max-replicas = 1
 
 		sourcePods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, source)
 		f.Must(err)
-		gomega.Expect(sourcePods.Items).To(gomega.HaveLen(1))
-		sourcePodName := sourcePods.Items[0].Name
-		sourcePodUID := sourcePods.Items[0].UID
+		gomega.Expect(sourcePods).To(gomega.HaveLen(1))
+		sourcePodName := sourcePods[0].Name
+		sourcePodUID := sourcePods[0].UID
 
 		target := f.MustCreateTiKV(ctx, data.WithName[scope.TiKVGroup]("kvg-target"))
 		f.WaitForTiKVGroupReady(ctx, target)
@@ -84,9 +84,9 @@ max-replicas = 1
 		ginkgo.By("Checking source TiKV pod is not restarted")
 		currentSourcePods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, &latest)
 		f.Must(err)
-		gomega.Expect(currentSourcePods.Items).To(gomega.HaveLen(1))
-		gomega.Expect(currentSourcePods.Items[0].Name).To(gomega.Equal(sourcePodName))
-		gomega.Expect(currentSourcePods.Items[0].UID).To(gomega.Equal(sourcePodUID))
+		gomega.Expect(currentSourcePods).To(gomega.HaveLen(1))
+		gomega.Expect(currentSourcePods[0].Name).To(gomega.Equal(sourcePodName))
+		gomega.Expect(currentSourcePods[0].UID).To(gomega.Equal(sourcePodUID))
 
 		ginkgo.By("Checking source TiKVGroup is exclusive and regions are migrated away")
 		f.Must(waiter.WaitForStoreLabelValue(ctx, f.Client, pdc, &latest, waiter.LongTaskTimeout))

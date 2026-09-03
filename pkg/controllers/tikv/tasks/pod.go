@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -108,6 +109,9 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) t
 
 			if err := CheckTiKVLeadersEvicted(state.TiKV()); err != nil {
 				return task.Retry(defaultTaskWaitDuration).With("cannot recreate pod, check leader count: %v", err)
+			}
+			if remaining := cacheTTLRemaining(state.TiKV(), time.Now()); remaining > 0 {
+				return task.Retry(remaining).With("cannot recreate pod, wait for TiDB region cache to refresh")
 			}
 
 			logger.Info("will recreate the pod")

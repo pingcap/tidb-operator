@@ -52,7 +52,7 @@ func TestListPods(t *testing.T) {
 	pods, err := ListPods[scope.PDGroup](context.Background(), cli, pdg)
 
 	require.NoError(t, err)
-	require.Len(t, pods.Items, 2)
-	require.Equal(t, "pod-a", pods.Items[0].Name)
-	require.Equal(t, "pod-b", pods.Items[1].Name)
+	require.Len(t, pods, 2)
+	require.Equal(t, "pod-a", pods[0].Name)
+	require.Equal(t, "pod-b", pods[1].Name)
 }

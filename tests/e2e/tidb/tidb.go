@@ -329,9 +329,9 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiCDCGroupReady(ctx, cdcg)
 
 			ginkgo.By("Checking the status of the cluster and the connection to the TiDB service")
-			checkComponent := func(podList *corev1.PodList, groupName, componentName string, expectedReplicas *int32) {
-				gomega.Expect(len(podList.Items)).To(gomega.Equal(int(*expectedReplicas)))
-				for _, pod := range podList.Items {
+			checkComponent := func(pods []*corev1.Pod, groupName, componentName string, expectedReplicas *int32) {
+				gomega.Expect(len(pods)).To(gomega.Equal(int(*expectedReplicas)))
+				for _, pod := range pods {
 					gomega.Expect(pod.Status.Phase).To(gomega.Equal(corev1.PodRunning))
 
 					// check for mTLS
@@ -421,8 +421,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			podList, err := apicall.ListPods[scope.TiDBGroup](ctx, f.Client, dbg)
 			f.Must(err)
 
-			gomega.Expect(len(podList.Items)).To(gomega.BeNumerically(">", 0))
-			for _, pod := range podList.Items {
+			gomega.Expect(len(podList)).To(gomega.BeNumerically(">", 0))
+			for _, pod := range podList {
 				gomega.Expect(pod.Status.Phase).To(gomega.Equal(corev1.PodRunning))
 
 				// Check for session token signing cert volume

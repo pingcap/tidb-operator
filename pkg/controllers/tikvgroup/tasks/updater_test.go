@@ -289,6 +289,17 @@ func TestTaskUpdater(t *testing.T) {
 	}
 }
 
+func TestTiKVNewerCopiesCacheTTLSeconds(t *testing.T) {
+	kvg := fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+		obj.Spec.CacheTTLSeconds = ptr.To[int64](600)
+		return obj
+	})
+
+	tikv := runtime.ToTiKV(TiKVNewer(kvg, newRevision, features.NewFromFeatures(nil)).New())
+	require.NotNil(t, tikv.Spec.CacheTTLSeconds)
+	assert.Equal(t, int64(600), *tikv.Spec.CacheTTLSeconds)
+}
+
 func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alpha1.TiKV {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev, features.NewFromFeatures(nil)).New())

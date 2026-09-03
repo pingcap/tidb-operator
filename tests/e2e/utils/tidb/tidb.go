@@ -282,11 +282,10 @@ func AreAllPDHealthy(cli client.Client, pdg *v1alpha1.PDGroup, checkGroup bool) 
 	if err != nil {
 		return fmt.Errorf("failed to list pd pod %s/%s: %w", pdg.Namespace, pdg.Name, err)
 	}
-	if len(podList.Items) != int(*pdg.Spec.Replicas) {
-		return fmt.Errorf("pd %s/%s pod replicas %d not equal to %d", pdg.Namespace, pdg.Name, len(podList.Items), *pdg.Spec.Replicas)
+	if len(podList) != int(*pdg.Spec.Replicas) {
+		return fmt.Errorf("pd %s/%s pod replicas %d not equal to %d", pdg.Namespace, pdg.Name, len(podList), *pdg.Spec.Replicas)
 	}
-	for i := range podList.Items {
-		pod := &podList.Items[i]
+	for _, pod := range podList {
 		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("pd %s/%s pod %s is not running, current phase: %s", pdg.Namespace, pdg.Name, pod.Name, pod.Status.Phase)
 		}
@@ -326,11 +325,10 @@ func AreAllTiKVHealthy(cli client.Client, kvg *v1alpha1.TiKVGroup, checkGroup bo
 	if err != nil {
 		return fmt.Errorf("failed to list tikv pod %s/%s: %w", kvg.Namespace, kvg.Name, err)
 	}
-	if len(podList.Items) != int(*kvg.Spec.Replicas) {
-		return fmt.Errorf("tikv %s/%s pod replicas %d not equal to %d", kvg.Namespace, kvg.Name, len(podList.Items), *kvg.Spec.Replicas)
+	if len(podList) != int(*kvg.Spec.Replicas) {
+		return fmt.Errorf("tikv %s/%s pod replicas %d not equal to %d", kvg.Namespace, kvg.Name, len(podList), *kvg.Spec.Replicas)
 	}
-	for i := range podList.Items {
-		pod := &podList.Items[i]
+	for _, pod := range podList {
 		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("tikv %s/%s pod %s is not running, current phase: %s", kvg.Namespace, kvg.Name, pod.Name, pod.Status.Phase)
 		}
@@ -370,11 +368,10 @@ func AreAllTiDBHealthy(cli client.Client, dbg *v1alpha1.TiDBGroup, checkGroup bo
 	if err != nil {
 		return fmt.Errorf("failed to list tidb pod %s/%s: %w", dbg.Namespace, dbg.Name, err)
 	}
-	if len(podList.Items) != int(*dbg.Spec.Replicas) {
-		return fmt.Errorf("tidb %s/%s pod replicas %d not equal to %d", dbg.Namespace, dbg.Name, len(podList.Items), *dbg.Spec.Replicas)
+	if len(podList) != int(*dbg.Spec.Replicas) {
+		return fmt.Errorf("tidb %s/%s pod replicas %d not equal to %d", dbg.Namespace, dbg.Name, len(podList), *dbg.Spec.Replicas)
 	}
-	for i := range podList.Items {
-		pod := &podList.Items[i]
+	for _, pod := range podList {
 		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("tidb %s/%s pod %s is not running, current phase: %s", dbg.Namespace, dbg.Name, pod.Name, pod.Status.Phase)
 		}
@@ -414,12 +411,11 @@ func AreAllTiFlashHealthy(cli client.Client, flashg *v1alpha1.TiFlashGroup, chec
 	if err != nil {
 		return fmt.Errorf("failed to list tiflash pod %s/%s: %w", flashg.Namespace, flashg.Name, err)
 	}
-	if len(podList.Items) != int(*flashg.Spec.Replicas) {
+	if len(podList) != int(*flashg.Spec.Replicas) {
 		return fmt.Errorf("tiflash %s/%s pod replicas %d not equal to %d",
-			flashg.Namespace, flashg.Name, len(podList.Items), *flashg.Spec.Replicas)
+			flashg.Namespace, flashg.Name, len(podList), *flashg.Spec.Replicas)
 	}
-	for i := range podList.Items {
-		pod := &podList.Items[i]
+	for _, pod := range podList {
 		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("tiflash %s/%s pod %s is not running, current phase: %s", flashg.Namespace, flashg.Name, pod.Name, pod.Status.Phase)
 		}
@@ -459,11 +455,10 @@ func AreAllTiCDCHealthy(cli client.Client, ticdcg *v1alpha1.TiCDCGroup, checkGro
 	if err != nil {
 		return fmt.Errorf("failed to list ticdc pod %s/%s: %w", ticdcg.Namespace, ticdcg.Name, err)
 	}
-	if len(podList.Items) != int(*ticdcg.Spec.Replicas) {
-		return fmt.Errorf("ticdc %s/%s pod replicas %d not equal to %d", ticdcg.Namespace, ticdcg.Name, len(podList.Items), *ticdcg.Spec.Replicas)
+	if len(podList) != int(*ticdcg.Spec.Replicas) {
+		return fmt.Errorf("ticdc %s/%s pod replicas %d not equal to %d", ticdcg.Namespace, ticdcg.Name, len(podList), *ticdcg.Spec.Replicas)
 	}
-	for i := range podList.Items {
-		pod := &podList.Items[i]
+	for _, pod := range podList {
 		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("ticdc %s/%s pod %s is not running, current phase: %s", ticdcg.Namespace, ticdcg.Name, pod.Name, pod.Status.Phase)
 		}

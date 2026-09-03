@@ -139,6 +139,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string, fg features.Gates) updater.N
 				Cluster:          kvg.Spec.Cluster,
 				Features:         kvg.Spec.Features,
 				Subdomain:        coreutil.HeadlessServiceName[scope.TiKVGroup](kvg),
+				CacheTTLSeconds:  kvg.Spec.CacheTTLSeconds,
 				TiKVTemplateSpec: *spec,
 				Offline:          ptr.To(false),
 			},

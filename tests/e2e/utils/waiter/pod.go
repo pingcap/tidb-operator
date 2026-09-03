@@ -330,8 +330,8 @@ func WaitForPodsDeleted[
 		if err != nil {
 			return false, fmt.Errorf("can't list pods for group %s/%s: %w", g.GetNamespace(), g.GetName(), err)
 		}
-		if len(list.Items) != 0 {
-			lastErr = fmt.Errorf("group %s/%s still has %d pods", g.GetNamespace(), g.GetName(), len(list.Items))
+		if len(list) != 0 {
+			lastErr = fmt.Errorf("group %s/%s still has %d pods", g.GetNamespace(), g.GetName(), len(list))
 			return false, nil
 		}
 
@@ -361,8 +361,7 @@ func MaxPodsCreateTimestamp[
 		return nil, err
 	}
 	maxTime := &time.Time{}
-	for i := range list.Items {
-		pod := &list.Items[i]
+	for _, pod := range list {
 		if pod.CreationTimestamp.After(*maxTime) {
 			maxTime = &pod.CreationTimestamp.Time
 		}

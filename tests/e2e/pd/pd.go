@@ -127,8 +127,8 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 				pods, err := apicall.ListPods[scope.PDGroup](ctx, f.Client, pdg)
 				f.Must(err)
 
-				gomega.Expect(len(pods.Items)).To(gomega.Equal(3), "Should have 3 PD pods")
-				for _, pod := range pods.Items {
+				gomega.Expect(len(pods)).To(gomega.Equal(3), "Should have 3 PD pods")
+				for _, pod := range pods {
 					gomega.Expect(pod.Spec.Containers).To(gomega.HaveLen(1), "PD pod should have 1 container")
 					probe := pod.Spec.Containers[0].ReadinessProbe
 					gomega.Expect(probe).ToNot(gomega.BeNil(), "PD container should have readiness probe")

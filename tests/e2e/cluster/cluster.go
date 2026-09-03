@@ -437,15 +437,15 @@ var _ = Describe("TiDB Cluster", func() {
 			By("Checking log tailer sidercar container")
 			tidbPodList, err := apicall.ListPods[scope.TiDBGroup](ctx, k8sClient, dbg)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(tidbPodList.Items)).To(Equal(1))
-			tidbPod := tidbPodList.Items[0]
+			Expect(len(tidbPodList)).To(Equal(1))
+			tidbPod := tidbPodList[0]
 			Expect(tidbPod.Spec.InitContainers).To(HaveLen(1)) // sidercar container in `initContainers`
 			Expect(tidbPod.Spec.InitContainers[0].Name).To(Equal(v1alpha1.ContainerNameTiDBSlowLog))
 
 			tiflashPodList, err := apicall.ListPods[scope.TiFlashGroup](ctx, k8sClient, flashg)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(tiflashPodList.Items)).To(Equal(1))
-			tiflashPod := tiflashPodList.Items[0]
+			Expect(len(tiflashPodList)).To(Equal(1))
+			tiflashPod := tiflashPodList[0]
 			Expect(tiflashPod.Spec.InitContainers).To(HaveLen(2))
 			Expect(tiflashPod.Spec.InitContainers[0].Name).To(Equal(v1alpha1.ContainerNameTiFlashServerLog))
 			Expect(tiflashPod.Spec.InitContainers[1].Name).To(Equal(v1alpha1.ContainerNameTiFlashErrorLog))
@@ -1273,7 +1273,7 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(pdgGet.Status.Version).To(Equal(newVersion))
 					pdPods, err := apicall.ListPods[scope.PDGroup](ctx, k8sClient, &pdgGet)
 					g.Expect(err).ToNot(HaveOccurred())
-					for _, pod := range pdPods.Items {
+					for _, pod := range pdPods {
 						for _, container := range pod.Spec.Containers {
 							if container.Name == v1alpha1.ContainerNamePD {
 								g.Expect(strings.Contains(container.Image, newVersion)).To(BeTrue())
@@ -1286,7 +1286,7 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(kvgGet.Status.Version).To(Equal(newVersion))
 					tikvPods, err := apicall.ListPods[scope.TiKVGroup](ctx, k8sClient, &kvgGet)
 					g.Expect(err).ToNot(HaveOccurred())
-					for _, pod := range tikvPods.Items {
+					for _, pod := range tikvPods {
 						for _, container := range pod.Spec.Containers {
 							if container.Name == v1alpha1.ContainerNameTiKV {
 								g.Expect(strings.Contains(container.Image, newVersion)).To(BeTrue())

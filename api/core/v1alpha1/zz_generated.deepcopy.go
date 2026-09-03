@@ -5051,6 +5051,11 @@ func (in *TiKVGroupSpec) DeepCopyInto(out *TiKVGroupSpec) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.CacheTTLSeconds != nil {
+		in, out := &in.CacheTTLSeconds, &out.CacheTTLSeconds
+		*out = new(int64)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
@@ -5238,6 +5243,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
+		**out = **in
+	}
+	if in.CacheTTLSeconds != nil {
+		in, out := &in.CacheTTLSeconds, &out.CacheTTLSeconds
+		*out = new(int64)
 		**out = **in
 	}
 	in.TiKVTemplateSpec.DeepCopyInto(&out.TiKVTemplateSpec)

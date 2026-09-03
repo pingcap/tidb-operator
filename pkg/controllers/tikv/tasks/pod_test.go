@@ -151,6 +151,33 @@ func TestTaskPod(t *testing.T) {
 			pdClientReady:            true,
 		},
 		{
+			desc: "version is changed but cache ttl has not expired",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Version = fakeVersion
+						obj.Spec.CacheTTLSeconds = ptr.To[int64](60)
+						setLeadersEvictedAt(obj, metav1.Now())
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
+				},
+			},
+
+			downPeerCount:            0,
+			expectedPodIsTerminating: false,
+			expectedStatus:           task.SRetry,
+			expectedShouldEvict:      true,
+			pdClientReady:            true,
+		},
+		{
 			desc: "version is changed, failed to delete",
 			state: &ReconcileContext{
 				State: &state{
@@ -586,9 +613,14 @@ func fakePod(c *v1alpha1.Cluster, tikv *v1alpha1.TiKV) *corev1.Pod {
 }
 
 func setLeadersEvicted(tikv *v1alpha1.TiKV) {
+	setLeadersEvictedAt(tikv, metav1.Time{})
+}
+
+func setLeadersEvictedAt(tikv *v1alpha1.TiKV, at metav1.Time) {
 	tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
-		Type:   v1alpha1.TiKVCondLeadersEvicted,
-		Status: metav1.ConditionTrue,
-		Reason: v1alpha1.ReasonEvicted,
+		Type:               v1alpha1.TiKVCondLeadersEvicted,
+		Status:             metav1.ConditionTrue,
+		Reason:             v1alpha1.ReasonEvicted,
+		LastTransitionTime: at,
 	})
 }

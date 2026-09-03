@@ -90,6 +90,24 @@ func CheckTiKVLeadersEvicted(tikv *v1alpha1.TiKV) error {
 	return fmt.Errorf("tikv leaders are not evicted: %v, %v", cond.Reason, cond.Message)
 }
 
+func cacheTTLRemaining(tikv *v1alpha1.TiKV, now time.Time) time.Duration {
+	if tikv.Spec.CacheTTLSeconds == nil || *tikv.Spec.CacheTTLSeconds <= 0 {
+		return 0
+	}
+
+	cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+	if cond == nil || cond.Status != metav1.ConditionTrue {
+		return 0
+	}
+
+	remaining := cond.LastTransitionTime.Add(time.Duration(*tikv.Spec.CacheTTLSeconds) * time.Second).Sub(now)
+	if remaining <= 0 {
+		return 0
+	}
+
+	return remaining
+}
+
 func CheckTiKVLeadersEvictedOrTimeout(tikv *v1alpha1.TiKV, timeout time.Duration) error {
 	cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
 	if cond == nil {

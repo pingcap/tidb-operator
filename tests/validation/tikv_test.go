@@ -15,6 +15,7 @@
 package validation
 
 import (
+	"fmt"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -31,6 +32,7 @@ func TestTiKV(t *testing.T) {
 	cases = append(cases, transferTiKVCases(t, VolumeAttributesClassNameValidation(), "spec", "volumes")...)
 	cases = append(cases, transferTiKVCases(t, Version(), "spec", "version")...)
 	cases = append(cases, transferTiKVCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
+	cases = append(cases, transferTiKVCases(t, cacheTTLSeconds("spec.cacheTTLSeconds"), "spec", "cacheTTLSeconds")...)
 	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
 }
 
@@ -39,8 +41,37 @@ func TestTiKVGroup(t *testing.T) {
 	cases = append(cases, transferTiKVGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiKVGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiKVGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	cases = append(cases, transferTiKVGroupCases(t, cacheTTLSeconds("spec.cacheTTLSeconds"), "spec", "cacheTTLSeconds")...)
 	cases = append(cases, transferTiKVGroupCases(t, PlacementServerLabels("spec", "template", "spec", "server", "labels"), "spec", "template", "spec", "server", "labels")...)
 	Validate(t, "crd/core.pingcap.com_tikvgroups.yaml", cases)
+}
+
+func cacheTTLSeconds(fieldPath string) []Case {
+	return []Case{
+		{
+			desc:     "cache ttl seconds may be omitted",
+			isCreate: true,
+			current:  nil,
+		},
+		{
+			desc:     "cache ttl seconds may be zero",
+			isCreate: true,
+			current:  int64(0),
+		},
+		{
+			desc:     "cache ttl seconds may be positive",
+			isCreate: true,
+			current:  int64(600),
+		},
+		{
+			desc:     "cache ttl seconds must not be negative",
+			isCreate: true,
+			current:  int64(-1),
+			wantErrs: []string{
+				fmt.Sprintf("%s: Invalid value: -1: %s in body should be greater than or equal to 0", fieldPath, fieldPath),
+			},
+		},
+	}
 }
 
 func basicTiKV() map[string]any {

@@ -72,6 +72,13 @@ spec:
           spec:
             description: TiKVGroupSpec describes the common attributes of a TiKVGroup
             properties:
+              cacheTTLSeconds:
+                description: |-
+                  CacheTTLSeconds specifies how long to wait after all leaders have been evicted
+                  before restarting a TiKV instance, allowing TiDB region caches to refresh.
+                format: int64
+                minimum: 0
+                type: integer
               cluster:
                 description: |-
                   ClusterReference is a reference to cluster

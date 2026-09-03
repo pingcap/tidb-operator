@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 func WaitForTiKVsHealthy(ctx context.Context, c client.Client, kvg *v1alpha1.TiKVGroup, timeout time.Duration) error {
@@ -46,6 +49,82 @@ func WaitForTiKVsHealthy(ctx context.Context, c client.Client, kvg *v1alpha1.TiK
 		v1alpha1.LabelKeyGroup:     kvg.Name,
 		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 	})
+}
+
+// WatchUntilTiKVsRestartedAfterCacheTTL watches TiKV leader eviction and recovery
+// transitions and verifies every recreated Pod observes the configured cache TTL.
+func WatchUntilTiKVsRestartedAfterCacheTTL(
+	ctx context.Context,
+	c client.Client,
+	kvg *v1alpha1.TiKVGroup,
+	timeout time.Duration,
+	synced chan struct{},
+) error {
+	replicas := 0
+	if kvg.Spec.Replicas != nil {
+		replicas = int(*kvg.Spec.Replicas)
+	}
+	cacheTTLSeconds := int64(-1)
+	if kvg.Spec.CacheTTLSeconds != nil {
+		cacheTTLSeconds = *kvg.Spec.CacheTTLSeconds
+	}
+
+	leadersEvictedAt := make(map[string]time.Time, replicas)
+	comparedTiKVs := make(map[string]struct{}, replicas)
+	return WatchUntilInstanceList[scope.TiKVGroup](ctx, c, kvg, func(tikv *v1alpha1.TiKV) (bool, error) {
+		cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+		if cond == nil {
+			return false, nil
+		}
+
+		if cond.Status == metav1.ConditionTrue {
+			if tikv.Spec.CacheTTLSeconds == nil {
+				return false, fmt.Errorf("tikv %s/%s has no cacheTTLSeconds", tikv.Namespace, tikv.Name)
+			}
+			if *tikv.Spec.CacheTTLSeconds != cacheTTLSeconds {
+				return false, fmt.Errorf("tikv %s/%s cacheTTLSeconds is %d, want %d", tikv.Namespace, tikv.Name, *tikv.Spec.CacheTTLSeconds, cacheTTLSeconds)
+			}
+			if cond.LastTransitionTime.IsZero() {
+				return false, fmt.Errorf("tikv %s/%s has no leader eviction transition time", tikv.Namespace, tikv.Name)
+			}
+			if _, recorded := leadersEvictedAt[tikv.Name]; !recorded {
+				leadersEvictedAt[tikv.Name] = cond.LastTransitionTime.Time
+			}
+			return false, nil
+		}
+
+		if cond.Status != metav1.ConditionFalse || cond.Reason != v1alpha1.ReasonNotEvicted {
+			return false, nil
+		}
+		if _, compared := comparedTiKVs[tikv.Name]; compared {
+			return false, nil
+		}
+		evictedAt, recorded := leadersEvictedAt[tikv.Name]
+		if !recorded {
+			return false, nil
+		}
+
+		pod, err := apicall.GetPod[scope.TiKV](ctx, c, tikv)
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		earliestRestartAt := evictedAt.Add(time.Duration(cacheTTLSeconds) * time.Second)
+		if pod.CreationTimestamp.Time.Before(earliestRestartAt) {
+			return false, fmt.Errorf(
+				"tikv pod %s/%s was recreated at %s before cache TTL expired at %s",
+				pod.Namespace,
+				pod.Name,
+				pod.CreationTimestamp,
+				earliestRestartAt,
+			)
+		}
+
+		comparedTiKVs[tikv.Name] = struct{}{}
+		return len(comparedTiKVs) == replicas, nil
+	}, timeout, synced)
 }
 
 func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (bool, error) {

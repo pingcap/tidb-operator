@@ -320,9 +320,9 @@ func PortForwardGroup[
 ](ctx context.Context, f *Framework, group G, ports []string) []portforward.ForwardedPort {
 	pods, err := apicall.ListPods[S](ctx, f.Client, group)
 	f.Must(err)
-	gomega.ExpectWithOffset(1, pods.Items).ToNot(gomega.BeEmpty())
+	gomega.ExpectWithOffset(1, pods).ToNot(gomega.BeEmpty())
 
-	return f.PortForwardPod(ctx, &pods.Items[0], ports)
+	return f.PortForwardPod(ctx, pods[0], ports)
 }
 
 func AsyncWaitPodsRollingUpdateOnce[

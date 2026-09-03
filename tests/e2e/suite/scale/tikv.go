@@ -50,6 +50,60 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 	})
 
+	ginkgo.It("support cache TTL wait during rolling restart", ginkgo.Serial, label.Update, func(ctx context.Context) {
+		const (
+			replicas              = 3
+			cacheTTLSeconds int64 = 15
+		)
+
+		pdg := f.MustCreatePD(ctx)
+		kvg := f.MustCreateTiKV(ctx,
+			data.WithReplicas[scope.TiKVGroup](replicas),
+			data.WithTiKVEvenlySpreadPolicy(),
+			data.WithTiKVCacheTTLSeconds(cacheTTLSeconds),
+		)
+
+		f.WaitForPDGroupReady(ctx, pdg)
+		f.WaitForTiKVGroupReady(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
+
+		nctx, cancel := context.WithCancel(ctx)
+		watchDone := make(chan struct{})
+		watchSynced := make(chan struct{})
+		go func() {
+			defer close(watchDone)
+			defer ginkgo.GinkgoRecover()
+			f.Must(waiter.WatchUntilTiKVsRestartedAfterCacheTTL(
+				nctx,
+				f.Client,
+				kvg.DeepCopy(),
+				waiter.LongTaskTimeout,
+				watchSynced,
+			))
+		}()
+		defer func() {
+			cancel()
+			<-watchDone
+		}()
+
+		// Start the rolling restart only after the watch cache is synced so no
+		// LeadersEvicted transition can be missed.
+		<-watchSynced
+
+		rollingDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, replicas)
+		defer func() {
+			cancel()
+			<-rollingDone
+		}()
+
+		action.MustRollingRestart[scope.TiKVGroup](ctx, f, kvg)
+
+		<-watchDone
+		f.WaitForTiKVGroupReady(ctx, kvg)
+
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
+	})
+
 	ginkgo.It("support scale in from 4 to 3", func(ctx context.Context) {
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx,

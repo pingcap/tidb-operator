@@ -67,7 +67,7 @@ func ListPods[
 	S scope.Group[F, T],
 	F client.Object,
 	T runtime.Group,
-](ctx context.Context, c ctrlclient.Client, g F) (*corev1.PodList, error) {
+](ctx context.Context, c ctrlclient.Client, g F) ([]*corev1.Pod, error) {
 	group := scope.From[S](g)
 	list := &corev1.PodList{}
 	if err := c.List(ctx, list, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
@@ -83,7 +83,12 @@ func ListPods[
 		return cmp.Compare(a.GetName(), b.GetName())
 	})
 
-	return list, nil
+	pods := make([]*corev1.Pod, len(list.Items))
+	for i := range list.Items {
+		pods[i] = &list.Items[i]
+	}
+
+	return pods, nil
 }
 
 // ListPeerInstances returns peers of an instance in a same cluster

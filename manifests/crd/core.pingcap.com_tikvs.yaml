@@ -64,6 +64,13 @@ spec:
           spec:
             description: TiKVSpec defines the spec of tikv instance
             properties:
+              cacheTTLSeconds:
+                description: |-
+                  CacheTTLSeconds is managed by TiKVGroup and specifies how long to wait after
+                  all leaders have been evicted before restarting this TiKV instance.
+                format: int64
+                minimum: 0
+                type: integer
               cluster:
                 description: Cluster is a reference of tidb cluster
                 properties:

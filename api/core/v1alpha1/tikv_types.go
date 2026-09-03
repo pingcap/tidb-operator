@@ -156,6 +156,12 @@ type TiKVGroupSpec struct {
 	// +optional
 	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
+	// CacheTTLSeconds specifies how long to wait after all leaders have been evicted
+	// before restarting a TiKV instance, allowing TiDB region caches to refresh.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	CacheTTLSeconds *int64 `json:"cacheTTLSeconds,omitempty"`
+
 	Template TiKVTemplate `json:"template"`
 }
 
@@ -299,6 +305,12 @@ type TiKVSpec struct {
 	// +default:value=1
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// CacheTTLSeconds is managed by TiKVGroup and specifies how long to wait after
+	// all leaders have been evicted before restarting this TiKV instance.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	CacheTTLSeconds *int64 `json:"cacheTTLSeconds,omitempty"`
 
 	// TiKVTemplateSpec embedded some fields managed by TiKVGroup
 	TiKVTemplateSpec `json:",inline"`
