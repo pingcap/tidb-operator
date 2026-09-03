@@ -78,7 +78,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskOfflineStore(state, r.PDClientManager),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiFlash](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
-		tasks.TaskPod(state, r.Client),
+		tasks.TaskPod(state, r.Client, r.EventRecorder),
 		tasks.TaskStoreLabels(state, r.Client, r.PDClientManager),
 		common.TaskInstanceConditionSynced[scope.TiFlash](state),
 		// only set ready if pd is synced
