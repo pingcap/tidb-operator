@@ -69,7 +69,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskContextInfoFromPDAndTiDB(state, r.Client, r.PDClientManager),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiDB](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
-		tasks.TaskPod(state, r.Client),
+		tasks.TaskPod(state, r.Client, r.EventRecorder),
 		tasks.TaskActivate(state, r.Client),
 		common.TaskServerLabels[scope.TiDB](state, r.Client, func(ctx context.Context, labels map[string]string) error {
 			// standby tidb cannot set server labels

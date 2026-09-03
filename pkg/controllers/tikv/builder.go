@@ -80,7 +80,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskOfflineStore(state),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiKV](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
-		tasks.TaskPod(state, r.Client),
+		tasks.TaskPod(state, r.Client, r.EventRecorder),
 		tasks.TaskStoreLabels(state, r.Client),
 		tasks.TaskEvictLeader(state),
 		common.TaskInstanceConditionSynced[scope.TiKV](state),

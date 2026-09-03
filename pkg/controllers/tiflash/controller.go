@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -41,6 +42,7 @@ import (
 type Reconciler struct {
 	Logger                logr.Logger
 	Client                client.Client
+	EventRecorder         record.EventRecorder
 	VolumeModifierFactory volumes.ModifierFactory
 	PDClientManager       pdm.PDClientManager
 	TiFlashClientManager  fm.TiFlashClientManager
@@ -57,6 +59,7 @@ func Setup(
 ) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TiFlash"),
+		EventRecorder:         mgr.GetEventRecorderFor("tiflash"),
 		Client:                c,
 		VolumeModifierFactory: vm,
 		PDClientManager:       pdcm,
