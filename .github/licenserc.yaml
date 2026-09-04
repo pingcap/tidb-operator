@@ -16,6 +16,7 @@ header:
     - .dockerignore
     - .golangci.yml
     - LICENSES/
+    - ThirdPartyNotices.txt
     - '**/*.md'
     - .codecov.yml
     - '**/go.mod'
