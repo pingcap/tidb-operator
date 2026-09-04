@@ -27,6 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -71,7 +73,7 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) task.Task {
+func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager, recorder ...record.EventRecorder) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.TiKV(), state.Store, state.FeatureGates())
@@ -79,6 +81,7 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) t
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
+				k8s.RecordFailedCreatePod(recorder, state.Object(), err)
 				return task.Fail().With("can't apply pod of tikv: %w", err)
 			}
 

@@ -67,7 +67,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskContextInfoFromTiCDC(state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiCDC](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
-		tasks.TaskPod(state, r.Client),
+		tasks.TaskPod(state, r.Client, r.EventRecorder),
 		common.TaskInstanceConditionSynced[scope.TiCDC](state),
 		common.TaskInstanceConditionReady[scope.TiCDC](state),
 		common.TaskInstanceConditionRunning[scope.TiCDC](state),

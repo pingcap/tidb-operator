@@ -23,7 +23,9 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
@@ -335,6 +337,39 @@ func TestTaskPod(t *testing.T) {
 				assert.Equal(tt, expectedPod, actual, c.desc)
 			}
 		})
+	}
+}
+
+func TestTaskPodRecordsFailedCreateEvent(t *testing.T) {
+	ctx := context.Background()
+	state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+	tidb := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+		obj.Spec.Version = fakeVersion
+		return obj
+	})
+	cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+	state.SetObject(tidb)
+	state.SetCluster(cluster)
+	rtx := &ReconcileContext{State: state}
+
+	fc := client.NewFakeClient(rtx.TiDB(), rtx.Cluster())
+	fc.WithError("patch", "*", errors.NewForbidden(schema.GroupResource{Resource: "pods"}, "aaa-xxx", fmt.Errorf("exceeded quota: compute-resources")))
+	recorder := record.NewFakeRecorder(1)
+
+	res, done := task.RunTask(ctx, TaskPod(rtx, fc, recorder))
+
+	assert.Equal(t, task.SFail.String(), res.Status().String(), res.Message())
+	assert.False(t, done)
+	select {
+	case event := <-recorder.Events:
+		assert.Contains(t, event, corev1.EventTypeWarning)
+		assert.Contains(t, event, "FailedCreate")
+		assert.Contains(t, event, "Error creating: pods \"aaa-xxx\" is forbidden")
+		assert.Contains(t, event, "exceeded quota: compute-resources")
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for event")
+	default:
+		t.Fatal("expected failed create event")
 	}
 }
 

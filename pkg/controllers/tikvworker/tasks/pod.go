@@ -24,6 +24,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
@@ -41,7 +43,7 @@ const (
 	metricsPath = "/metrics"
 )
 
-func TaskPod(state State, c client.Client) task.Task {
+func TaskPod(state State, c client.Client, recorder ...record.EventRecorder) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		ck := state.Cluster()
 		obj := state.Object()
@@ -50,6 +52,7 @@ func TaskPod(state State, c client.Client) task.Task {
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
+				k8s.RecordFailedCreatePod(recorder, state.Object(), err)
 				return task.Fail().With("can't create pod of tikv worker: %v", err)
 			}
 			state.SetPod(expected)
