@@ -17,6 +17,7 @@ package tasks
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,7 +61,31 @@ func TestTaskEvictLeader(t *testing.T) {
 			expectedStatus: task.SComplete,
 		},
 		{
-			desc: "end evict leader when annotation is absent",
+			desc: "end evict leader after restarted pod is available",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj[v1alpha1.TiKV]("aaa-xxx"),
+					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
+							Type:               corev1.PodReady,
+							Status:             corev1.ConditionTrue,
+							LastTransitionTime: metav1.NewTime(time.Now().Add(-(minReadySeconds + 1) * time.Second)),
+						})
+						return obj
+					}),
+				},
+				PDSynced:       true,
+				LeaderEvicting: true,
+				Store: &pdv1.Store{
+					ID: "1",
+				},
+			},
+			expectEnd:      true,
+			expectEvicting: false,
+			expectedStatus: task.SComplete,
+		},
+		{
+			desc: "keep evict leader while restarted pod is not ready",
 			state: &ReconcileContext{
 				State: &state{
 					tikv: fake.FakeObj[v1alpha1.TiKV]("aaa-xxx"),
@@ -72,9 +97,31 @@ func TestTaskEvictLeader(t *testing.T) {
 					ID: "1",
 				},
 			},
-			expectEnd:      true,
-			expectEvicting: false,
+			expectEvicting: true,
 			expectedStatus: task.SComplete,
+		},
+		{
+			desc: "keep evict leader while restarted pod is ready but not available",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj[v1alpha1.TiKV]("aaa-xxx"),
+					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
+							Type:               corev1.PodReady,
+							Status:             corev1.ConditionTrue,
+							LastTransitionTime: metav1.Now(),
+						})
+						return obj
+					}),
+				},
+				PDSynced:       true,
+				LeaderEvicting: true,
+				Store: &pdv1.Store{
+					ID: "1",
+				},
+			},
+			expectEvicting: true,
+			expectedStatus: task.SRetry,
 		},
 		{
 			desc: "sync leaders evicted condition when store is absent",

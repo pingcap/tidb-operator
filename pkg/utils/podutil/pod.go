@@ -16,9 +16,43 @@ package podutil
 
 import (
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// IsReady returns whether the pod has a true Ready condition.
+func IsReady(pod *corev1.Pod) bool {
+	condition := readyCondition(pod)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsAvailable returns whether the pod has remained ready for minReadySeconds.
+func IsAvailable(pod *corev1.Pod, minReadySeconds int32, now metav1.Time) bool {
+	condition := readyCondition(pod)
+	if condition == nil || condition.Status != corev1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+
+	minReadyDuration := time.Duration(minReadySeconds) * time.Second
+	return !condition.LastTransitionTime.IsZero() && condition.LastTransitionTime.Add(minReadyDuration).Before(now.Time)
+}
+
+func readyCondition(pod *corev1.Pod) *corev1.PodCondition {
+	if pod == nil {
+		return nil
+	}
+	for i := range pod.Status.Conditions {
+		if pod.Status.Conditions[i].Type == corev1.PodReady {
+			return &pod.Status.Conditions[i]
+		}
+	}
+	return nil
+}
 
 // IsContainerRunning means the main container of this pod is running and deleting this pod may increase an unavailable instance
 func IsContainerRunning(pod *corev1.Pod, mainContainerName string) error {

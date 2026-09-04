@@ -25,8 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/podutil"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 type ReconcileContext struct {
@@ -86,7 +86,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.SetStoreBusy(s.IsBusy)
 		state.IsStoreReady = IsStoreReady(state)
 		pod := state.Pod()
-		if state.IsStoreReady && pod != nil && statefulset.IsPodAvailable(pod, minReadySeconds, metav1.Now()) {
+		if state.IsStoreReady && podutil.IsAvailable(pod, minReadySeconds, metav1.Now()) {
 			state.SetHealthy()
 		}
 

@@ -27,8 +27,8 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/compare"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/podutil"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -73,7 +73,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		// If UseTiKVReadyAPI is enabled, no need to retry, just wait until pod is ready
 		if !state.FeatureGates().Enabled(metav1alpha1.UseTiKVReadyAPI) {
 			// pod available cannot be watched so that we have to retry
-			if !ready && state.IsStoreReady && pod != nil && statefulset.IsPodReady(pod) {
+			if !ready && state.IsStoreReady && podutil.IsReady(pod) {
 				return task.Retry(minReadySeconds * time.Second).With("pod is not ready more than 15s, retry")
 			}
 		}
