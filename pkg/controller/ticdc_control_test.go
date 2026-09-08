@@ -19,11 +19,208 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
+
+type ticdcRoundTripper func(*http.Request) (*http.Response, error)
+
+func (f ticdcRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestTiCDCMaintenanceOwnerRouting(t *testing.T) {
+	tc := getTidbCluster()
+	cdc := defaultTiCDCControl{}
+	a := getCaptureAdvertiseAddressPrefix(tc, 1)
+	b := getCaptureAdvertiseAddressPrefix(tc, 0)
+	// The cached owner is b, but b has already resigned to a.
+	tc.Status.TiCDC.Captures = map[string]v1alpha1.TiCDCCapture{
+		TiCDCMemberName(tc.Name) + "-0": {ID: "b", Ready: true, IsOwner: true},
+		TiCDCMemberName(tc.Name) + "-1": {ID: "a", Ready: true},
+	}
+	original := http.DefaultTransport
+	t.Cleanup(func() { http.DefaultTransport = original })
+	var queries, drains int
+	http.DefaultTransport = ticdcRoundTripper(func(r *http.Request) (*http.Response, error) {
+		body := ""
+		switch r.URL.Path {
+		case "/status":
+			body = fmt.Sprintf(`{"id":%q,"is_owner":%t}`, r.URL.Hostname(), r.URL.Hostname() == a)
+		case "/api/v1/captures":
+			queries++
+			if r.URL.Hostname() != a {
+				t.Errorf("captures query sent to %s, want new owner %s", r.URL.Hostname(), a)
+			}
+			payload, _ := json.Marshal([]captureInfo{
+				{ID: "a", AdvertiseAddr: a + ":8301", IsOwner: true},
+				{ID: "b", AdvertiseAddr: b + ":8301"},
+			})
+			body = string(payload)
+		case "/api/v1/captures/drain":
+			drains++
+			if r.URL.Hostname() != a {
+				t.Errorf("drain sent to %s, want new owner %s", r.URL.Hostname(), a)
+			}
+			var payload drainCaptureRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.CaptureID != "b" {
+				t.Errorf("drain must target b: %+v, %v", payload, err)
+			}
+			body = `{"current_table_count":0}`
+		default:
+			t.Errorf("unexpected request, must not resign new owner: %s", r.URL.Path)
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})
+	if resigned, err := cdc.ResignOwner(tc, 0); err != nil || !resigned {
+		t.Fatalf("b has already resigned: %v, %v", resigned, err)
+	}
+	if count, retry, err := cdc.DrainCapture(tc, 0); err != nil || retry || count != 0 {
+		t.Fatalf("drain failed: %d, %v, %v", count, retry, err)
+	}
+	if queries != 2 || drains != 1 {
+		t.Fatalf("unexpected maintenance requests: queries=%d drains=%d", queries, drains)
+	}
+}
+
+func TestTiCDCOwnerDiscoveryFailure(t *testing.T) {
+	for _, mode := range []string{"no owner", "two owners", "owner DNS failure"} {
+		t.Run(mode, func(t *testing.T) {
+			tc := getTidbCluster()
+			cdc := defaultTiCDCControl{}
+			a := getCaptureAdvertiseAddressPrefix(tc, 1)
+			tc.Status.TiCDC.Captures = map[string]v1alpha1.TiCDCCapture{
+				TiCDCMemberName(tc.Name) + "-0": {ID: "b", Ready: true, IsOwner: true},
+				TiCDCMemberName(tc.Name) + "-1": {ID: "a", Ready: true},
+			}
+			original := http.DefaultTransport
+			t.Cleanup(func() { http.DefaultTransport = original })
+			http.DefaultTransport = ticdcRoundTripper(func(r *http.Request) (*http.Response, error) {
+				if r.URL.Path != "/status" {
+					t.Fatalf("must wait for owner discovery before maintenance: %s", r.URL.Path)
+				}
+				if mode == "owner DNS failure" && r.URL.Hostname() == a {
+					return nil, fmt.Errorf("lookup %s: no such host", a)
+				}
+				body := fmt.Sprintf(`{"id":%q,"is_owner":%t}`, r.URL.Hostname(), mode == "two owners")
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+			})
+			if ok, err := cdc.ResignOwner(tc, 0); err == nil || ok {
+				t.Fatalf("must retry resign: ok=%v err=%v", ok, err)
+			}
+			if _, retry, err := cdc.DrainCapture(tc, 0); err == nil && !retry {
+				t.Fatal("must retry drain")
+			}
+		})
+	}
+}
+
+func TestTiCDCGetCapturesHTTPStatusHandling(t *testing.T) {
+	for _, code := range []int{http.StatusNotFound, http.StatusServiceUnavailable} {
+		t.Run(fmt.Sprint(code), func(t *testing.T) {
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(code)
+			}))
+			defer svr.Close()
+			captures, retry, err := getCaptures(svr.Client(), svr.URL)
+			if err != nil || len(captures) != 0 || retry != (code == http.StatusServiceUnavailable) {
+				t.Fatalf("unexpected HTTP status handling: %v, %v, %v", captures, retry, err)
+			}
+		})
+	}
+}
+
+func TestTiCDCMaintenancePartialCaptureList(t *testing.T) {
+	tc := getTidbCluster()
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{Replicas: 2}
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/status":
+			fmt.Fprint(w, `{"id":"b","is_owner":true}`)
+		case "/api/v1/captures":
+			json.NewEncoder(w).Encode([]captureInfo{{ID: "b", AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 0), IsOwner: true}})
+		default:
+			t.Errorf("must not maintain b while a is missing: %s", r.URL.Path)
+		}
+	}))
+	defer svr.Close()
+	cdc := defaultTiCDCControl{testURL: svr.URL}
+	if ok, err := cdc.ResignOwner(tc, 0); ok || err == nil {
+		t.Fatalf("expected resign to wait, got %v, %v", ok, err)
+	}
+	if _, retry, err := cdc.DrainCapture(tc, 0); err == nil && !retry {
+		t.Fatal("expected drain to wait")
+	}
+}
+
+func TestTiCDCGetCapturesInvalidResponse(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		code int
+		body string
+	}{
+		{"internal error", 500, `{"error":"no such host"}`},
+		{"error with empty list", 500, `[]`},
+		{"invalid json", 200, `broken`},
+		{"empty list", 200, `[]`},
+		{"null", 200, `null`},
+		{"missing capture identity", 200, `[{}]`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.code)
+				fmt.Fprint(w, tt.body)
+			}))
+			defer svr.Close()
+			_, retry, err := getCaptures(svr.Client(), svr.URL)
+			if err == nil && !retry {
+				t.Fatal("failed capture query must prevent maintenance from proceeding")
+			}
+		})
+	}
+}
+
+func TestTiCDCDrainInvalidResponse(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		code int
+		body string
+	}{
+		{"internal error", 500, `{"current_table_count":0}`},
+		{"invalid json", 200, `broken`},
+		{"missing count", 200, `{}`},
+		{"null count", 200, `{"current_table_count":null}`},
+		{"negative count", 200, `{"current_table_count":-1}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := getTidbCluster()
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/status":
+					fmt.Fprint(w, `{"id":"owner","is_owner":true}`)
+				case "/api/v1/captures":
+					json.NewEncoder(w).Encode([]captureInfo{
+						{ID: "target", AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 1)},
+						{ID: "owner", AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 0), IsOwner: true},
+					})
+				case "/api/v1/captures/drain":
+					w.WriteHeader(tt.code)
+					fmt.Fprint(w, tt.body)
+				default:
+					t.Errorf("unexpected request %s", r.URL.Path)
+				}
+			}))
+			defer svr.Close()
+			cdc := defaultTiCDCControl{testURL: svr.URL}
+			_, retry, err := cdc.DrainCapture(tc, 1)
+			if err == nil && !retry {
+				t.Fatal("invalid drain response must not report completion")
+			}
+		})
+	}
+}
 
 func TestTiCDCControllerResignOwner(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -73,8 +270,8 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 				},
 			},
 			ordinal:     1,
-			expectedOk:  BeTrue(),
-			expectedErr: BeNil(),
+			expectedOk:  BeFalse(),
+			expectedErr: Not(BeNil()),
 		},
 		{
 			caseName: "2 captures, resign owner ok",
@@ -163,6 +360,9 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 
 	for _, c := range cases {
 		mux := http.NewServeMux()
+		mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"id":"owner","is_owner":true}`)
+		})
 		svr := httptest.NewServer(mux)
 		for p, h := range c.handlers {
 			mux.HandleFunc(p, h)
@@ -215,6 +415,9 @@ func TestTiCDCControllerDrainCaptureMultiClusters(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id":"owner","is_owner":true}`)
+	})
 	svr := httptest.NewServer(mux)
 	for p, h := range handlers {
 		mux.HandleFunc(p, h)
@@ -429,6 +632,9 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 
 	for _, c := range cases {
 		mux := http.NewServeMux()
+		mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"id":"owner","is_owner":true}`)
+		})
 		svr := httptest.NewServer(mux)
 		for p, h := range c.handlers {
 			mux.HandleFunc(p, h)
