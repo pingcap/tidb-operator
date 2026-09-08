@@ -132,7 +132,7 @@ func TestTiCDCGetCapturesHTTPStatusHandling(t *testing.T) {
 	}
 }
 
-func TestTiCDCMaintenancePartialCaptureList(t *testing.T) {
+func TestTiCDCSingleCaptureSkipsMaintenance(t *testing.T) {
 	tc := getTidbCluster()
 	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{Replicas: 2}
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,16 +142,16 @@ func TestTiCDCMaintenancePartialCaptureList(t *testing.T) {
 		case "/api/v1/captures":
 			json.NewEncoder(w).Encode([]captureInfo{{ID: "b", AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 0), IsOwner: true}})
 		default:
-			t.Errorf("must not maintain b while a is missing: %s", r.URL.Path)
+			t.Errorf("single capture must skip resign and drain requests: %s", r.URL.Path)
 		}
 	}))
 	defer svr.Close()
 	cdc := defaultTiCDCControl{testURL: svr.URL}
-	if ok, err := cdc.ResignOwner(tc, 0); ok || err == nil {
-		t.Fatalf("expected resign to wait, got %v, %v", ok, err)
+	if ok, err := cdc.ResignOwner(tc, 0); !ok || err != nil {
+		t.Fatalf("expected resign to be skipped, got %v, %v", ok, err)
 	}
-	if _, retry, err := cdc.DrainCapture(tc, 0); err == nil && !retry {
-		t.Fatal("expected drain to wait")
+	if count, retry, err := cdc.DrainCapture(tc, 0); count != 0 || retry || err != nil {
+		t.Fatalf("expected drain to be skipped, got %d, %v, %v", count, retry, err)
 	}
 }
 

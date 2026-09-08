@@ -120,9 +120,6 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 		return 0, true, nil
 	}
 	if len(captures) == 1 || len(captures) == 0 {
-		if len(captures) == 1 && c.expectsMultipleCaptures(tc) {
-			return 0, false, fmt.Errorf("ticdc drain capture failed, waiting for other captures")
-		}
 		// No way to drain a single node TiCDC cluster, ignore.
 		// An empty list without retry/error denotes the API 404 case.
 		return 0, false, nil
@@ -210,9 +207,6 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 		return false, nil
 	}
 	if len(captures) == 1 || len(captures) == 0 {
-		if len(captures) == 1 && c.expectsMultipleCaptures(tc) {
-			return false, fmt.Errorf("ticdc resign owner failed, waiting for other captures")
-		}
 		// No way to resign owner in a single node TiCDC cluster, ignore.
 		// An empty list without retry/error denotes the API 404 case.
 		return true, nil
@@ -250,11 +244,6 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 		return false, fmt.Errorf("ticdc resign owner failed, HTTP status: %d", res.StatusCode)
 	}
 	return false, nil
-}
-
-func (c *defaultTiCDCControl) expectsMultipleCaptures(tc *v1alpha1.TidbCluster) bool {
-	return tc.TiCDCDeployDesiredReplicas() > 1 || len(tc.Status.TiCDC.Captures) > 1 ||
-		(tc.Status.TiCDC.StatefulSet != nil && tc.Status.TiCDC.StatefulSet.Replicas > 1)
 }
 
 // getOwnerURL refreshes local status rather than relying on the cached owner
