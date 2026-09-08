@@ -14,7 +14,11 @@
 package member
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -98,6 +102,75 @@ func TestTiCDCRollingMaintenance(t *testing.T) {
 			run(1, true) // b resigns; wait for the next reconciliation.
 			run(0, false)
 			g.Expect(events).To(Equal([]string{"resign 0", "resign 0", "drain 0"}))
+		})
+	}
+}
+
+type ticdcMaintenanceTransport func(*http.Request) (*http.Response, error)
+
+func (f ticdcMaintenanceTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestTiCDCUpgradeCaptureQueryFailure(t *testing.T) {
+	// Both ResignOwner and DrainCapture query captures before acting.
+	for _, failedQuery := range []int{1, 2} {
+		t.Run(fmt.Sprintf("captures query %d", failedQuery), func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			u, informer := newTiCDCUpgrader()
+			u.(*ticdcUpgrader).deps.CDCControl = controller.NewDefaultTiCDCControl(nil)
+			tc := newTidbClusterForTiCDCUpgrader()
+			version := ticdcCrossUpgradeVersion
+			tc.Spec.TiCDC.Version = &version
+			for _, pod := range getTiCDCPods() {
+				g.Expect(informer.Informer().GetIndexer().Add(pod)).To(Succeed())
+			}
+			oldSet := newStatefulSetForTiCDCUpgrader()
+			mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			owner := "upgrader-ticdc-1.upgrader-ticdc-peer.default"
+			original := http.DefaultTransport
+			t.Cleanup(func() { http.DefaultTransport = original })
+			queries, drains := 0, 0
+			fail := true
+			http.DefaultTransport = ticdcMaintenanceTransport(func(r *http.Request) (*http.Response, error) {
+				code, body := http.StatusOK, ""
+				switch r.URL.Path {
+				case "/status":
+					body = fmt.Sprintf(`{"id":%q,"version":%q,"is_owner":%t}`, r.URL.Hostname(), version, r.URL.Hostname() == owner)
+				case "/api/v1/captures":
+					g.Expect(r.URL.Hostname()).To(Equal(owner))
+					queries++
+					if fail && queries == failedQuery {
+						code, body = http.StatusInternalServerError, `{"error":"owner unavailable"}`
+					} else {
+						body = `[{"id":"a","address":"upgrader-ticdc-1.upgrader-ticdc-peer.default:8301","is_owner":true},{"id":"b","address":"upgrader-ticdc-0.upgrader-ticdc-peer.default:8301","is_owner":false}]`
+					}
+				case "/api/v1/captures/drain":
+					g.Expect(r.URL.Hostname()).To(Equal(owner))
+					var payload struct {
+						CaptureID string `json:"capture_id"`
+					}
+					g.Expect(json.NewDecoder(r.Body).Decode(&payload)).To(Succeed())
+					g.Expect(payload.CaptureID).To(Equal("b"))
+					drains++
+					body = `{"current_table_count":0}`
+				default:
+					t.Fatalf("unexpected maintenance request: %s", r.URL)
+				}
+				return &http.Response{StatusCode: code, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+			})
+			newSet := oldSet.DeepCopy()
+			err := u.Upgrade(tc, oldSet, newSet)
+			g.Expect(err).To(HaveOccurred())
+			g.Expect(err.Error()).To(ContainSubstring("500"))
+			g.Expect(queries).To(Equal(failedQuery))
+			g.Expect(drains).To(BeZero())
+			g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+
+			fail = false
+			g.Expect(u.Upgrade(tc, oldSet, newSet)).To(Succeed())
+			g.Expect(drains).To(Equal(1))
+			g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
 		})
 	}
 }

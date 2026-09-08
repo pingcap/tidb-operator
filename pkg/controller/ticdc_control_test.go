@@ -32,6 +32,14 @@ type ticdcRoundTripper func(*http.Request) (*http.Response, error)
 func (f ticdcRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestTiCDCMaintenanceOwnerRouting(t *testing.T) {
+	for _, otherStatusFails := range []bool{false, true} {
+		t.Run(fmt.Sprintf("non-owner status fails=%t", otherStatusFails), func(t *testing.T) {
+			testTiCDCMaintenanceOwnerRouting(t, otherStatusFails)
+		})
+	}
+}
+
+func testTiCDCMaintenanceOwnerRouting(t *testing.T, otherStatusFails bool) {
 	tc := getTidbCluster()
 	cdc := defaultTiCDCControl{}
 	a := getCaptureAdvertiseAddressPrefix(tc, 1)
@@ -48,6 +56,9 @@ func TestTiCDCMaintenanceOwnerRouting(t *testing.T) {
 		body := ""
 		switch r.URL.Path {
 		case "/status":
+			if otherStatusFails && r.URL.Hostname() == b {
+				return nil, fmt.Errorf("lookup %s: no such host", b)
+			}
 			body = fmt.Sprintf(`{"id":%q,"is_owner":%t}`, r.URL.Hostname(), r.URL.Hostname() == a)
 		case "/api/v1/captures":
 			queries++
