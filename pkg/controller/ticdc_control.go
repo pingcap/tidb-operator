@@ -22,7 +22,9 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
+	"k8s.io/apimachinery/pkg/util/sets"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 )
@@ -104,8 +106,10 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 		return 0, false, err
 	}
 
-	baseURL := c.getBaseURL(tc, ordinal)
-
+	baseURL, err := c.getOwnerURL(tc, ordinal)
+	if err != nil {
+		return 0, false, err
+	}
 	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
 		klog.Warningf("ticdc control: drain capture is failed, error: %v", err)
@@ -117,7 +121,7 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 	}
 	if len(captures) == 1 || len(captures) == 0 {
 		// No way to drain a single node TiCDC cluster, ignore.
-		// Can't get capture info, ignore.
+		// An empty list without retry/error denotes the API 404 case.
 		return 0, false, nil
 	}
 
@@ -156,18 +160,26 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 		klog.Infof("ticdc control: %s service unavailable drain capture, retry", this.AdvertiseAddr)
 		return 0, true, nil
 	}
+	if res.StatusCode != http.StatusOK {
+		return 0, false, fmt.Errorf("ticdc drain capture failed, HTTP status: %d", res.StatusCode)
+	}
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return 0, false, fmt.Errorf("ticdc drain capture failed, read response error: %v", err)
 	}
 
-	var resp drainCaptureResp
+	// A missing or null count must not be interpreted as a completed drain.
+	var resp struct {
+		CurrentTableCount *int `json:"current_table_count"`
+	}
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
-		// It is likely the TiCDC does not support the API, ignore.
-		return 0, false, nil
+		return 0, false, fmt.Errorf("ticdc drain capture failed, invalid response: %v", err)
 	}
-	return resp.CurrentTableCount, false, nil
+	if resp.CurrentTableCount == nil || *resp.CurrentTableCount < 0 {
+		return 0, false, fmt.Errorf("ticdc drain capture failed, missing or invalid current_table_count")
+	}
+	return *resp.CurrentTableCount, false, nil
 }
 
 func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
@@ -177,7 +189,10 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 		return false, err
 	}
 
-	baseURL := c.getBaseURL(tc, ordinal)
+	baseURL, err := c.getOwnerURL(tc, ordinal)
+	if err != nil {
+		return false, err
+	}
 	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
 		klog.Warningf("ticdc control: resign owner failed, error: %v", err)
@@ -189,7 +204,7 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 	}
 	if len(captures) == 1 || len(captures) == 0 {
 		// No way to resign owner in a single node TiCDC cluster, ignore.
-		// Can't get capture info, ignore.
+		// An empty list without retry/error denotes the API 404 case.
 		return true, nil
 	}
 
@@ -200,11 +215,12 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 			return true, nil
 		}
 	} else {
-		// Owner or this capture not found, resign ownership from the capture is
-		// meaning less, ignore.
-		return true, nil
+		return false, fmt.Errorf("ticdc resign owner failed, target capture or owner not found")
 	}
 
+	// Keep resign addressed to the Pod being maintained. Retargeting this
+	// request to a newly discovered owner would resign the replacement.
+	baseURL = c.getBaseURL(tc, ordinal)
 	res, err := httpClient.Post(baseURL+"/api/v1/owner/resign", "", nil)
 	if err != nil {
 		return false, fmt.Errorf("ticdc resign owner failed, request error: %v", err)
@@ -220,7 +236,45 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 		klog.Infof("ticdc control: %s service unavailable resign owner, retry", this.AdvertiseAddr)
 		return false, nil
 	}
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusAccepted {
+		return false, fmt.Errorf("ticdc resign owner failed, HTTP status: %d", res.StatusCode)
+	}
 	return false, nil
+}
+
+// getOwnerURL refreshes local status rather than relying on the cached owner
+// flag, which can be stale immediately after resign. Queries to /status do not
+// require coordinator forwarding. Each reconciliation makes a bounded pass.
+func (c *defaultTiCDCControl) getOwnerURL(tc *v1alpha1.TidbCluster, ordinal int32) (string, error) {
+	ordinals := sets.NewInt32(ordinal)
+	for podName := range tc.Status.TiCDC.Captures {
+		id, err := util.GetOrdinalFromPodName(podName)
+		if err != nil {
+			return "", err
+		}
+		ordinals.Insert(id)
+	}
+	var ownerURL string
+	var statusErr error
+	for _, id := range ordinals.List() {
+		status, err := c.GetStatus(tc, id)
+		if err != nil {
+			statusErr = err
+			continue
+		}
+		if !status.IsOwner || status.ID == "" {
+			continue
+		}
+		url := c.getBaseURL(tc, id)
+		if ownerURL != "" && ownerURL != url {
+			return "", fmt.Errorf("ticdc owner changed during discovery, retry")
+		}
+		ownerURL = url
+	}
+	if ownerURL == "" {
+		return "", fmt.Errorf("ticdc owner not found, last status error: %v", statusErr)
+	}
+	return ownerURL, nil
 }
 
 func (c *defaultTiCDCControl) IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
@@ -311,6 +365,9 @@ func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, 
 		// TiCDC is not ready, retry.
 		return nil, true, nil
 	}
+	if res.StatusCode != http.StatusOK {
+		return nil, false, fmt.Errorf("ticdc get captures failed, HTTP status: %d", res.StatusCode)
+	}
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -319,8 +376,15 @@ func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, 
 	var resp []captureInfo
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
-		// It is likely the TiCDC does not support the API, ignore.
-		return nil, false, nil
+		return nil, false, fmt.Errorf("ticdc get captures failed, invalid response: %v", err)
+	}
+	if len(resp) == 0 {
+		return nil, true, nil
+	}
+	for _, capture := range resp {
+		if capture.ID == "" || capture.AdvertiseAddr == "" {
+			return nil, false, fmt.Errorf("ticdc get captures failed, missing capture ID or address")
+		}
 	}
 	return resp, false, nil
 }
