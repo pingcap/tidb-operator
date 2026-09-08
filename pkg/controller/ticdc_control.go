@@ -133,10 +133,6 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 	if owner == nil {
 		return 0, false, fmt.Errorf("owner not found, captures: %+v", captures)
 	}
-	baseURL = fmt.Sprintf("%s://%s", tc.Scheme(), owner.AdvertiseAddr)
-	if c.testURL != "" {
-		baseURL = c.testURL
-	}
 
 	payload := drainCaptureRequest{
 		CaptureID: this.ID,

@@ -55,7 +55,8 @@ func TestTiCDCMaintenanceOwnerRouting(t *testing.T) {
 				t.Errorf("captures query sent to %s, want new owner %s", r.URL.Hostname(), a)
 			}
 			payload, _ := json.Marshal([]captureInfo{
-				{ID: "a", AdvertiseAddr: a + ":8301", IsOwner: true},
+				// The response address must not override the discovered owner Pod URL.
+				{ID: "a", AdvertiseAddr: "unreachable.invalid:8301", IsOwner: true},
 				{ID: "b", AdvertiseAddr: b + ":8301"},
 			})
 			body = string(payload)
