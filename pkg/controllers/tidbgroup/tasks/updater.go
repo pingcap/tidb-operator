@@ -95,6 +95,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			noUpdate = true
 		}
 
+		if needVersionUpgrade(dbg) {
+			if res := ensureSmoothUpgradeStarted(ctx, state, c); res.Status() != task.SComplete {
+				return res
+			}
+		}
+
 		var instances []string
 		for _, in := range dbs {
 			instances = append(instances, in.Name)

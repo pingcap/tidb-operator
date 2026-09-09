@@ -158,3 +158,82 @@ func TestTiDBClient_GetPoolStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestTiDBClient_Upgrade(t *testing.T) {
+	cases := []struct {
+		desc    string
+		method  func(TiDBClient, context.Context) error
+		path    string
+		body    string
+		wantErr bool
+	}{
+		{
+			desc:   "start success",
+			method: func(c TiDBClient, ctx context.Context) error { return c.StartUpgrade(ctx) },
+			path:   "/upgrade/start",
+			body:   `"success!"`,
+		},
+		{
+			desc:   "start duplicate success",
+			method: func(c TiDBClient, ctx context.Context) error { return c.StartUpgrade(ctx) },
+			path:   "/upgrade/start",
+			body:   `"It's a duplicated operation and the cluster is already in upgrading state."`,
+		},
+		{
+			desc:   "finish success",
+			method: func(c TiDBClient, ctx context.Context) error { return c.FinishUpgrade(ctx) },
+			path:   "/upgrade/finish",
+			body:   `"success!"`,
+		},
+		{
+			desc:   "finish duplicate success",
+			method: func(c TiDBClient, ctx context.Context) error { return c.FinishUpgrade(ctx) },
+			path:   "/upgrade/finish",
+			body:   `"It's a duplicated operation and the cluster is already in normal state."`,
+		},
+		{
+			desc:    "unexpected body",
+			method:  func(c TiDBClient, ctx context.Context) error { return c.StartUpgrade(ctx) },
+			path:    "/upgrade/start",
+			body:    `"not success"`,
+			wantErr: true,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.desc, func(tt *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(tt, c.path, r.URL.Path)
+				assert.Equal(tt, http.MethodPost, r.Method)
+				body, err := io.ReadAll(r.Body)
+				assert.NoError(tt, err)
+				assert.Empty(tt, body)
+				_, err = w.Write([]byte(c.body))
+				assert.NoError(tt, err)
+			}))
+			defer server.Close()
+
+			client := NewTiDBClient(server.URL, 5*time.Second, nil)
+			err := c.method(client, context.Background())
+			if c.wantErr {
+				require.Error(tt, err)
+			} else {
+				require.NoError(tt, err)
+			}
+		})
+	}
+}
+
+func TestTiDBClient_UpgradeErrorIncludesStatusAndBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, err := w.Write([]byte(`ddl owner not ready`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewTiDBClient(server.URL, 5*time.Second, nil)
+	err := client.StartUpgrade(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "400")
+	assert.Contains(t, err.Error(), "ddl owner not ready")
+}
