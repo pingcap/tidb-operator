@@ -62,6 +62,38 @@ func (m *ticiMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	// Check suspension before the availability of dependencies (PD, TiKV and
+	// TiDB), so that TiCI meta/worker can still be suspended when its
+	// dependencies are not available, e.g. they have already been suspended
+	// during a whole-cluster suspension. Otherwise the whole-cluster
+	// suspension deadlocks here forever.
+	skipMeta, skipWorker := false, false
+	if tc.Spec.TiCI.Meta != nil {
+		needSuspend, err := m.suspender.SuspendComponent(tc, v1alpha1.TiCIMetaMemberType)
+		if err != nil {
+			return fmt.Errorf("suspend %s failed: %v", v1alpha1.TiCIMetaMemberType, err)
+		}
+		if needSuspend {
+			skipMeta = true
+			klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", v1alpha1.TiCIMetaMemberType, ns, tcName)
+		}
+	}
+	if tc.Spec.TiCI.Worker != nil {
+		needSuspend, err := m.suspender.SuspendComponent(tc, v1alpha1.TiCIWorkerMemberType)
+		if err != nil {
+			return fmt.Errorf("suspend %s failed: %v", v1alpha1.TiCIWorkerMemberType, err)
+		}
+		if needSuspend {
+			skipWorker = true
+			klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", v1alpha1.TiCIWorkerMemberType, ns, tcName)
+		}
+	}
+	if skipMeta && skipWorker {
+		return nil
+	}
+
+	// All TiCI operations, e.g. creation, scale, upgrade will be blocked
+	// if PD, TiKV or TiDB is not available.
 	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCI is waiting for PD cluster running", ns, tcName)
 	}
@@ -72,31 +104,14 @@ func (m *ticiMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCI is waiting for TiDB cluster running", ns, tcName)
 	}
 
-	if tc.Spec.TiCI.Meta != nil {
-		needSuspend, err := m.suspender.SuspendComponent(tc, v1alpha1.TiCIMetaMemberType)
-		if err != nil {
-			return fmt.Errorf("suspend %s failed: %v", v1alpha1.TiCIMetaMemberType, err)
-		}
-		if !needSuspend {
-			if err := m.syncTiCIMeta(tc); err != nil {
-				return err
-			}
-		} else {
-			klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", v1alpha1.TiCIMetaMemberType, ns, tcName)
+	if tc.Spec.TiCI.Meta != nil && !skipMeta {
+		if err := m.syncTiCIMeta(tc); err != nil {
+			return err
 		}
 	}
-
-	if tc.Spec.TiCI.Worker != nil {
-		needSuspend, err := m.suspender.SuspendComponent(tc, v1alpha1.TiCIWorkerMemberType)
-		if err != nil {
-			return fmt.Errorf("suspend %s failed: %v", v1alpha1.TiCIWorkerMemberType, err)
-		}
-		if !needSuspend {
-			if err := m.syncTiCIWorker(tc); err != nil {
-				return err
-			}
-		} else {
-			klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", v1alpha1.TiCIWorkerMemberType, ns, tcName)
+	if tc.Spec.TiCI.Worker != nil && !skipWorker {
+		if err := m.syncTiCIWorker(tc); err != nil {
+			return err
 		}
 	}
 
