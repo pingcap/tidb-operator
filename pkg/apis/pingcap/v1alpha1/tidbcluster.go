@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/distribution/reference"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
@@ -373,13 +374,28 @@ func (tc *TidbCluster) TiDBVersion() string {
 	return getImageVersion(tc.TiDBImage())
 }
 
-// getImageVersion returns the verion of a image
+// getImageVersion returns the version of an image.
+// Supports standard OCI image reference formats including digest-pinned images:
+//   - name:tag (e.g., pingcap/tidb:v8.5.8) -> v8.5.8
+//   - name:tag@digest (e.g., pingcap/tidb:v8.5.8@sha256:abc...) -> v8.5.8
+//   - name@digest (e.g., pingcap/tidb@sha256:abc...) -> latest
 func getImageVersion(image string) string {
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
+	ref, err := reference.ParseNormalizedNamed(image)
+	if err != nil {
+		// Fallback to legacy string parsing if OCI reference parsing fails
+		colonIdx := strings.LastIndexByte(image, ':')
+		if colonIdx >= 0 {
+			return image[colonIdx+1:]
+		}
+		return versionLatest
 	}
 
+	// Extract tag from the parsed reference (ignores digest if present)
+	if tagged, ok := ref.(reference.Tagged); ok {
+		return tagged.Tag()
+	}
+
+	// No tag present (digest-only reference)
 	return versionLatest
 }
 
