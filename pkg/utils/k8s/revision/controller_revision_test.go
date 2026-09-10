@@ -34,17 +34,17 @@ import (
 	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/history"
 )
 
-func TestRolloutPauseDoesNotChangeRevision(t *testing.T) {
+func TestProgressingDoesNotChangeRevision(t *testing.T) {
 	group := fake.FakeObj[v1alpha1.TiKVGroup]("aaa")
 	gvk, err := apiutil.GVKForObject(group, scheme.Scheme)
 	require.NoError(t, err)
 	before, err := getPatch(group, gvk)
 	require.NoError(t, err)
-	group.Spec.RolloutPaused = true
+	group.Spec.Progressing = ptr.To(false)
 	paused, err := getPatch(group, gvk)
 	require.NoError(t, err)
 	assert.Equal(t, before, paused)
-	group.Spec.RolloutPaused = false
+	group.Spec.Progressing = ptr.To(true)
 	resumed, err := getPatch(group, gvk)
 	require.NoError(t, err)
 	assert.Equal(t, before, resumed)

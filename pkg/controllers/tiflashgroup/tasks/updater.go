@@ -46,8 +46,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		logger := logr.FromContextOrDiscard(ctx)
 		fg := state.TiFlashGroup()
 
-		if fg.Spec.RolloutPaused {
-			return task.Wait().With("rollout and scaling are paused")
+		if !ptr.Deref(fg.Spec.Progressing, true) {
+			return task.Wait().With("group progression is disabled")
 		}
 
 		checker := action.NewUpgradeChecker[scope.TiFlashGroup](c, state.Cluster(), logger)

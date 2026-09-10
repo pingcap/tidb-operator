@@ -1,6 +1,6 @@
 # Pause a Group rollout
 
-Set `spec.rolloutPaused: true` on a kernel component Group to stop the operator
+Set `spec.progressing: false` on a kernel component Group to stop the operator
 from issuing further instance updates, scale-out, scale-in, or deferred deletion
 cleanup for that Group. Existing instance controllers continue reconciling: a
 Pod already selected for restart can be recreated, recover readiness, and finish
@@ -8,24 +8,26 @@ TiKV leader-eviction cleanup.
 
 This setting is supported by PDGroup, TiKVGroup, TiDBGroup, TiFlashGroup,
 TiKVWorkerGroup, TiCDCGroup, TiProxyGroup, TSOGroup, SchedulingGroup, SchedulerGroup,
-RouterGroup, and ResourceManagerGroup. It defaults to false.
+RouterGroup, and ResourceManagerGroup. It defaults to true; omitting the field
+preserves normal progression.
 
 ```sh
 kubectl --context <context> -n <namespace> patch tikvgroups.core.pingcap.com <group> \
-  --type=merge -p '{"spec":{"rolloutPaused":true}}'
+  --type=merge -p '{"spec":{"progressing":false}}'
 ```
 
-To resume, set the same field to false. The operator continues toward the latest
+To resume, set the same field to true. The operator continues toward the latest
 desired template and replica count, including changes made while paused.
 
 ```sh
 kubectl --context <context> -n <namespace> patch tikvgroups.core.pingcap.com <group> \
-  --type=merge -p '{"spec":{"rolloutPaused":false}}'
+  --type=merge -p '{"spec":{"progressing":true}}'
 ```
 
-The setting affects only the selected Group. Keep `Cluster.spec.paused` false:
-that separate setting stops instance reconciliation as well. Changing
-`rolloutPaused` does not change the instance revision or initiate a restart.
+The setting affects only the selected Group. `Cluster.spec.paused` takes
+precedence: when true, it stops Group and instance reconciliation regardless of
+`progressing`. Keep it false to allow ongoing restarts to finish. Changing
+`progressing` does not change the instance revision or initiate a restart.
 
 Pause takes effect when a Group reconciliation observes the setting. Operations
 already issued, or issued by a reconciliation that has passed the pause check,

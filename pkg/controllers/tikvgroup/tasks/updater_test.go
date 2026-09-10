@@ -43,6 +43,16 @@ const (
 )
 
 func TestTaskUpdater(t *testing.T) {
+	t.Run("progressing omitted", func(t *testing.T) {
+		testTaskUpdater(t, nil)
+	})
+	t.Run("progressing true", func(t *testing.T) {
+		testTaskUpdater(t, ptr.To(true))
+	})
+}
+
+func testTaskUpdater(t *testing.T, progressing *bool) {
+	t.Helper()
 	cases := []struct {
 		desc          string
 		state         *ReconcileContext
@@ -280,7 +290,7 @@ func TestTaskUpdater(t *testing.T) {
 			// Pausing must preserve instances in every rollout/scaling scenario.
 			beforePause := v1alpha1.TiKVList{}
 			require.NoError(tt, fc.List(ctx, &beforePause))
-			c.state.Object().Spec.RolloutPaused = true
+			c.state.Object().Spec.Progressing = ptr.To(false)
 			paused, stopped := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			require.Equal(tt, task.SWait, paused.Status())
 			require.False(tt, stopped, "status tasks must continue while paused")
@@ -289,7 +299,7 @@ func TestTaskUpdater(t *testing.T) {
 			require.ElementsMatch(tt, beforePause.Items, afterPause.Items)
 
 			// Resuming restores the original updater behavior.
-			c.state.Object().Spec.RolloutPaused = false
+			c.state.Object().Spec.Progressing = progressing
 			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
@@ -307,7 +317,7 @@ func TestPausedUpdaterStillReportsInstanceRecovery(t *testing.T) {
 	ctx := context.Background()
 	group := fake.FakeObj("aaa", func(g *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 		g.Spec.Replicas = ptr.To[int32](2)
-		g.Spec.RolloutPaused = true
+		g.Spec.Progressing = ptr.To(false)
 		return g
 	})
 	current := fakeAvailableTiKV("aaa-current", group, newRevision)
@@ -350,7 +360,7 @@ func TestPausedUpdaterStillReportsInstanceRecovery(t *testing.T) {
 		assert.Equal(t, oldRevision, runtime.FromTiKV(actualNext).GetUpdateRevision())
 	}
 
-	group.Spec.RolloutPaused = false
+	group.Spec.Progressing = ptr.To(true)
 	res, _ := task.RunTask(ctx, TaskUpdater(rtx, fc, af))
 	require.Equal(t, task.SWait, res.Status(), res.Message())
 	actualNext := &v1alpha1.TiKV{}

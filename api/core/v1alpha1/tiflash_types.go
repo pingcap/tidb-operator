@@ -115,11 +115,13 @@ type TiFlash struct {
 }
 
 type TiFlashGroupSpec struct {
-	// RolloutPaused pauses instance updates, scaling, and deferred deletion cleanup.
-	// Existing instances continue reconciling, including Pod recreation and recovery.
-	// Defaults to false. Already issued operations are not canceled.
+	// Progressing allows instance updates, scaling, and deferred deletion cleanup.
+	// When false, existing instances continue reconciling, including Pod recreation and recovery.
+	// Defaults to true. Already issued operations are not canceled.
+	// Cluster.spec.paused takes precedence and also stops instance reconciliation.
 	// +optional
-	RolloutPaused bool `json:"rolloutPaused,omitempty"`
+	// +kubebuilder:default=true
+	Progressing *bool `json:"progressing,omitempty"`
 
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature

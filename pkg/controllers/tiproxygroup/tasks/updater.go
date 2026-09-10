@@ -47,8 +47,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		logger := logr.FromContextOrDiscard(ctx)
 		proxyg := state.TiProxyGroup()
 
-		if proxyg.Spec.RolloutPaused {
-			return task.Wait().With("rollout and scaling are paused")
+		if !ptr.Deref(proxyg.Spec.Progressing, true) {
+			return task.Wait().With("group progression is disabled")
 		}
 
 		checker := action.NewUpgradeChecker[scope.TiProxyGroup](c, state.Cluster(), logger)
