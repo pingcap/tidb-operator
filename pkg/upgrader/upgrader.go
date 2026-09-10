@@ -16,6 +16,7 @@ package upgrader
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -66,25 +67,37 @@ func (u *upgrader) Upgrade() error {
 		}
 		stsToMigrate := make([]appsv1.StatefulSet, 0)
 		tidbClusters := make([]*v1alpha1.TidbCluster, 0)
+		dmClusters := make([]*v1alpha1.DMCluster, 0)
 		for i := range stsList.Items {
 			sts := stsList.Items[i]
-			if ok, tcRef := util.IsOwnedByTidbCluster(&sts); ok {
+			if ok, ownerRef := util.IsOwnedByPingcapStatefulSet(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
-				tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(context.Background(), tcRef.Name, metav1.GetOptions{})
-				if err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-				if tc != nil {
-					tidbClusters = append(tidbClusters, tc)
+				switch ownerRef.Kind {
+				case v1alpha1.TiDBClusterKind:
+					tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(context.Background(), ownerRef.Name, metav1.GetOptions{})
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					if tc != nil {
+						tidbClusters = append(tidbClusters, tc)
+					}
+				case v1alpha1.DMClusterKind:
+					dc, err := u.cli.PingcapV1alpha1().DMClusters(sts.Namespace).Get(context.Background(), ownerRef.Name, metav1.GetOptions{})
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					if dc != nil {
+						dmClusters = append(dmClusters, dc)
+					}
 				}
 			}
 		}
 		if len(stsToMigrate) <= 0 {
-			klog.Infof("upgrader: found 0 Kubernetes StatefulSets owned by TidbCluster, nothing need to do")
+			klog.Infof("upgrader: found 0 Kubernetes StatefulSets owned by pingcap.com StatefulSet owners, nothing need to do")
 			return nil
 		}
-		klog.Infof("Upgrader: %d Kubernetes Statfulsets owned by TidbCluster should be migrated to Advanced Statefulsets", len(stsToMigrate))
-		// Check if relavant TidbClusters have delete slots annotations set.
+		klog.Infof("Upgrader: %d Kubernetes Statefulsets owned by pingcap.com StatefulSet owners should be migrated to Advanced Statefulsets", len(stsToMigrate))
+		// Check if relevant TidbClusters or DMClusters have delete slots annotations set.
 		for _, tc := range tidbClusters {
 			// Existing delete slots annotations must be removed first. This is
 			// a safety check to ensure no pods are affected in upgrading
@@ -93,7 +106,12 @@ func (u *upgrader) Upgrade() error {
 				return fmt.Errorf("upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
 			}
 		}
-		klog.Infof("upgrader: found %d Kubernetes StatefulSets owned by TidbCluster, trying to migrate one by one", len(stsToMigrate))
+		for _, dc := range dmClusters {
+			if anns := dmDeleteSlotAnns(dc); len(anns) > 0 {
+				return fmt.Errorf("upgrader: DMCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", dc.Namespace, dc.Name, anns)
+			}
+		}
+		klog.Infof("upgrader: found %d Kubernetes StatefulSets owned by pingcap.com StatefulSet owners, trying to migrate one by one", len(stsToMigrate))
 		for i := range stsToMigrate {
 			sts := stsToMigrate[i]
 			_, err := helper.Upgrade(context.Background(), u.kubeCli, u.asCli, &sts)
@@ -116,20 +134,39 @@ func (u *upgrader) Upgrade() error {
 		stsToMigrate := make([]asappsv1.StatefulSet, 0)
 		for i := range stsList.Items {
 			sts := stsList.Items[i]
-			if ok, _ := util.IsOwnedByTidbCluster(&sts); ok {
+			if ok, _ := util.IsOwnedByPingcapStatefulSet(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
 			}
 		}
 		if len(stsToMigrate) <= 0 {
-			klog.Infof("upgrader: found %d Advanced StatefulSets owned by TidbCluster, nothing need to do", len(stsToMigrate))
+			klog.Infof("upgrader: found 0 Advanced StatefulSets owned by pingcap.com StatefulSet owners, nothing need to do")
 			return nil
 		}
 		// The upgrader cannot migrate Advanced StatefulSets to Kubernetes
 		// StatefulSets automatically right now.
 		// TODO try our best to allow users to revert AdvancedStatefulSet feature automaticaly
-		return fmt.Errorf("upgrader: found %d Advanced StatefulSets owned by TidbCluster, the operator cann't run with AdvancedStatefulSet feature disabled", len(stsToMigrate))
+		return fmt.Errorf("upgrader: found %d Advanced StatefulSets owned by pingcap.com StatefulSet owners, the operator cann't run with AdvancedStatefulSet feature disabled: %s", len(stsToMigrate), stsNames(stsToMigrate))
 	}
 	return nil
+}
+
+// stsNames lists the namespaced names of the given Advanced StatefulSets as
+// "StatefulSet namespace/name", truncated to the first maxStsNames entries.
+func stsNames(stss []asappsv1.StatefulSet) string {
+	const maxStsNames = 10
+	if len(stss) <= maxStsNames {
+		names := make([]string, 0, len(stss))
+		for i := range stss {
+			names = append(names, fmt.Sprintf("StatefulSet %s/%s", stss[i].Namespace, stss[i].Name))
+		}
+		return strings.Join(names, ", ")
+	}
+	names := make([]string, 0, maxStsNames+1)
+	for i := range stss[:maxStsNames] {
+		names = append(names, fmt.Sprintf("StatefulSet %s/%s", stss[i].Namespace, stss[i].Name))
+	}
+	names = append(names, fmt.Sprintf("... and %d more", len(stss)-maxStsNames))
+	return strings.Join(names, ", ")
 }
 
 func deleteSlotAnns(tc *v1alpha1.TidbCluster) map[string]string {
@@ -140,6 +177,20 @@ func deleteSlotAnns(tc *v1alpha1.TidbCluster) map[string]string {
 
 	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots, label.AnnTiProxyDeleteSlots, label.AnnTiCDCDeleteSlots} {
 		if v, ok := tc.Annotations[key]; ok {
+			anns[key] = v
+		}
+	}
+	return anns
+}
+
+func dmDeleteSlotAnns(dc *v1alpha1.DMCluster) map[string]string {
+	anns := make(map[string]string)
+	if dc == nil || dc.Annotations == nil {
+		return anns
+	}
+
+	for _, key := range []string{label.AnnDMMasterDeleteSlots, label.AnnDMWorkerDeleteSlots} {
+		if v, ok := dc.Annotations[key]; ok {
 			anns[key] = v
 		}
 	}
