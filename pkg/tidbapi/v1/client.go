@@ -33,6 +33,8 @@ const (
 	labelsPath           = "labels"
 	tidbPoolActivatePath = "tidb-pool/activate"
 	tidbPoolStatusPath   = "tidb-pool/status"
+	upgradeStartPath     = "upgrade/start"
+	upgradeFinishPath    = "upgrade/finish"
 )
 
 // TiDBClient provides TiDB server's APIs used by TiDB Operator.
@@ -48,6 +50,12 @@ type TiDBClient interface {
 	GetPoolStatus(ctx context.Context) (*PoolStatus, error)
 	// Activate sets the keyspace of a standby TiDB instance.
 	Activate(ctx context.Context, keyspace string) error
+
+	// UpgradeStart notifies TiDB to pause DDL before a rolling upgrade.
+	// keyspace is empty for Dedicated (global pause) or a keyspace name for Premium (scoped pause).
+	UpgradeStart(ctx context.Context, keyspace string) error
+	// UpgradeFinish notifies TiDB to resume DDL after all instances are upgraded.
+	UpgradeFinish(ctx context.Context) error
 }
 
 // tidbClient is the default implementation of TiDBClient.
@@ -129,6 +137,22 @@ func (c *tidbClient) Activate(ctx context.Context, keyspace string) error {
 
 	apiURL := fmt.Sprintf("%s/%s", c.url, tidbPoolActivatePath)
 	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, buffer)
+	return err
+}
+
+func (c *tidbClient) UpgradeStart(ctx context.Context, keyspace string) error {
+	buffer := bytes.NewBuffer(nil)
+	if err := json.NewEncoder(buffer).Encode(&UpgradeRequest{KeyspaceName: keyspace}); err != nil {
+		return fmt.Errorf("encode upgrade request to json failed: %w", err)
+	}
+	apiURL := fmt.Sprintf("%s/%s", c.url, upgradeStartPath)
+	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, buffer)
+	return err
+}
+
+func (c *tidbClient) UpgradeFinish(ctx context.Context) error {
+	apiURL := fmt.Sprintf("%s/%s", c.url, upgradeFinishPath)
+	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(nil))
 	return err
 }
 
