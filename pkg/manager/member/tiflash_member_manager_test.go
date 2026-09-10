@@ -1369,6 +1369,33 @@ func newFakeTiFlashMemberManager(tc *v1alpha1.TidbCluster) (
 	return tmm, setControl, svcControl, pdClient, podIndexer, nodeIndexer
 }
 
+func TestTiFlashMemberManagerSyncSuspendWhenTiCINotReady(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterForTiflash()
+	// TiCI is enabled but not ready, e.g. its pods have not been deployed
+	// yet or are unhealthy.
+	tc.Spec.TiCI = &v1alpha1.TiCISpec{
+		Meta:   &v1alpha1.TiCIMetaSpec{},
+		Worker: &v1alpha1.TiCIWorkerSpec{},
+	}
+
+	tfmm, _, _, _, _, _ := newFakeTiFlashMemberManager(tc)
+
+	suspendCalled := false
+	tfmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+		suspendCalled = true
+		return true, nil
+	}
+
+	err := tfmm.Sync(tc)
+	g.Expect(err).NotTo(HaveOccurred())
+	// Regression test: suspending TiFlash must not be blocked by TiCI
+	// readiness, otherwise a whole-cluster suspension may get stuck when
+	// TiCI is not ready.
+	g.Expect(suspendCalled).To(BeTrue())
+}
+
 func TestGetNewServiceForTidbCluster(t *testing.T) {
 	tests := []struct {
 		name      string

@@ -18,8 +18,12 @@ import (
 	"strings"
 	"testing"
 
+	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -193,5 +197,150 @@ func newTidbClusterForTiCIConfig() *v1alpha1.TidbCluster {
 				},
 			},
 		},
+	}
+}
+
+func newFakeTiCIMemberManager() *ticiMemberManager {
+	fakeDeps := controller.NewFakeDependencies()
+	return &ticiMemberManager{
+		deps:              fakeDeps,
+		scaler:            NewFakeTiCIScaler(),
+		suspender:         suspender.NewFakeSuspender(),
+		podVolumeModifier: &volumes.FakePodVolumeModifier{},
+	}
+}
+
+// newTidbClusterForTiCISync builds a cluster in the middle of a whole-cluster
+// suspension: TiDB has already been fully suspended (its members are cleared
+// by the suspender) while PD and TiKV are still running, so TiCI meta/worker
+// are next in the suspend order.
+func newTidbClusterForTiCISync() *v1alpha1.TidbCluster {
+	tc := newTidbClusterForTiCIConfig()
+	tc.Spec.PD = &v1alpha1.PDSpec{Replicas: 3}
+	tc.Spec.TiKV = &v1alpha1.TiKVSpec{Replicas: 1}
+	tc.Spec.TiDB = &v1alpha1.TiDBSpec{Replicas: 1}
+
+	// PD and TiKV are still running and available.
+	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+		"pd-0": {Name: "pd-0", Health: true},
+		"pd-1": {Name: "pd-1", Health: true},
+		"pd-2": {Name: "pd-2", Health: true},
+	}
+	tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 3}
+	tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+		"1": {ID: "1", PodName: "tici-test-tikv-0", State: v1alpha1.TiKVStateUp},
+	}
+	tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 1}
+
+	// TiDB has been suspended: members are cleared and it can never be ready.
+	tc.Status.TiDB.Members = nil
+	return tc
+}
+
+func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name          string
+		modify        func(tc *v1alpha1.TidbCluster)
+		suspend       func(component v1alpha1.MemberType) (bool, error)
+		expectErr     bool
+		expectSuspend bool
+		// expectMemberTypes asserts which member types SuspendComponent is
+		// called with; nil means no assertion.
+		expectMemberTypes []v1alpha1.MemberType
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbClusterForTiCISync()
+		if test.modify != nil {
+			test.modify(tc)
+		}
+		tmm := newFakeTiCIMemberManager()
+
+		suspendCalled := false
+		var suspendedComponents []v1alpha1.MemberType
+		tmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+			suspendCalled = true
+			suspendedComponents = append(suspendedComponents, mt)
+			return test.suspend(mt)
+		}
+
+		err := tmm.Sync(tc)
+		if test.expectErr {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		g.Expect(suspendCalled).To(Equal(test.expectSuspend))
+		if test.expectMemberTypes != nil {
+			g.Expect(suspendedComponents).To(ConsistOf(test.expectMemberTypes))
+		}
+	}
+
+	tests := []testcase{
+		{
+			// Regression test: TiCI meta/worker must be suspendable even if
+			// TiDB is not ready, e.g. TiDB has already been suspended during
+			// a whole-cluster suspension. Otherwise the whole-cluster
+			// suspension deadlocks on TiCI forever.
+			name: "suspend when TiDB has been suspended",
+			suspend: func(component v1alpha1.MemberType) (bool, error) {
+				return true, nil
+			},
+			expectErr:     false,
+			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType, v1alpha1.TiCIWorkerMemberType,
+			},
+		},
+		{
+			// Availability checks still apply when not suspending.
+			name: "requeue when TiDB is not ready and not suspending",
+			suspend: func(component v1alpha1.MemberType) (bool, error) {
+				return false, nil
+			},
+			expectErr:     true,
+			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType, v1alpha1.TiCIWorkerMemberType,
+			},
+		},
+		{
+			// Only meta is suspended while worker is still being synced
+			// normally: the availability checks still apply for worker.
+			name: "requeue when only meta is suspended and TiDB is not ready",
+			suspend: func(component v1alpha1.MemberType) (bool, error) {
+				return component == v1alpha1.TiCIMetaMemberType, nil
+			},
+			expectErr:     true,
+			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType, v1alpha1.TiCIWorkerMemberType,
+			},
+		},
+		{
+			// A cluster configuring only meta (worker is nil) must also be
+			// able to finish suspending. Note this state is not reachable
+			// through the API in practice — defaulting fills an empty struct
+			// for a nil worker — but the skip logic should treat nil as
+			// skipped rather than rely on defaulting.
+			name:   "suspend when only meta is configured",
+			modify: func(tc *v1alpha1.TidbCluster) { tc.Spec.TiCI.Worker = nil },
+			suspend: func(component v1alpha1.MemberType) (bool, error) {
+				return true, nil
+			},
+			expectErr:     false,
+			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType,
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
 	}
 }
