@@ -34,6 +34,22 @@ import (
 	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/history"
 )
 
+func TestRolloutPauseDoesNotChangeRevision(t *testing.T) {
+	group := fake.FakeObj[v1alpha1.TiKVGroup]("aaa")
+	gvk, err := apiutil.GVKForObject(group, scheme.Scheme)
+	require.NoError(t, err)
+	before, err := getPatch(group, gvk)
+	require.NoError(t, err)
+	group.Spec.RolloutPaused = true
+	paused, err := getPatch(group, gvk)
+	require.NoError(t, err)
+	assert.Equal(t, before, paused)
+	group.Spec.RolloutPaused = false
+	resumed, err := getPatch(group, gvk)
+	require.NoError(t, err)
+	assert.Equal(t, before, resumed)
+}
+
 // FakeHistoryClient is a fake implementation of Interface that is useful for testing.
 type FakeHistoryClient struct {
 	Revisions  []*appsv1.ControllerRevision

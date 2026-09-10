@@ -119,6 +119,12 @@ type PD struct {
 // PDGroupSpec describes the common attributes of a PDGroup
 // +kubebuilder:validation:XValidation:rule="self.bootstrapped || (self.replicas == oldSelf.replicas)",message="replicas cannot be changed when bootstrapped is false"
 type PDGroupSpec struct {
+	// RolloutPaused pauses instance updates, scaling, and deferred deletion cleanup.
+	// Existing instances continue reconciling, including Pod recreation and recovery.
+	// Defaults to false. Already issued operations are not canceled.
+	// +optional
+	RolloutPaused bool `json:"rolloutPaused,omitempty"`
+
 	Cluster ClusterReference `json:"cluster"`
 
 	// Features are enabled feature

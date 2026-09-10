@@ -133,6 +133,12 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              rolloutPaused:
+                description: |-
+                  RolloutPaused pauses instance updates, scaling, and deferred deletion cleanup.
+                  Existing instances continue reconciling, including Pod recreation and recovery.
+                  Defaults to false. Already issued operations are not canceled.
+                type: boolean
               schedulePolicies:
                 items:
                   description: SchedulePolicy defines how instances of the group schedules

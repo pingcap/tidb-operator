@@ -46,6 +46,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		logger := logr.FromContextOrDiscard(ctx)
 		kvg := state.TiKVGroup()
 
+		if kvg.Spec.RolloutPaused {
+			return task.Wait().With("rollout and scaling are paused")
+		}
+
 		checker := action.NewUpgradeChecker[scope.TiKVGroup](c, state.Cluster(), logger)
 
 		if needVersionUpgrade(kvg) && !checker.CanUpgrade(ctx, kvg) {

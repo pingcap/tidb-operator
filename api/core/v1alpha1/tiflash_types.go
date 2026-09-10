@@ -115,6 +115,12 @@ type TiFlash struct {
 }
 
 type TiFlashGroupSpec struct {
+	// RolloutPaused pauses instance updates, scaling, and deferred deletion cleanup.
+	// Existing instances continue reconciling, including Pod recreation and recovery.
+	// Defaults to false. Already issued operations are not canceled.
+	// +optional
+	RolloutPaused bool `json:"rolloutPaused,omitempty"`
+
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`

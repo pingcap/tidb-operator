@@ -47,6 +47,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		logger := logr.FromContextOrDiscard(ctx)
 		dbg := state.TiDBGroup()
 
+		if dbg.Spec.RolloutPaused {
+			return task.Wait().With("rollout and scaling are paused")
+		}
+
 		checker := action.NewUpgradeChecker[scope.TiDBGroup](c, state.Cluster(), logger)
 
 		if needVersionUpgrade(dbg) && !checker.CanUpgrade(ctx, dbg) {

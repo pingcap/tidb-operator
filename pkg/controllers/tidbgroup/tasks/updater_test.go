@@ -300,6 +300,19 @@ func TestTaskUpdater(t *testing.T) {
 			}
 
 			af := tracker.New().AllocateFactory("tidb")
+			// Pausing must preserve instances in every rollout/scaling scenario.
+			beforePause := v1alpha1.TiDBList{}
+			require.NoError(tt, fc.List(ctx, &beforePause))
+			c.state.Object().Spec.RolloutPaused = true
+			paused, stopped := task.RunTask(ctx, TaskUpdater(c.state, fc, af, adoption.New(logr.Discard())))
+			require.Equal(tt, task.SWait, paused.Status())
+			require.False(tt, stopped, "status tasks must continue while paused")
+			afterPause := v1alpha1.TiDBList{}
+			require.NoError(tt, fc.List(ctx, &afterPause))
+			require.ElementsMatch(tt, beforePause.Items, afterPause.Items)
+
+			// Resuming restores the original updater behavior.
+			c.state.Object().Spec.RolloutPaused = false
 			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af, adoption.New(logr.Discard())))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
@@ -309,6 +322,47 @@ func TestTaskUpdater(t *testing.T) {
 				require.NoError(tt, fc.List(ctx, &dbs), c.desc)
 				assert.Len(tt, dbs.Items, c.expectedTiDBNum, c.desc)
 			}
+		})
+	}
+}
+
+func TestPausedUpdaterRetainsSurgeUntilResume(t *testing.T) {
+	for _, deferred := range []bool{false, true} {
+		t.Run(fmt.Sprintf("deferred=%v", deferred), func(t *testing.T) {
+			ctx := context.Background()
+			group := fake.FakeObj("aaa", func(g *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+				g.Spec.Replicas = ptr.To[int32](1)
+				g.Spec.RolloutPaused = true
+				g.Spec.Template.Spec.Image = ptr.To("pingcap/tidb:v8.1.1")
+				return g
+			})
+			old := fakeAvailableTiDB("aaa-old", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision)
+			if deferred {
+				old.Annotations = map[string]string{v1alpha1.AnnoKeyDeferDelete: v1alpha1.AnnoValTrue}
+			}
+			replacement := fakeAvailableTiDB("aaa-new", group, newRevision)
+			s := &state{
+				dbg: group, cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				dbs: []*v1alpha1.TiDB{old, replacement}, updateRevision: newRevision,
+			}
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiDBGroup](s)
+			rtx := &ReconcileContext{State: s}
+			fc := client.NewFakeClient(group, s.cluster, old, replacement)
+			af := tracker.New().AllocateFactory("tidb")
+			adopter := adoption.New(logr.Discard())
+			res, stopped := task.RunTask(ctx, TaskUpdater(rtx, fc, af, adopter))
+			require.Equal(t, task.SWait, res.Status())
+			require.False(t, stopped)
+			list := &v1alpha1.TiDBList{}
+			require.NoError(t, fc.List(ctx, list))
+			require.ElementsMatch(t, []v1alpha1.TiDB{*old, *replacement}, list.Items)
+
+			group.Spec.RolloutPaused = false
+			res, _ = task.RunTask(ctx, TaskUpdater(rtx, fc, af, adopter))
+			require.Equal(t, task.SComplete, res.Status(), res.Message())
+			require.NoError(t, fc.List(ctx, list))
+			require.Len(t, list.Items, 1)
+			assert.Equal(t, replacement.Name, list.Items[0].Name)
 		})
 	}
 }

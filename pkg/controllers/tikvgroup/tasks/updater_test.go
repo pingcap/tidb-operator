@@ -27,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -276,6 +277,19 @@ func TestTaskUpdater(t *testing.T) {
 			}
 
 			af := tracker.New().AllocateFactory("tikv")
+			// Pausing must preserve instances in every rollout/scaling scenario.
+			beforePause := v1alpha1.TiKVList{}
+			require.NoError(tt, fc.List(ctx, &beforePause))
+			c.state.Object().Spec.RolloutPaused = true
+			paused, stopped := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
+			require.Equal(tt, task.SWait, paused.Status())
+			require.False(tt, stopped, "status tasks must continue while paused")
+			afterPause := v1alpha1.TiKVList{}
+			require.NoError(tt, fc.List(ctx, &afterPause))
+			require.ElementsMatch(tt, beforePause.Items, afterPause.Items)
+
+			// Resuming restores the original updater behavior.
+			c.state.Object().Spec.RolloutPaused = false
 			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
@@ -287,6 +301,61 @@ func TestTaskUpdater(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPausedUpdaterStillReportsInstanceRecovery(t *testing.T) {
+	ctx := context.Background()
+	group := fake.FakeObj("aaa", func(g *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+		g.Spec.Replicas = ptr.To[int32](2)
+		g.Spec.RolloutPaused = true
+		return g
+	})
+	current := fakeAvailableTiKV("aaa-current", group, newRevision)
+	next := fakeAvailableTiKV("aaa-next", group, oldRevision)
+	s := &state{
+		kvg: group, cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+		kvs:            []*v1alpha1.TiKV{current, next},
+		updateRevision: newRevision, currentRevision: oldRevision,
+	}
+	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKVGroup](s)
+	rtx := &ReconcileContext{State: s}
+	fc := client.NewFakeClient(group, s.cluster, current, next)
+	af := tracker.New().AllocateFactory("tikv")
+
+	for _, ready := range []bool{false, true} {
+		current.Status.Conditions[0].Status = metav1.ConditionFalse
+		current.Status.CurrentRevision = oldRevision
+		expectedReady := int32(1)
+		if ready {
+			current.Status.Conditions[0].Status = metav1.ConditionTrue
+			current.Status.CurrentRevision = newRevision
+			expectedReady = 2
+		}
+		// Simulate the independent instance controller publishing recovery.
+		require.NoError(t, fc.Status().Update(ctx, current))
+		runner := task.NewTaskRunner(task.NewTableTaskReporter("rollout-pause"),
+			TaskUpdater(rtx, fc, af),
+			common.TaskGroupConditionReady[scope.TiKVGroup](rtx),
+			common.TaskGroupConditionSynced[scope.TiKVGroup](rtx),
+			common.TaskStatusRevisionAndReplicas[scope.TiKVGroup](rtx),
+			common.TaskStatusPersister[scope.TiKVGroup](rtx, fc),
+		)
+		_, err := runner.Run(ctx)
+		require.NoError(t, err)
+		actualGroup := &v1alpha1.TiKVGroup{}
+		require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(group), actualGroup))
+		assert.Equal(t, expectedReady, actualGroup.Status.ReadyReplicas)
+		actualNext := &v1alpha1.TiKV{}
+		require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(next), actualNext))
+		assert.Equal(t, oldRevision, runtime.FromTiKV(actualNext).GetUpdateRevision())
+	}
+
+	group.Spec.RolloutPaused = false
+	res, _ := task.RunTask(ctx, TaskUpdater(rtx, fc, af))
+	require.Equal(t, task.SWait, res.Status(), res.Message())
+	actualNext := &v1alpha1.TiKV{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(next), actualNext))
+	assert.Equal(t, newRevision, runtime.FromTiKV(actualNext).GetUpdateRevision())
 }
 
 func TestTiKVNewerCopiesCacheTTLSeconds(t *testing.T) {
