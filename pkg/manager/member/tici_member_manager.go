@@ -88,7 +88,11 @@ func (m *ticiMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 			klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", v1alpha1.TiCIWorkerMemberType, ns, tcName)
 		}
 	}
-	if skipMeta && skipWorker {
+	// An unconfigured subcomponent is treated as skipped, so the invariant is
+	// "all configured subcomponents are suspended" and does not rely on
+	// defaulting filling an empty struct for a nil Meta/Worker.
+	if (tc.Spec.TiCI.Meta == nil || skipMeta) &&
+		(tc.Spec.TiCI.Worker == nil || skipWorker) {
 		return nil
 	}
 

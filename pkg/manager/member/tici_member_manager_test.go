@@ -242,6 +242,7 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 
 	type testcase struct {
 		name          string
+		modify        func(tc *v1alpha1.TidbCluster)
 		suspend       func(component v1alpha1.MemberType) (bool, error)
 		expectErr     bool
 		expectSuspend bool
@@ -251,6 +252,9 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbClusterForTiCISync()
+		if test.modify != nil {
+			test.modify(tc)
+		}
 		tmm := newFakeTiCIMemberManager()
 
 		suspendCalled := false
@@ -298,6 +302,20 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 				return component == v1alpha1.TiCIMetaMemberType, nil
 			},
 			expectErr:     true,
+			expectSuspend: true,
+		},
+		{
+			// A cluster configuring only meta (worker is nil) must also be
+			// able to finish suspending. Note this state is not reachable
+			// through the API in practice — defaulting fills an empty struct
+			// for a nil worker — but the skip logic should treat nil as
+			// skipped rather than rely on defaulting.
+			name:   "suspend when only meta is configured",
+			modify: func(tc *v1alpha1.TidbCluster) { tc.Spec.TiCI.Worker = nil },
+			suspend: func(component v1alpha1.MemberType) (bool, error) {
+				return true, nil
+			},
+			expectErr:     false,
 			expectSuspend: true,
 		},
 	}
