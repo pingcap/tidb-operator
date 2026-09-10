@@ -708,6 +708,59 @@ func TestHelperImagePullPolicy(t *testing.T) {
 	}
 }
 
+func TestGetImageVersion(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tests := []struct {
+		name     string
+		image    string
+		expected string
+	}{
+		{
+			name:     "standard tag",
+			image:    "pingcap/tidb:v8.5.8",
+			expected: "v8.5.8",
+		},
+		{
+			name:     "tag with digest (sha256)",
+			image:    "pingcap/tidb:v8.5.8@sha256:df168c764bf2dfdb166dc37a5c3b0e210d29d5f3ab2d33317fd0fdf7b32037f5",
+			expected: "v8.5.8",
+		},
+		{
+			name:     "digest only (no tag)",
+			image:    "pingcap/tidb@sha256:df168c764bf2dfdb166dc37a5c3b0e210d29d5f3ab2d33317fd0fdf7b32037f5",
+			expected: "latest",
+		},
+		{
+			name:     "no tag no digest",
+			image:    "pingcap/tidb",
+			expected: "latest",
+		},
+		{
+			name:     "registry with tag",
+			image:    "docker.io/pingcap/tidb:v8.5.8",
+			expected: "v8.5.8",
+		},
+		{
+			name:     "registry with tag and digest",
+			image:    "forge-docker.awsvip.dbxnw.net/index.docker.io/pingcap/tiflash:v8.5.8@sha256:bf77f914020995bcc76ce6bd1b477837de233475ff7bbcad79862a66321d638b",
+			expected: "v8.5.8",
+		},
+		{
+			name:     "latest tag",
+			image:    "pingcap/tidb:latest",
+			expected: "latest",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			version := getImageVersion(tt.image)
+			g.Expect(version).To(Equal(tt.expected), "image: %s", tt.image)
+		})
+	}
+}
+
 func TestPDVersion(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -737,6 +790,24 @@ func TestPDVersion(t *testing.T) {
 			name: "don't have tag",
 			update: func(tc *TidbCluster) {
 				tc.Spec.PD.Image = "pingcap/pd"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.PDVersion()).To(Equal("latest"))
+			},
+		},
+		{
+			name: "has tag with digest",
+			update: func(tc *TidbCluster) {
+				tc.Spec.PD.Image = "pingcap/pd:v8.5.8@sha256:424e896800e42e1b7eb585b604c8daa3454110d0f0df5ab41f7c5f49164d3aef"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.PDVersion()).To(Equal("v8.5.8"))
+			},
+		},
+		{
+			name: "has digest only",
+			update: func(tc *TidbCluster) {
+				tc.Spec.PD.Image = "pingcap/pd@sha256:424e896800e42e1b7eb585b604c8daa3454110d0f0df5ab41f7c5f49164d3aef"
 			},
 			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
 				g.Expect(tc.PDVersion()).To(Equal("latest"))
