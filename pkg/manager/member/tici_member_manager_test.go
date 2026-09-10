@@ -246,6 +246,9 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 		suspend       func(component v1alpha1.MemberType) (bool, error)
 		expectErr     bool
 		expectSuspend bool
+		// expectMemberTypes asserts which member types SuspendComponent is
+		// called with; nil means no assertion.
+		expectMemberTypes []v1alpha1.MemberType
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -258,8 +261,10 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 		tmm := newFakeTiCIMemberManager()
 
 		suspendCalled := false
+		var suspendedComponents []v1alpha1.MemberType
 		tmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
 			suspendCalled = true
+			suspendedComponents = append(suspendedComponents, mt)
 			return test.suspend(mt)
 		}
 
@@ -270,6 +275,9 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		g.Expect(suspendCalled).To(Equal(test.expectSuspend))
+		if test.expectMemberTypes != nil {
+			g.Expect(suspendedComponents).To(ConsistOf(test.expectMemberTypes))
+		}
 	}
 
 	tests := []testcase{
@@ -284,6 +292,9 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 			},
 			expectErr:     false,
 			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType, v1alpha1.TiCIWorkerMemberType,
+			},
 		},
 		{
 			// Availability checks still apply when not suspending.
@@ -293,6 +304,9 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 			},
 			expectErr:     true,
 			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType, v1alpha1.TiCIWorkerMemberType,
+			},
 		},
 		{
 			// Only meta is suspended while worker is still being synced
@@ -303,6 +317,9 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 			},
 			expectErr:     true,
 			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType, v1alpha1.TiCIWorkerMemberType,
+			},
 		},
 		{
 			// A cluster configuring only meta (worker is nil) must also be
@@ -317,6 +334,9 @@ func TestTiCIMemberManagerSyncSuspend(t *testing.T) {
 			},
 			expectErr:     false,
 			expectSuspend: true,
+			expectMemberTypes: []v1alpha1.MemberType{
+				v1alpha1.TiCIMetaMemberType,
+			},
 		},
 	}
 
