@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("DM", label.DM, func() {
 	ginkgo.Context("Basic Lifecycle", label.P0, func() {
 		ginkgo.It("applies PVC overlays to built-in and additional volumes", label.KindBasic, func(ctx context.Context) {
 			const (
-				labelKey      = "tags.tidbcloud.com/volume"
+				labelKey      = "test.pingcap.com/volume"
 				annotationKey = "test.pingcap.com/volume"
 				extraVolume   = "extra"
 			)
