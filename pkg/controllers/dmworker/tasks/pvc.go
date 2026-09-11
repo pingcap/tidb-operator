@@ -15,6 +15,8 @@
 package tasks
 
 import (
+	"slices"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -23,6 +25,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
@@ -30,6 +33,7 @@ func PVCNewer() common.PVCNewer[*v1alpha1.DMWorker] {
 	return common.PVCNewerFunc[*v1alpha1.DMWorker](
 		func(cluster *v1alpha1.Cluster, dw *v1alpha1.DMWorker, fg features.Gates) []*corev1.PersistentVolumeClaim {
 			var pvcs []*corev1.PersistentVolumeClaim
+			additionalDMWorker := dw.DeepCopy()
 
 			// RelayVolume PVC (optional relay log storage for dm-worker)
 			if relayVol := dw.Spec.RelayVolume; relayVol != nil {
@@ -60,13 +64,30 @@ func PVCNewer() common.PVCNewer[*v1alpha1.DMWorker] {
 				if cluster.Status.ID != "" {
 					relayPVC.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
 				}
+				pvcOverlays := coreutil.PVCOverlay[scope.DMWorker](dw)
+				for i := range pvcOverlays {
+					pvcOverlay := &pvcOverlays[i]
+					if pvcOverlay.Name == relayVol.Name {
+						overlay.OverlayPersistentVolumeClaim(relayPVC, &pvcOverlay.PersistentVolumeClaim)
+						break
+					}
+				}
 				pvcs = append(pvcs, relayPVC)
+
+				if additionalDMWorker.Spec.Overlay != nil {
+					additionalDMWorker.Spec.Overlay.PersistentVolumeClaims = slices.DeleteFunc(
+						additionalDMWorker.Spec.Overlay.PersistentVolumeClaims,
+						func(item v1alpha1.NamedPersistentVolumeClaimOverlay) bool {
+							return item.Name == relayVol.Name
+						},
+					)
+				}
 			}
 
 			// Additional volumes
 			additionalPVCs := coreutil.PVCs[scope.DMWorker](
 				cluster,
-				dw,
+				additionalDMWorker,
 				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
 				coreutil.PVCPatchFunc(func(_ *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
 					if cluster.Status.ID != "" {

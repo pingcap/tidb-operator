@@ -21,11 +21,18 @@ import (
 )
 
 func TestDMWorkerGroup(t *testing.T) {
+	validateCELStaticCosts(t, "crd/core.pingcap.com_dmworkergroups.yaml", "spec", "template", "spec")
+	validateCELStaticCosts(t, "crd/core.pingcap.com_dmworkers.yaml", "spec")
+
 	var cases []Case
 	cases = append(cases, transferDMWorkerGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferDMWorkerGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferDMWorkerGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
 	cases = append(cases, transferDMWorkerGroupCases(t, DMGroupRefRequired(), "spec", "dmGroupRef")...)
+	cases = append(cases, transferDMWorkerGroupCases(t, BuiltInVolumeClaimsOverlay(
+		"relay",
+		`spec.template.spec: Invalid value: "object": overlay volumeClaims names must exist in relayVolume or volumes`,
+	), "spec", "template", "spec")...)
 	Validate(t, "crd/core.pingcap.com_dmworkergroups.yaml", cases)
 }
 
