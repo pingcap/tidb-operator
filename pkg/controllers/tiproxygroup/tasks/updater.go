@@ -47,6 +47,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		logger := logr.FromContextOrDiscard(ctx)
 		proxyg := state.TiProxyGroup()
 
+		if !ptr.Deref(proxyg.Spec.Progressing, true) {
+			return task.Wait().With("group progression is disabled")
+		}
+
 		checker := action.NewUpgradeChecker[scope.TiProxyGroup](c, state.Cluster(), logger)
 
 		if needVersionUpgrade(proxyg) && !checker.CanUpgrade(ctx, proxyg) {

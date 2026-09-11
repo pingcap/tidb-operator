@@ -108,6 +108,14 @@ type Scheduler struct {
 // SchedulerGroupSpec describes the common attributes of a SchedulerGroup
 // Deprecated: use SchedulingGroupSpec
 type SchedulerGroupSpec struct {
+	// Progressing allows instance updates, scaling, and deferred deletion cleanup.
+	// When false, existing instances continue reconciling, including Pod recreation and recovery.
+	// Defaults to true. Already issued operations are not canceled.
+	// Cluster.spec.paused takes precedence and also stops instance reconciliation.
+	// +optional
+	// +kubebuilder:default=true
+	Progressing *bool `json:"progressing,omitempty"`
+
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`

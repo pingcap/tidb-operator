@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -45,6 +46,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		cdcg := state.TiCDCGroup()
+
+		if !ptr.Deref(cdcg.Spec.Progressing, true) {
+			return task.Wait().With("group progression is disabled")
+		}
 
 		checker := action.NewUpgradeChecker[scope.TiCDCGroup](c, state.Cluster(), logger)
 

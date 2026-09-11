@@ -46,6 +46,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		logger := logr.FromContextOrDiscard(ctx)
 		kvg := state.TiKVGroup()
 
+		if !ptr.Deref(kvg.Spec.Progressing, true) {
+			return task.Wait().With("group progression is disabled")
+		}
+
 		checker := action.NewUpgradeChecker[scope.TiKVGroup](c, state.Cluster(), logger)
 
 		if needVersionUpgrade(kvg) && !checker.CanUpgrade(ctx, kvg) {

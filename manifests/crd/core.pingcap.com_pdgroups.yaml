@@ -129,6 +129,14 @@ spec:
                 format: int64
                 minimum: 0
                 type: integer
+              progressing:
+                default: true
+                description: |-
+                  Progressing allows instance updates, scaling, and deferred deletion cleanup.
+                  When false, existing instances continue reconciling, including Pod recreation and recovery.
+                  Defaults to true. Already issued operations are not canceled.
+                  Cluster.spec.paused takes precedence and also stops instance reconciliation.
+                type: boolean
               replicas:
                 format: int32
                 minimum: 0
