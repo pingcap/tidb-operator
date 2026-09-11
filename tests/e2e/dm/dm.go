@@ -18,7 +18,9 @@ import (
 	"context"
 
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -38,6 +40,76 @@ var _ = ginkgo.Describe("DM", label.DM, func() {
 	f.Setup()
 
 	ginkgo.Context("Basic Lifecycle", label.P0, func() {
+		ginkgo.It("applies PVC overlays to built-in and additional volumes", label.KindBasic, func(ctx context.Context) {
+			const (
+				labelKey      = "tags.tidbcloud.com/volume"
+				annotationKey = "test.pingcap.com/volume"
+				extraVolume   = "extra"
+			)
+			newOverlay := func(names ...string) *v1alpha1.Overlay {
+				overlay := &v1alpha1.Overlay{}
+				for _, name := range names {
+					overlay.PersistentVolumeClaims = append(overlay.PersistentVolumeClaims, v1alpha1.NamedPersistentVolumeClaimOverlay{
+						Name: name,
+						PersistentVolumeClaim: v1alpha1.PersistentVolumeClaimOverlay{
+							ObjectMeta: v1alpha1.ObjectMeta{
+								Labels:      map[string]string{labelKey: name},
+								Annotations: map[string]string{annotationKey: name},
+							},
+						},
+					})
+				}
+				return overlay
+			}
+			extra := v1alpha1.Volume{
+				Name:    extraVolume,
+				Storage: resource.MustParse("1Gi"),
+				Mounts:  []v1alpha1.VolumeMount{{MountPath: "/extra"}},
+			}
+
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dmg := f.MustCreateDM(ctx, data.GroupPatchFunc[*v1alpha1.DMGroup](func(obj *v1alpha1.DMGroup) {
+				obj.Spec.Template.Spec.Volumes = []v1alpha1.Volume{extra}
+				obj.Spec.Template.Spec.Overlay = newOverlay(obj.Spec.Template.Spec.DataVolume.Name, extraVolume)
+			}))
+			dwg := f.MustCreateDMWorker(ctx, data.GroupPatchFunc[*v1alpha1.DMWorkerGroup](func(obj *v1alpha1.DMWorkerGroup) {
+				obj.Spec.Template.Spec.Volumes = []v1alpha1.Volume{extra}
+				obj.Spec.Template.Spec.Overlay = newOverlay(obj.Spec.Template.Spec.RelayVolume.Name, extraVolume)
+			}))
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForDMGroupReady(ctx, dmg)
+			f.WaitForDMWorkerGroupReady(ctx, dwg)
+
+			// Check persisted PVCs so both CRD admission and controller propagation are covered.
+			ginkgo.By("Checking labels and annotations on built-in and additional PVCs")
+			for _, group := range []struct {
+				name      string
+				component string
+				builtIn   string
+			}{
+				{dmg.Name, v1alpha1.LabelValComponentDMMaster, dmg.Spec.Template.Spec.DataVolume.Name},
+				{dwg.Name, v1alpha1.LabelValComponentDMWorker, dwg.Spec.Template.Spec.RelayVolume.Name},
+			} {
+				var pvcs corev1.PersistentVolumeClaimList
+				f.Must(f.Client.List(ctx, &pvcs, client.InNamespace(f.Namespace.Name), client.MatchingLabels{
+					v1alpha1.LabelKeyGroup:     group.name,
+					v1alpha1.LabelKeyComponent: group.component,
+				}))
+				var names []string
+				for _, pvc := range pvcs.Items {
+					name := pvc.Labels[v1alpha1.LabelKeyVolumeName]
+					names = append(names, name)
+					gomega.Expect(pvc.Labels).To(gomega.HaveKeyWithValue(labelKey, name), pvc.Name)
+					gomega.Expect(pvc.Annotations).To(gomega.HaveKeyWithValue(annotationKey, name), pvc.Name)
+					gomega.Expect(pvc.Status.Phase).To(gomega.Equal(corev1.ClaimBound), pvc.Name)
+				}
+				gomega.Expect(names).To(gomega.ConsistOf(group.builtIn, extraVolume), group.name)
+			}
+		})
+
 		ginkgo.It("deploys and reaches Ready state", label.KindBasic, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
