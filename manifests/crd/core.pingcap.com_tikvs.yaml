@@ -66,8 +66,8 @@ spec:
             properties:
               cacheTTLSeconds:
                 description: |-
-                  CacheTTLSeconds is managed by TiKVGroup and specifies how long to wait after
-                  all leaders have been evicted before restarting this TiKV instance.
+                  CacheTTLSeconds specifies how long to wait after all leaders have been evicted
+                  before restarting a TiKV instance, allowing TiDB region caches to refresh.
                 format: int64
                 minimum: 0
                 type: integer
@@ -117,6 +117,13 @@ spec:
                   If tag is omitted, version will be used as the image tag.
                   Default is pingcap/tikv
                 type: string
+              minReadyForLeaderSeconds:
+                description: |-
+                  MinReadyForLeaderSeconds specifies how long the restarted pod must remain ready
+                  before removing the evict leader scheduler.
+                format: int64
+                minimum: 0
+                type: integer
               offline:
                 description: |-
                   Offline marks the store as offline in PD to begin data migration.

@@ -68,6 +68,84 @@ func TestCheckTiKVPodPlacementIsReloadable(t *testing.T) {
 	assert.True(t, CheckTiKVPod(currentInstance, pod))
 }
 
+func TestCheckTiKVCacheTTLSecondsIsReloadable(t *testing.T) {
+	group := &v1alpha1.TiKVGroup{
+		Spec: v1alpha1.TiKVGroupSpec{
+			Template: v1alpha1.TiKVTemplate{
+				Spec: v1alpha1.TiKVTemplateSpec{
+					Version:         "v1.2.3",
+					CacheTTLSeconds: ptr.To[int64](600),
+				},
+			},
+		},
+	}
+	instance := &v1alpha1.TiKV{
+		Spec: v1alpha1.TiKVSpec{
+			TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+				Version: "v1.2.3",
+			},
+		},
+	}
+
+	assert.True(t, CheckTiKV(group, instance))
+}
+
+func TestCheckTiKVPodCacheTTLSecondsIsReloadable(t *testing.T) {
+	pod := &corev1.Pod{}
+	lastInstance := &v1alpha1.TiKV{
+		Spec: v1alpha1.TiKVSpec{
+			TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+				Version: "v1.2.3",
+			},
+		},
+	}
+	require.NoError(t, EncodeLastTiKVTemplate(lastInstance, pod))
+
+	currentInstance := lastInstance.DeepCopy()
+	currentInstance.Spec.TiKVTemplateSpec.CacheTTLSeconds = ptr.To[int64](600)
+
+	assert.True(t, CheckTiKVPod(currentInstance, pod))
+}
+
+func TestCheckTiKVMinReadyForLeaderSecondsIsReloadable(t *testing.T) {
+	group := &v1alpha1.TiKVGroup{
+		Spec: v1alpha1.TiKVGroupSpec{
+			Template: v1alpha1.TiKVTemplate{
+				Spec: v1alpha1.TiKVTemplateSpec{
+					Version:                  "v1.2.3",
+					MinReadyForLeaderSeconds: ptr.To[int64](60),
+				},
+			},
+		},
+	}
+	instance := &v1alpha1.TiKV{
+		Spec: v1alpha1.TiKVSpec{
+			TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+				Version: "v1.2.3",
+			},
+		},
+	}
+
+	assert.True(t, CheckTiKV(group, instance))
+}
+
+func TestCheckTiKVPodMinReadyForLeaderSecondsIsReloadable(t *testing.T) {
+	pod := &corev1.Pod{}
+	lastInstance := &v1alpha1.TiKV{
+		Spec: v1alpha1.TiKVSpec{
+			TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+				Version: "v1.2.3",
+			},
+		},
+	}
+	require.NoError(t, EncodeLastTiKVTemplate(lastInstance, pod))
+
+	currentInstance := lastInstance.DeepCopy()
+	currentInstance.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds = ptr.To[int64](60)
+
+	assert.True(t, CheckTiKVPod(currentInstance, pod))
+}
+
 func TestCheckTiKVPodVersionChangeIsNotReloadable(t *testing.T) {
 	pod := &corev1.Pod{}
 	lastInstance := &v1alpha1.TiKV{

@@ -61,6 +61,7 @@ func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {
 		"tls":          NameFunc(GroupToTLSTypeName),
 		"internaltls":  NameFunc(GroupToInternalTLSTypeName),
 		"serverlabels": NameFunc(InstanceToServerLabelsField),
+		"available":    NameFunc(InstanceToAvailableFuncName),
 	}
 }
 
@@ -192,25 +193,7 @@ func (in *$.|pub$) IsNotRunning() bool {
 }
 
 func (in *$.|pub$) IsAvailable(minReadySeconds int64, now time.Time) bool {
-	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
-	if cond == nil {
-		return false
-	}
-	if cond.ObservedGeneration != in.GetGeneration() {
-		return false
-	}
-	if cond.Status != metav1.ConditionTrue {
-		return false
-	}
-	if minReadySeconds == 0 {
-		return true
-	}
-	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
-	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
-		return true
-	}
-
-	return false
+	return $.|available$(in.Status.Conditions, in.GetGeneration(), minReadySeconds, now)
 }
 
 func (in *$.|pub$) IsUpToDate() bool {

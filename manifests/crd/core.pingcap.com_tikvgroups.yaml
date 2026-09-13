@@ -72,13 +72,6 @@ spec:
           spec:
             description: TiKVGroupSpec describes the common attributes of a TiKVGroup
             properties:
-              cacheTTLSeconds:
-                description: |-
-                  CacheTTLSeconds specifies how long to wait after all leaders have been evicted
-                  before restarting a TiKV instance, allowing TiDB region caches to refresh.
-                format: int64
-                minimum: 0
-                type: integer
               cluster:
                 description: |-
                   ClusterReference is a reference to cluster
@@ -209,6 +202,13 @@ spec:
                   spec:
                     description: TiKVTemplateSpec can only be specified in TiKVGroup
                     properties:
+                      cacheTTLSeconds:
+                        description: |-
+                          CacheTTLSeconds specifies how long to wait after all leaders have been evicted
+                          before restarting a TiKV instance, allowing TiDB region caches to refresh.
+                        format: int64
+                        minimum: 0
+                        type: integer
                       config:
                         description: Config defines config file of TiKV
                         type: string
@@ -218,6 +218,13 @@ spec:
                           If tag is omitted, version will be used as the image tag.
                           Default is pingcap/tikv
                         type: string
+                      minReadyForLeaderSeconds:
+                        description: |-
+                          MinReadyForLeaderSeconds specifies how long the restarted pod must remain ready
+                          before removing the evict leader scheduler.
+                        format: int64
+                        minimum: 0
+                        type: integer
                       overlay:
                         description: |-
                           Overlay defines a k8s native resource template patch

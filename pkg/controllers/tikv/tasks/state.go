@@ -31,9 +31,9 @@ const (
 	// If the region count is less than this value, we will not check the leader count.
 	minRegionCountForLeaderCountCheck = 100
 
-	// Now we have to wait an arbitrary duration to ensure that is_busy has been reported to the PD
-	minReadySeconds       = 15
-	minReadySecondsJitter = 3
+	// Now we have to wait an arbitrary duration to ensure that is_busy has been reported to the PD.
+	storeStatusStabilizationSeconds       = 15
+	storeStatusStabilizationJitterSeconds = 3
 )
 
 type state struct {

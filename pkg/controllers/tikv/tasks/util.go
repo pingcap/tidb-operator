@@ -91,7 +91,8 @@ func CheckTiKVLeadersEvicted(tikv *v1alpha1.TiKV) error {
 }
 
 func cacheTTLRemaining(tikv *v1alpha1.TiKV, now time.Time) time.Duration {
-	if tikv.Spec.CacheTTLSeconds == nil || *tikv.Spec.CacheTTLSeconds <= 0 {
+	cacheTTLSeconds := tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds
+	if cacheTTLSeconds == nil || *cacheTTLSeconds <= 0 {
 		return 0
 	}
 
@@ -100,12 +101,42 @@ func cacheTTLRemaining(tikv *v1alpha1.TiKV, now time.Time) time.Duration {
 		return 0
 	}
 
-	remaining := cond.LastTransitionTime.Add(time.Duration(*tikv.Spec.CacheTTLSeconds) * time.Second).Sub(now)
+	remaining := cond.LastTransitionTime.Add(time.Duration(*cacheTTLSeconds) * time.Second).Sub(now)
 	if remaining <= 0 {
 		return 0
 	}
 
 	return remaining
+}
+
+func minReadyForLeaderSeconds(tikv *v1alpha1.TiKV) int64 {
+	if tikv == nil || tikv.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds == nil {
+		return v1alpha1.DefaultTiKVMinReadyForLeaderSeconds
+	}
+	return *tikv.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds
+}
+
+func podReadyForLeaderRemaining(pod *corev1.Pod, minReadySeconds int64, now metav1.Time) time.Duration {
+	if pod == nil || minReadySeconds <= 0 {
+		return 0
+	}
+
+	for i := range pod.Status.Conditions {
+		cond := &pod.Status.Conditions[i]
+		if cond.Type != corev1.PodReady || cond.Status != corev1.ConditionTrue {
+			continue
+		}
+		if cond.LastTransitionTime.IsZero() {
+			return time.Duration(minReadySeconds) * time.Second
+		}
+		readyAt := cond.LastTransitionTime.Add(time.Duration(minReadySeconds) * time.Second)
+		if remaining := readyAt.Sub(now.Time); remaining > 0 {
+			return remaining
+		}
+		return 0
+	}
+
+	return 0
 }
 
 func CheckTiKVLeadersEvictedOrTimeout(tikv *v1alpha1.TiKV, timeout time.Duration) error {

@@ -65,8 +65,8 @@ func WatchUntilTiKVsRestartedAfterCacheTTL(
 		replicas = int(*kvg.Spec.Replicas)
 	}
 	cacheTTLSeconds := int64(-1)
-	if kvg.Spec.CacheTTLSeconds != nil {
-		cacheTTLSeconds = *kvg.Spec.CacheTTLSeconds
+	if kvg.Spec.Template.Spec.CacheTTLSeconds != nil {
+		cacheTTLSeconds = *kvg.Spec.Template.Spec.CacheTTLSeconds
 	}
 
 	leadersEvictedAt := make(map[string]time.Time, replicas)
@@ -78,11 +78,11 @@ func WatchUntilTiKVsRestartedAfterCacheTTL(
 		}
 
 		if cond.Status == metav1.ConditionTrue {
-			if tikv.Spec.CacheTTLSeconds == nil {
+			if tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds == nil {
 				return false, fmt.Errorf("tikv %s/%s has no cacheTTLSeconds", tikv.Namespace, tikv.Name)
 			}
-			if *tikv.Spec.CacheTTLSeconds != cacheTTLSeconds {
-				return false, fmt.Errorf("tikv %s/%s cacheTTLSeconds is %d, want %d", tikv.Namespace, tikv.Name, *tikv.Spec.CacheTTLSeconds, cacheTTLSeconds)
+			if *tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds != cacheTTLSeconds {
+				return false, fmt.Errorf("tikv %s/%s cacheTTLSeconds is %d, want %d", tikv.Namespace, tikv.Name, *tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds, cacheTTLSeconds)
 			}
 			if cond.LastTransitionTime.IsZero() {
 				return false, fmt.Errorf("tikv %s/%s has no leader eviction transition time", tikv.Namespace, tikv.Name)

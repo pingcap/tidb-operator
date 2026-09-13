@@ -244,8 +244,14 @@ func RetryIfInstancesReadyButNotAvailable[
 		}
 
 		cond := FindStatusCondition[S](in, v1alpha1.CondReady)
-		d := now.Sub(cond.LastTransitionTime.Time)
-		return d
+		if cond.LastTransitionTime.IsZero() {
+			return time.Duration(minReadySeconds) * time.Second
+		}
+		availableAt := cond.LastTransitionTime.Add(time.Duration(minReadySeconds) * time.Second)
+		if retryAfter := availableAt.Sub(now); retryAfter > 0 {
+			return retryAfter
+		}
+		return time.Duration(minReadySeconds) * time.Second
 	}
 
 	return 0

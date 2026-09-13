@@ -29,7 +29,7 @@ func IsReady(pod *corev1.Pod) bool {
 }
 
 // IsAvailable returns whether the pod has remained ready for minReadySeconds.
-func IsAvailable(pod *corev1.Pod, minReadySeconds int32, now metav1.Time) bool {
+func IsAvailable(pod *corev1.Pod, minReadySeconds int64, now metav1.Time) bool {
 	condition := readyCondition(pod)
 	if condition == nil || condition.Status != corev1.ConditionTrue {
 		return false

@@ -24,6 +24,7 @@ import (
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	pdapi "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
@@ -69,7 +70,7 @@ func TestTaskEvictLeader(t *testing.T) {
 						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
 							Type:               corev1.PodReady,
 							Status:             corev1.ConditionTrue,
-							LastTransitionTime: metav1.NewTime(time.Now().Add(-(minReadySeconds + 1) * time.Second)),
+							LastTransitionTime: metav1.NewTime(time.Now().Add(-(v1alpha1.DefaultTiKVMinReadyForLeaderSeconds + 1) * time.Second)),
 						})
 						return obj
 					}),
@@ -110,6 +111,32 @@ func TestTaskEvictLeader(t *testing.T) {
 							Type:               corev1.PodReady,
 							Status:             corev1.ConditionTrue,
 							LastTransitionTime: metav1.Now(),
+						})
+						return obj
+					}),
+				},
+				PDSynced:       true,
+				LeaderEvicting: true,
+				Store: &pdv1.Store{
+					ID: "1",
+				},
+			},
+			expectEvicting: true,
+			expectedStatus: task.SRetry,
+		},
+		{
+			desc: "keep evict leader while min ready for leader seconds has not elapsed",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds = ptr.To[int64](60)
+						return obj
+					}),
+					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
+							Type:               corev1.PodReady,
+							Status:             corev1.ConditionTrue,
+							LastTransitionTime: metav1.NewTime(time.Now().Add(-30 * time.Second)),
 						})
 						return obj
 					}),

@@ -156,7 +156,7 @@ func TestTaskPod(t *testing.T) {
 				State: &state{
 					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Spec.Version = fakeVersion
-						obj.Spec.CacheTTLSeconds = ptr.To[int64](60)
+						obj.Spec.TiKVTemplateSpec.CacheTTLSeconds = ptr.To[int64](60)
 						setLeadersEvictedAt(obj, metav1.Now())
 						return obj
 					}),

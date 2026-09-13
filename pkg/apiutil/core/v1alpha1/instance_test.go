@@ -16,6 +16,7 @@ package coreutil
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +28,53 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
+
+func TestRetryIfInstancesReadyButNotAvailableReturnsRemainingTime(t *testing.T) {
+	pd := fake.FakeObj("pd-0", func(obj *v1alpha1.PD) *v1alpha1.PD {
+		obj.Status.Conditions = []metav1.Condition{
+			{
+				Type:               v1alpha1.CondReady,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: obj.Generation,
+				LastTransitionTime: metav1.NewTime(time.Now().Add(-56 * time.Second)),
+			},
+		}
+		return obj
+	})
+
+	retryAfter := RetryIfInstancesReadyButNotAvailable[scope.PD]([]*v1alpha1.PD{pd}, 60)
+	assert.Greater(t, retryAfter, time.Duration(0))
+	assert.LessOrEqual(t, retryAfter, 4*time.Second)
+
+	readyLongEnough := fake.FakeObj("pd-1", func(obj *v1alpha1.PD) *v1alpha1.PD {
+		obj.Status.Conditions = []metav1.Condition{
+			{
+				Type:               v1alpha1.CondReady,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: obj.Generation,
+				LastTransitionTime: metav1.NewTime(time.Now().Add(-61 * time.Second)),
+			},
+		}
+		return obj
+	})
+	assert.Zero(t, RetryIfInstancesReadyButNotAvailable[scope.PD]([]*v1alpha1.PD{readyLongEnough}, 60))
+}
+
+func TestRetryIfInstancesReadyButNotAvailableRetriesWhenAvailabilityHasExtraGate(t *testing.T) {
+	tikv := fake.FakeObj("tikv-0", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+		obj.Status.Conditions = []metav1.Condition{
+			{
+				Type:               v1alpha1.CondReady,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: obj.Generation,
+				LastTransitionTime: metav1.NewTime(time.Now().Add(-61 * time.Second)),
+			},
+		}
+		return obj
+	})
+
+	assert.Equal(t, time.Minute, RetryIfInstancesReadyButNotAvailable[scope.TiKV]([]*v1alpha1.TiKV{tikv}, 60))
+}
 
 func TestPVCs(t *testing.T) {
 	cases := []struct {
