@@ -65,21 +65,21 @@ func NewManager(
 }
 
 func (bm *Manager) setFromDBOptions(backup *v1alpha1.Backup) {
-	bm.Options.Host = backup.Spec.From.Host
+	bm.Host = backup.Spec.From.Host
 
 	if backup.Spec.From.Port != 0 {
-		bm.Options.Port = backup.Spec.From.Port
+		bm.Port = backup.Spec.From.Port
 	} else {
-		bm.Options.Port = v1alpha1.DefaultTiDBServerPort
+		bm.Port = v1alpha1.DefaultTiDBServerPort
 	}
 
 	if backup.Spec.From.User != "" {
-		bm.Options.User = backup.Spec.From.User
+		bm.User = backup.Spec.From.User
 	} else {
-		bm.Options.User = v1alpha1.DefaultTidbUser
+		bm.User = v1alpha1.DefaultTidbUser
 	}
 
-	bm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+	bm.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
 }
 
 // ProcessBackup used to process the backup logic
@@ -661,7 +661,7 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.doTruncateLogBackup(ctx, backup)
+	backupErr := bm.doTruncateLogBackup(ctx, backup, bm.StatusUpdater)
 
 	if backupErr != nil {
 		klog.Errorf("Truncate log backup of cluster %s failed, err: %s", bm, backupErr)

@@ -116,7 +116,7 @@ func NewOperatorActions(cli versioned.Interface,
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
-		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
+		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.CAData)
 	} else {
 		oa.tidbControl = controller.NewDefaultTiDBControl(secretLister)
 	}

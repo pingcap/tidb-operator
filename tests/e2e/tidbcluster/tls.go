@@ -374,6 +374,36 @@ spec:
     group: cert-manager.io
 `
 
+var tidbDiscoveryCertificateTmpl = `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-discovery-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-discovery-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+  - server auth
+  - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-discovery"
+  - "{{ .ClusterName }}-discovery.{{ .Namespace }}"
+  - "{{ .ClusterName }}-discovery.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterRef }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+`
+
 var tidbClientCertificateTmpl = `
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -606,6 +636,10 @@ func InstallTiDBComponentsCertificates(ns, tcName string) error {
 		return err
 	}
 	return installCert(tidbComponentsExceptPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+}
+
+func InstallDiscoveryTLSCertificates(ns, tcName string) error {
+	return installCert(tidbDiscoveryCertificateTmpl, tcTmplMeta{ns, tcName, tcName})
 }
 
 func installHeterogeneousTiDBComponentsCertificates(ns, tcName string, clusterRef string) error {

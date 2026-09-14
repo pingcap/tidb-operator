@@ -583,7 +583,7 @@ func getTestTiKVPodAndPvcs(pvcIndexer cache.Indexer, podIndexer cache.Indexer, t
 	if testPodPvcParams.podWithDeletionTimestamp {
 		pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 	}
-	pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+	pvc1.Labels[label.AnnPodNameKey] = pod.GetName()
 	pod.Spec.Volumes = append(pod.Spec.Volumes,
 		corev1.Volume{
 			VolumeSource: corev1.VolumeSource{

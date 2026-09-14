@@ -111,7 +111,7 @@ func (c *PodController) setPodStat(pod *corev1.Pod, stat stat) {
 func (c *PodController) enqueuePod(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
 	}
 	c.queue.Add(key)
@@ -326,7 +326,7 @@ func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *core
 	}
 	memberID, err := strconv.ParseUint(memberIDStr, 10, 64)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("Could not parse memberID (%s) from label for pod %s/%s", memberIDStr, pod.Namespace, pod.Name)
+		return reconcile.Result{}, fmt.Errorf("could not parse memberID (%s) from label for pod %s/%s", memberIDStr, pod.Namespace, pod.Name)
 	}
 	pdClient := c.getPDClient(tc)
 	leader, err := pdClient.GetPDLeader()
@@ -520,14 +520,15 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 
 		evictStatus := tc.Status.TiKV.EvictLeader[pod.Name]
 		if evictStatus != nil {
-			if evictStatus.Value == v1alpha1.EvictLeaderValueDeletePod {
+			switch evictStatus.Value {
+			case v1alpha1.EvictLeaderValueDeletePod:
 				if k8s.IsPodReady(pod) {
 					err := endEvict()
 					if err != nil {
 						return reconcile.Result{}, err
 					}
 				}
-			} else if evictStatus.Value == v1alpha1.EvictLeaderValueNone {
+			case v1alpha1.EvictLeaderValueNone:
 				err := endEvict()
 				if err != nil {
 					return reconcile.Result{}, err
@@ -576,22 +577,23 @@ func (c *PodController) syncTiKVPodForReplaceVolume(ctx context.Context, pod *co
 	if err != nil {
 		return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
 	}
-	if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
+	switch storeInfo.Store.StateName {
+	case v1alpha1.TiKVStateUp:
 		if !tc.TiKVAllStoresReady() {
-			return reconcile.Result{Requeue: true}, fmt.Errorf("Not all TIKV stores ready before replace")
+			return reconcile.Result{Requeue: true}, fmt.Errorf("not all TiKV stores ready before replace")
 		}
 		// 1. Delete store
 		klog.Infof("storeid %d is Up, deleting due to replace volume annotation.", storeID)
 		pdClient.DeleteStore(storeID)
 		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
-	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
+	case v1alpha1.TiKVStateOffline:
 		// 2. Wait for Tombstone
 		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, fmt.Errorf("StoreID %d not yet Tombstone", storeID)
-	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
+	case v1alpha1.TiKVStateTombstone:
 		// 3. Delete PVCs & 4. Delete Pod.
 		return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
-	} else {
-		return reconcile.Result{}, fmt.Errorf("Cannot replace volume when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
+	default:
+		return reconcile.Result{}, fmt.Errorf("cannot replace volume when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
 	}
 }
 
@@ -635,7 +637,8 @@ func (c *PodController) syncTiFlashPodForReplaceVolume(ctx context.Context, pod 
 	if err != nil {
 		return reconcile.Result{}, perrors.Annotatef(err, "failed to get tiflash store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
 	}
-	if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
+	switch storeInfo.Store.StateName {
+	case v1alpha1.TiKVStateUp:
 		if !tc.TiFlashAllStoresReady() {
 			return reconcile.Result{Requeue: true}, fmt.Errorf("not all TiFlash stores ready before replace")
 		}
@@ -643,13 +646,13 @@ func (c *PodController) syncTiFlashPodForReplaceVolume(ctx context.Context, pod 
 		klog.Infof("storeid %d is Up, deleting due to replace volume annotation.", storeID)
 		pdClient.DeleteStore(storeID)
 		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
-	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
+	case v1alpha1.TiKVStateOffline:
 		// 2. Wait for Tombstone
 		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, fmt.Errorf("StoreID %d not yet Tombstone", storeID)
-	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
+	case v1alpha1.TiKVStateTombstone:
 		// 3. Delete PVCs & 4. Delete Pod.
 		return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
-	} else {
+	default:
 		return reconcile.Result{}, fmt.Errorf("cannot replace volume when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
 	}
 }
@@ -784,7 +787,7 @@ func (c *PodController) isEvictLeaderExpired(pod *corev1.Pod, annKey string) boo
 	if exist {
 		evictionExpirationTime, err := time.Parse(time.RFC3339, timeToExpireAnnValue)
 		if err == nil {
-			if metav1.Now().Time.After(evictionExpirationTime) {
+			if metav1.Now().After(evictionExpirationTime) {
 				klog.Infof("Annotation to evict leader on the Pod %s/%s is expired", pod.Namespace, pod.Name)
 				return true
 			}

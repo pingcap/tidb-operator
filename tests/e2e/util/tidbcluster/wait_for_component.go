@@ -58,6 +58,63 @@ func WaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp
 	return lastPhase, WaitForTCCondition(c, tc.Namespace, tc.Name, timeout, pollInterval, cond)
 }
 
+// AsyncWatchWaitForComponentPhase starts a watch for comp reaching phase before
+// the triggering change is applied. It returns a function that blocks until the
+// condition is satisfied or the timeout expires. The watch must be started
+// before the spec update so that a brief phase transition is not missed.
+//
+// Usage:
+//
+//	waitFn := AsyncWatchWaitForComponentPhase(c, tc, comp, ScalePhase, time.Minute)
+//	// ... apply spec update ...
+//	lastPhase, err := waitFn()
+func AsyncWatchWaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase,
+	timeout time.Duration) func() (v1alpha1.MemberPhase, error) {
+	type result struct {
+		lastPhase v1alpha1.MemberPhase
+		err       error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		var lastPhase v1alpha1.MemberPhase
+		cond := func(tc *v1alpha1.TidbCluster) (bool, error) {
+			switch comp {
+			case v1alpha1.PDMemberType:
+				lastPhase = tc.Status.PD.Phase
+			case v1alpha1.TiKVMemberType:
+				lastPhase = tc.Status.TiKV.Phase
+			case v1alpha1.TiDBMemberType:
+				lastPhase = tc.Status.TiDB.Phase
+			case v1alpha1.TiFlashMemberType:
+				lastPhase = tc.Status.TiFlash.Phase
+			case v1alpha1.TiCDCMemberType:
+				lastPhase = tc.Status.TiCDC.Phase
+			case v1alpha1.PumpMemberType:
+				lastPhase = tc.Status.Pump.Phase
+			}
+			return lastPhase == phase, nil
+		}
+		err := WatchWaitForTCCondition(c, tc.Namespace, tc.Name, timeout, cond)
+		ch <- result{lastPhase, err}
+	}()
+	return func() (v1alpha1.MemberPhase, error) {
+		r := <-ch
+		return r.lastPhase, r.err
+	}
+}
+
+// MustAsyncWatchWaitForComponentPhase is like AsyncWatchWaitForComponentPhase
+// but the returned function calls framework.ExpectNoError on failure.
+func MustAsyncWatchWaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase,
+	timeout time.Duration) func() {
+	waitFn := AsyncWatchWaitForComponentPhase(c, tc, comp, phase, timeout)
+	return func() {
+		lastPhase, err := waitFn()
+		framework.ExpectNoError(err, "failed to wait for .Status.%s.Phase of tc %s/%s to be %s, last phase is %s",
+			comp, tc.Namespace, tc.Name, phase, lastPhase)
+	}
+}
+
 func CheckComponentStatusNotChanged(c versioned.Interface, oldTC *v1alpha1.TidbCluster) error {
 	tcName := oldTC.GetName()
 	tcNs := oldTC.GetNamespace()

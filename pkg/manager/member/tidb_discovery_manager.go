@@ -128,12 +128,12 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 	}
 	deploy, err := m.deps.TypedControl.CreateOrUpdateDeployment(obj, d)
 	if err != nil {
-		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
+		return controller.RequeueErrorf("error creating or updating discovery service when CreateOrUpdateDeployment: %v", err)
 	}
 	// RBAC ensured, reconcile
 	_, err = m.deps.TypedControl.CreateOrUpdateService(obj, getTidbDiscoveryService(metaObj, deploy, preferIPv6))
 	if err != nil {
-		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
+		return controller.RequeueErrorf("error creating or updating discovery service when CreateOrUpdateService: %v", err)
 	}
 	return nil
 }
@@ -183,8 +183,8 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		timezone = cluster.Timezone()
 		baseSpec = cluster.BaseDiscoverySpec()
 		podSpec = baseSpec.BuildPodSpec()
-		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ComponentSpec.ReadinessProbe != nil {
-			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ComponentSpec.ReadinessProbe)
+		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ReadinessProbe != nil {
+			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ReadinessProbe)
 		}
 		if cluster.Spec.Discovery.LivenessProbe != nil {
 			livenessProbe = buildDiscoveryProb(cluster.Spec.Discovery.LivenessProbe)
@@ -194,8 +194,8 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		timezone = cluster.Timezone()
 		baseSpec = cluster.BaseDiscoverySpec()
 		podSpec = baseSpec.BuildPodSpec()
-		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ComponentSpec.ReadinessProbe != nil {
-			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ComponentSpec.ReadinessProbe)
+		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ReadinessProbe != nil {
+			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ReadinessProbe)
 		}
 		if cluster.Spec.Discovery.LivenessProbe != nil {
 			livenessProbe = buildDiscoveryProb(cluster.Spec.Discovery.LivenessProbe)
@@ -290,6 +290,30 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 			Name:  "TC_TLS_ENABLED",
 			Value: strconv.FormatBool(true),
 		})
+	}
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsDiscoveryMTLSEnabled() {
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: util.DiscoveryTLSVolName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.DiscoveryTLSSecretName(obj.GetName()),
+				},
+			},
+		})
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      util.DiscoveryTLSVolName,
+			ReadOnly:  true,
+			MountPath: util.DiscoveryTLSPath,
+		})
+		podSpec.Containers[0].Env = append(podSpec.Containers[0].Env, corev1.EnvVar{
+			Name:  "DISCOVERY_MTLS_ENABLED",
+			Value: strconv.FormatBool(true),
+		})
+	}
+
+	if baseSpec.AutomountServiceAccountToken() != nil && !*baseSpec.AutomountServiceAccountToken() {
+		podSpec.Volumes = append(podSpec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
 	}
 
 	podLabels := util.CombineStringMap(l.Labels(), baseSpec.Labels())

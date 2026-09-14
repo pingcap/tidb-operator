@@ -112,7 +112,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 							v1.ReadWriteOnce,
 						},
 						StorageClassName: nil,
-						Resources: v1.ResourceRequirements{
+						Resources: v1.VolumeResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: quantity,
 							},
@@ -439,7 +439,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 						AccessModes: []v1.PersistentVolumeAccessMode{
 							v1.ReadWriteOnce,
 						},
-						Resources: v1.ResourceRequirements{
+						Resources: v1.VolumeResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: quantity,
 							},
@@ -667,7 +667,7 @@ func newFakeDMCluster(mm *MonitorManager) {
 			Master: v1alpha1.MasterSpec{Replicas: 1},
 		},
 	}
-	dmIndexer.Add(dc)
+	_ = dmIndexer.Add(dc)
 }
 
 func newFakeTidbMonitorManager() *MonitorManager {

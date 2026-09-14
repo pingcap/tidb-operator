@@ -105,9 +105,9 @@ func pumpAdvertiseAddr(pod *v1.Pod) string {
 					continue
 				}
 
-				str = strings.Replace(str, "`echo ${HOSTNAME}`", pod.Name, -1)
-				str = strings.Replace(str, "${PUMP_POD_NAME}", pod.Name, -1)
-				str = strings.Replace(str, "-advertise-addr=", "", -1)
+				str = strings.ReplaceAll(str, "`echo ${HOSTNAME}`", pod.Name)
+				str = strings.ReplaceAll(str, "${PUMP_POD_NAME}", pod.Name)
+				str = strings.ReplaceAll(str, "-advertise-addr=", "")
 				str = strings.TrimRight(str, "\\")
 				str = strings.TrimSpace(str)
 				return str
@@ -183,15 +183,16 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			continue
 		}
 
-		if node.State == "online" {
+		switch node.State {
+		case "online":
 			err := client.OfflinePump(context.TODO(), addr)
 			if err != nil {
 				return err
 			}
 			klog.Infof("pumpScaler.ScaleIn: send offline request to pump %s/%s successfully", ns, podName)
-			return controller.RequeueErrorf("Pump %s/%s is still in cluster, state: %s", ns, podName, node.State)
-		} else if node.State == "offline" {
-			klog.Infof("Pump %s/%s becomes offline", ns, podName)
+			return controller.RequeueErrorf("pump %s/%s is still in cluster, state: %s", ns, podName, node.State)
+		case "offline":
+			klog.Infof("pump %s/%s becomes offline", ns, podName)
 			pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 			if err != nil {
 				return fmt.Errorf("pumpScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
@@ -203,8 +204,8 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			}
 			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 			return nil
-		} else {
-			return controller.RequeueErrorf("Pump %s/%s is still in cluster, state: %s", ns, podName, node.State)
+		default:
+			return controller.RequeueErrorf("pump %s/%s is still in cluster, state: %s", ns, podName, node.State)
 		}
 	}
 
@@ -224,7 +225,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			// then we can be sure that this pump has never been added to the tidb cluster.
 			// So we can scale in this pump pod safely.
 			resetReplicas(newSet, oldSet)
-			return fmt.Errorf("Pump %s/%s is not ready, wait for 5 resync periods to sync its status", ns, podName)
+			return fmt.Errorf("pump %s/%s is not ready, wait for 5 resync periods to sync its status", ns, podName)
 		}
 
 		pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
@@ -240,7 +241,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
-	return fmt.Errorf("Pump %s/%s not found in cluster", ns, podName)
+	return fmt.Errorf("pump %s/%s not found in cluster", ns, podName)
 }
 
 type fakePumpScaler struct{}

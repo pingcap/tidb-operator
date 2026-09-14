@@ -127,7 +127,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 				g.Expect(err).To(Succeed())
 				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(2)))
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -169,7 +169,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(2)))
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
 				g.Expect(result.Spec.Paused).To(BeTrue())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -224,7 +224,7 @@ func TestCreateOrUpdatePVC(t *testing.T) {
 				},
 			},
 			StorageClassName: pointer.StringPtr("local-storage"),
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: resource.MustParse("100Gi"),
 				},
@@ -241,7 +241,7 @@ func TestCreateOrUpdatePVC(t *testing.T) {
 			desired:  pvc,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
 			},
 		},
@@ -252,7 +252,7 @@ func TestCreateOrUpdatePVC(t *testing.T) {
 			desired:  pvc2,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -317,7 +317,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 			desired:  rb,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
 			},
 		},
@@ -328,7 +328,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 			desired:  rb2,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -393,7 +393,7 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 			desired:  rb,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
 			},
 		},
@@ -404,7 +404,7 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 			desired:  rb2,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -466,7 +466,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 			desired:  sec,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
 			},
 		},
@@ -477,7 +477,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 			desired:  sec2,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -620,7 +620,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
 				g.Expect(result.Spec.Selector.MatchLabels["k"]).To(Equal("v"))
 				g.Expect(result.Spec.Template.Labels["k"]).To(Equal("v"))
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -631,7 +631,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 			desired:  dep,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, result *appsv1.Deployment, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
 			},
 		},
@@ -698,7 +698,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 			desired:  svc,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
 			},
 		},
@@ -709,7 +709,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 			desired:  svc2,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},

@@ -96,7 +96,7 @@ func (c *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error
 	for _, pvc := range pvcs {
 		pvcName := pvc.GetName()
 		l := label.Label(pvc.Labels)
-		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash() || l.IsDMMaster() || l.IsDMWorker()) {
+		if !l.IsPD() && !l.IsTiKV() && !l.IsTiFlash() && !l.IsDMMaster() && !l.IsDMWorker() {
 			skipReason[pvcName] = skipReasonPVCCleanerIsNotTarget
 			continue
 		}
@@ -215,7 +215,7 @@ func (c *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]strin
 	for _, pvc := range pvcs {
 		pvcName := pvc.GetName()
 		l := label.Label(pvc.Labels)
-		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash() || l.IsDMMaster() || l.IsDMWorker()) {
+		if !l.IsPD() && !l.IsTiKV() && !l.IsTiFlash() && !l.IsDMMaster() && !l.IsDMWorker() {
 			skipReason[pvcName] = skipReasonPVCCleanerIsNotTarget
 			continue
 		}

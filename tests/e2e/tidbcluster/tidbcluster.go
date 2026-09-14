@@ -258,12 +258,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						tc.Spec.Labels[fixture.ClusterCustomKey] = newValue
 						tc.Spec.Annotations[fixture.ClusterCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Annotations[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Labels[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
 						return nil
@@ -786,14 +786,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
-			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 				for _, pod := range pods {
 					if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}); err != nil {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
@@ -839,20 +839,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
-			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 
 				for _, pod := range pods {
 					_, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{})
 					if err == nil {
-						return false, nil, fmt.Sprintf("pod %s still exists", pod)
+						return false, fmt.Sprintf("pod %s still exists", pod), nil
 					}
 					if err != nil && !apierrors.IsNotFound(err) {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
 
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
@@ -922,14 +922,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
-			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 				for _, pod := range pods {
 					if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}); err != nil {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
@@ -997,20 +997,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
-			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 
 				for _, pod := range pods {
 					_, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{})
 					if err == nil {
-						return false, nil, fmt.Sprintf("pod %s still exists", pod)
+						return false, fmt.Sprintf("pod %s still exists", pod), nil
 					}
 					if err != nil && !apierrors.IsNotFound(err) {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
 
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
@@ -1405,6 +1405,71 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
 			framework.ExpectNoError(err, "connect to TLS tidb timeout")
 		})
+
+		ginkgo.It("should enable DiscoveryMTLS for TiDB cluster", func() {
+			tcName := "discovery-mtls"
+
+			ginkgo.By("Installing tidb CA certificate")
+			err := InstallTiDBIssuer(ns, tcName)
+			framework.ExpectNoError(err, "failed to install CA certificate")
+
+			ginkgo.By("Installing tidb server and client certificate")
+			err = InstallTiDBCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+			ginkgo.By("Installing tidb components certificates")
+			err = InstallTiDBComponentsCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
+
+			ginkgo.By("Installing discovery TLS certificate")
+			err = InstallDiscoveryTLSCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install discovery TLS certificate")
+
+			ginkgo.By("Creating tidb cluster with TLS and DiscoveryMTLS enabled")
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
+				Enabled:             true,
+				EnableDiscoveryMTLS: true,
+			}
+
+			err = genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			ginkgo.By("Verifying discovery deployment has DISCOVERY_MTLS_ENABLED env var and TLS volume")
+			discoveryName := controller.DiscoveryMemberName(tcName)
+			discoveryDeploy, err := c.AppsV1().Deployments(ns).Get(context.TODO(), discoveryName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get discovery deployment: %q", discoveryName)
+
+			foundEnv := false
+			for _, envVar := range discoveryDeploy.Spec.Template.Spec.Containers[0].Env {
+				if envVar.Name == "DISCOVERY_MTLS_ENABLED" && envVar.Value == "true" {
+					foundEnv = true
+					break
+				}
+			}
+			framework.ExpectEqual(foundEnv, true, "expected DISCOVERY_MTLS_ENABLED=true in discovery deployment env")
+
+			foundVolume := false
+			for _, vol := range discoveryDeploy.Spec.Template.Spec.Volumes {
+				if vol.Name == "discovery-tls" {
+					foundVolume = true
+					framework.ExpectEqual(vol.Secret.SecretName, fmt.Sprintf("%s-discovery-cluster-secret", tcName))
+					break
+				}
+			}
+			framework.ExpectEqual(foundVolume, true, "expected discovery-tls volume in discovery deployment")
+
+			ginkgo.By("Connecting to tidb server to verify the cluster is working with DiscoveryMTLS")
+			passwd := ""
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
+			framework.ExpectNoError(err, "connect to TLS tidb timeout")
+		})
 	})
 
 	// TODO: move into TiDB specific group
@@ -1693,8 +1758,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
-			data, err := framework.RunKubectl(ns, args...)
-			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			// Retry because headless-service DNS entries for restarted TiCDC pods
+			// may not yet be propagated by CoreDNS when the cluster first becomes Ready.
+			var lastData string
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				data, execErr := framework.RunKubectl(ns, args...)
+				lastData = string(data)
+				if execErr != nil {
+					log.Logf("retrying changefeed create: %v", execErr)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", lastData, err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
@@ -1821,8 +1897,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
-			data, err := framework.RunKubectl(ns, args...)
-			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			// Retry because headless-service DNS entries for restarted TiCDC pods
+			// may not yet be propagated by CoreDNS when the cluster first becomes Ready.
+			var lastData string
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				data, execErr := framework.RunKubectl(ns, args...)
+				lastData = string(data)
+				if execErr != nil {
+					log.Logf("retrying changefeed create: %v", execErr)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", lastData, err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
@@ -2533,6 +2620,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By(fmt.Sprintf("Scale in %s", comp))
+					waitScaleInPhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
 						case v1alpha1.PDMemberType:
@@ -2546,7 +2634,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScaleInPhase()
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
@@ -2582,6 +2670,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 					ginkgo.By(fmt.Sprintf("Scale out %s", comp))
+					waitScaleOutPhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
 						case v1alpha1.PDMemberType:
@@ -2595,7 +2684,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale out %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScaleOutPhase()
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
@@ -2654,6 +2743,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
+					ginkgo.By(fmt.Sprintf("Watch for %s to be in ScalePhase before triggering scale-in", comp))
+					waitScalePhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
+
 					ginkgo.By(fmt.Sprintf("Scale in %s to %d replicas", comp, replicasSmall))
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
@@ -2669,7 +2761,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScalePhase()
 
 					ginkgo.By(fmt.Sprintf("Upgrade %s version concurrently", comp))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -3327,12 +3419,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						tc.Spec.Labels[fixture.ClusterCustomKey] = newValue
 						tc.Spec.Annotations[fixture.ClusterCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Annotations[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Labels[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
 						return nil
@@ -3425,6 +3517,127 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "Expected tidbcluster is ready")
+		})
+	})
+
+	ginkgo.Context("[TiDBCluster: Smooth Upgrade DDL Pause]", func() {
+		// These must match pkg/manager/member/smooth_upgrade.go ann* constants.
+		const (
+			annSmoothUpgradeDDLPaused     = "tidb.pingcap.com/smooth-upgrade-ddl-paused"
+			annSmoothUpgradeSourceVersion = "tidb.pingcap.com/smooth-upgrade-source-version"
+			annSmoothUpgradeTargetVersion = "tidb.pingcap.com/smooth-upgrade-target-version"
+		)
+
+		smoothUpgradePaused := func(tc *v1alpha1.TidbCluster) (bool, error) {
+			return tc.Annotations[annSmoothUpgradeDDLPaused] == "true", nil
+		}
+		smoothUpgradeCleared := func(tc *v1alpha1.TidbCluster) (bool, error) {
+			_, has := tc.Annotations[annSmoothUpgradeDDLPaused]
+			return !has, nil
+		}
+
+		ginkgo.It("should set and clear smooth-upgrade annotations for switch-controlled version pair", func() {
+			tcName := "smooth-upgrade-happy"
+			ginkgo.By(fmt.Sprintf("Deploy cluster at %s", utilimage.TiDBV7x5x0))
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV7x5x0)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 2
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By(fmt.Sprintf("Upgrade to %s", utilimage.TiDBV7x5x3))
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV7x5x3
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version")
+
+			ginkgo.By("Wait for smooth-upgrade-ddl-paused annotation to appear")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 3*time.Minute, 5*time.Second, smoothUpgradePaused)
+			framework.ExpectNoError(err, "smooth-upgrade-ddl-paused annotation did not appear during upgrade")
+
+			ginkgo.By("Verify source and target version annotations")
+			latest, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster")
+			framework.ExpectEqual(latest.Annotations[annSmoothUpgradeSourceVersion], utilimage.TiDBV7x5x0, "source version annotation mismatch")
+			framework.ExpectEqual(latest.Annotations[annSmoothUpgradeTargetVersion], utilimage.TiDBV7x5x3, "target version annotation mismatch")
+
+			ginkgo.By("Wait for cluster upgrade to complete")
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "cluster did not become ready after upgrade")
+
+			ginkgo.By("Verify smooth-upgrade annotations are cleared after finish")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 2*time.Minute, 5*time.Second, smoothUpgradeCleared)
+			framework.ExpectNoError(err, "smooth-upgrade annotations were not cleared after upgrade finish")
+		})
+
+		ginkgo.It("should skip smooth-upgrade annotations for unsupported version pair", func() {
+			tcName := "smooth-upgrade-unsupported"
+			oldVersion := utilimage.TiDBPreviousVersions[0] // v6.5.10, source < v7.1.0 → unsupported
+			ginkgo.By(fmt.Sprintf("Deploy cluster at %s", oldVersion))
+			tc := fixture.GetTidbCluster(ns, tcName, oldVersion)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By(fmt.Sprintf("Upgrade to %s", utilimage.TiDBLatest))
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBLatest
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version")
+
+			ginkgo.By("Wait for TiDB UpgradePhase")
+			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.UpgradePhase, 3*time.Minute, 5*time.Second)
+
+			ginkgo.By("Assert smooth-upgrade-ddl-paused annotation is absent during upgrade")
+			latest, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster")
+			_, hasPausedAnn := latest.Annotations[annSmoothUpgradeDDLPaused]
+			framework.ExpectEqual(hasPausedAnn, false, "smooth-upgrade-ddl-paused should not be set for unsupported version pair")
+
+			ginkgo.By("Wait for cluster upgrade to complete")
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "cluster did not become ready after upgrade")
+		})
+
+		ginkgo.It("should finish smooth upgrade after operator restart", func() {
+			tcName := "smooth-upgrade-restart"
+			ginkgo.By(fmt.Sprintf("Deploy cluster at %s", utilimage.TiDBV7x5x0))
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV7x5x0)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 2
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By(fmt.Sprintf("Upgrade to %s", utilimage.TiDBV7x5x3))
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV7x5x3
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version")
+
+			ginkgo.By("Wait for smooth-upgrade start annotation")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 3*time.Minute, 5*time.Second, smoothUpgradePaused)
+			framework.ExpectNoError(err, "smooth-upgrade-ddl-paused annotation did not appear")
+
+			ginkgo.By("Delete the tidb-controller-manager pod to simulate operator restart")
+			podList, err := c.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{
+				LabelSelector: "app.kubernetes.io/component=controller-manager",
+			})
+			framework.ExpectNoError(err, "failed to list controller-manager pods")
+			framework.ExpectNotEqual(len(podList.Items), 0, "expected at least one controller-manager pod")
+			err = c.CoreV1().Pods(ocfg.Namespace).Delete(context.TODO(), podList.Items[0].Name, metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete controller-manager pod")
+
+			ginkgo.By("Wait for cluster upgrade to complete after operator restart")
+			err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "cluster did not become ready after operator restart during upgrade")
+
+			ginkgo.By("Verify smooth-upgrade annotations are cleared after finish")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 2*time.Minute, 5*time.Second, smoothUpgradeCleared)
+			framework.ExpectNoError(err, "smooth-upgrade annotations were not cleared after operator restart recovery")
 		})
 	})
 })

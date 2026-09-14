@@ -190,8 +190,8 @@ func (fr *commonStatefulFailureRecovery) restartPodForHostDown(tc *v1alpha1.Tidb
 						return err
 					}
 					msg := fmt.Sprintf("Failed %s pod %s/%s is force deleted for recovery", memberType, ns, fr.failureObjectAccess.GetPodName(tc, objectId))
-					klog.Infof(msg)
-					return controller.IgnoreErrorf(msg)
+					klog.Infof("%s", msg)
+					return controller.IgnoreErrorf("%s", msg)
 				}
 			}
 		}
@@ -257,12 +257,12 @@ func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbClust
 	pvcUIDSet := fr.failureObjectAccess.GetPVCUIDSet(tc, objectId)
 	pvcUIDs := make([]types.UID, 0, len(pvcs))
 	for p := range pvcs {
-		pvcUIDs = append(pvcUIDs, pvcs[p].ObjectMeta.UID)
+		pvcUIDs = append(pvcUIDs, pvcs[p].UID)
 	}
 	klog.Infof("%s failover[deletePodAndPvcs]: PVCs used in cluster %s/%s: %s", memberType, ns, tcName, pvcUIDs)
 	for p := range pvcs {
 		pvc := pvcs[p]
-		if _, pvcUIDExist := pvcUIDSet[pvc.ObjectMeta.UID]; pvcUIDExist {
+		if _, pvcUIDExist := pvcUIDSet[pvc.UID]; pvcUIDExist {
 			if pvc.DeletionTimestamp == nil {
 				if deleteErr := fr.deps.PVCControl.DeletePVC(tc, pvc); deleteErr != nil {
 					klog.Errorf("%s failover[deletePodAndPvcs]: failed to delete PVC: %s/%s, error: %s", memberType, ns, pvc.Name, deleteErr)

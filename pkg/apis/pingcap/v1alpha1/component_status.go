@@ -27,6 +27,8 @@ var (
 	_ ComponentStatus = &PumpStatus{}
 	_ ComponentStatus = &TiFlashStatus{}
 	_ ComponentStatus = &TiCDCStatus{}
+	_ ComponentStatus = &TiCIMetaStatus{}
+	_ ComponentStatus = &TiCIWorkerStatus{}
 	_ ComponentStatus = &MasterStatus{}
 	_ ComponentStatus = &WorkerStatus{}
 )
@@ -94,6 +96,14 @@ func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
 	}
 	if tc.Spec.TiCDC != nil {
 		components = append(components, &tc.Status.TiCDC)
+	}
+	if tc.Spec.TiCI != nil {
+		if tc.Spec.TiCI.Meta != nil {
+			components = append(components, &tc.Status.TiCIMeta)
+		}
+		if tc.Spec.TiCI.Worker != nil {
+			components = append(components, &tc.Status.TiCIWorker)
+		}
 	}
 	if tc.Spec.Pump != nil {
 		components = append(components, &tc.Status.Pump)
@@ -487,6 +497,108 @@ func (s *TiCDCStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus
 	s.Volumes = vols
 }
 func (s *TiCDCStatus) SetVolReplaceInProgress(status bool) {}
+
+func (s *TiCIMetaStatus) MemberType() MemberType {
+	return TiCIMetaMemberType
+}
+func (s *TiCIMetaStatus) GetSynced() bool {
+	return s.Synced
+}
+func (s *TiCIMetaStatus) GetPhase() MemberPhase {
+	return s.Phase
+}
+func (s *TiCIMetaStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
+	return s.Volumes
+}
+func (s *TiCIMetaStatus) GetConditions() []metav1.Condition {
+	return s.Conditions
+}
+func (s *TiCIMetaStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *TiCIMetaStatus) GetVolReplaceInProgress() bool {
+	return false
+}
+func (s *TiCIMetaStatus) SetSynced(synced bool) {
+	s.Synced = synced
+}
+func (s *TiCIMetaStatus) SetCondition(newCondition metav1.Condition) {
+	if s.Conditions == nil {
+		s.Conditions = []metav1.Condition{}
+	}
+	conditions := s.Conditions
+	meta.SetStatusCondition(&conditions, newCondition)
+	s.Conditions = conditions
+}
+func (s *TiCIMetaStatus) RemoveCondition(conditionType string) {
+	if s.Conditions == nil {
+		return
+	}
+	conditions := s.Conditions
+	meta.RemoveStatusCondition(&conditions, conditionType)
+	s.Conditions = conditions
+}
+func (s *TiCIMetaStatus) SetPhase(phase MemberPhase) {
+	s.Phase = phase
+}
+func (s *TiCIMetaStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
+func (s *TiCIMetaStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
+func (s *TiCIMetaStatus) SetVolReplaceInProgress(status bool) {}
+
+func (s *TiCIWorkerStatus) MemberType() MemberType {
+	return TiCIWorkerMemberType
+}
+func (s *TiCIWorkerStatus) GetSynced() bool {
+	return s.Synced
+}
+func (s *TiCIWorkerStatus) GetPhase() MemberPhase {
+	return s.Phase
+}
+func (s *TiCIWorkerStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
+	return s.Volumes
+}
+func (s *TiCIWorkerStatus) GetConditions() []metav1.Condition {
+	return s.Conditions
+}
+func (s *TiCIWorkerStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *TiCIWorkerStatus) GetVolReplaceInProgress() bool {
+	return false
+}
+func (s *TiCIWorkerStatus) SetSynced(synced bool) {
+	s.Synced = synced
+}
+func (s *TiCIWorkerStatus) SetCondition(newCondition metav1.Condition) {
+	if s.Conditions == nil {
+		s.Conditions = []metav1.Condition{}
+	}
+	conditions := s.Conditions
+	meta.SetStatusCondition(&conditions, newCondition)
+	s.Conditions = conditions
+}
+func (s *TiCIWorkerStatus) RemoveCondition(conditionType string) {
+	if s.Conditions == nil {
+		return
+	}
+	conditions := s.Conditions
+	meta.RemoveStatusCondition(&conditions, conditionType)
+	s.Conditions = conditions
+}
+func (s *TiCIWorkerStatus) SetPhase(phase MemberPhase) {
+	s.Phase = phase
+}
+func (s *TiCIWorkerStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
+func (s *TiCIWorkerStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
+func (s *TiCIWorkerStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *MasterStatus) MemberType() MemberType {
 	return DMMasterMemberType

@@ -81,6 +81,11 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if tc.Spec.TiCI != nil && !tc.TiCIAllMembersReady() {
+		klog.Infof("TidbCluster: [%s/%s], TiFlash is waiting for TiCI meta/worker ready, skip syncing", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	// skip sync if tiflash is suspended
 	component := v1alpha1.TiFlashMemberType
 	needSuspend, err := m.suspender.SuspendComponent(tc, component)
@@ -707,8 +712,9 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
-				StorageClassName: storageClaims[k].StorageClassName,
-				Resources:        storageRequest,
+				StorageClassName:          storageClaims[k].StorageClassName,
+				VolumeAttributesClassName: storageClaims[k].VolumeAttributesClassName,
+				Resources:                 storageRequest,
 			},
 		})
 	}

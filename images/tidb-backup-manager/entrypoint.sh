@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Copyright 2020 PingCAP, Inc.
 #
@@ -27,7 +27,23 @@ cleanup() {
 
 trap cleanup EXIT
 
-export GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json
+GCS_SERVICE_ACCOUNT_FILE=/tmp/google-credentials.json
+GCS_SERVICE_ACCOUNT_FILE_CONFIG=
+if [ -n "${GCS_SERVICE_ACCOUNT_JSON_KEY:-}" ]; then
+    export GOOGLE_APPLICATION_CREDENTIALS=${GCS_SERVICE_ACCOUNT_FILE}
+    GCS_SERVICE_ACCOUNT_FILE_CONFIG="service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}"
+    echo "Create google-credentials.json file."
+    cat <<EOF > "${GOOGLE_APPLICATION_CREDENTIALS}"
+    ${GCS_SERVICE_ACCOUNT_JSON_KEY}
+EOF
+elif [ -s "${GCS_SERVICE_ACCOUNT_FILE}" ]; then
+    echo "Use mounted google-credentials.json file."
+    export GOOGLE_APPLICATION_CREDENTIALS=${GCS_SERVICE_ACCOUNT_FILE}
+    GCS_SERVICE_ACCOUNT_FILE_CONFIG="service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}"
+else
+    unset GOOGLE_APPLICATION_CREDENTIALS
+fi
+
 echo "Create rclone.conf file."
 cat <<EOF > /tmp/rclone.conf
 [s3]
@@ -43,25 +59,16 @@ storage_class = ${AWS_STORAGE_CLASS}
 [gcs]
 type = google cloud storage
 project_number = ${GCS_PROJECT_ID}
-service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}
 object_acl = ${GCS_OBJECT_ACL}
 bucket_acl = ${GCS_BUCKET_ACL}
 location =  ${GCS_LOCATION}
 storage_class = ${GCS_STORAGE_CLASS:-"COLDLINE"}
+${GCS_SERVICE_ACCOUNT_FILE_CONFIG}
 [azure]
 type = azureblob
 account = ${AZUREBLOB_ACCOUNT}
 key = ${AZUREBLOB_KEY}
 EOF
-
-if [[ -n "${GCS_SERVICE_ACCOUNT_JSON_KEY:-}" ]]; then
-    echo "Create google-credentials.json file."
-    cat <<EOF > ${GOOGLE_APPLICATION_CREDENTIALS}
-    ${GCS_SERVICE_ACCOUNT_JSON_KEY}
-EOF
-else
-    touch ${GOOGLE_APPLICATION_CREDENTIALS}
-fi
 
 BACKUP_BIN=/tidb-backup-manager
 if [[ -n "${AWS_DEFAULT_REGION}" ]]; then

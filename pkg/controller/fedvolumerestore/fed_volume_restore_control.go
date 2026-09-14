@@ -124,7 +124,7 @@ func (c *defaultRestoreControl) removeProtectionFinalizer(volumeRestore *v1alpha
 			return fmt.Errorf("remove VolumeRestore %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
 		klog.Infof("remove VolumeRestore %s/%s protection finalizers success", ns, name)
-		return controller.RequeueErrorf(fmt.Sprintf("VolumeRestore %s/%s has been cleaned up", ns, name))
+		return controller.RequeueErrorf("VolumeRestore %s/%s has been cleaned up", ns, name)
 	}
 	return nil
 }

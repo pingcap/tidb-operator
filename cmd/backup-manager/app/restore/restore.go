@@ -14,12 +14,9 @@
 package restore
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -27,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/brlog"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -38,6 +36,33 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	// replicationPiTRConcurrency is the parallelism BR uses when
+	// applying compacted log files. Spec §6.
+	replicationPiTRConcurrency = 1024
+
+	replicationMetadataDownloadBatchSize = 512
+)
+
+var brBinPath = util.BRBinPath
+
+// replicationBRFlags returns the BR command-line flags that are
+// specific to replication restore phases. Returns nil for phase 0
+// (= not a replication restore), in which case the caller's
+// `append(args, replicationBRFlags(0)...)` is a no-op and standard
+// PiTR semantics apply unchanged. Spec §6.
+func replicationBRFlags(phase int) []string {
+	if phase == 0 {
+		return nil
+	}
+	return []string{
+		fmt.Sprintf("--restore-phase=%d", phase),
+		fmt.Sprintf("--pitr-concurrency=%d", replicationPiTRConcurrency),
+		fmt.Sprintf("--metadata-download-batch-size=%d", replicationMetadataDownloadBatchSize),
+		"--retain-latest-mvcc-version",
+	}
+}
+
 type Options struct {
 	backupUtil.GenericOptions
 	// Prepare to restore data. It's used in volume-snapshot mode.
@@ -48,6 +73,16 @@ type Options struct {
 	UseFSR bool
 	// Abort indicates whether to abort/cleanup a failed restore operation
 	Abort bool
+	// ReplicationPhase indicates which phase of a two-phase replication
+	// restore this backup-manager invocation handles. Valid values:
+	//   1 — snapshot-restore phase (status writes suppressed by Option B
+	//       no-op wrapper; controller is sole writer of status.Phase)
+	//   2 — log-restore phase (backup-manager directly writes Phase /
+	//       Running / Complete / Failed; no wrapper)
+	// The zero value (0) means this is NOT a replication restore — the
+	// CLI flag was not passed and standard PiTR / snapshot semantics
+	// apply. See spec §3 (Option B) and §6 (BR CLI surface).
+	ReplicationPhase int
 }
 
 func (ro *Options) restoreData(
@@ -104,6 +139,7 @@ func (ro *Options) restoreData(
 		} else {
 			args = append(args, fullBackupArgs...)
 		}
+		args = append(args, replicationBRFlags(ro.ReplicationPhase)...)
 		restoreType = "point"
 	case string(v1alpha1.RestoreModeVolumeSnapshot):
 		// Currently, we only support aws ebs volume snapshot.
@@ -130,22 +166,6 @@ func (ro *Options) restoreData(
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := path.Join(util.BRBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
-
-	stdOut, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
-	}
-	stdErr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
-	}
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
-	}
 
 	var (
 		progressWg     sync.WaitGroup
@@ -163,38 +183,24 @@ func (ro *Options) restoreData(
 		}()
 	}
 
-	stdErrCh := make(chan []byte, 1)
-	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
-
-	var errMsg string
-	reader := bufio.NewReader(stdOut)
-	for {
-		line, err := reader.ReadString('\n')
-		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
-		} else {
-			if !useProgressFile {
-				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+	observer := newRestoreLogObserver(restore, statusUpdater)
+	err = backupUtil.RunBRCommandWithLineHandler(ctx, backupUtil.BRCommandOptions{
+		BRBinPath:        brBinPath,
+		Cluster:          fmt.Sprint(ro),
+		Args:             fullArgs,
+		GracefulShutdown: true,
+		LineHandler: func(stream backupUtil.BRLogStream, line string) {
+			if stream == backupUtil.BRLogStreamStdout && !brlog.IsErrorLine(line) {
+				if !useProgressFile {
+					ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+				}
+				ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 			}
-			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
-		}
-		klog.Info(strings.Replace(line, "\n", "", -1))
-		if err != nil {
-			if err != io.EOF {
-				klog.Errorf("read stdout error: %s", err.Error())
-			}
-			break
-		}
-	}
-	tmpErr := <-stdErrCh
-	if len(tmpErr) > 0 {
-		klog.Info(string(tmpErr))
-		errMsg += string(tmpErr)
-	}
-
-	err = cmd.Wait()
+			observer.observeLine(line)
+		},
+	})
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+		return err
 	}
 
 	if csbPath != "" {
@@ -222,6 +228,36 @@ func (ro *Options) restoreData(
 
 	klog.Infof("Restore data for cluster %s successfully", ro)
 	return nil
+}
+
+type restoreLogObserver struct {
+	restore       *v1alpha1.Restore
+	statusUpdater controller.RestoreConditionUpdaterInterface
+}
+
+func newRestoreLogObserver(
+	restore *v1alpha1.Restore,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+) *restoreLogObserver {
+	return &restoreLogObserver{
+		restore:       restore,
+		statusUpdater: statusUpdater,
+	}
+}
+
+func (o *restoreLogObserver) observeLine(line string) {
+	operation, ok := brlog.ParseOperationStartedLine(line)
+	if !ok {
+		return
+	}
+	if operation.ObservedAt.IsZero() {
+		operation.ObservedAt = metav1.Now()
+	}
+	if err := o.statusUpdater.Update(o.restore, nil, &controller.RestoreUpdateStatus{
+		BROperation: operation,
+	}); err != nil {
+		klog.Errorf("Failed to update BR operation status for restore %s/%s, %v", o.restore.Namespace, o.restore.Name, err)
+	}
 }
 
 // copy the restore meta to remote storage since k8s has limit to handle massive data pass between pods

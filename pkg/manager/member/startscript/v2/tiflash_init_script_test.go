@@ -94,6 +94,31 @@ sed -i s/PD_ADDR/${result}/g /data0/config.toml
 sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 `,
 		},
+		{
+			name: "across k8s with discovery mtls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true, EnableDiscoveryMTLS: true}
+				tc.Spec.AcrossK8s = true
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ordinal=$(echo ${POD_NAME} | awk -F- '{print $NF}')
+sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml
+sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
+pd_url=https://start-script-test-pd:2379
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
+until result=$(curl -sS --fail --max-time 3 --cacert /var/lib/tiflash-tls/ca.crt --cert /var/lib/tiflash-tls/tls.crt --key /var/lib/tiflash-tls/tls.key https://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep 2
+done
+
+sed -i s/PD_ADDR/${result}/g /data0/config.toml
+sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
+`,
+		},
 	}
 
 	for _, c := range cases {

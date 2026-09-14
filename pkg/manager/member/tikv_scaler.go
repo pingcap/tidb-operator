@@ -340,7 +340,7 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 		noActiveStoreSinceTime, err := time.Parse(time.RFC3339, noActiveStoreSinceAnnValue)
 		if err == nil {
 			// Wait for 5 resync periods to ensure that the store is really not showing up in status.
-			if metav1.Now().Time.After(noActiveStoreSinceTime.Add(5 * s.deps.CLIConfig.ResyncDuration)) {
+			if metav1.Now().After(noActiveStoreSinceTime.Add(5 * s.deps.CLIConfig.ResyncDuration)) {
 				pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 				if err != nil {
 					return deletedUpStore, fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)

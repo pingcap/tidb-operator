@@ -43,7 +43,7 @@ func newTestPVCForModify(sc *string, specSize, statusSize string, anno map[strin
 			Annotations: anno,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: a,
 				},

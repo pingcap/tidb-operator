@@ -77,12 +77,12 @@ func makeTcAndK8Objects(deps *controller.Dependencies, g *GomegaWithT, sts testS
 	storageClasses := map[string]bool{"storageclass-1": true}
 	makePVC := func(vol testVolDef) corev1.PersistentVolumeClaim {
 		storageClasses[vol.sc] = true
-		storageRequest := corev1.ResourceRequirements{
+		storageRequest := corev1.VolumeResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse(vol.size),
 			},
 		}
-		return util.VolumeClaimTemplate(storageRequest, vol.name, pointer.StringPtr(vol.sc))
+		return util.VolumeClaimTemplate(storageRequest, vol.name, pointer.StringPtr(vol.sc), nil)
 	}
 	tikvSts := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

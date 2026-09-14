@@ -296,10 +296,8 @@ func parsePDURL(pdURL string) pdEndpointURL {
 		tcName:       "",
 	}
 
-	noScheme := true
-	if strings.Contains(pdURL, "://") {
-		noScheme = false
-	}
+	noScheme := !strings.Contains(pdURL, "://")
+
 	pdURL = strings.ReplaceAll(pdURL, "//", "")
 	partsPDURL := strings.Split(pdURL, ":")
 	// If len == 1, the URL doesn't contain ":", it should be pdMemberName

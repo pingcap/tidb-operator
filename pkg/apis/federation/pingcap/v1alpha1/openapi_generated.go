@@ -313,6 +313,13 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeBackupMemberSpec(ref common.R
 							Format:      "",
 						},
 					},
+					"automountServiceAccountToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"cleanPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained",
@@ -761,6 +768,13 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeRestoreMemberSpec(ref common.
 						SchemaProps: spec.SchemaProps{
 							Description: "Specify service account of restore",
 							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"automountServiceAccountToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.",
+							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},

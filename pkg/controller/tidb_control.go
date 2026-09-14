@@ -29,8 +29,12 @@ import (
 const (
 	// https://github.com/pingcap/tidb/blob/master/owner/manager.go#L183
 	// NotDDLOwnerError is the error message which was returned when the tidb node is not a ddl owner
-	NotDDLOwnerError = "This node is not a ddl owner, can't be resigned."
-	timeout          = 5 * time.Second
+	NotDDLOwnerError               = "This node is not a ddl owner, can't be resigned."
+	timeout                        = 5 * time.Second
+	startUpgradeTimeout            = 30 * time.Second
+	tidbUpgradeSuccessBody         = "success!"
+	tidbUpgradeDuplicateStartBody  = "It's a duplicated operation and the cluster is already in upgrading state."
+	tidbUpgradeDuplicateFinishBody = "It's a duplicated operation and the cluster is already in normal state."
 )
 
 type DBInfo struct {
@@ -45,6 +49,10 @@ type TiDBControlInterface interface {
 	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error)
 	// SetServerLabels update TiDB's labels config
 	SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error
+	// StartUpgrade switches TiDB into upgrade state.
+	StartUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error
+	// FinishUpgrade switches TiDB back to normal state.
+	FinishUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error
 }
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
@@ -121,6 +129,64 @@ func (c *defaultTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal i
 	return err
 }
 
+func (c *defaultTiDBControl) StartUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	return c.upgrade(tc, ordinal, "start", c.upgradeClientTimeout("start"), tidbUpgradeDuplicateStartBody)
+}
+
+func (c *defaultTiDBControl) FinishUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	return c.upgrade(tc, ordinal, "finish", c.upgradeClientTimeout("finish"), tidbUpgradeDuplicateFinishBody)
+}
+
+func (c *defaultTiDBControl) upgradeClientTimeout(op string) time.Duration {
+	if op == "start" {
+		return startUpgradeTimeout
+	}
+	return timeout
+}
+
+func (c *defaultTiDBControl) upgrade(tc *v1alpha1.TidbCluster, ordinal int32, op string, requestTimeout time.Duration, duplicateSuccessBody string) error {
+	baseClient, err := c.getHTTPClient(tc)
+	if err != nil {
+		return err
+	}
+	httpClient := &http.Client{
+		Transport: baseClient.Transport,
+		Timeout:   requestTimeout,
+	}
+
+	url := fmt.Sprintf("%s/upgrade/%s", c.getBaseURL(tc, ordinal), op)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return err
+	}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer httputil.DeferClose(res.Body)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	bodyText := string(body)
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("tidb upgrade %s error response %d %q URL: %s", op, res.StatusCode, bodyText, url)
+	}
+	successText := normalizeTiDBUpgradeResponse(body)
+	if successText == tidbUpgradeSuccessBody || successText == duplicateSuccessBody {
+		return nil
+	}
+	return fmt.Errorf("tidb upgrade %s unexpected response %d %q URL: %s", op, res.StatusCode, bodyText, url)
+}
+
+func normalizeTiDBUpgradeResponse(body []byte) string {
+	var text string
+	if err := json.Unmarshal(body, &text); err == nil {
+		return text
+	}
+	return string(body)
+}
+
 func getBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	res, err := httpClient.Get(apiURL)
 	if err != nil {
@@ -158,10 +224,14 @@ func (c *defaultTiDBControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32)
 
 // FakeTiDBControl is a fake implementation of TiDBControlInterface.
 type FakeTiDBControl struct {
-	healthInfo     map[string]bool
-	tiDBInfo       *DBInfo
-	getInfoError   error
-	setLabelsError error
+	healthInfo            map[string]bool
+	tiDBInfo              *DBInfo
+	getInfoError          error
+	setLabelsError        error
+	startUpgradeError     error
+	finishUpgradeError    error
+	StartUpgradeOrdinals  []int32
+	FinishUpgradeOrdinals []int32
 }
 
 // NewFakeTiDBControl returns a FakeTiDBControl instance
@@ -195,4 +265,22 @@ func (c *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBI
 
 func (c *FakeTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
 	return c.setLabelsError
+}
+
+func (c *FakeTiDBControl) SetStartUpgradeError(err error) {
+	c.startUpgradeError = err
+}
+
+func (c *FakeTiDBControl) SetFinishUpgradeError(err error) {
+	c.finishUpgradeError = err
+}
+
+func (c *FakeTiDBControl) StartUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	c.StartUpgradeOrdinals = append(c.StartUpgradeOrdinals, ordinal)
+	return c.startUpgradeError
+}
+
+func (c *FakeTiDBControl) FinishUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	c.FinishUpgradeOrdinals = append(c.FinishUpgradeOrdinals, ordinal)
+	return c.finishUpgradeError
 }

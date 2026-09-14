@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	componentCommonScript = `#!/bin/sh
+	componentCommonScriptBody = `
 
 set -uo pipefail
 
@@ -40,7 +40,9 @@ then
     tail -f /dev/null
 fi
 `
-	dnsAwaitPart = "<<dns-await-part>>"
+	componentCommonScript     = "#!/bin/sh" + componentCommonScriptBody
+	componentCommonScriptBash = "#!/bin/bash" + componentCommonScriptBody
+	dnsAwaitPart              = "<<dns-await-part>>"
 
 	pdEnableMicroservice = "<<pd-enable-micro-service>>"
 
@@ -112,6 +114,15 @@ type AcrossK8sScriptModel struct {
 
 	// PDAddr is the address used by discovery to get the actual pd addr.
 	PDAddr string
+
+	// DiscoveryMTLS indicates whether mTLS is enabled on the discovery server.
+	// When true, the startup script uses curl with the component's own cluster
+	// certificate because wget in the runtime image does not reliably present the client cert.
+	DiscoveryMTLS bool
+
+	// ClusterCertPath is the path to the component's own cluster TLS certificate directory.
+	// Used when DiscoveryMTLS is true to authenticate with the discovery service.
+	ClusterCertPath string
 }
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {

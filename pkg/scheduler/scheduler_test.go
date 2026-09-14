@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
-	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -68,17 +67,17 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "pod instance label is empty",
 			args: &schedulerapi.ExtenderArgs{
-				Pod: &apiv1.Pod{
+				Pod: &corev1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
 						Namespace: corev1.NamespaceDefault,
 					},
 				},
-				Nodes: &apiv1.NodeList{
+				Nodes: &corev1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{ResourceVersion: "9999"},
-					Items:    []apiv1.Node{},
+					Items:    []corev1.Node{},
 				},
 			},
 			predicate: &predicates.FakePredicate{},
@@ -91,7 +90,7 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "pod is not pd or tikv or tidb",
 			args: &schedulerapi.ExtenderArgs{
-				Pod: &apiv1.Pod{
+				Pod: &corev1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
@@ -102,10 +101,10 @@ func TestSchedulerFilter(t *testing.T) {
 						},
 					},
 				},
-				Nodes: &apiv1.NodeList{
+				Nodes: &corev1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{ResourceVersion: "9999"},
-					Items:    []apiv1.Node{},
+					Items:    []corev1.Node{},
 				},
 			},
 			predicate: &predicates.FakePredicate{},
@@ -118,7 +117,7 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "predicate returns error",
 			args: &schedulerapi.ExtenderArgs{
-				Pod: &apiv1.Pod{
+				Pod: &corev1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
@@ -129,10 +128,10 @@ func TestSchedulerFilter(t *testing.T) {
 						},
 					},
 				},
-				Nodes: &apiv1.NodeList{
+				Nodes: &corev1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{ResourceVersion: "9999"},
-					Items:    []apiv1.Node{},
+					Items:    []corev1.Node{},
 				},
 			},
 			predicate: &predicates.FakePredicate{Err: fmt.Errorf("predicate error")},
@@ -147,7 +146,7 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "predicate success",
 			args: &schedulerapi.ExtenderArgs{
-				Pod: &apiv1.Pod{
+				Pod: &corev1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
@@ -158,10 +157,10 @@ func TestSchedulerFilter(t *testing.T) {
 						},
 					},
 				},
-				Nodes: &apiv1.NodeList{
+				Nodes: &corev1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{ResourceVersion: "9999"},
-					Items: []apiv1.Node{
+					Items: []corev1.Node{
 						{
 							TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 							ObjectMeta: metav1.ObjectMeta{
@@ -214,10 +213,10 @@ func TestSchedulerPriority(t *testing.T) {
 		{
 			name: "have 1 node",
 			args: &schedulerapi.ExtenderArgs{
-				Nodes: &apiv1.NodeList{
+				Nodes: &corev1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{},
-					Items: []apiv1.Node{
+					Items: []corev1.Node{
 						{
 							TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 							ObjectMeta: metav1.ObjectMeta{
@@ -237,10 +236,10 @@ func TestSchedulerPriority(t *testing.T) {
 		{
 			name: "have 2 nodes",
 			args: &schedulerapi.ExtenderArgs{
-				Nodes: &apiv1.NodeList{
+				Nodes: &corev1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{},
-					Items: []apiv1.Node{
+					Items: []corev1.Node{
 						{
 							TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 							ObjectMeta: metav1.ObjectMeta{
@@ -274,35 +273,35 @@ func TestSchedulerPriority(t *testing.T) {
 
 func TestSchedulerPreempt(t *testing.T) {
 	victims := &schedulerapi.Victims{
-		Pods: []*apiv1.Pod{},
+		Pods: []*corev1.Pod{},
 	}
 	metaVictims := &schedulerapi.MetaVictims{
 		Pods: []*schedulerapi.MetaPod{},
 	}
-	nodeA := &apiv1.Node{
+	nodeA := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "node-a",
 		},
 	}
-	nodeB := &apiv1.Node{
+	nodeB := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "node-b",
 		},
 	}
-	nodeC := &apiv1.Node{
+	nodeC := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "node-c",
 		},
 	}
-	unrelatedPod := &apiv1.Pod{
+	unrelatedPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: apiv1.NamespaceDefault,
+			Namespace: corev1.NamespaceDefault,
 			Name:      "test",
 		},
 	}
-	pdPod := &apiv1.Pod{
+	pdPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: apiv1.NamespaceDefault,
+			Namespace: corev1.NamespaceDefault,
 			Name:      "test",
 			Labels: map[string]string{
 				label.InstanceLabelKey:  "test",
@@ -312,7 +311,7 @@ func TestSchedulerPreempt(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		nodes      []*apiv1.Node
+		nodes      []*corev1.Node
 		args       *schedulerapi.ExtenderPreemptionArgs
 		predicates map[string][]predicates.Predicate
 		wantResult *schedulerapi.ExtenderPreemptionResult
@@ -320,7 +319,7 @@ func TestSchedulerPreempt(t *testing.T) {
 	}{
 		{
 			name:  "unrelated pod",
-			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			nodes: []*corev1.Node{nodeA, nodeB, nodeC},
 			args: &schedulerapi.ExtenderPreemptionArgs{
 				Pod: unrelatedPod,
 				NodeNameToVictims: map[string]*schedulerapi.Victims{
@@ -339,7 +338,7 @@ func TestSchedulerPreempt(t *testing.T) {
 		},
 		{
 			name:  "node does not exist anymore",
-			nodes: []*apiv1.Node{nodeA, nodeB},
+			nodes: []*corev1.Node{nodeA, nodeB},
 			predicates: map[string][]predicates.Predicate{
 				label.PDLabelVal: {
 					&predicates.FakePredicate{},
@@ -358,11 +357,11 @@ func TestSchedulerPreempt(t *testing.T) {
 		},
 		{
 			name:  "one of nominated nodes is feasible",
-			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			nodes: []*corev1.Node{nodeA, nodeB, nodeC},
 			predicates: map[string][]predicates.Predicate{
 				label.PDLabelVal: {
 					&predicates.FakePredicate{
-						Nodes: []apiv1.Node{
+						Nodes: []corev1.Node{
 							*nodeA,
 						},
 					},
@@ -384,11 +383,11 @@ func TestSchedulerPreempt(t *testing.T) {
 		},
 		{
 			name:  "none of nominated nodes is feasible",
-			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			nodes: []*corev1.Node{nodeA, nodeB, nodeC},
 			predicates: map[string][]predicates.Predicate{
 				label.PDLabelVal: {
 					&predicates.FakePredicate{
-						Nodes: []apiv1.Node{},
+						Nodes: []corev1.Node{},
 					},
 				},
 			},
@@ -406,11 +405,11 @@ func TestSchedulerPreempt(t *testing.T) {
 		},
 		{
 			name:  "all nominated nodes are feasible",
-			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			nodes: []*corev1.Node{nodeA, nodeB, nodeC},
 			predicates: map[string][]predicates.Predicate{
 				label.PDLabelVal: {
 					&predicates.FakePredicate{
-						Nodes: []apiv1.Node{
+						Nodes: []corev1.Node{
 							*nodeA,
 							*nodeB,
 							*nodeC,
@@ -451,7 +450,7 @@ func TestSchedulerPreempt(t *testing.T) {
 					kubeCli.CoreV1().Nodes().Create(context.TODO(), node, metav1.CreateOptions{})
 				}
 			}
-			kubeCli.CoreV1().Pods(apiv1.NamespaceDefault).Create(context.TODO(), tt.args.Pod, metav1.CreateOptions{})
+			kubeCli.CoreV1().Pods(corev1.NamespaceDefault).Create(context.TODO(), tt.args.Pod, metav1.CreateOptions{})
 			result, err := s.Preempt(tt.args)
 			if diff := cmp.Diff(tt.wantResult, result); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)

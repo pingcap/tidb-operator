@@ -16,17 +16,14 @@ package tidbdashboard
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/manager/tidbdashboard"
 
-	"github.com/agiledragon/gomonkey/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -178,14 +175,13 @@ func TestReconcile(t *testing.T) {
 
 		td := newTidbDashboardForTest()
 
-		validatePatch := gomonkey.ApplyFunc(v1alpha1validation.ValidateTiDBDashboard, func(td *v1alpha1.TidbDashboard) field.ErrorList {
+		control.validateFunc = func(td *v1alpha1.TidbDashboard) field.ErrorList {
 			allErrs := field.ErrorList{}
 			if testcase.validateErr != nil {
 				allErrs = append(allErrs, field.InternalError(field.NewPath(""), testcase.validateErr))
 			}
 			return allErrs
-		})
-		defer validatePatch.Reset()
+		}
 
 		if testcase.getTC != nil {
 			if tc := testcase.getTC(td); tc != nil {
@@ -205,10 +201,9 @@ func TestReconcile(t *testing.T) {
 			control.dashboardManager.(*tidbdashboard.FakeManager).MockSync(testcase.syncTCTLSCerts)
 		}
 
-		updateStatusPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(control), "updateStatus", func(_ *defaultTiDBDashboardControl, td *v1alpha1.TidbDashboard) (*v1alpha1.TidbDashboard, error) {
+		control.updateStatusFunc = func(td *v1alpha1.TidbDashboard) (*v1alpha1.TidbDashboard, error) {
 			return td, testcase.updateStatusErr
-		})
-		defer updateStatusPatch.Reset()
+		}
 
 		err := control.Reconcile(td)
 		testcase.errExpectFn(err)

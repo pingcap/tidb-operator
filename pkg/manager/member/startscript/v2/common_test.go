@@ -27,6 +27,7 @@ func TestScriptFormat(t *testing.T) {
 
 	scripts := []string{
 		componentCommonScript,
+		componentCommonScriptBash,
 		componentCommonWaitForDnsIpMatchScript,
 		pdStartScript,
 		pdStartSubScript,

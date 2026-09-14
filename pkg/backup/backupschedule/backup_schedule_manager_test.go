@@ -371,6 +371,8 @@ func TestBuildBackup(t *testing.T) {
 	// should keep StorageSize from BackupSchedule
 	bs.Spec.StorageSize = "9527G"
 	bk.Spec.StorageSize = bs.Spec.StorageSize
+	bs.Spec.VolumeAttributesClassName = pointer.String("gold")
+	bk.Spec.VolumeAttributesClassName = bs.Spec.VolumeAttributesClassName
 	get = buildBackup(bs, now)
 	if diff := cmp.Diff(bk, get); diff != "" {
 		t.Errorf("unexpected (-want, +got): %s", diff)
@@ -380,6 +382,8 @@ func TestBuildBackup(t *testing.T) {
 	bs.Spec.BackupTemplate.BR = &v1alpha1.BRConfig{}
 	bk.Spec.BR = bs.Spec.BackupTemplate.BR.DeepCopy()
 	bk.Spec.StorageSize = "" // no use for BR
+	bs.Spec.BackupTemplate.VolumeAttributesClassName = pointer.String("silver")
+	bk.Spec.VolumeAttributesClassName = bs.Spec.BackupTemplate.VolumeAttributesClassName
 	get = buildBackup(bs, now)
 	if diff := cmp.Diff(bk, get); diff != "" {
 		t.Errorf("unexpected (-want, +got): %s", diff)

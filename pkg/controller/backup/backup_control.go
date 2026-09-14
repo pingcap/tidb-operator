@@ -104,7 +104,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup
 			return fmt.Errorf("remove backup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
 		klog.Infof("remove backup %s/%s protection finalizers success", ns, name)
-		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s has been cleaned up", ns, name))
+		return controller.RequeueErrorf("backup %s/%s has been cleaned up", ns, name)
 	}
 	return nil
 }

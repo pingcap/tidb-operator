@@ -196,11 +196,12 @@ func (dc *DMCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
 		return deleteSlots
 	}
 	var key string
-	if component == label.DMMasterLabelVal {
+	switch component {
+	case label.DMMasterLabelVal:
 		key = label.AnnDMMasterDeleteSlots
-	} else if component == label.DMWorkerLabelVal {
+	case label.DMWorkerLabelVal:
 		key = label.AnnDMWorkerDeleteSlots
-	} else {
+	default:
 		return
 	}
 	value, ok := annotations[key]

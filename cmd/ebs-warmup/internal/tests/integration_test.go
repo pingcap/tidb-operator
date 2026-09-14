@@ -74,7 +74,7 @@ func createTestDataSet(t *testing.T) *ToBeWarmedUp {
 func (t *ToBeWarmedUp) saveCheckpoint(ckp int64) {
 	fd, err := os.Create(t.defaultConfig().CheckpointFile)
 	require.NoError(t.tCtx, err)
-	_, err = fd.WriteString(fmt.Sprintf("%d", ckp))
+	_, err = fmt.Fprintf(fd, "%d", ckp)
 	require.NoError(t.tCtx, err)
 }
 

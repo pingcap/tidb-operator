@@ -567,7 +567,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 						healthy = healthy || member.Health
 					}
 					// we consider it healthy only when member is healthy and synced is true
-					return !(healthy && tc.Status.PD.Synced), nil
+					return !healthy || !tc.Status.PD.Synced, nil
 				})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
@@ -660,7 +660,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 						healthy = healthy || member.Health
 					}
 					// we consider it healthy only when member is healthy and synced is true
-					return !(healthy && tc.Status.PD.Synced), nil
+					return !healthy || !tc.Status.PD.Synced, nil
 				})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
@@ -867,7 +867,7 @@ func MustPrepareXK8sTLSResources(cli ctrlCli.Client, initialTC *v1alpha1.TidbClu
 
 	for _, tc := range restTCs {
 		caSecret.Namespace = tc.Namespace
-		caSecret.ObjectMeta.ResourceVersion = ""
+		caSecret.ResourceVersion = ""
 		cli.Create(context.TODO(), caSecret)
 
 		err = InstallXK8sTiDBIssuer(tc.Namespace, tc.Name, initialTC.Name)

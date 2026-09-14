@@ -101,3 +101,7 @@ func (p *proxyServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (p *proxyServer) ListenAndServe(addr string) {
 	klog.Fatal(http.ListenAndServe(addr, p))
 }
+
+func (p *proxyServer) ListenAndServeTLS(addr, certFile, keyFile, caFile string) {
+	klog.Fatal("proxy server does not support mTLS")
+}

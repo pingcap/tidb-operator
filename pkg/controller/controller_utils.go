@@ -373,6 +373,31 @@ func TiCDCPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-ticdc-peer", clusterName)
 }
 
+// TiCIChangefeedJobName returns tici changefeed job name
+func TiCIChangefeedJobName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-changefeed", clusterName)
+}
+
+// TiCIMetaMemberName returns tici meta member name
+func TiCIMetaMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-meta", clusterName)
+}
+
+// TiCIMetaPeerMemberName returns tici meta peer service name
+func TiCIMetaPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-meta-peer", clusterName)
+}
+
+// TiCIWorkerMemberName returns tici worker member name
+func TiCIWorkerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-worker", clusterName)
+}
+
+// TiCIWorkerPeerMemberName returns tici worker peer service name
+func TiCIWorkerPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-worker-peer", clusterName)
+}
+
 // TiDBMemberName returns tidb member name
 func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
@@ -464,15 +489,15 @@ func AnnAdditionalProm(name string, port int32) map[string]string {
 	}
 }
 
-func ParseStorageRequest(req corev1.ResourceList) (corev1.ResourceRequirements, error) {
+func ParseStorageRequest(req corev1.ResourceList) (corev1.VolumeResourceRequirements, error) {
 	if req == nil {
-		return corev1.ResourceRequirements{}, nil
+		return corev1.VolumeResourceRequirements{}, nil
 	}
 	q, ok := req[corev1.ResourceStorage]
 	if !ok {
-		return corev1.ResourceRequirements{}, fmt.Errorf("storage request is not set")
+		return corev1.VolumeResourceRequirements{}, fmt.Errorf("storage request is not set")
 	}
-	return corev1.ResourceRequirements{
+	return corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: q,
 		},
@@ -565,7 +590,7 @@ func WatchForObject(informer cache.SharedIndexInformer, q workqueue.Interface) {
 	enqueueFn := func(obj interface{}) {
 		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 			return
 		}
 		q.Add(key)
@@ -619,7 +644,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
 			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(controllerObj)
 			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", controllerObj, err))
+				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", controllerObj, err))
 				return
 			}
 			q.Add(key)
@@ -638,7 +663,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 func EmptyClone(obj client.Object) (client.Object, error) {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
-		return nil, fmt.Errorf("Obj %v is not a metav1.Object, cannot call EmptyClone", obj)
+		return nil, fmt.Errorf("obj %v is not a metav1.Object, cannot call EmptyClone", obj)
 	}
 	gvk, err := InferObjectKind(obj)
 	if err != nil {
@@ -650,7 +675,7 @@ func EmptyClone(obj client.Object) (client.Object, error) {
 	}
 	instMeta, ok := inst.(client.Object)
 	if !ok {
-		return nil, fmt.Errorf("New instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
+		return nil, fmt.Errorf("new instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
 	}
 	instMeta.SetName(meta.GetName())
 	instMeta.SetNamespace(meta.GetNamespace())

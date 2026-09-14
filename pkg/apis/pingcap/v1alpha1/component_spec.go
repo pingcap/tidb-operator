@@ -78,6 +78,7 @@ type ComponentAccessor interface {
 	PodManagementPolicy() apps.PodManagementPolicyType
 	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
 	SuspendAction() *SuspendAction
+	AutomountServiceAccountToken() *bool
 }
 
 func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
@@ -100,6 +101,14 @@ func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
 	}
 	if tc.Spec.TiCDC != nil {
 		components = append(components, tc.BaseTiCDCSpec())
+	}
+	if tc.Spec.TiCI != nil {
+		if tc.Spec.TiCI.Meta != nil {
+			components = append(components, tc.BaseTiCIMetaSpec())
+		}
+		if tc.Spec.TiCI.Worker != nil {
+			components = append(components, tc.BaseTiCIWorkerSpec())
+		}
 	}
 	if tc.Spec.Pump != nil {
 		components = append(components, tc.BasePumpSpec())
@@ -357,16 +366,17 @@ func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
 
 func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 	spec := corev1.PodSpec{
-		SchedulerName:             a.SchedulerName(),
-		Affinity:                  a.Affinity(),
-		NodeSelector:              a.NodeSelector(),
-		HostNetwork:               a.HostNetwork(),
-		RestartPolicy:             corev1.RestartPolicyAlways,
-		Tolerations:               a.Tolerations(),
-		SecurityContext:           a.PodSecurityContext(),
-		TopologySpreadConstraints: a.TopologySpreadConstraints(),
-		DNSPolicy:                 a.DnsPolicy(),
-		DNSConfig:                 a.DNSConfig(),
+		SchedulerName:                a.SchedulerName(),
+		Affinity:                     a.Affinity(),
+		NodeSelector:                 a.NodeSelector(),
+		HostNetwork:                  a.HostNetwork(),
+		RestartPolicy:                corev1.RestartPolicyAlways,
+		Tolerations:                  a.Tolerations(),
+		SecurityContext:              a.PodSecurityContext(),
+		TopologySpreadConstraints:    a.TopologySpreadConstraints(),
+		DNSPolicy:                    a.DnsPolicy(),
+		DNSConfig:                    a.DNSConfig(),
+		AutomountServiceAccountToken: a.AutomountServiceAccountToken(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
@@ -490,6 +500,13 @@ func (a *componentAccessorImpl) SuspendAction() *SuspendAction {
 		action = a.ComponentSpec.SuspendAction
 	}
 	return action
+}
+
+func (a *componentAccessorImpl) AutomountServiceAccountToken() *bool {
+	if a.ComponentSpec != nil && a.ComponentSpec.AutomountServiceAccountToken != nil {
+		return a.ComponentSpec.AutomountServiceAccountToken
+	}
+	return nil
 }
 
 func getComponentLabelValue(c MemberType) string {
@@ -699,6 +716,26 @@ func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
 	}
 
 	return buildTidbClusterComponentAccessor(TiCDCMemberType, tc, spec)
+}
+
+// BaseTiCIMetaSpec returns the base spec of TiCI meta servers
+func (tc *TidbCluster) BaseTiCIMetaSpec() ComponentAccessor {
+	var spec *ComponentSpec
+	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+		spec = &tc.Spec.TiCI.Meta.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(TiCIMetaMemberType, tc, spec)
+}
+
+// BaseTiCIWorkerSpec returns the base spec of TiCI worker servers
+func (tc *TidbCluster) BaseTiCIWorkerSpec() ComponentAccessor {
+	var spec *ComponentSpec
+	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+		spec = &tc.Spec.TiCI.Worker.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(TiCIWorkerMemberType, tc, spec)
 }
 
 // BasePDSpec returns the base spec of PD servers

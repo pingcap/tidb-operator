@@ -34,7 +34,7 @@ rules:
   resources:
   - services
   - events
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: [""]
   resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update","delete"]
@@ -58,19 +58,19 @@ rules:
   verbs: ["get", "list", "watch","update", "delete"]
 - apiGroups: ["apps"]
   resources: ["statefulsets","deployments", "controllerrevisions"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["extensions"]
   resources: ["ingresses"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["networking.k8s.io"]
   resources: ["ingresses"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["apps.pingcap.com"]
   resources: ["statefulsets", "statefulsets/status"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["pingcap.com"]
-  resources: ["*"]
-  verbs: ["*"]
+  resources: ["backups", "backupschedules", "compactbackups", "dmclusters", "restores", "tidbclusters", "tidbdashboards", "tidbdashboards/status", "tidbinitializers", "tidbmonitors", "tidbngmonitorings", "tidbngmonitorings/status"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - nonResourceURLs: ["/metrics"]
   verbs: ["get"]
 {{- if .Values.features | has "AdvancedStatefulSet=true" }}
@@ -79,7 +79,13 @@ rules:
   resources:
   - statefulsets
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 {{- end }}
 - apiGroups: [""]
   resources: ["nodes"]
@@ -194,7 +200,7 @@ rules:
   resources:
     - services
     - events
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: [""]
   resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update", "delete"]
@@ -218,19 +224,19 @@ rules:
   verbs: ["get", "list", "watch","update", "delete"]
 - apiGroups: ["apps"]
   resources: ["statefulsets","deployments", "controllerrevisions"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["apps.pingcap.com"]
   resources: ["statefulsets", "statefulsets/status"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["extensions"]
   resources: ["ingresses"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["networking.k8s.io"]
   resources: ["ingresses"]
-  verbs: ["*"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["pingcap.com"]
-  resources: ["*"]
-  verbs: ["*"]
+  resources: ["backups", "backupschedules", "compactbackups", "dmclusters", "restores", "tidbclusters", "tidbdashboards", "tidbdashboards/status", "tidbinitializers", "tidbmonitors", "tidbngmonitorings", "tidbngmonitorings/status"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["roles"]
   verbs: ["escalate","create","get","update", "delete"]
@@ -243,7 +249,13 @@ rules:
   resources:
   - statefulsets
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 {{- end }}
 ---
 kind: RoleBinding

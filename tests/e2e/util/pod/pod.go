@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	clientset "k8s.io/client-go/kubernetes"
 
 	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
 	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
@@ -67,7 +66,7 @@ func WaitForPodsAreChanged(c kubernetes.Interface, pods []v1.Pod, timeout time.D
 	return wait.PollImmediate(time.Second*5, timeout, PodsAreChanged(c, pods))
 }
 
-func ListPods(labelSelector string, ns string, c clientset.Interface) ([]v1.Pod, error) {
+func ListPods(labelSelector string, ns string, c kubernetes.Interface) ([]v1.Pod, error) {
 	listOptions := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
@@ -79,7 +78,7 @@ func ListPods(labelSelector string, ns string, c clientset.Interface) ([]v1.Pod,
 	return podList.Items, nil
 }
 
-func MustListPods(labelSelector string, ns string, c clientset.Interface) []v1.Pod {
+func MustListPods(labelSelector string, ns string, c kubernetes.Interface) []v1.Pod {
 	pods, err := ListPods(labelSelector, ns, c)
 	framework.ExpectNoError(err, "failed to list pods in ns %s with selector %v", ns, labelSelector)
 

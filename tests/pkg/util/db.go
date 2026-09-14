@@ -61,10 +61,10 @@ func ShowMasterCommitTS(dsn string) (int64, error) {
 		}
 	}
 	if idx < 0 {
-		return 0, fmt.Errorf("Error show master commit ts of %s, cannot find 'Position' column", dsn)
+		return 0, fmt.Errorf("show master commit ts of %s: cannot find 'Position' column", dsn)
 	}
 	if !rows.Next() {
-		return 0, fmt.Errorf("Error show master commit ts of %s, empty result set", dsn)
+		return 0, fmt.Errorf("show master commit ts of %s: empty result set", dsn)
 	}
 	if err = rows.Scan(vals...); err != nil {
 		return 0, err

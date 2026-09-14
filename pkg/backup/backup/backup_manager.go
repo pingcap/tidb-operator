@@ -424,7 +424,7 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	if shouldLogBackupCommandRequeue(backup) {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		klog.Infof("log backup %s/%s subcommand %s should wait log backup start complete, will requeue.", ns, name, logBackupSubcommand)
-		return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand))
+		return controller.RequeueErrorf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand)
 	}
 
 	// log backup should wait old job done
@@ -486,7 +486,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			}
 		}
 
-		if logBackupSubcommand == v1alpha1.LogStartCommand {
+		switch logBackupSubcommand {
+		case v1alpha1.LogStartCommand:
 			// log start need to start tracker
 			err = bm.backupTracker.StartTrackLogBackupProgress(backup)
 			if err != nil {
@@ -499,7 +500,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 				}, nil)
 				return nil, nil, "", err
 			}
-		} else if logBackupSubcommand == v1alpha1.LogTruncateCommand {
+		case v1alpha1.LogTruncateCommand:
 			updateStatus = &controller.BackupUpdateStatus{
 				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 			}
@@ -615,9 +616,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
-			InitContainers:     initContainers,
+			SecurityContext:              backup.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: backup.Spec.AutomountServiceAccountToken,
+			InitContainers:               initContainers,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
@@ -647,6 +649,11 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			}, volumes...),
 			PriorityClassName: backup.Spec.PriorityClassName,
 		},
+	}
+
+	if backup.Spec.AutomountServiceAccountToken != nil && !*backup.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
 	}
 
 	job := &batchv1.Job{
@@ -735,12 +742,13 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			}
 		}
 	case v1alpha1.BackupModeVolumeSnapshot:
-		if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupExecute {
+		switch backup.Spec.FederalVolumeBackupPhase {
+		case v1alpha1.FederalVolumeBackupExecute:
 			reason, err = bm.volumeSnapshotBackup(backup, tc)
 			if err != nil {
 				return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 			}
-		} else if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
+		case v1alpha1.FederalVolumeBackupInitialize:
 			jobName = backup.GetVolumeBackupInitializeJobName()
 			args = append(args, "--initialize=true")
 		}
@@ -843,8 +851,9 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
+			SecurityContext:              backup.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: backup.Spec.AutomountServiceAccountToken,
 			InitContainers: []corev1.Container{
 				{
 					Name:            "br",
@@ -874,6 +883,11 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			Volumes:           volumes,
 			PriorityClassName: backup.Spec.PriorityClassName,
 		},
+	}
+
+	if backup.Spec.AutomountServiceAccountToken != nil && !*backup.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
 	}
 
 	job := &batchv1.Job{
@@ -1078,12 +1092,13 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				corev1.ReadWriteOnce,
 			},
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: rs,
 				},
 			},
-			StorageClassName: backup.Spec.StorageClassName,
+			StorageClassName:          backup.Spec.StorageClassName,
+			VolumeAttributesClassName: backup.Spec.VolumeAttributesClassName,
 		},
 	}
 
@@ -1271,7 +1286,7 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 // waitOldBackupJobDone wait old backup job done
 func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
 	if oldJob.DeletionTimestamp != nil {
-		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
+		return controller.RequeueErrorf("backup %s/%s job %s is being deleted", ns, name, backupJobName)
 	}
 	finished := false
 	for _, c := range oldJob.Status.Conditions {

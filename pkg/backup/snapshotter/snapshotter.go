@@ -460,7 +460,7 @@ func (m *StoresMixture) extractVolumes(pod *corev1.Pod) (
 	claimMpMap := make(map[string]string)
 	for _, vol := range pod.Spec.Volumes {
 		if mp, ok := m.volsMap[vol.Name]; ok {
-			claimMpMap[vol.VolumeSource.PersistentVolumeClaim.ClaimName] = mp
+			claimMpMap[vol.PersistentVolumeClaim.ClaimName] = mp
 		}
 	}
 

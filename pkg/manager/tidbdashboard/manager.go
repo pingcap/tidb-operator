@@ -339,7 +339,7 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 	builder.PodTemplateSpecBuilder().AddLabels(spec.Labels())
 	builder.PodTemplateSpecBuilder().AddAnnotations(spec.Annotations())
 	// Additional storage volume claims.
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(td.Spec.StorageVolumes, td.Spec.StorageClassName, v1alpha1.TiDBDashboardMemberType)
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(td.Spec.StorageVolumes, td.Spec.StorageClassName, nil, v1alpha1.TiDBDashboardMemberType)
 	builder.PodTemplateSpecBuilder().ContainerBuilder(memberName).AddVolumeMounts(storageVolMounts...)
 	builder.AddVolumeClaims(additionalPVCs...)
 	// Additional volumes and mounts.

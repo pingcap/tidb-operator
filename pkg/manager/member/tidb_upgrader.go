@@ -76,6 +76,9 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	}
 
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	if err := u.ensureSmoothUpgradeStarted(tc, oldSet, newSet); err != nil {
+		return err
+	}
 	if !templateEqual(newSet, oldSet) {
 		return nil
 	}

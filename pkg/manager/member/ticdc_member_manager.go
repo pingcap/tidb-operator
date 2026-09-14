@@ -418,7 +418,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	}
 
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiCDC.StorageVolumes, tc.Spec.TiCDC.StorageClassName, v1alpha1.TiCDCMemberType)
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiCDC.StorageVolumes, tc.Spec.TiCDC.StorageClassName, tc.Spec.TiCDC.VolumeAttributesClassName, v1alpha1.TiCDCMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 	volMounts = append(volMounts, tc.Spec.TiCDC.AdditionalVolumeMounts...)
 

@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
@@ -29,6 +30,43 @@ import (
 	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
+
+// validateReplicationPhase ensures the CLI flag value is in {0, 1, 2}.
+// 0 is the sentinel for "flag not passed / not a replication restore";
+// 1 and 2 are the two replication phases. Anything else is operator
+// or user error and is rejected before any informer / BR work begins.
+func validateReplicationPhase(p int) error {
+	switch p {
+	case 0, 1, 2:
+		return nil
+	default:
+		return fmt.Errorf(
+			"invalid --replicationPhase=%d (must be 1 or 2; omit for standard restore)",
+			p,
+		)
+	}
+}
+
+// selectRestoreStatusUpdater returns the no-op wrapper when this
+// backup-manager invocation is the phase-1 (snapshot-restore) leg of
+// a replication restore, otherwise it returns the real updater
+// unchanged. Phase-1's wrapper is the activation point for spec §3
+// (Option B): controller becomes the sole writer of status.Phase and
+// condition markers during phase-1; phase-2 restores standard
+// backup-manager status writes.
+//
+// Symmetric to compact.go's ShardedCompactStatusUpdater wrap, except
+// the discriminator here is the CLI flag (not CR.Spec) — the same
+// Restore CR runs through backup-manager twice with different phases.
+func selectRestoreStatusUpdater(
+	opts restore.Options,
+	real controller.RestoreConditionUpdaterInterface,
+) controller.RestoreConditionUpdaterInterface {
+	if opts.ReplicationPhase == 1 {
+		return controller.NewReplicationRestoreStatusUpdater()
+	}
+	return real
+}
 
 // NewRestoreCommand implements the restore command
 func NewRestoreCommand() *cobra.Command {
@@ -55,10 +93,15 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&ro.TargetAZ, "target-az", "", "For volume-snapshot restore, which az the volume snapshots restore to")
 	cmd.Flags().BoolVar(&ro.UseFSR, "use-fsr", false, "EBS snapshot restore use FSR for TiKV data volumes or not")
 	cmd.Flags().BoolVar(&ro.Abort, "abort", false, "Whether to abort/cleanup a failed restore operation")
+	cmd.Flags().IntVar(&ro.ReplicationPhase, "replicationPhase", 0,
+		"Replication restore phase: 1 = snapshot, 2 = log. Omit (or 0) for standard PiTR / snapshot.")
 	return cmd
 }
 
 func runRestore(restoreOpts restore.Options, kubecfg string) error {
+	if err := validateReplicationPhase(restoreOpts.ReplicationPhase); err != nil {
+		return err
+	}
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	if err != nil {
 		return err
@@ -69,7 +112,8 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
 	recorder := util.NewEventRecorder(kubeCli, "restore")
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
-	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
+	realStatusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
+	statusUpdater := selectRestoreStatusUpdater(restoreOpts, realStatusUpdater)
 	restoreControl := controller.NewRealRestoreControl(cli, restoreInformer.Lister(), recorder)
 
 	ctx, cancel := context.WithCancel(context.Background())

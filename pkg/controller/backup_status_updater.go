@@ -79,6 +79,8 @@ type BackupUpdateStatus struct {
 	RetryReason *string
 	// OriginalReason is the original reason of backup job or pod failed
 	OriginalReason *string
+	// BROperation appends or refreshes one observed BR operation.
+	BROperation *v1alpha1.BROperation
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -199,7 +201,13 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	}
 
 	if newStatus.RetryNum != nil || newStatus.RealRetryAt != nil {
-		isUpdate = updateBackoffRetryStatus(status, newStatus)
+		if updateBackoffRetryStatus(status, newStatus) {
+			isUpdate = true
+		}
+	}
+	if operations, updated := updateBROperations(status.BROperations, newStatus.BROperation); updated {
+		status.BROperations = operations
+		isUpdate = true
 	}
 
 	return isUpdate
@@ -390,6 +398,10 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 
 	// just update checkpoint ts
 	if status != nil && status.LogCheckpointTs != nil {
+		return doUpdateStatusAndCondition(nil, status)
+	}
+	// BR operation observations update whole Backup status without a subcommand condition.
+	if status != nil && status.BROperation != nil {
 		return doUpdateStatusAndCondition(nil, status)
 	}
 

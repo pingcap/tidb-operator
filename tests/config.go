@@ -41,6 +41,7 @@ type Config struct {
 
 	TidbVersions         string          `yaml:"tidb_versions" json:"tidb_versions"`
 	InstallOperator      bool            `yaml:"install_opeartor" json:"install_opeartor"`
+	InstallCertManager   bool            `yaml:"install_cert_manager" json:"install_cert_manager"`
 	InstallDMMysql       bool            `yaml:"install_dm_mysql" json:"install_dm_mysql"`
 	OperatorTag          string          `yaml:"operator_tag" json:"operator_tag"`
 	OperatorImage        string          `yaml:"operator_image" json:"operator_image"`
@@ -96,6 +97,7 @@ type Node struct {
 func NewDefaultConfig() *Config {
 	return &Config{
 		AdditionalDrainerVersion: "v3.0.8",
+		InstallCertManager:       true,
 
 		PDMaxReplicas:       5,
 		TiDBTokenLimit:      1024,

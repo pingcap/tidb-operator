@@ -27,6 +27,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
@@ -50,13 +51,16 @@ func NewTiDBDashboardControl(
 	recorder record.EventRecorder,
 ) ControlInterface {
 
-	return &defaultTiDBDashboardControl{
+	c := &defaultTiDBDashboardControl{
 		deps:                 deps,
 		recorder:             recorder,
 		dashboardManager:     dashboardManager,
 		tlsCertManager:       tlsCertManager,
 		reclaimPolicyManager: reclaimPolicyManager,
 	}
+	c.validateFunc = v1alpha1validation.ValidateTiDBDashboard
+	c.updateStatusFunc = c.updateStatus
+	return c
 }
 
 type defaultTiDBDashboardControl struct {
@@ -66,6 +70,9 @@ type defaultTiDBDashboardControl struct {
 	dashboardManager     manager.TiDBDashboardManager
 	tlsCertManager       manager.TiDBDashboardManager
 	reclaimPolicyManager ReclaimPolicyManager
+
+	validateFunc     func(td *v1alpha1.TidbDashboard) field.ErrorList
+	updateStatusFunc func(td *v1alpha1.TidbDashboard) (*v1alpha1.TidbDashboard, error)
 }
 
 func (c *defaultTiDBDashboardControl) Reconcile(td *v1alpha1.TidbDashboard) error {
@@ -111,7 +118,7 @@ func (c *defaultTiDBDashboardControl) Reconcile(td *v1alpha1.TidbDashboard) erro
 		return nil
 	}
 
-	_, err = c.updateStatus(td.DeepCopy())
+	_, err = c.updateStatusFunc(td.DeepCopy())
 	if err != nil {
 		return err
 	}

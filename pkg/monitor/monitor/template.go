@@ -18,6 +18,7 @@ import (
 	"path"
 	"strings"
 
+	semver "github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
@@ -36,6 +37,11 @@ const (
 	additionalPortLabelPattern = "__meta_kubernetes_pod_annotation_%s_prometheus_io_port"
 	dmWorker                   = "dm-worker"
 	dmMaster                   = "dm-master"
+	ticiMetaPattern            = "tici-meta"
+	ticiWorkerPattern          = "tici-worker"
+	// Prometheus 3 requires either a valid Content-Type from target metrics endpoints
+	// or an explicit fallback protocol.
+	fallbackScrapeProtocol = "PrometheusText0.0.4"
 )
 
 var (
@@ -77,6 +83,7 @@ type MonitorConfigModel struct {
 	AlertmanagerURL           string
 	ClusterInfos              []ClusterRegexInfo
 	DMClusterInfos            []ClusterRegexInfo
+	PrometheusVersion         string
 	ExternalLabels            model.LabelSet
 	RemoteWriteCfg            *yaml.MapItem
 	EnableAlertRules          bool
@@ -104,6 +111,8 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	scrapeJobs = append(scrapeJobs, scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tici-meta", ticiMetaPattern, cmodel, buildAddressRelabelConfigByComponent("tici-meta"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tici-worker", ticiWorkerPattern, cmodel, buildAddressRelabelConfigByComponent("tici-worker"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmWorker, dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent(dmWorker))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmMaster, dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent(dmMaster))...)
@@ -150,6 +159,10 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	case "tiflash":
 		return f()
 	case "ticdc":
+		return f()
+	case "tici-meta":
+		return f()
+	case "tici-worker":
 		return f()
 	case dmWorker:
 		return f()
@@ -321,6 +334,12 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 			}},
 			{Key: "tls_config", Value: tlsConfigRelabelConfig},
 		}
+		if shouldSetFallbackScrapeProtocol(jobName, cmodel.PrometheusVersion) {
+			scrapeConfig = append(scrapeConfig, yaml.MapItem{
+				Key:   "fallback_scrape_protocol",
+				Value: fallbackScrapeProtocol,
+			})
+		}
 
 		relabelConfigs := []yaml.MapSlice{}
 		relabelConfigs = append(relabelConfigs, yaml.MapSlice{
@@ -437,6 +456,19 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 	}
 	return scrapeJobs
 
+}
+
+func shouldSetFallbackScrapeProtocol(jobName string, prometheusVersion string) bool {
+	switch jobName {
+	case "tiflash", "tiflash-proxy":
+		version, err := semver.NewVersion(prometheusVersion)
+		if err != nil {
+			return false
+		}
+		return version.Major() >= 3
+	default:
+		return false
+	}
 }
 
 func isDMJob(jobName string) bool {

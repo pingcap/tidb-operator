@@ -526,11 +526,12 @@ func TestRetainManagedFields(t *testing.T) {
 
 func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 	tests := []struct {
-		name             string
-		storageVolumes   []v1alpha1.StorageVolume
-		storageClassName *string
-		memberType       v1alpha1.MemberType
-		testResult       func([]corev1.VolumeMount, []corev1.PersistentVolumeClaim)
+		name                      string
+		storageVolumes            []v1alpha1.StorageVolume
+		storageClassName          *string
+		volumeAttributesClassName *string
+		memberType                v1alpha1.MemberType
+		testResult                func([]corev1.VolumeMount, []corev1.PersistentVolumeClaim)
 	}{
 		{
 			name:             "unknown memberType",
@@ -564,7 +565,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
@@ -600,7 +601,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
@@ -636,7 +637,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
@@ -672,7 +673,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
@@ -688,14 +689,16 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 			},
 		},
 		{
-			name:             "tikv spec multiple storageVolumes",
-			storageClassName: pointer.StringPtr("ns2"),
+			name:                      "tikv spec multiple storageVolumes",
+			storageClassName:          pointer.StringPtr("ns2"),
+			volumeAttributesClassName: pointer.String("gold"),
 			storageVolumes: []v1alpha1.StorageVolume{
 				{
-					Name:             "wal",
-					StorageSize:      "2Gi",
-					MountPath:        "/var/lib/wal",
-					StorageClassName: pointer.StringPtr("ns1"),
+					Name:                      "wal",
+					StorageSize:               "2Gi",
+					MountPath:                 "/var/lib/wal",
+					StorageClassName:          pointer.StringPtr("ns1"),
+					VolumeAttributesClassName: pointer.String("silver"),
 				},
 				{
 					Name:        "log",
@@ -715,12 +718,13 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
-							StorageClassName: pointer.StringPtr("ns1"),
+							StorageClassName:          pointer.StringPtr("ns1"),
+							VolumeAttributesClassName: pointer.String("silver"),
 						},
 					},
 					{
@@ -731,12 +735,13 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
-							StorageClassName: pointer.StringPtr("ns2"),
+							StorageClassName:          pointer.StringPtr("ns2"),
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 				}))
@@ -746,9 +751,10 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 			name: "test no volumeMount generate",
 			storageVolumes: []v1alpha1.StorageVolume{
 				{
-					Name:             "wal",
-					StorageSize:      "2Gi",
-					StorageClassName: pointer.StringPtr("sc"),
+					Name:                      "wal",
+					StorageSize:               "2Gi",
+					StorageClassName:          pointer.StringPtr("sc"),
+					VolumeAttributesClassName: pointer.String("silver"),
 				},
 			},
 			memberType: v1alpha1.TiCDCMemberType,
@@ -765,12 +771,13 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
-							StorageClassName: pointer.StringPtr("sc"),
+							StorageClassName:          pointer.StringPtr("sc"),
+							VolumeAttributesClassName: pointer.String("silver"),
 						},
 					},
 				}))
@@ -779,7 +786,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			volMounts, volumeClaims := BuildStorageVolumeAndVolumeMount(tt.storageVolumes, tt.storageClassName, tt.memberType)
+			volMounts, volumeClaims := BuildStorageVolumeAndVolumeMount(tt.storageVolumes, tt.storageClassName, tt.volumeAttributesClassName, tt.memberType)
 			tt.testResult(volMounts, volumeClaims)
 		})
 	}

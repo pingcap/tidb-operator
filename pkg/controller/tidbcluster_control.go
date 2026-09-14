@@ -71,7 +71,7 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
-		klog.Warningf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
+		klog.Infof("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
 
 		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -115,7 +115,7 @@ func (c *realTidbClusterControl) Update(tc *v1alpha1.TidbCluster) (*v1alpha1.Tid
 			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
-		klog.Warningf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
+		klog.Infof("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
 
 		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			tc.ResourceVersion = updated.ResourceVersion

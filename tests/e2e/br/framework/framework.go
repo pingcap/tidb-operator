@@ -189,7 +189,7 @@ func (f *Framework) RecycleReleasedPV() {
 		return
 	}
 	var (
-		total          int = len(pvList.Items)
+		total          = len(pvList.Items)
 		retainReleased int
 		skipped        int
 		failed         int

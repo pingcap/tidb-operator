@@ -119,7 +119,7 @@ func TestTidbDiscoveryManager_ReconcileDM(t *testing.T) {
 		expect              func([]appsv1.Deployment, *v1alpha1.DMCluster, error)
 	}
 	testFn := func(tt *testcase) {
-		t.Logf(tt.name)
+		t.Logf("%s", tt.name)
 
 		dc := newDMClusterForMaster()
 		dm, ctrl := newFakeTidbDiscoveryManager()

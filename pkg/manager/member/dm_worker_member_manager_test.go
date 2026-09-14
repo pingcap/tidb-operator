@@ -31,7 +31,6 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -514,7 +513,7 @@ func TestWorkerMemberManagerWorkerStatefulSetIsUpgrading(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -922,7 +921,7 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 					},
 				},
 			},
-			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+			testSts: testHostNetwork(t, true, corev1.DNSClusterFirstWithHostNet),
 		},
 		{
 			name: "dm-worker network is not host when dm-master is host",
@@ -964,18 +963,20 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
 							},
 						},
-						StorageSize: "100Gi",
+						StorageSize:               "100Gi",
+						VolumeAttributesClassName: pointer.String("gold"),
 					},
 					Master: v1alpha1.MasterSpec{},
 				},
 			},
 			testSts: func(sts *appsv1.StatefulSet) {
 				g := NewGomegaWithT(t)
-				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				}))
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.VolumeAttributesClassName).To(Equal(pointer.String("gold")))
 				nameToContainer := MapContainers(&sts.Spec.Template.Spec)
 				masterContainer := nameToContainer[v1alpha1.DMWorkerMemberType.String()]
 				g.Expect(masterContainer.Resources).To(Equal(corev1.ResourceRequirements{
