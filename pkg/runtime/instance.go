@@ -37,8 +37,11 @@ type Instance interface {
 	IsReady() bool
 	// IsNotRunning means the pod of this instance is not running
 	IsNotRunning() bool
-	// IsAvailable means the instance is ready more than minReadySeconds
-	IsAvailable(minReadySeconds int64, now time.Time) bool
+	// IsAvailable means the instance is ready more than minReadySeconds. It also
+	// returns how long the instance still needs before it can become available.
+	// The remaining time is 0 if the instance is already available or is waiting
+	// for another condition update instead of a timer.
+	IsAvailable(minReadySeconds int64, now time.Time) (bool, time.Duration)
 	// IsUpToDate means all resources managed by the instance is up to date
 	// NOTE: It does not mean the instance is updated to the newest revision
 	// TODO: may be change a more meaningful name?

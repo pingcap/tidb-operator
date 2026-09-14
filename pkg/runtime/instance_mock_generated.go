@@ -391,11 +391,12 @@ func (mr *MockInstanceMockRecorder) GetUpdateRevision() *gomock.Call {
 }
 
 // IsAvailable mocks base method.
-func (m *MockInstance) IsAvailable(minReadySeconds int64, now time.Time) bool {
+func (m *MockInstance) IsAvailable(minReadySeconds int64, now time.Time) (bool, time.Duration) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsAvailable", minReadySeconds, now)
 	ret0, _ := ret[0].(bool)
-	return ret0
+	ret1, _ := ret[1].(time.Duration)
+	return ret0, ret1
 }
 
 // IsAvailable indicates an expected call of IsAvailable.

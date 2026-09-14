@@ -235,7 +235,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:  task.SRetry,
+			expectedStatus:  task.SWait,
 			expectedTiKVNum: 1,
 		},
 		{

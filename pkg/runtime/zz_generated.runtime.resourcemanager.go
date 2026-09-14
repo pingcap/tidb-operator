@@ -127,7 +127,7 @@ func (in *ResourceManager) IsNotRunning() bool {
 	return cond.Status == metav1.ConditionFalse
 }
 
-func (in *ResourceManager) IsAvailable(minReadySeconds int64, now time.Time) bool {
+func (in *ResourceManager) IsAvailable(minReadySeconds int64, now time.Time) (bool, time.Duration) {
 	return isAvailable(in.Status.Conditions, in.GetGeneration(), minReadySeconds, now)
 }
 

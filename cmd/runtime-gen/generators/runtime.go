@@ -192,7 +192,7 @@ func (in *$.|pub$) IsNotRunning() bool {
 	return cond.Status == metav1.ConditionFalse
 }
 
-func (in *$.|pub$) IsAvailable(minReadySeconds int64, now time.Time) bool {
+func (in *$.|pub$) IsAvailable(minReadySeconds int64, now time.Time) (bool, time.Duration) {
 	return $.|available$(in.Status.Conditions, in.GetGeneration(), minReadySeconds, now)
 }
 

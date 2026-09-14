@@ -27,13 +27,22 @@ import (
 const testGeneration int64 = 1
 
 func TestTiKVIsAvailableRequiresLeaderEvictionStopped(t *testing.T) {
-	now := time.Now()
+	now := time.Unix(1000, 0)
 
 	tests := []struct {
-		name     string
-		conds    []metav1.Condition
-		expected bool
+		name           string
+		conds          []metav1.Condition
+		expected       bool
+		expectedRemain time.Duration
 	}{
+		{
+			name: "ready condition is still within min ready seconds",
+			conds: []metav1.Condition{
+				readyCondition(now.Add(-30 * time.Second)),
+				leadersEvictedCondition(metav1.ConditionFalse, v1alpha1.ReasonNotEvicted, now.Add(-2*time.Minute)),
+			},
+			expectedRemain: 30 * time.Second,
+		},
 		{
 			name: "ready but leader eviction condition missing",
 			conds: []metav1.Condition{
@@ -53,6 +62,7 @@ func TestTiKVIsAvailableRequiresLeaderEvictionStopped(t *testing.T) {
 				readyCondition(now.Add(-2 * time.Minute)),
 				leadersEvictedCondition(metav1.ConditionFalse, v1alpha1.ReasonNotEvicted, now.Add(-30*time.Second)),
 			},
+			expectedRemain: 30 * time.Second,
 		},
 		{
 			name: "ready and leader eviction stopped long enough",
@@ -66,19 +76,60 @@ func TestTiKVIsAvailableRequiresLeaderEvictionStopped(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, newTiKVWithConditions(tt.conds).IsAvailable(60, now))
+			tikv := newTiKVWithConditions(tt.conds)
+			available, remain := tikv.IsAvailable(60, now)
+			assert.Equal(t, tt.expected, available)
+			assert.Equal(t, tt.expectedRemain, remain)
 		})
 	}
 }
 
 func TestTiKVIsAvailableWithZeroMinReadySeconds(t *testing.T) {
-	now := time.Now()
-	tikv := newTiKVWithConditions([]metav1.Condition{
-		readyCondition(time.Time{}),
-		leadersEvictedCondition(metav1.ConditionFalse, v1alpha1.ReasonNotEvicted, time.Time{}),
-	})
+	now := time.Unix(1000, 0)
 
-	assert.True(t, tikv.IsAvailable(0, now))
+	tests := []struct {
+		name     string
+		conds    []metav1.Condition
+		expected bool
+	}{
+		{
+			name: "ready but leader eviction condition missing",
+			conds: []metav1.Condition{
+				readyCondition(time.Time{}),
+			},
+		},
+		{
+			name: "ready but leaders are still evicted",
+			conds: []metav1.Condition{
+				readyCondition(time.Time{}),
+				leadersEvictedCondition(metav1.ConditionTrue, v1alpha1.ReasonEvicted, time.Time{}),
+			},
+		},
+		{
+			name: "ready but leader eviction reason is invalid",
+			conds: []metav1.Condition{
+				readyCondition(time.Time{}),
+				leadersEvictedCondition(metav1.ConditionFalse, v1alpha1.ReasonEvicted, time.Time{}),
+			},
+		},
+		{
+			name: "ready and leader eviction stopped",
+			conds: []metav1.Condition{
+				readyCondition(time.Time{}),
+				leadersEvictedCondition(metav1.ConditionFalse, v1alpha1.ReasonNotEvicted, time.Time{}),
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tikv := newTiKVWithConditions(tt.conds)
+			available, remain := tikv.IsAvailable(0, now)
+			assert.Equal(t, tt.expected, available)
+			assert.Zero(t, remain)
+		})
+	}
 }
 
 func newTiKVWithConditions(conds []metav1.Condition) *TiKV {

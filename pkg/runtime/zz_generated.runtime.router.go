@@ -127,7 +127,7 @@ func (in *Router) IsNotRunning() bool {
 	return cond.Status == metav1.ConditionFalse
 }
 
-func (in *Router) IsAvailable(minReadySeconds int64, now time.Time) bool {
+func (in *Router) IsAvailable(minReadySeconds int64, now time.Time) (bool, time.Duration) {
 	return isAvailable(in.Status.Conditions, in.GetGeneration(), minReadySeconds, now)
 }
 

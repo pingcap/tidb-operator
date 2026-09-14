@@ -246,7 +246,8 @@ func countUnavailableUpdate[R runtime.Instance](all []R, minReadySeconds int64) 
 	unavailable := 0
 	now := time.Now()
 	for _, instance := range all {
-		if !instance.IsAvailable(minReadySeconds, now) || !instance.IsUpToDate() {
+		available, _ := instance.IsAvailable(minReadySeconds, now)
+		if !available || !instance.IsUpToDate() {
 			unavailable++
 		}
 	}

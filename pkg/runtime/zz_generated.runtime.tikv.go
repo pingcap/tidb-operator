@@ -127,7 +127,7 @@ func (in *TiKV) IsNotRunning() bool {
 	return cond.Status == metav1.ConditionFalse
 }
 
-func (in *TiKV) IsAvailable(minReadySeconds int64, now time.Time) bool {
+func (in *TiKV) IsAvailable(minReadySeconds int64, now time.Time) (bool, time.Duration) {
 	return isTiKVAvailable(in.Status.Conditions, in.GetGeneration(), minReadySeconds, now)
 }
 
