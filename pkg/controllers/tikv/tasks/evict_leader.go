@@ -17,7 +17,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,12 +49,15 @@ func TaskEvictLeader(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 		}
 
 		pod := state.Pod()
-		podAvailable := podutil.IsAvailable(pod, minReadySeconds, metav1.Now())
-		if state.LeaderEvicting && !state.ShouldEvictLeader && podAvailable {
-			if err := pc.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
-				return task.Fail().With("cannot remove evict leader scheduler: %v", err)
+		minReadyLeaderSeconds := minReadyForLeaderSeconds(state.TiKV())
+		now := metav1.Now()
+		if state.LeaderEvicting && !state.ShouldEvictLeader {
+			if podutil.IsAvailable(pod, minReadyLeaderSeconds, now) {
+				if err := pc.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
+					return task.Fail().With("cannot remove evict leader scheduler: %v", err)
+				}
+				state.LeaderEvicting = false
 			}
-			state.LeaderEvicting = false
 		}
 
 		needUpdate := syncLeadersEvictedCond(state.TiKV(), state.Store, state.LeaderEvicting)
@@ -64,8 +66,8 @@ func TaskEvictLeader(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 		}
 
 		if state.LeaderEvicting && !state.ShouldEvictLeader && podutil.IsReady(pod) {
-			return task.Retry(minReadySeconds*time.Second).
-				With("wait until pod has been ready for %ds before removing evict leader scheduler", minReadySeconds)
+			return task.Retry(podReadyForLeaderRemaining(pod, minReadyLeaderSeconds, now)).
+				With("wait until pod has been ready for %ds before removing evict leader scheduler", minReadyLeaderSeconds)
 		}
 
 		return task.Complete().With("sync evict leader scheduler, expected: %v, actual: %v", state.ShouldEvictLeader, state.LeaderEvicting)

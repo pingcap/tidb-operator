@@ -16,6 +16,7 @@ package coreutil
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +28,146 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
+
+func TestRetryIfInstancesReadyButNotAvailableReturnsRemainingTime(t *testing.T) {
+	now := time.Now()
+	pd := fake.FakeObj("pd-0", func(obj *v1alpha1.PD) *v1alpha1.PD {
+		obj.Status.Conditions = []metav1.Condition{
+			{
+				Type:               v1alpha1.CondReady,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: obj.Generation,
+				LastTransitionTime: metav1.NewTime(now.Add(-56 * time.Second)),
+			},
+		}
+		return obj
+	})
+
+	retryAfter := RetryIfInstancesReadyButNotAvailable[scope.PD]([]*v1alpha1.PD{pd}, 60)
+	assert.Greater(t, retryAfter, time.Duration(0))
+	assert.LessOrEqual(t, retryAfter, 4*time.Second)
+
+	maxRemainPD := fake.FakeObj("pd-1", func(obj *v1alpha1.PD) *v1alpha1.PD {
+		obj.Status.Conditions = []metav1.Condition{
+			{
+				Type:               v1alpha1.CondReady,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: obj.Generation,
+				LastTransitionTime: metav1.NewTime(now.Add(-10 * time.Second)),
+			},
+		}
+		return obj
+	})
+	retryAfter = RetryIfInstancesReadyButNotAvailable[scope.PD]([]*v1alpha1.PD{pd, maxRemainPD}, 60)
+	assert.Greater(t, retryAfter, 49*time.Second)
+	assert.LessOrEqual(t, retryAfter, 50*time.Second)
+
+	readyLongEnough := fake.FakeObj("pd-1", func(obj *v1alpha1.PD) *v1alpha1.PD {
+		obj.Status.Conditions = []metav1.Condition{
+			{
+				Type:               v1alpha1.CondReady,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: obj.Generation,
+				LastTransitionTime: metav1.NewTime(now.Add(-61 * time.Second)),
+			},
+		}
+		return obj
+	})
+	assert.Zero(t, RetryIfInstancesReadyButNotAvailable[scope.PD]([]*v1alpha1.PD{readyLongEnough}, 60))
+}
+
+func TestRetryIfInstancesReadyButNotAvailableReturnsTiKVLeaderGateRemainingTime(t *testing.T) {
+	tikv := fakeTiKVWithConditions("tikv-0", func(generation int64) []metav1.Condition {
+		return []metav1.Condition{
+			readyCondition(generation, time.Now().Add(-2*time.Minute)),
+			leadersEvictedCondition(generation, metav1.ConditionFalse, v1alpha1.ReasonNotEvicted, time.Now().Add(-56*time.Second)),
+		}
+	})
+
+	retryAfter := RetryIfInstancesReadyButNotAvailable[scope.TiKV]([]*v1alpha1.TiKV{tikv}, 60)
+	assert.Greater(t, retryAfter, time.Duration(0))
+	assert.LessOrEqual(t, retryAfter, 4*time.Second)
+}
+
+func TestRetryIfInstancesReadyButNotAvailableWaitsForTiKVLeaderGateEvents(t *testing.T) {
+	tests := []struct {
+		name            string
+		minReadySeconds int64
+		conditions      func(generation int64) []metav1.Condition
+	}{
+		{
+			name:            "leader eviction condition missing",
+			minReadySeconds: 60,
+			conditions: func(generation int64) []metav1.Condition {
+				return []metav1.Condition{
+					readyCondition(generation, time.Now().Add(-2*time.Minute)),
+				}
+			},
+		},
+		{
+			name:            "leaders are still evicting",
+			minReadySeconds: 60,
+			conditions: func(generation int64) []metav1.Condition {
+				return []metav1.Condition{
+					readyCondition(generation, time.Now().Add(-2*time.Minute)),
+					leadersEvictedCondition(generation, metav1.ConditionTrue, v1alpha1.ReasonEvicted, time.Now().Add(-2*time.Minute)),
+				}
+			},
+		},
+		{
+			name:            "leader eviction reason is invalid",
+			minReadySeconds: 60,
+			conditions: func(generation int64) []metav1.Condition {
+				return []metav1.Condition{
+					readyCondition(generation, time.Now().Add(-2*time.Minute)),
+					leadersEvictedCondition(generation, metav1.ConditionFalse, v1alpha1.ReasonEvicted, time.Now().Add(-2*time.Minute)),
+				}
+			},
+		},
+		{
+			name:            "zero min ready seconds and leader eviction condition missing",
+			minReadySeconds: 0,
+			conditions: func(generation int64) []metav1.Condition {
+				return []metav1.Condition{
+					readyCondition(generation, time.Now()),
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tikv := fakeTiKVWithConditions("tikv-0", tt.conditions)
+			assert.Zero(t, RetryIfInstancesReadyButNotAvailable[scope.TiKV]([]*v1alpha1.TiKV{tikv}, tt.minReadySeconds))
+		})
+	}
+}
+
+func fakeTiKVWithConditions(name string, conditions func(generation int64) []metav1.Condition) *v1alpha1.TiKV {
+	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+		obj.Status.Conditions = conditions(obj.Generation)
+		return obj
+	})
+}
+
+func readyCondition(generation int64, lastTransitionTime time.Time) metav1.Condition {
+	return metav1.Condition{
+		Type:               v1alpha1.CondReady,
+		Status:             metav1.ConditionTrue,
+		ObservedGeneration: generation,
+		LastTransitionTime: metav1.NewTime(lastTransitionTime),
+	}
+}
+
+func leadersEvictedCondition(generation int64, status metav1.ConditionStatus, reason string, lastTransitionTime time.Time) metav1.Condition {
+	return metav1.Condition{
+		Type:               v1alpha1.TiKVCondLeadersEvicted,
+		Status:             status,
+		ObservedGeneration: generation,
+		Reason:             reason,
+		LastTransitionTime: metav1.NewTime(lastTransitionTime),
+	}
+}
 
 func TestPVCs(t *testing.T) {
 	cases := []struct {

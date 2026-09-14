@@ -40,13 +40,21 @@ func TestCacheTTLRemaining(t *testing.T) {
 		{
 			name: "leaders are not evicted",
 			tikv: &v1alpha1.TiKV{
-				Spec: v1alpha1.TiKVSpec{CacheTTLSeconds: ptr.To[int64](30)},
+				Spec: v1alpha1.TiKVSpec{
+					TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+						CacheTTLSeconds: ptr.To[int64](30),
+					},
+				},
 			},
 		},
 		{
 			name: "ttl has not expired",
 			tikv: &v1alpha1.TiKV{
-				Spec: v1alpha1.TiKVSpec{CacheTTLSeconds: ptr.To[int64](30)},
+				Spec: v1alpha1.TiKVSpec{
+					TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+						CacheTTLSeconds: ptr.To[int64](30),
+					},
+				},
 				Status: v1alpha1.TiKVStatus{CommonStatus: v1alpha1.CommonStatus{
 					Conditions: []metav1.Condition{{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,
@@ -60,7 +68,11 @@ func TestCacheTTLRemaining(t *testing.T) {
 		{
 			name: "ttl has expired",
 			tikv: &v1alpha1.TiKV{
-				Spec: v1alpha1.TiKVSpec{CacheTTLSeconds: ptr.To[int64](30)},
+				Spec: v1alpha1.TiKVSpec{
+					TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+						CacheTTLSeconds: ptr.To[int64](30),
+					},
+				},
 				Status: v1alpha1.TiKVStatus{CommonStatus: v1alpha1.CommonStatus{
 					Conditions: []metav1.Condition{{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,

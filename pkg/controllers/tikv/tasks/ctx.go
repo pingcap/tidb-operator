@@ -86,7 +86,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.SetStoreBusy(s.IsBusy)
 		state.IsStoreReady = IsStoreReady(state)
 		pod := state.Pod()
-		if state.IsStoreReady && podutil.IsAvailable(pod, minReadySeconds, metav1.Now()) {
+		if state.IsStoreReady && podutil.IsAvailable(pod, storeStatusStabilizationSeconds, metav1.Now()) {
 			state.SetHealthy()
 		}
 

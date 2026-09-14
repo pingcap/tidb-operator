@@ -50,7 +50,7 @@ func IsAvailable[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,
-](f F, minReadySeconds int64, now time.Time) bool {
+](f F, minReadySeconds int64, now time.Time) (bool, time.Duration) {
 	return scope.From[S](f).IsAvailable(minReadySeconds, now)
 }
 
@@ -227,28 +227,29 @@ func OwnerGroup[
 	return owner
 }
 
-// RetryIfInstancesReadyButNotAvailable returns a retry duration
-// If any instances are ready but not available, updater may do nothing and
-// cannot watch more changes of instances.
-// So always retry if any instances are ready but not available.
+// RetryIfInstancesReadyButNotAvailable returns a retry duration.
+// If instances are not available only because minReadySeconds windows have not
+// elapsed, updater may do nothing and no more watch event will arrive. In that
+// case, return the maximum remaining time. If availability is only waiting for
+// state transitions, return 0 so the updater waits for them.
 func RetryIfInstancesReadyButNotAvailable[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,
 ](ins []F, minReadySeconds int64) time.Duration {
 	now := time.Now()
+	var maxRetryAfter time.Duration
 	for _, in := range ins {
-		// ready but not available
-		if !IsReady[S](in) || IsAvailable[S](in, minReadySeconds, now) {
+		available, retryAfter := IsAvailable[S](in, minReadySeconds, now)
+		if available {
 			continue
 		}
-
-		cond := FindStatusCondition[S](in, v1alpha1.CondReady)
-		d := now.Sub(cond.LastTransitionTime.Time)
-		return d
+		if retryAfter > maxRetryAfter {
+			maxRetryAfter = retryAfter
+		}
 	}
 
-	return 0
+	return maxRetryAfter
 }
 
 func IsOffline[

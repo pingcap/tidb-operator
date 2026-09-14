@@ -56,7 +56,7 @@ func NewTiKVGroup(ns string, patches ...GroupPatch[*v1alpha1.TiKVGroup]) *v1alph
 
 func WithTiKVCacheTTLSeconds(seconds int64) GroupPatch[*v1alpha1.TiKVGroup] {
 	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
-		obj.Spec.CacheTTLSeconds = ptr.To(seconds)
+		obj.Spec.Template.Spec.CacheTTLSeconds = ptr.To(seconds)
 	})
 }
 

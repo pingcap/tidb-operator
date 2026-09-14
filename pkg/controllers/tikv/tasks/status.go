@@ -74,7 +74,8 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if !state.FeatureGates().Enabled(metav1alpha1.UseTiKVReadyAPI) {
 			// pod available cannot be watched so that we have to retry
 			if !ready && state.IsStoreReady && podutil.IsReady(pod) {
-				return task.Retry(minReadySeconds * time.Second).With("pod is not ready more than 15s, retry")
+				return task.Retry(storeStatusStabilizationSeconds*time.Second).
+					With("pod has not been ready for %ds, retry", storeStatusStabilizationSeconds)
 			}
 		}
 

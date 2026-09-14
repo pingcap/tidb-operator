@@ -33,6 +33,7 @@ func TestTiKV(t *testing.T) {
 	cases = append(cases, transferTiKVCases(t, Version(), "spec", "version")...)
 	cases = append(cases, transferTiKVCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiKVCases(t, cacheTTLSeconds("spec.cacheTTLSeconds"), "spec", "cacheTTLSeconds")...)
+	cases = append(cases, transferTiKVCases(t, minReadyForLeaderSeconds("spec.minReadyForLeaderSeconds"), "spec", "minReadyForLeaderSeconds")...)
 	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
 }
 
@@ -41,7 +42,8 @@ func TestTiKVGroup(t *testing.T) {
 	cases = append(cases, transferTiKVGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiKVGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiKVGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
-	cases = append(cases, transferTiKVGroupCases(t, cacheTTLSeconds("spec.cacheTTLSeconds"), "spec", "cacheTTLSeconds")...)
+	cases = append(cases, transferTiKVGroupCases(t, cacheTTLSeconds("spec.template.spec.cacheTTLSeconds"), "spec", "template", "spec", "cacheTTLSeconds")...)
+	cases = append(cases, transferTiKVGroupCases(t, minReadyForLeaderSeconds("spec.template.spec.minReadyForLeaderSeconds"), "spec", "template", "spec", "minReadyForLeaderSeconds")...)
 	cases = append(cases, transferTiKVGroupCases(t, PlacementServerLabels("spec", "template", "spec", "server", "labels"), "spec", "template", "spec", "server", "labels")...)
 	Validate(t, "crd/core.pingcap.com_tikvgroups.yaml", cases)
 }
@@ -65,6 +67,34 @@ func cacheTTLSeconds(fieldPath string) []Case {
 		},
 		{
 			desc:     "cache ttl seconds must not be negative",
+			isCreate: true,
+			current:  int64(-1),
+			wantErrs: []string{
+				fmt.Sprintf("%s: Invalid value: -1: %s in body should be greater than or equal to 0", fieldPath, fieldPath),
+			},
+		},
+	}
+}
+
+func minReadyForLeaderSeconds(fieldPath string) []Case {
+	return []Case{
+		{
+			desc:     "min ready for leader seconds may be omitted",
+			isCreate: true,
+			current:  nil,
+		},
+		{
+			desc:     "min ready for leader seconds may be zero",
+			isCreate: true,
+			current:  int64(0),
+		},
+		{
+			desc:     "min ready for leader seconds may be positive",
+			isCreate: true,
+			current:  int64(60),
+		},
+		{
+			desc:     "min ready for leader seconds must not be negative",
 			isCreate: true,
 			current:  int64(-1),
 			wantErrs: []string{

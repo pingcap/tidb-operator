@@ -37,6 +37,9 @@ const (
 
 	// DefaultTiKVMinReadySeconds is default min ready seconds of tikv
 	DefaultTiKVMinReadySeconds = 5
+
+	// DefaultTiKVMinReadyForLeaderSeconds is default min ready seconds before removing the evict leader scheduler.
+	DefaultTiKVMinReadyForLeaderSeconds = 5
 )
 
 const (
@@ -156,12 +159,6 @@ type TiKVGroupSpec struct {
 	// +optional
 	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
-	// CacheTTLSeconds specifies how long to wait after all leaders have been evicted
-	// before restarting a TiKV instance, allowing TiDB region caches to refresh.
-	// +kubebuilder:validation:Minimum=0
-	// +optional
-	CacheTTLSeconds *int64 `json:"cacheTTLSeconds,omitempty"`
-
 	Template TiKVTemplate `json:"template"`
 }
 
@@ -205,6 +202,18 @@ type TiKVTemplateSpec struct {
 
 	// PreStop defines preStop config
 	PreStop *TiKVPreStop `json:"preStop,omitempty"`
+
+	// CacheTTLSeconds specifies how long to wait after all leaders have been evicted
+	// before restarting a TiKV instance, allowing TiDB region caches to refresh.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	CacheTTLSeconds *int64 `json:"cacheTTLSeconds,omitempty"`
+
+	// MinReadyForLeaderSeconds specifies how long the restarted pod must remain ready
+	// before removing the evict leader scheduler.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MinReadyForLeaderSeconds *int64 `json:"minReadyForLeaderSeconds,omitempty"`
 
 	// RemoteWorkers defines remote workers used by this tikv
 	// It only works for nextgen
@@ -305,12 +314,6 @@ type TiKVSpec struct {
 	// +default:value=1
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
-
-	// CacheTTLSeconds is managed by TiKVGroup and specifies how long to wait after
-	// all leaders have been evicted before restarting this TiKV instance.
-	// +kubebuilder:validation:Minimum=0
-	// +optional
-	CacheTTLSeconds *int64 `json:"cacheTTLSeconds,omitempty"`
 
 	// TiKVTemplateSpec embedded some fields managed by TiKVGroup
 	TiKVTemplateSpec `json:",inline"`
