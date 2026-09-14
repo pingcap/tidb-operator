@@ -449,7 +449,11 @@ func GetCommitTsFromBRMetaDataWithBROptions(
 
 	credential := &util.StorageCredential{}
 	if roleARN != "" {
-		credential, err = util.NewAssumeRoleStorageCredential(roleARN, externalID)
+		region := ""
+		if provider.S3 != nil {
+			region = provider.S3.Region
+		}
+		credential, err = util.NewAssumeRoleStorageCredential(roleARN, externalID, region)
 		if err != nil {
 			return 0, err
 		}
