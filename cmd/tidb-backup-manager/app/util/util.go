@@ -466,7 +466,7 @@ func GetCommitTsFromBRMetaDataWithBROptions(
 	return backupMeta.EndVersion, nil
 }
 
-func parseS3AssumeRoleOptions(options []string) (string, string, error) {
+func parseS3AssumeRoleOptions(options []string) (roleARN, externalID string, err error) {
 	roleARN, hasRoleARN, err := optionValue(options, "--s3.role-arn")
 	if err != nil {
 		return "", "", err
@@ -488,9 +488,7 @@ func parseS3AssumeRoleOptions(options []string) (string, string, error) {
 	return roleARN, externalID, nil
 }
 
-func optionValue(options []string, name string) (string, bool, error) {
-	var value string
-	var found bool
+func optionValue(options []string, name string) (value string, found bool, err error) {
 	for i := 0; i < len(options); i++ {
 		option := options[i]
 		switch {
