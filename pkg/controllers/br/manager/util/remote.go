@@ -31,6 +31,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -59,6 +60,22 @@ const (
 type StorageCredential struct {
 	//TODO: currently, we do not have better way to unify storage credentials, temp solution using s3 credentials
 	awsCred *credentials.Credentials
+}
+
+// NewAssumeRoleStorageCredential creates storage credentials that assume role
+// with the pod's default AWS credential chain as the source credentials.
+func NewAssumeRoleStorageCredential(roleARN, externalID string) (*StorageCredential, error) {
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("create AWS session for assuming storage role: %w", err)
+	}
+
+	cred := stscreds.NewCredentials(sess, roleARN, func(provider *stscreds.AssumeRoleProvider) {
+		if externalID != "" {
+			provider.ExternalID = aws.String(externalID)
+		}
+	})
+	return &StorageCredential{awsCred: cred}, nil
 }
 
 type s3Config struct {

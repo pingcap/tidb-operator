@@ -307,6 +307,68 @@ func TestGetCommitTsFromMetadata(t *testing.T) {
 	g.Expect(commitTs).To(Equal("409054741514944513"))
 }
 
+func TestParseS3AssumeRoleOptions(t *testing.T) {
+	tests := []struct {
+		name             string
+		options          []string
+		expectedRoleARN  string
+		expectedExternal string
+		expectError      bool
+	}{
+		{
+			name: "equals syntax",
+			options: []string{
+				"--s3.role-arn=arn:aws:iam::123456789012:role/classic-restore",
+				"--s3.external-id=restore-123",
+			},
+			expectedRoleARN:  "arn:aws:iam::123456789012:role/classic-restore",
+			expectedExternal: "restore-123",
+		},
+		{
+			name: "separate value syntax",
+			options: []string{
+				"--s3.role-arn", "arn:aws:iam::123456789012:role/classic-restore",
+				"--s3.external-id", "restore-123",
+			},
+			expectedRoleARN:  "arn:aws:iam::123456789012:role/classic-restore",
+			expectedExternal: "restore-123",
+		},
+		{
+			name:    "no assume role options",
+			options: []string{"--concurrency=32"},
+		},
+		{
+			name:        "external ID without role ARN",
+			options:     []string{"--s3.external-id=restore-123"},
+			expectError: true,
+		},
+		{
+			name:        "missing role ARN value",
+			options:     []string{"--s3.role-arn", "--concurrency=32"},
+			expectError: true,
+		},
+		{
+			name:        "empty external ID",
+			options:     []string{"--s3.role-arn=arn:aws:iam::123456789012:role/classic-restore", "--s3.external-id="},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			roleARN, externalID, err := parseS3AssumeRoleOptions(tt.options)
+			if tt.expectError {
+				g.Expect(err).To(HaveOccurred())
+				return
+			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(roleARN).To(Equal(tt.expectedRoleARN))
+			g.Expect(externalID).To(Equal(tt.expectedExternal))
+		})
+	}
+}
+
 func TestConstructRcloneArgs(t *testing.T) {
 	g := NewGomegaWithT(t)
 

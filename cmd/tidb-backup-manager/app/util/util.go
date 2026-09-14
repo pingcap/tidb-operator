@@ -374,7 +374,15 @@ func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
 
 // GetBRMetaData get backup metadata from cloud storage
 func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
-	s, err := util.NewStorageBackend(provider, &util.StorageCredential{})
+	return getBRMetaData(ctx, provider, &util.StorageCredential{})
+}
+
+func getBRMetaData(
+	ctx context.Context,
+	provider v1alpha1.StorageProvider,
+	credential *util.StorageCredential,
+) (*kvbackup.BackupMeta, error) {
+	s, err := util.NewStorageBackend(provider, credential)
 	if err != nil {
 		return nil, err
 	}
@@ -425,6 +433,76 @@ func GetCommitTsFromBRMetaData(ctx context.Context, provider v1alpha1.StoragePro
 		return 0, err
 	}
 	return backupMeta.EndVersion, nil
+}
+
+// GetCommitTsFromBRMetaDataWithBROptions reads the backup metadata using the
+// same S3 assume-role settings passed to BR, when present.
+func GetCommitTsFromBRMetaDataWithBROptions(
+	ctx context.Context,
+	provider v1alpha1.StorageProvider,
+	options []string,
+) (uint64, error) {
+	roleARN, externalID, err := parseS3AssumeRoleOptions(options)
+	if err != nil {
+		return 0, err
+	}
+
+	credential := &util.StorageCredential{}
+	if roleARN != "" {
+		credential, err = util.NewAssumeRoleStorageCredential(roleARN, externalID)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	backupMeta, err := getBRMetaData(ctx, provider, credential)
+	if err != nil {
+		return 0, err
+	}
+	return backupMeta.EndVersion, nil
+}
+
+func parseS3AssumeRoleOptions(options []string) (string, string, error) {
+	roleARN, hasRoleARN, err := optionValue(options, "--s3.role-arn")
+	if err != nil {
+		return "", "", err
+	}
+	externalID, hasExternalID, err := optionValue(options, "--s3.external-id")
+	if err != nil {
+		return "", "", err
+	}
+
+	if hasRoleARN && roleARN == "" {
+		return "", "", fmt.Errorf("--s3.role-arn must not be empty")
+	}
+	if hasExternalID && externalID == "" {
+		return "", "", fmt.Errorf("--s3.external-id must not be empty")
+	}
+	if hasExternalID && !hasRoleARN {
+		return "", "", fmt.Errorf("--s3.external-id requires --s3.role-arn")
+	}
+	return roleARN, externalID, nil
+}
+
+func optionValue(options []string, name string) (string, bool, error) {
+	var value string
+	var found bool
+	for i := 0; i < len(options); i++ {
+		option := options[i]
+		switch {
+		case option == name:
+			if i+1 >= len(options) || strings.HasPrefix(options[i+1], "--") {
+				return "", false, fmt.Errorf("%s requires a value", name)
+			}
+			i++
+			value = options[i]
+			found = true
+		case strings.HasPrefix(option, name+"="):
+			value = strings.TrimPrefix(option, name+"=")
+			found = true
+		}
+	}
+	return value, found, nil
 }
 
 // ConstructRcloneArgs constructs the rclone args
