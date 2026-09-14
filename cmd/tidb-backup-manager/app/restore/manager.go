@@ -120,7 +120,11 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	//nolint:gocritic
 	switch rm.Mode {
 	default:
-		ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+		ts, err := util.GetCommitTsFromBRMetaDataWithBROptions(
+			ctx,
+			restore.Spec.StorageProvider,
+			restore.Spec.BR.Options,
+		)
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
