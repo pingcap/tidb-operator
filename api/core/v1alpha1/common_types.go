@@ -202,6 +202,7 @@ const (
 	// 0 is the highest priority to be chosen to be deleted.
 	// unset is the lowest priority.
 	// Priority is the highest doesn't mean the instance must be chosen. For example, operator will try to ensure the topology spreading.
+	// The operator also prefers instances that are not running or not ready over those with a higher priority.
 	AnnoKeyPriority = AnnoKeyPrefix + "priority"
 )
 

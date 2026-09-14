@@ -82,6 +82,38 @@ func TestBuilder(t *testing.T) {
 	}
 }
 
+func TestBuilderScaleInPrefersNewer(t *testing.T) {
+	cases := []struct {
+		name   string
+		older  *runtime.PD
+		custom bool
+		want   string
+	}{
+		{name: "newer by default", older: fakePD("older", true, true), want: "newer"},
+		{name: "manual priority wins", older: fakePDWithPriority("older", true, true, "0"), want: "older"},
+		{name: "unready wins", older: fakePD("older", true, false), want: "older"},
+		{name: "not running wins", older: fakePD("older", false, true), want: "older"},
+		{name: "custom policy wins", older: fakePD("older", true, true), custom: true, want: "older"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.older.SetCreationTimestamp(metav1.NewTime(time.Unix(100, 0)))
+			newer := fakePD("newer", true, true)
+			newer.SetCreationTimestamp(metav1.NewTime(time.Unix(200, 0)))
+			b := New[runtime.PDTuple]()
+			if tc.custom {
+				b.WithScaleInPreferPolicy(PreferPolicyFunc[*runtime.PD](func([]*runtime.PD) []*runtime.PD {
+					return []*runtime.PD{tc.older}
+				}))
+			}
+			act := b.Build().(*executor).act.(*actor[runtime.PDTuple, *v1alpha1.PD, *runtime.PD])
+			instances := []*runtime.PD{tc.older, newer}
+			assert.Equal(t, tc.want, act.scaleInSelector.Choose(instances))
+			assert.Equal(t, "older", act.updateSelector.Choose(instances))
+		})
+	}
+}
+
 func TestSplit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

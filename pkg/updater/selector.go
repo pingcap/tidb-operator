@@ -100,6 +100,29 @@ func (s *selector[R]) Choose(allowed []R) string {
 	return ""
 }
 
+// PreferNewer returns instances with the latest creation timestamp.
+// Instances with equal timestamps remain candidates for subsequent policies.
+func PreferNewer[R runtime.Instance]() PreferPolicy[R] {
+	return PreferPolicyFunc[R](func(s []R) []R {
+		var chosen []R
+		for _, in := range s {
+			if len(chosen) == 0 {
+				chosen = append(chosen, in)
+				continue
+			}
+			latest := chosen[0].GetCreationTimestamp()
+			created := in.GetCreationTimestamp()
+			switch {
+			case latest.Before(&created):
+				chosen = []R{in}
+			case latest.Equal(&created):
+				chosen = append(chosen, in)
+			}
+		}
+		return chosen
+	})
+}
+
 func PreferUnready[R runtime.Instance]() PreferPolicy[R] {
 	return PreferPolicyFunc[R](func(s []R) []R {
 		var unavail []R

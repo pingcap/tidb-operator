@@ -16,6 +16,7 @@ package updater
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +27,37 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
+
+func TestPreferNewer(t *testing.T) {
+	older := fakePD("older", true, true)
+	older.SetCreationTimestamp(metav1.NewTime(time.Unix(100, 0)))
+	newer := fakePD("newer", true, true)
+	newer.SetCreationTimestamp(metav1.NewTime(time.Unix(200, 0)))
+	tied := fakePD("tied", true, true)
+	tied.SetCreationTimestamp(newer.GetCreationTimestamp())
+	unknown := fakePD("unknown", true, true)
+	unknown2 := fakePD("unknown2", true, true)
+
+	cases := []struct {
+		name            string
+		input, expected []*runtime.PD
+	}{
+		{name: "empty"},
+		{name: "single", input: []*runtime.PD{older}, expected: []*runtime.PD{older}},
+		{name: "newest last", input: []*runtime.PD{older, newer}, expected: []*runtime.PD{newer}},
+		{name: "newest first", input: []*runtime.PD{newer, older}, expected: []*runtime.PD{newer}},
+		{name: "equal timestamps", input: []*runtime.PD{newer, older, tied}, expected: []*runtime.PD{newer, tied}},
+		{name: "missing timestamp", input: []*runtime.PD{unknown, newer}, expected: []*runtime.PD{newer}},
+		{name: "all timestamps missing", input: []*runtime.PD{unknown, unknown2}, expected: []*runtime.PD{unknown, unknown2}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			original := append([]*runtime.PD(nil), tc.input...)
+			assert.Equal(t, tc.expected, PreferNewer[*runtime.PD]().Prefer(tc.input))
+			assert.Equal(t, original, tc.input)
+		})
+	}
+}
 
 func TestSelector(t *testing.T) {
 	cases := []struct {
