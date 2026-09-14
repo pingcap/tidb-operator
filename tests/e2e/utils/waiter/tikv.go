@@ -78,11 +78,12 @@ func WatchUntilTiKVsRestartedAfterCacheTTL(
 		}
 
 		if cond.Status == metav1.ConditionTrue {
-			if tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds == nil {
+			cacheTTLSecondsSpec := tikv.Spec.CacheTTLSeconds
+			if cacheTTLSecondsSpec == nil {
 				return false, fmt.Errorf("tikv %s/%s has no cacheTTLSeconds", tikv.Namespace, tikv.Name)
 			}
-			if *tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds != cacheTTLSeconds {
-				return false, fmt.Errorf("tikv %s/%s cacheTTLSeconds is %d, want %d", tikv.Namespace, tikv.Name, *tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds, cacheTTLSeconds)
+			if *cacheTTLSecondsSpec != cacheTTLSeconds {
+				return false, fmt.Errorf("tikv %s/%s cacheTTLSeconds is %d, want %d", tikv.Namespace, tikv.Name, *cacheTTLSecondsSpec, cacheTTLSeconds)
 			}
 			if cond.LastTransitionTime.IsZero() {
 				return false, fmt.Errorf("tikv %s/%s has no leader eviction transition time", tikv.Namespace, tikv.Name)

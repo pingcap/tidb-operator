@@ -347,8 +347,8 @@ func TestTiKVNewerCopiesTemplateCacheTTLSeconds(t *testing.T) {
 	})
 
 	tikv := runtime.ToTiKV(TiKVNewer(kvg, newRevision, features.NewFromFeatures(nil)).New())
-	require.NotNil(t, tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds)
-	assert.Equal(t, int64(600), *tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds)
+	require.NotNil(t, tikv.Spec.CacheTTLSeconds)
+	assert.Equal(t, int64(600), *tikv.Spec.CacheTTLSeconds)
 }
 
 func TestTiKVNewerCopiesTemplateMinReadyForLeaderSeconds(t *testing.T) {
@@ -358,8 +358,8 @@ func TestTiKVNewerCopiesTemplateMinReadyForLeaderSeconds(t *testing.T) {
 	})
 
 	tikv := runtime.ToTiKV(TiKVNewer(kvg, newRevision, features.NewFromFeatures(nil)).New())
-	require.NotNil(t, tikv.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds)
-	assert.Equal(t, int64(60), *tikv.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds)
+	require.NotNil(t, tikv.Spec.MinReadyForLeaderSeconds)
+	assert.Equal(t, int64(60), *tikv.Spec.MinReadyForLeaderSeconds)
 }
 
 func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string, changes ...fake.ChangeFunc[v1alpha1.TiKV, *v1alpha1.TiKV]) *v1alpha1.TiKV {

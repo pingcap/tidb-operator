@@ -129,7 +129,7 @@ func TestTaskEvictLeader(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds = ptr.To[int64](60)
+						obj.Spec.MinReadyForLeaderSeconds = ptr.To[int64](60)
 						return obj
 					}),
 					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {

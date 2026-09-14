@@ -102,7 +102,7 @@ func TestCheckTiKVPodCacheTTLSecondsIsReloadable(t *testing.T) {
 	require.NoError(t, EncodeLastTiKVTemplate(lastInstance, pod))
 
 	currentInstance := lastInstance.DeepCopy()
-	currentInstance.Spec.TiKVTemplateSpec.CacheTTLSeconds = ptr.To[int64](600)
+	currentInstance.Spec.CacheTTLSeconds = ptr.To[int64](600)
 
 	assert.True(t, CheckTiKVPod(currentInstance, pod))
 }
@@ -141,7 +141,7 @@ func TestCheckTiKVPodMinReadyForLeaderSecondsIsReloadable(t *testing.T) {
 	require.NoError(t, EncodeLastTiKVTemplate(lastInstance, pod))
 
 	currentInstance := lastInstance.DeepCopy()
-	currentInstance.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds = ptr.To[int64](60)
+	currentInstance.Spec.MinReadyForLeaderSeconds = ptr.To[int64](60)
 
 	assert.True(t, CheckTiKVPod(currentInstance, pod))
 }

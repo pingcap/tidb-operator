@@ -91,7 +91,7 @@ func CheckTiKVLeadersEvicted(tikv *v1alpha1.TiKV) error {
 }
 
 func cacheTTLRemaining(tikv *v1alpha1.TiKV, now time.Time) time.Duration {
-	cacheTTLSeconds := tikv.Spec.TiKVTemplateSpec.CacheTTLSeconds
+	cacheTTLSeconds := tikv.Spec.CacheTTLSeconds
 	if cacheTTLSeconds == nil || *cacheTTLSeconds <= 0 {
 		return 0
 	}
@@ -110,10 +110,10 @@ func cacheTTLRemaining(tikv *v1alpha1.TiKV, now time.Time) time.Duration {
 }
 
 func minReadyForLeaderSeconds(tikv *v1alpha1.TiKV) int64 {
-	if tikv == nil || tikv.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds == nil {
+	if tikv == nil || tikv.Spec.MinReadyForLeaderSeconds == nil {
 		return v1alpha1.DefaultTiKVMinReadyForLeaderSeconds
 	}
-	return *tikv.Spec.TiKVTemplateSpec.MinReadyForLeaderSeconds
+	return *tikv.Spec.MinReadyForLeaderSeconds
 }
 
 func podReadyForLeaderRemaining(pod *corev1.Pod, minReadySeconds int64, now metav1.Time) time.Duration {

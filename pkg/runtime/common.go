@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
-func isAvailable(conds []metav1.Condition, generation int64, minReadySeconds int64, now time.Time) bool {
+func isAvailable(conds []metav1.Condition, generation, minReadySeconds int64, now time.Time) bool {
 	cond := meta.FindStatusCondition(conds, v1alpha1.CondReady)
 	if cond == nil {
 		return false
@@ -45,7 +45,7 @@ func isAvailable(conds []metav1.Condition, generation int64, minReadySeconds int
 	return false
 }
 
-func isTiKVAvailable(conds []metav1.Condition, generation int64, minReadySeconds int64, now time.Time) bool {
+func isTiKVAvailable(conds []metav1.Condition, generation, minReadySeconds int64, now time.Time) bool {
 	if !isAvailable(conds, generation, minReadySeconds, now) {
 		return false
 	}
