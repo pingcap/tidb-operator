@@ -127,26 +127,8 @@ func (in *TiFlash) IsNotRunning() bool {
 	return cond.Status == metav1.ConditionFalse
 }
 
-func (in *TiFlash) IsAvailable(minReadySeconds int64, now time.Time) bool {
-	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
-	if cond == nil {
-		return false
-	}
-	if cond.ObservedGeneration != in.GetGeneration() {
-		return false
-	}
-	if cond.Status != metav1.ConditionTrue {
-		return false
-	}
-	if minReadySeconds == 0 {
-		return true
-	}
-	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
-	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
-		return true
-	}
-
-	return false
+func (in *TiFlash) IsAvailable(minReadySeconds int64, now time.Time) (bool, time.Duration) {
+	return isAvailable(in.Status.Conditions, in.GetGeneration(), minReadySeconds, now)
 }
 
 func (in *TiFlash) IsUpToDate() bool {

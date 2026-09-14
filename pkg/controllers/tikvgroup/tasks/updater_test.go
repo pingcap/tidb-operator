@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -225,6 +226,56 @@ func testTaskUpdater(t *testing.T, progressing *bool) {
 			expectedTiKVNum: 2,
 		},
 		{
+			desc: "updated tikv waits until evict leader scheduler is removed",
+			state: &ReconcileContext{
+				State: &state{
+					kvg:     fake.FakeObj[v1alpha1.TiKVGroup]("aaa"),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					kvs: []*v1alpha1.TiKV{
+						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							for i := range obj.Status.Conditions {
+								if obj.Status.Conditions[i].Type == v1alpha1.TiKVCondLeadersEvicted {
+									obj.Status.Conditions[i].Status = metav1.ConditionTrue
+									obj.Status.Conditions[i].Reason = v1alpha1.ReasonEvicted
+								}
+							}
+							return obj
+						}),
+					},
+					updateRevision: newRevision,
+				},
+			},
+
+			expectedStatus:  task.SWait,
+			expectedTiKVNum: 1,
+		},
+		{
+			desc: "updated tikv waits until evict leader scheduler removal is stable",
+			state: &ReconcileContext{
+				State: &state{
+					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+						obj.Spec.MinReadySeconds = ptr.To[int64](60)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					kvs: []*v1alpha1.TiKV{
+						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							for i := range obj.Status.Conditions {
+								if obj.Status.Conditions[i].Type == v1alpha1.TiKVCondLeadersEvicted {
+									obj.Status.Conditions[i].LastTransitionTime = metav1.NewTime(time.Now().Add(-30 * time.Second))
+								}
+							}
+							return obj
+						}),
+					},
+					updateRevision: newRevision,
+				},
+			},
+
+			expectedStatus:  task.SRetry,
+			expectedTiKVNum: 1,
+		},
+		{
 			// NOTE: it not really check whether the policy is worked
 			// It should be tested in /pkg/updater and /pkg/updater/policy package
 			desc: "topology evenly spread",
@@ -368,9 +419,9 @@ func TestPausedUpdaterStillReportsInstanceRecovery(t *testing.T) {
 	assert.Equal(t, newRevision, runtime.FromTiKV(actualNext).GetUpdateRevision())
 }
 
-func TestTiKVNewerCopiesCacheTTLSeconds(t *testing.T) {
+func TestTiKVNewerCopiesTemplateCacheTTLSeconds(t *testing.T) {
 	kvg := fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-		obj.Spec.CacheTTLSeconds = ptr.To[int64](600)
+		obj.Spec.Template.Spec.CacheTTLSeconds = ptr.To[int64](600)
 		return obj
 	})
 
@@ -379,17 +430,37 @@ func TestTiKVNewerCopiesCacheTTLSeconds(t *testing.T) {
 	assert.Equal(t, int64(600), *tikv.Spec.CacheTTLSeconds)
 }
 
-func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alpha1.TiKV {
-	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+func TestTiKVNewerCopiesTemplateMinReadyForLeaderSeconds(t *testing.T) {
+	kvg := fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+		obj.Spec.Template.Spec.MinReadyForLeaderSeconds = ptr.To[int64](60)
+		return obj
+	})
+
+	tikv := runtime.ToTiKV(TiKVNewer(kvg, newRevision, features.NewFromFeatures(nil)).New())
+	require.NotNil(t, tikv.Spec.MinReadyForLeaderSeconds)
+	assert.Equal(t, int64(60), *tikv.Spec.MinReadyForLeaderSeconds)
+}
+
+func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string, changes ...fake.ChangeFunc[v1alpha1.TiKV, *v1alpha1.TiKV]) *v1alpha1.TiKV {
+	base := func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev, features.NewFromFeatures(nil)).New())
 		tikv.Name = ""
 		tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.CondReady,
 			Status:             metav1.ConditionTrue,
+			ObservedGeneration: tikv.Generation,
+			LastTransitionTime: metav1.Unix(0, 0),
+		}, metav1.Condition{
+			Type:               v1alpha1.TiKVCondLeadersEvicted,
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: tikv.Generation,
+			Reason:             v1alpha1.ReasonNotEvicted,
 			LastTransitionTime: metav1.Unix(0, 0),
 		})
+		tikv.Status.ObservedGeneration = tikv.Generation
 		tikv.Status.CurrentRevision = rev
 		tikv.DeepCopyInto(obj)
 		return obj
-	})
+	}
+	return fake.FakeObj(name, append([]fake.ChangeFunc[v1alpha1.TiKV, *v1alpha1.TiKV]{base}, changes...)...)
 }

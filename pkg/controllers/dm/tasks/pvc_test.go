@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -62,4 +63,41 @@ func TestPVCNewer(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPVCNewerAppliesDataAndAdditionalVolumeOverlays(t *testing.T) {
+	cluster := fake.FakeObj[v1alpha1.Cluster]("cluster")
+	dm := newTestDM("aaa-0", func(dm *v1alpha1.DM) {
+		dm.Spec.Volumes = []v1alpha1.Volume{{
+			Name:    "extra",
+			Storage: resource.MustParse("5Gi"),
+		}}
+		dm.Spec.Overlay = &v1alpha1.Overlay{
+			PersistentVolumeClaims: []v1alpha1.NamedPersistentVolumeClaimOverlay{
+				{
+					Name: "data",
+					PersistentVolumeClaim: v1alpha1.PersistentVolumeClaimOverlay{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Labels:      map[string]string{"cloud-tag": "dm-master"},
+							Annotations: map[string]string{"owner": "data"},
+						},
+					},
+				},
+				{
+					Name: "extra",
+					PersistentVolumeClaim: v1alpha1.PersistentVolumeClaimOverlay{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Labels: map[string]string{"cloud-tag": "extra"},
+						},
+					},
+				},
+			},
+		}
+	})
+
+	pvcs := PVCNewer().NewPVCs(cluster, dm, features.NewFromFeatures(nil))
+	require.Len(t, pvcs, 2)
+	assert.Equal(t, "dm-master", pvcs[0].Labels["cloud-tag"])
+	assert.Equal(t, "data", pvcs[0].Annotations["owner"])
+	assert.Equal(t, "extra", pvcs[1].Labels["cloud-tag"])
 }

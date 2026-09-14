@@ -97,3 +97,11 @@ func InstanceToServerLabelsField(t *types.Type) string {
 
 	return "nil"
 }
+
+func InstanceToAvailableFuncName(t *types.Type) string {
+	if t.Name.Name == nameTiKV {
+		return "isTiKVAvailable"
+	}
+
+	return "isAvailable"
+}

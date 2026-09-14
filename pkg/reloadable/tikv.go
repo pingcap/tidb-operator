@@ -108,6 +108,10 @@ func convertTiKVTemplate(tmpl *v1alpha1.TiKVTemplate) *v1alpha1.TiKVTemplate {
 
 	// placement labels are reconciled to PD dynamically
 	newTmpl.Spec.Placement = nil
+	// cache TTL only delays TiKV restart after leader eviction; it does not change the pod.
+	newTmpl.Spec.CacheTTLSeconds = nil
+	// min-ready-for-leader only delays removing the evict leader scheduler; it does not change the pod.
+	newTmpl.Spec.MinReadyForLeaderSeconds = nil
 
 	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
 	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)

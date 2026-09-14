@@ -36,7 +36,7 @@ func TestIsAvailable(t *testing.T) {
 	tests := []struct {
 		name            string
 		pod             *corev1.Pod
-		minReadySeconds int32
+		minReadySeconds int64
 		expected        bool
 	}{
 		{
