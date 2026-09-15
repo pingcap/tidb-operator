@@ -18,8 +18,10 @@ import (
 	"time"
 
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -83,6 +85,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 
 	tidbClusterInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbClusters()
 	statefulsetInformer := deps.KubeInformerFactory.Apps().V1().StatefulSets()
+	secretInformer := deps.KubeInformerFactory.Core().V1().Secrets()
 	tidbClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueueTidbCluster,
 		UpdateFunc: func(old, cur interface{}) {
@@ -96,6 +99,18 @@ func NewController(deps *controller.Dependencies) *Controller {
 			c.updateStatefulSet(old, cur)
 		},
 		DeleteFunc: c.deleteStatefulSet,
+	})
+	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: c.enqueueTidbClustersForTiCIMetaAuthSecret,
+		UpdateFunc: func(old, cur interface{}) {
+			oldSecret := old.(*corev1.Secret)
+			curSecret := cur.(*corev1.Secret)
+			if curSecret.ResourceVersion == oldSecret.ResourceVersion {
+				return
+			}
+			c.enqueueTidbClustersForTiCIMetaAuthSecret(cur)
+		},
+		DeleteFunc: c.enqueueTidbClustersForTiCIMetaAuthSecret,
 	})
 
 	return c
@@ -273,6 +288,38 @@ func (c *Controller) deleteStatefulSet(obj interface{}) {
 	}
 	klog.V(4).Infof("StatefulSet %s/%s deleted through %v.", ns, setName, utilruntime.GetCaller())
 	c.enqueueTidbCluster(tc)
+}
+
+func (c *Controller) enqueueTidbClustersForTiCIMetaAuthSecret(obj interface{}) {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %+v", obj))
+			return
+		}
+		secret, ok = tombstone.Obj.(*corev1.Secret)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a secret %+v", obj))
+			return
+		}
+	}
+
+	tcs, err := c.deps.TiDBClusterLister.TidbClusters(secret.Namespace).List(labels.Everything())
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't list TidbClusters for TiCI meta TiDB auth secret %s/%s: %v", secret.Namespace, secret.Name, err))
+		return
+	}
+	for _, tc := range tcs {
+		if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil || tc.Spec.TiCI.Meta.TiDBAuth == nil || tc.Spec.TiCI.Meta.TiDBAuth.PasswordSecret == nil {
+			continue
+		}
+		if tc.Spec.TiCI.Meta.TiDBAuth.PasswordSecret.Name != secret.Name {
+			continue
+		}
+		klog.V(4).Infof("TiCI meta TiDB auth secret %s/%s changed, TidbCluster: %s/%s", secret.Namespace, secret.Name, tc.Namespace, tc.Name)
+		c.enqueueTidbCluster(tc)
+	}
 }
 
 // resolveTidbClusterFromSet returns the TidbCluster by a StatefulSet,
