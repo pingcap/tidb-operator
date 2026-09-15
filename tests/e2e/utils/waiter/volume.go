@@ -127,7 +127,8 @@ func AssertInstanceListVolumes[S scope.Instance[F, T], F client.Object, T runtim
 
 // AssertPVCListVolumes checks PVCs for the given instances. When expectExceeds
 // is true, each instance must have at least one PVC whose storage exceeds
-// the group request; otherwise all PVCs must match. Unrelated PVCs are ignored.
+// the group request; otherwise all PVCs must match. Every PVC must have at least
+// the requested capacity. Unrelated PVCs are ignored.
 func AssertPVCListVolumes[S scope.Instance[F, T], F client.Object, T runtime.Instance](
 	instances []F, volumes []v1alpha1.Volume, expectExceeds bool,
 ) func([]*corev1.PersistentVolumeClaim) error {
@@ -154,10 +155,11 @@ func AssertPVCListVolumes[S scope.Instance[F, T], F client.Object, T runtime.Ins
 				if request := pvc.Spec.Resources.Requests.Storage(); request.Cmp(*capacity) != 0 {
 					errList = append(errList, fmt.Errorf("PVC %s requests %s, capacity is %s", key, request.String(), capacity.String()))
 				}
-				if capacity.Cmp(expected.Storage) > 0 {
+				comparison := capacity.Cmp(expected.Storage)
+				if comparison > 0 {
 					exceeds = true
 				}
-				if !expectExceeds && capacity.Cmp(expected.Storage) != 0 {
+				if comparison < 0 || (!expectExceeds && comparison > 0) {
 					errList = append(errList, fmt.Errorf("PVC %s capacity is %s, expected %s", key, capacity.String(), expected.Storage.String()))
 				}
 			}
