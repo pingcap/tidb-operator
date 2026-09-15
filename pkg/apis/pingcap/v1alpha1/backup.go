@@ -29,7 +29,7 @@ var (
 		RoutineConcurrency: 100,
 	}
 
-	// defaultCleanOption is default clean option
+	// defaultCleanOption is default clean option.
 	defaultCleanOption = CleanOption{
 		PageSize:          10000,
 		RetryCount:        5,
