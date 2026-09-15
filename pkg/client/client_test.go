@@ -157,7 +157,7 @@ func TestApplyTransformers(t *testing.T) {
 			var calls []string
 			first := TransformerFunc(func(current, expected client.Object) client.Object {
 				calls = append(calls, "first")
-				require.NotSame(t, client.Object(desired), expected)
+				require.NotSame(t, expected, client.Object(desired))
 				if current != nil {
 					require.Same(t, client.Object(desired), current)
 				}
