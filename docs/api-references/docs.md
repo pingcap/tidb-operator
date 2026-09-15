@@ -27663,17 +27663,13 @@ k8s.io/apimachinery/pkg/util/intstr.IntOrString
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxUnavailable configures how many pods of the component may be
-unavailable at the same time during a rolling update, as an absolute
-number (e.g. 2) or a percentage of replicas (e.g. &ldquo;10%&rdquo;, rounded down).
-Values that resolve to more than 1 make the rolling update restart that
-many pods in parallel, trading capacity for a shorter maintenance
-window. Pods of any revision that are out of service count against the
-budget, so the number of pods simultaneously down never exceeds the
-resolved value. Whatever the value, the resolved number is clamped at
-runtime to at least 1 and to replicas-1, so the update always makes
-progress and at least one pod stays out of the restart window (a
-single-replica component is always updated serially).
+<p>MaxUnavailable is how many pods of the component may be down at the
+same time during a rolling update, as an absolute number (e.g. 2) or a
+percentage of replicas (e.g. &ldquo;10%&rdquo;, rounded down). Values above 1
+restart that many pods in parallel; out-of-service pods of any revision
+count against the budget. The resolved value is clamped at runtime to
+[1, replicas-1], so the update always makes progress and a
+single-replica component is updated serially.
 Optional: Defaults to 1, the classic one-pod-at-a-time rolling update.</p>
 </td>
 </tr>
