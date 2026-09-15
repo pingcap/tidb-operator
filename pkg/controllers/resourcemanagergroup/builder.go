@@ -15,8 +15,6 @@
 package resourcemanagergroup
 
 import (
-	"k8s.io/utils/ptr"
-
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/resourcemanagergroup/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -31,18 +29,18 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		common.TaskContextCluster[scope.ResourceManagerGroup](state, r.Client),
 		task.IfBreak(common.CondClusterIsPaused(state)),
-		task.IfBreak(task.CondFunc(func() bool {
-			return !ptr.Deref(state.Object().Spec.Progressing, true)
-		})),
+		task.IfBreak(common.CondGroupIsNotProgressing(state)),
 
 		common.TaskContextSlice[scope.ResourceManagerGroup](state, r.Client),
 		task.IfBreak(common.CondObjectIsDeleting[scope.ResourceManagerGroup](state),
+			common.TaskContextSlice[scope.ResourceManagerGroup](state, r.Client),
 			common.TaskGroupFinalizerDel[scope.ResourceManagerGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.ResourceManagerGroup](state),
 			common.TaskGroupConditionSynced[scope.ResourceManagerGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.ResourceManagerGroup](state),
 			common.TaskStatusPersister[scope.ResourceManagerGroup](state, r.Client),
 		),
+
 		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.ResourceManagerGroup](state)),
 
 		common.TaskFinalizerAdd[scope.ResourceManagerGroup](state, r.Client),

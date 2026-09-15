@@ -51,6 +51,12 @@ type Group interface {
 	SchedulePolicies() []v1alpha1.SchedulePolicy
 }
 
+// ProgressingGroup is a group whose reconciliation can be paused independently of its cluster.
+type ProgressingGroup interface {
+	Group
+	Progressing() bool
+}
+
 type GroupT[T GroupSet] interface {
 	Group
 

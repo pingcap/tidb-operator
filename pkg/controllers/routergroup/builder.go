@@ -15,8 +15,6 @@
 package routergroup
 
 import (
-	"k8s.io/utils/ptr"
-
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/routergroup/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -31,20 +29,20 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		common.TaskContextCluster[scope.RouterGroup](state, r.Client),
 		task.IfBreak(common.CondClusterIsPaused(state)),
-		task.IfBreak(task.CondFunc(func() bool {
-			return !ptr.Deref(state.Object().Spec.Progressing, true)
-		})),
+		task.IfBreak(common.CondGroupIsNotProgressing(state)),
 
-		common.TaskContextSlice[scope.RouterGroup](state, r.Client),
 		task.IfBreak(common.CondObjectIsDeleting[scope.RouterGroup](state),
+			common.TaskContextSlice[scope.RouterGroup](state, r.Client),
 			common.TaskGroupFinalizerDel[scope.RouterGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.RouterGroup](state),
 			common.TaskGroupConditionSynced[scope.RouterGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.RouterGroup](state),
 			common.TaskStatusPersister[scope.RouterGroup](state, r.Client),
 		),
+
 		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.RouterGroup](state)),
 
+		common.TaskContextSlice[scope.RouterGroup](state, r.Client),
 		common.TaskFinalizerAdd[scope.RouterGroup](state, r.Client),
 
 		task.IfBreak(

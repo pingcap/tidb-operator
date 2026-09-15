@@ -15,8 +15,6 @@
 package tiflashgroup
 
 import (
-	"k8s.io/utils/ptr"
-
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiflashgroup/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -35,9 +33,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiFlashGroup](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
-		task.IfBreak(task.CondFunc(func() bool {
-			return !ptr.Deref(state.Object().Spec.Progressing, true)
-		})),
+		task.IfBreak(common.CondGroupIsNotProgressing(state)),
 		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.TiFlashGroup](state)),
 
 		// get all tiflashes

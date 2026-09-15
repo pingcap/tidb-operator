@@ -39,6 +39,13 @@ func CondClusterIsPaused(ctx ClusterState) task.Condition {
 	})
 }
 
+// CondGroupIsNotProgressing reports whether group reconciliation is paused.
+func CondGroupIsNotProgressing[G runtime.ProgressingGroup](state GroupState[G]) task.Condition {
+	return task.CondFunc(func() bool {
+		return !state.Group().Progressing()
+	})
+}
+
 func CondClusterIsDeleting(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
 		return !ctx.Cluster().DeletionTimestamp.IsZero()
