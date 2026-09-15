@@ -120,8 +120,12 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object, opts .
 
 		hasCreated = false
 	}
+	var currentObj client.Object
+	if hasCreated {
+		currentObj = obj
+	}
 	for _, t := range o.Transformers {
-		expectedObj = t.Transform(obj, expectedObj)
+		expectedObj = t.Transform(currentObj, expectedObj)
 	}
 
 	expected, err := convertToUnstructured(gvks[0], expectedObj)

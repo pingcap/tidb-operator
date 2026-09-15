@@ -157,9 +157,9 @@ func TestApplyTransformers(t *testing.T) {
 			var calls []string
 			first := TransformerFunc(func(current, expected client.Object) client.Object {
 				calls = append(calls, "first")
-				require.Same(t, client.Object(desired), expected)
+				require.NotSame(t, client.Object(desired), expected)
 				if current != nil {
-					require.NotSame(t, desired, current)
+					require.Same(t, client.Object(desired), current)
 				}
 				seenCurrent = current
 				if exists {
@@ -207,11 +207,12 @@ func TestApplyTransformers(t *testing.T) {
 
 func TestApplyUnchangedReturnsCurrentStatus(t *testing.T) {
 	ctx := context.Background()
-	current := fake.FakeObj[corev1.Pod]("unchanged")
-	current.Status.Phase = corev1.PodRunning
-	cli := NewFakeClient(current)
+	cli := NewFakeClient()
 	obj := fake.FakeObj("unchanged", fake.Label[corev1.Pod]("test", "test"))
 	require.NoError(t, cli.Apply(ctx, obj))
+	// Set status after the initial Apply, as a controller would through the status subresource.
+	obj.Status.Phase = corev1.PodRunning
+	require.NoError(t, cli.Status().Update(ctx, obj))
 	expected := fake.FakeObj("unchanged", fake.Label[corev1.Pod]("test", "test"))
 	result, err := cli.ApplyWithResult(ctx, expected)
 	require.NoError(t, err)
