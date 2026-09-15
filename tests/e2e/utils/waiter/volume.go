@@ -125,11 +125,11 @@ func AssertInstanceListVolumes[S scope.Instance[F, T], F client.Object, T runtim
 	}
 }
 
-// AssertPVCListVolumes checks PVCs for the given instances. When expectDifferent
-// is true, each instance must have at least one PVC whose storage differs from
+// AssertPVCListVolumes checks PVCs for the given instances. When expectExceeds
+// is true, each instance must have at least one PVC whose storage exceeds
 // the group request; otherwise all PVCs must match. Unrelated PVCs are ignored.
 func AssertPVCListVolumes[S scope.Instance[F, T], F client.Object, T runtime.Instance](
-	instances []F, volumes []v1alpha1.Volume, expectDifferent bool,
+	instances []F, volumes []v1alpha1.Volume, expectExceeds bool,
 ) func([]*corev1.PersistentVolumeClaim) error {
 	return func(items []*corev1.PersistentVolumeClaim) error {
 		var errList []error
@@ -138,7 +138,7 @@ func AssertPVCListVolumes[S scope.Instance[F, T], F client.Object, T runtime.Ins
 			pvcs[client.ObjectKeyFromObject(pvc)] = pvc
 		}
 		for _, instance := range instances {
-			different, complete := false, true
+			exceeds, complete := false, true
 			for _, expected := range volumes {
 				key := client.ObjectKey{Namespace: instance.GetNamespace(), Name: coreutil.PersistentVolumeClaimName[S](instance, expected.Name)}
 				pvc, ok := pvcs[key]
@@ -154,15 +154,15 @@ func AssertPVCListVolumes[S scope.Instance[F, T], F client.Object, T runtime.Ins
 				if request := pvc.Spec.Resources.Requests.Storage(); request.Cmp(*capacity) != 0 {
 					errList = append(errList, fmt.Errorf("PVC %s requests %s, capacity is %s", key, request.String(), capacity.String()))
 				}
-				if capacity.Cmp(expected.Storage) != 0 {
-					different = true
-					if !expectDifferent {
-						errList = append(errList, fmt.Errorf("PVC %s capacity is %s, expected %s", key, capacity.String(), expected.Storage.String()))
-					}
+				if capacity.Cmp(expected.Storage) > 0 {
+					exceeds = true
+				}
+				if !expectExceeds && capacity.Cmp(expected.Storage) != 0 {
+					errList = append(errList, fmt.Errorf("PVC %s capacity is %s, expected %s", key, capacity.String(), expected.Storage.String()))
 				}
 			}
-			if expectDifferent && complete && !different {
-				errList = append(errList, fmt.Errorf("instance %s has VolumeCapacityExceedsRequest but no PVC storage differs from the group request", instance.GetName()))
+			if expectExceeds && complete && !exceeds {
+				errList = append(errList, fmt.Errorf("instance %s has VolumeCapacityExceedsRequest but no PVC storage exceeds the group request", instance.GetName()))
 			}
 		}
 		return errors.NewAggregate(errList)
