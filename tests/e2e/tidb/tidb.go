@@ -180,7 +180,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				f.WaitForTiDBGroupReady(ctx, dbg)
 
 				nctx, cancel := context.WithCancel(ctx)
-				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3, false)
 				defer func() { <-done }()
 				defer cancel()
 
@@ -235,8 +235,9 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				patch := client.MergeFrom(dbg.DeepCopy())
 				change(dbg)
 
-				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
-				f.Must(err)
+				nctx, cancel := context.WithCancel(ctx)
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, int(*dbg.Spec.Replicas), true)
+				defer func() { cancel(); <-done }()
 
 				ginkgo.By("Patch TiDBGroup")
 				f.Must(f.Client.Patch(ctx, dbg, patch))
@@ -253,9 +254,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				}, waiter.LongTaskTimeout))
 				f.WaitForTiDBGroupReady(ctx, dbg)
 
-				newMaxTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
-				f.Must(err)
-				f.True(changeTime.Equal(*newMaxTime))
+				cancel()
+				<-done
 			},
 			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiDBGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicy()),
 			ginkgo.Entry("change pod annotations and labels", func(g *v1alpha1.TiDBGroup) {
@@ -286,7 +286,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
 			nctx, cancel := context.WithCancel(ctx)
-			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3, false)
 			defer func() { <-done }()
 			defer cancel()
 

@@ -128,7 +128,7 @@ func WatchUntilTiKVsRestartedAfterCacheTTL(
 	}, timeout, synced)
 }
 
-func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (bool, error) {
+func AssertTiKVLeadersEvictedBeforeStoreRemoval(deleting int) func(kv *v1alpha1.TiKV) (bool, error) {
 	done := map[string]struct{}{}
 	return func(kv *v1alpha1.TiKV) (bool, error) {
 		// Check if the TiKV is being deleted (has deletion timestamp)
@@ -181,7 +181,7 @@ func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (boo
 	}
 }
 
-func WaitForTiKVOfflineCompleted(expectTiKV *v1alpha1.TiKV) func(kv *v1alpha1.TiKV) (bool, error) {
+func AssertTiKVOfflineIsCompleted(expectTiKV *v1alpha1.TiKV) func(kv *v1alpha1.TiKV) (bool, error) {
 	// Capture the identity to avoid races when the caller reuses expectTiKV for API reads.
 	ns := expectTiKV.GetNamespace()
 	name := expectTiKV.GetName()

@@ -40,6 +40,7 @@ import (
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/suite/availability"
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/suite/cluster"
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/suite/scale"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/suite/volume"
 )
 
 func TestE2E(t *testing.T) {

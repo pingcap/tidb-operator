@@ -86,7 +86,8 @@ func (p *applier) Apply(ctx context.Context, obj client.Object, opts ...ApplyOpt
 	logger := logr.FromContextOrDiscard(ctx)
 	res, err := p.ApplyWithResult(ctx, obj, opts...)
 	if err == nil {
-		logger.Info("apply success",
+		logger.Info(
+			"apply success",
 			"kind", reflect.TypeOf(obj),
 			"namespace", obj.GetNamespace(),
 			"name", obj.GetName(),
@@ -110,11 +111,7 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object, opts .
 		return ApplyResultUnchanged, fmt.Errorf("cannot get gvk of obj %T", obj)
 	}
 
-	expected, err := convertToUnstructured(gvks[0], obj)
-	if err != nil {
-		return ApplyResultUnchanged, err
-	}
-
+	expectedObj := obj.DeepCopyObject().(client.Object)
 	hasCreated := true
 	if err := p.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
 		if !errors.IsNotFound(err) {
@@ -122,6 +119,14 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object, opts .
 		}
 
 		hasCreated = false
+	}
+	for _, t := range o.Transformers {
+		expectedObj = t.Transform(obj, expectedObj)
+	}
+
+	expected, err := convertToUnstructured(gvks[0], expectedObj)
+	if err != nil {
+		return ApplyResultUnchanged, err
 	}
 
 	if hasCreated {
@@ -267,7 +272,8 @@ func (p *applyPatch) Data(client.Object) ([]byte, error) {
 				Yaml:   false,
 				Pretty: false,
 				Strict: true,
-			}),
+			},
+		),
 		p.gvk.GroupVersion(),
 	)
 	buf := bytes.Buffer{}

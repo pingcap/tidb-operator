@@ -67,7 +67,7 @@ var _ = ginkgo.Describe("Scale PD", label.PD, label.Scale, func() {
 				f.WaitForPDGroupReady(ctx, pdg)
 
 				nctx, cancel := context.WithCancel(ctx)
-				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, to)
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, to, false)
 				defer func() { <-done }()
 				defer cancel()
 
@@ -100,7 +100,7 @@ var _ = ginkgo.Describe("Scale PD", label.PD, label.Scale, func() {
 				f.WaitForResourceManagerGroupReady(ctx, rmg)
 
 				nctx, cancel := context.WithCancel(ctx)
-				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.ResourceManagerGroup](nctx, f, rmg, to)
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.ResourceManagerGroup](nctx, f, rmg, to, false)
 				defer func() { <-done }()
 				defer cancel()
 

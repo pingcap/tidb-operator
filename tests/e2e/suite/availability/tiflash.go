@@ -67,7 +67,7 @@ var _ = ginkgo.Describe("TiFlash Availability Test",
 				workload.MustImportData(ctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2), wopt.RegionCount(0))
 
 				nctx, cancel := context.WithCancel(ctx)
-				done1 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fg, 2)
+				done1 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fg, 2, false)
 				defer func() { <-done1 }()
 				done2 := workload.MustRunWorkload(
 					nctx,
@@ -118,8 +118,8 @@ var _ = ginkgo.Describe("TiFlash Availability Test",
 				workload.MustImportData(ctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2), wopt.RegionCount(0))
 
 				nctx, cancel := context.WithCancel(ctx)
-				done1 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fgc, 2)
-				done2 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fgw, 2)
+				done1 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fgc, 2, false)
+				done2 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fgw, 2, false)
 				defer func() { <-done1; <-done2 }()
 
 				done := workload.MustRunWorkload(

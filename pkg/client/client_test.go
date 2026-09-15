@@ -135,3 +135,86 @@ func TestApply(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyTransformers(t *testing.T) {
+	for _, exists := range []bool{false, true} {
+		name := "create"
+		if exists {
+			name = "update"
+		}
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			desired := fake.FakeObj[corev1.Pod]("transformed")
+			desired.Spec.NodeName = "new-node"
+			cli := NewFakeClient()
+			if exists {
+				current := desired.DeepCopy()
+				current.Spec.NodeName = "old-node"
+				current.Status.Phase = corev1.PodRunning
+				cli = NewFakeClient(current)
+			}
+			var seenCurrent client.Object
+			var calls []string
+			first := TransformerFunc(func(current, expected client.Object) client.Object {
+				calls = append(calls, "first")
+				require.Same(t, client.Object(desired), expected)
+				if current != nil {
+					require.NotSame(t, desired, current)
+				}
+				seenCurrent = current
+				if exists {
+					require.Equal(t, corev1.PodRunning, current.(*corev1.Pod).Status.Phase)
+					require.Equal(t, "old-node", current.(*corev1.Pod).Spec.NodeName)
+				} else {
+					require.Nil(t, current)
+				}
+				require.Equal(t, "new-node", expected.(*corev1.Pod).Spec.NodeName)
+				// Return a replacement to verify the next transformer receives the result.
+				replacement := expected.(*corev1.Pod).DeepCopy()
+				replacement.Labels = map[string]string{"first": "true"}
+				return replacement
+			})
+			second := TransformerFunc(func(current, expected client.Object) client.Object {
+				calls = append(calls, "second")
+				require.Equal(t, seenCurrent, current)
+				require.Equal(t, "true", expected.GetLabels()["first"])
+				expected.GetLabels()["second"] = "true"
+				return expected
+			})
+			third := TransformerFunc(func(current, expected client.Object) client.Object {
+				calls = append(calls, "third")
+				require.Equal(t, "true", expected.GetLabels()["second"])
+				if current != nil {
+					require.Empty(t, current.GetLabels())
+				}
+				return expected
+			})
+			res, err := cli.ApplyWithResult(ctx, desired,
+				Transformers(first), Transformers(second, third), Immutable("spec", "nodeName"))
+			require.NoError(t, err)
+			require.Equal(t, []string{"first", "second", "third"}, calls)
+			require.Equal(t, map[string]string{"first": "true", "second": "true"}, desired.Labels)
+			if exists {
+				require.Equal(t, ApplyResultUpdated, res)
+				require.Equal(t, "old-node", desired.Spec.NodeName)
+			} else {
+				require.Equal(t, ApplyResultCreated, res)
+				require.Equal(t, "new-node", desired.Spec.NodeName)
+			}
+		})
+	}
+}
+
+func TestApplyUnchangedReturnsCurrentStatus(t *testing.T) {
+	ctx := context.Background()
+	current := fake.FakeObj[corev1.Pod]("unchanged")
+	current.Status.Phase = corev1.PodRunning
+	cli := NewFakeClient(current)
+	obj := fake.FakeObj("unchanged", fake.Label[corev1.Pod]("test", "test"))
+	require.NoError(t, cli.Apply(ctx, obj))
+	expected := fake.FakeObj("unchanged", fake.Label[corev1.Pod]("test", "test"))
+	result, err := cli.ApplyWithResult(ctx, expected)
+	require.NoError(t, err)
+	require.Equal(t, ApplyResultUnchanged, result)
+	require.Equal(t, corev1.PodRunning, expected.Status.Phase)
+}

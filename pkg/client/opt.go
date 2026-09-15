@@ -77,6 +77,10 @@ func FromRawOptions(opt *client.Options) Option {
 const AnnoKeyIgnoreDiff = "pingcap.com/ignore-diff"
 
 type ApplyOptions struct {
+	// Transformers run in registration order after Get and before serialization.
+	// Writes using transformers are guarded by the current resource version.
+	Transformers []Transformer
+
 	// Immutable defines fields which is immutable
 	// It's only for some fields which cannot be changed but actually maybe changed.
 	// For example,
@@ -97,6 +101,27 @@ type ApplyOptionFunc func(opts *ApplyOptions)
 
 func (f ApplyOptionFunc) With(opts *ApplyOptions) {
 	f(opts)
+}
+
+// Transformer adjusts the expected object using the complete current object, including status.
+// Current is read-only and nil on creation. The result must be non-nil and preserve
+// the expected object's type, name, and namespace.
+type Transformer interface {
+	Transform(current, expected client.Object) client.Object
+}
+
+// TransformerFunc adapts a function to Transformer.
+type TransformerFunc func(current, expected client.Object) client.Object
+
+func (f TransformerFunc) Transform(current, expected client.Object) client.Object {
+	return f(current, expected)
+}
+
+// Transformers appends transformers in execution order across all apply options.
+func Transformers(ts ...Transformer) ApplyOption {
+	return ApplyOptionFunc(func(opts *ApplyOptions) {
+		opts.Transformers = append(opts.Transformers, ts...)
+	})
 }
 
 func Immutable(fields ...string) ApplyOption {

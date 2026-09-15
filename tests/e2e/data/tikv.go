@@ -54,6 +54,18 @@ func NewTiKVGroup(ns string, patches ...GroupPatch[*v1alpha1.TiKVGroup]) *v1alph
 	return kvg
 }
 
+func WithTiKVVolumeStorage(name string, storage resource.Quantity) GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
+		for i := range obj.Spec.Template.Spec.Volumes {
+			if obj.Spec.Template.Spec.Volumes[i].Name == name {
+				obj.Spec.Template.Spec.Volumes[i].Storage = storage
+				return
+			}
+		}
+		panic("TiKV volume not found: " + name)
+	})
+}
+
 func WithTiKVCacheTTLSeconds(seconds int64) GroupPatch[*v1alpha1.TiKVGroup] {
 	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
 		obj.Spec.Template.Spec.CacheTTLSeconds = ptr.To(seconds)

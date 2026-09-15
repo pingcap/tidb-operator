@@ -75,7 +75,7 @@ var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 					nctx,
 					f.Client,
 					fg.DeepCopy(),
-					waiter.WaitForTiFlashOfflineCompleted(offlineTiFlash),
+					waiter.AssertTiFlashOfflineIsCompleted(offlineTiFlash),
 					waiter.LongTaskTimeout,
 					synced,
 				))

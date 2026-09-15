@@ -54,6 +54,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiCDC](state, r.Client),
+		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.TiCDC](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.TiCDC](state),
 		task.IfBreak(common.CondClusterIsSuspending(state),
 			common.TaskInstanceConditionSynced[scope.TiCDC](state),

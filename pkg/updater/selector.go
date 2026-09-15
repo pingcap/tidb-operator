@@ -18,6 +18,9 @@ import (
 	"slices"
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
@@ -194,5 +197,19 @@ func FilterOutdated[R runtime.Instance](revision string) FilterPolicy[R] {
 			return []R{}
 		}
 		return updated
+	})
+}
+
+// PreferVolumeCapacityExceedsRequest prefers instances with observed excess volume capacity.
+func PreferVolumeCapacityExceedsRequest[R runtime.Instance]() PreferPolicy[R] {
+	return PreferPolicyFunc[R](func(instances []R) []R {
+		var preferred []R
+		for _, in := range instances {
+			cond := meta.FindStatusCondition(in.Conditions(), v1alpha1.CondVolumeCapacityExceedsRequest)
+			if cond != nil && cond.Status == metav1.ConditionTrue && cond.ObservedGeneration == in.GetGeneration() {
+				preferred = append(preferred, in)
+			}
+		}
+		return preferred
 	})
 }

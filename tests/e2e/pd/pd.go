@@ -56,7 +56,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			nctx, cancel := context.WithCancel(ctx)
-			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, 3)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, 3, false)
 			defer func() { <-done }()
 			defer cancel()
 

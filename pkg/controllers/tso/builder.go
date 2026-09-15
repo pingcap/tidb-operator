@@ -56,6 +56,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get pod
 		common.TaskContextPod[scope.TSO](state, r.Client),
+		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.TSO](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.TSO](state),
 
 		task.IfBreak(

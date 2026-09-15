@@ -28,12 +28,11 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
-	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
 )
 
 const (
@@ -110,12 +109,13 @@ var _ = ginkgo.Describe("Upgrade TiDB Operator", label.P0, func() {
 			// f.WaitForTiFlashGroupReady(ctx, flashg)
 			// f.WaitForTiCDCGroupReady(ctx, cdcg)
 
-			ginkgo.By("Recording pod UIDs before upgrade")
-			podList := &corev1.PodList{}
-			err = f.Client.List(ctx, podList, client.InNamespace(pdg.Namespace))
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			originalPodUIDs := k8s.GetPodUIDMapFromPodList(ctx, podList)
-
+			nctx, cancel := context.WithCancel(ctx)
+			pdDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, int(*pdg.Spec.Replicas), true)
+			defer func() { cancel(); <-pdDone }()
+			kvDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, int(*kvg.Spec.Replicas), true)
+			defer func() { cancel(); <-kvDone }()
+			dbDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, int(*dbg.Spec.Replicas), true)
+			defer func() { cancel(); <-dbDone }()
 			ginkgo.By("Upgrading operator")
 			patch := client.MergeFrom(deploy.DeepCopy())
 			deploy.Spec.Template.Spec.Containers[0].Image = newVersionOperatorImage
@@ -133,12 +133,18 @@ var _ = ginkgo.Describe("Upgrade TiDB Operator", label.P0, func() {
 			}).WithTimeout(3 * time.Minute).WithPolling(createClusterPolling).Should(gomega.Succeed())
 
 			ginkgo.By("Verifying pods are not restarted")
-			gomega.Consistently(func(g gomega.Gomega) {
-				err := f.Client.List(ctx, podList, client.InNamespace(pdg.Namespace))
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
-				currentPodUIDs := k8s.GetPodUIDMapFromPodList(ctx, podList)
-				g.Expect(currentPodUIDs).To(gomega.Equal(originalPodUIDs))
-			}).WithTimeout(3 * time.Minute).WithPolling(createClusterPolling).Should(gomega.Succeed())
+			timer := time.NewTimer(3 * time.Minute)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+				f.Must(ctx.Err())
+			}
+			cancel()
+			<-pdDone
+			<-kvDone
+			<-dbDone
+
 		})
 	})
 })

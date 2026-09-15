@@ -61,11 +61,9 @@ max-replicas = 1
 		f.Must(waiter.WaitForStoreLabelValue(ctx, f.Client, pdc, source, waiter.LongTaskTimeout))
 		f.Must(waiter.WaitForStoreRegionCountAtLeast(ctx, f.Client, pdc, source, 1, waiter.LongTaskTimeout))
 
-		sourcePods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, source)
-		f.Must(err)
-		gomega.Expect(sourcePods).To(gomega.HaveLen(1))
-		sourcePodName := sourcePods[0].Name
-		sourcePodUID := sourcePods[0].UID
+		nctx, cancel := context.WithCancel(ctx)
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, source, int(*source.Spec.Replicas), true)
+		defer func() { cancel(); <-done }()
 
 		target := f.MustCreateTiKV(ctx, data.WithName[scope.TiKVGroup]("kvg-target"))
 		f.WaitForTiKVGroupReady(ctx, target)
@@ -82,11 +80,8 @@ max-replicas = 1
 
 		f.WaitForTiKVGroupReady(ctx, &latest)
 		ginkgo.By("Checking source TiKV pod is not restarted")
-		currentSourcePods, err := apicall.ListPods[scope.TiKVGroup](ctx, f.Client, &latest)
-		f.Must(err)
-		gomega.Expect(currentSourcePods).To(gomega.HaveLen(1))
-		gomega.Expect(currentSourcePods[0].Name).To(gomega.Equal(sourcePodName))
-		gomega.Expect(currentSourcePods[0].UID).To(gomega.Equal(sourcePodUID))
+		cancel()
+		<-done
 
 		ginkgo.By("Checking source TiKVGroup is exclusive and regions are migrated away")
 		f.Must(waiter.WaitForStoreLabelValue(ctx, f.Client, pdc, &latest, waiter.LongTaskTimeout))
@@ -230,7 +225,7 @@ max-replicas = 1
 					nctx,
 					f.Client,
 					kvg.DeepCopy(),
-					waiter.EvictLeaderBeforeStoreIsRemoving(1),
+					waiter.AssertTiKVLeadersEvictedBeforeStoreRemoval(1),
 					waiter.LongTaskTimeout,
 					synced,
 				))
@@ -284,7 +279,7 @@ max-replicas = 1
 					nctx,
 					f.Client,
 					kvg.DeepCopy(),
-					waiter.WaitForTiKVOfflineCompleted(offlineTiKV),
+					waiter.AssertTiKVOfflineIsCompleted(offlineTiKV),
 					waiter.LongTaskTimeout,
 					synced,
 				))
@@ -427,7 +422,7 @@ replica-schedule-limit = 16
 					nctx,
 					f.Client,
 					kvg.DeepCopy(),
-					waiter.WaitForTiKVOfflineCompleted(remainingOffliningKVs[0]),
+					waiter.AssertTiKVOfflineIsCompleted(remainingOffliningKVs[0]),
 					waiter.LongTaskTimeout,
 					synced,
 				))

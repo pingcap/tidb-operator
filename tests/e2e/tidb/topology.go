@@ -64,7 +64,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 
 		nctx, cancel := context.WithCancel(ctx)
-		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3, false)
 		defer func() { <-done }()
 		defer cancel()
 
@@ -102,7 +102,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 
 		nctx, cancel := context.WithCancel(ctx)
-		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 2)
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 2, false)
 
 		changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 		f.Must(err)
@@ -118,7 +118,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		<-done
 
 		nctx, cancel = context.WithCancel(ctx)
-		done = framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+		done = framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3, false)
 		defer func() { <-done }()
 		defer cancel()
 

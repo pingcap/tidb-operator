@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -547,4 +549,19 @@ func TestSplit(t *testing.T) {
 			assert.Len(t, deleted, tt.expectedDeleted, "deleted count mismatch")
 		})
 	}
+}
+
+func TestBuilderScalesInExcessCapacity(t *testing.T) {
+	small, large := fakePD("small-0", true, true), fakePD("large-0", true, true)
+	meta.SetStatusCondition(&large.Status.Conditions, metav1.Condition{
+		Type: v1alpha1.CondVolumeCapacityExceedsRequest, Status: metav1.ConditionTrue,
+		Reason: v1alpha1.ReasonCapacityExceedsRequest, ObservedGeneration: large.Generation,
+	})
+	cli := client.NewFakeClient(runtime.ToPD(small), runtime.ToPD(large))
+	executor := New[runtime.PDTuple]().WithInstances(small, large).
+		WithRevision("test").WithDesired(1).WithMaxUnavailable(1).WithClient(cli).Build()
+	_, err := executor.Do(context.Background())
+	require.NoError(t, err)
+	require.True(t, errors.IsNotFound(cli.Get(context.Background(), client.ObjectKeyFromObject(large), &v1alpha1.PD{})))
+	require.NoError(t, cli.Get(context.Background(), client.ObjectKeyFromObject(small), &v1alpha1.PD{}))
 }

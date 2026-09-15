@@ -62,6 +62,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),
+		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.TiFlash](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.TiFlash](state),
 
 		// check whether the cluster is suspending

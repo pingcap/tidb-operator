@@ -233,3 +233,14 @@ func ClusterCASecretName[
 ](f F) string {
 	return scope.From[S](f).ClusterCASecretName()
 }
+
+func Volumes[
+	S scope.Object[F, T],
+	F client.Object,
+	T interface {
+		runtime.Object
+		Volumes() []v1alpha1.Volume
+	},
+](f F) []v1alpha1.Volume {
+	return scope.From[S](f).Volumes()
+}

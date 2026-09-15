@@ -260,14 +260,6 @@ func IsOffline[
 	return scope.From[S](f).IsOffline()
 }
 
-func Volumes[
-	S scope.Instance[F, T],
-	F client.Object,
-	T runtime.Instance,
-](f F) []v1alpha1.Volume {
-	return scope.From[S](f).Volumes()
-}
-
 func PVCOverlay[
 	S scope.Instance[F, T],
 	F client.Object,
