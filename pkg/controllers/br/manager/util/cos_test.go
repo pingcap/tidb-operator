@@ -52,7 +52,11 @@ func TestCOSMetadataAddressing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer backend.Close()
+	t.Cleanup(func() {
+		if err := backend.Close(); err != nil {
+			t.Errorf("close storage backend: %v", err)
+		}
+	})
 	exists, err := backend.Exists(context.Background(), "backupmeta")
 	if err != nil || !exists {
 		t.Fatalf("metadata HEAD failed: exists=%v err=%v", exists, err)
