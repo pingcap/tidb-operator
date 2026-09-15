@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
@@ -106,6 +108,20 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+
+	// how many pods may be down at the same time during the rolling update;
+	// at least one pod is always kept out of the restart window
+	maxUnavailable := 1
+	if len(podOrdinals) > 1 {
+		maxUnavailable = tc.Spec.TiDB.GetUpgradeMaxUnavailable(len(podOrdinals))
+		if maxUnavailable > len(podOrdinals)-1 {
+			maxUnavailable = len(podOrdinals) - 1
+		}
+	}
+	if maxUnavailable > 1 {
+		return u.upgradeParallel(tc, oldSet, newSet, podOrdinals, minReadySeconds, maxUnavailable)
+	}
+
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		podName := tidbPodName(tcName, i)
@@ -140,6 +156,132 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 
 func (u *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	mngerutils.SetUpgradePartition(newSet, ordinal)
+	return nil
+}
+
+// upgradeParallel is the rolling update used when
+// spec.tidb.upgradePolicy.maxUnavailable resolves to more than 1.
+//
+// The statefulset controllers delete only one outdated pod per sync, so a
+// lower partition alone still restarts pods one at a time: the operator
+// deletes the exposed outdated pods itself, and with the default Parallel pod
+// management policy they are recreated concurrently. Out-of-service pods of
+// any revision count against maxUnavailable; restarting an outdated pod that
+// is already down consumes nothing extra.
+func (u *tidbUpgrader) upgradeParallel(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet, podOrdinals []int32, minReadySeconds int, maxUnavailable int) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	// pods already out of service, whatever their revision
+	unavailable := 0
+	// requeue message for the first (largest ordinal) pod found down
+	blocked := ""
+	// outdated pods, largest ordinal first
+	type candidate struct {
+		ordinal   int32
+		pod       *corev1.Pod
+		available bool
+	}
+	var pending []candidate
+
+	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
+		i := podOrdinals[_i]
+		podName := tidbPodName(tcName, i)
+		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				// deleted for the upgrade and not recreated yet
+				unavailable++
+				if blocked == "" {
+					blocked = fmt.Sprintf("tidbcluster: [%s/%s]'s tidb pod: [%s] is being recreated", ns, tcName, podName)
+				}
+				continue
+			}
+			return fmt.Errorf("tidbUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+		}
+		if pod.DeletionTimestamp != nil {
+			unavailable++
+			if blocked == "" {
+				blocked = fmt.Sprintf("tidbcluster: [%s/%s]'s tidb pod: [%s] is terminating", ns, tcName, podName)
+			}
+			continue
+		}
+		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+		}
+
+		available := k8s.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now())
+		if available {
+			if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
+				available = false
+			}
+		}
+		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {
+			if !available {
+				unavailable++
+				if blocked == "" {
+					blocked = fmt.Sprintf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not ready", ns, tcName, podName)
+				}
+			}
+			continue
+		}
+		if !available {
+			unavailable++
+			if blocked == "" {
+				blocked = fmt.Sprintf("tidbcluster: [%s/%s]'s outdated tidb pod: [%s] is not ready", ns, tcName, podName)
+			}
+		}
+		pending = append(pending, candidate{ordinal: i, pod: pod, available: available})
+	}
+
+	if len(pending) == 0 {
+		if blocked != "" {
+			// all pods updated, some still not serving: keep requeueing
+			return controller.RequeueErrorf("%s", blocked)
+		}
+		return nil
+	}
+
+	// Expose the largest outdated ordinals: taking down an available pod
+	// costs one unit of the budget, one that is already down is free.
+	selected := 0
+	for _, c := range pending {
+		cost := 0
+		if c.available {
+			cost = 1
+		}
+		if unavailable+cost > maxUnavailable {
+			break
+		}
+		unavailable += cost
+		selected++
+	}
+	if selected == 0 {
+		return controller.RequeueErrorf("%s", blocked)
+	}
+	mngerutils.SetUpgradePartition(newSet, pending[selected-1].ordinal)
+
+	// The lowered partition is persisted only after this sync; a pod deleted
+	// before that would be recreated at the OLD revision. Delete only what
+	// the persisted partition already exposes, the rest on the next sync.
+	persistedPartition := *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition
+	for _, c := range pending[:selected] {
+		if c.ordinal < persistedPartition {
+			continue
+		}
+		// the UID precondition keeps a stale cache entry from deleting the
+		// pod's replacement
+		opts := metav1.DeleteOptions{Preconditions: metav1.NewUIDPreconditions(string(c.pod.UID))}
+		if err := u.deps.KubeClientset.CoreV1().Pods(ns).Delete(context.TODO(), c.pod.Name, opts); err != nil {
+			if errors.IsNotFound(err) || errors.IsConflict(err) {
+				klog.Infof("tidbcluster: [%s/%s] tidb pod: [%s] is already gone or replaced, skipping its deletion", ns, tcName, c.pod.Name)
+				continue
+			}
+			return fmt.Errorf("tidbUpgrader.Upgrade: failed to delete pod %s for parallel upgrade of cluster %s/%s, error: %s", c.pod.Name, ns, tcName, err)
+		}
+		klog.Infof("tidbcluster: [%s/%s] deleted tidb pod: [%s] for parallel rolling update (maxUnavailable=%d)", ns, tcName, c.pod.Name, maxUnavailable)
+	}
 	return nil
 }
 
