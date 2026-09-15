@@ -109,11 +109,8 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 
-	// maxUnavailable is how many pods may be down at the same time during the
-	// rolling update. 1 (the default) is the classic strictly-serial rolling
-	// update. Whatever spec.tidb.upgradePolicy.maxUnavailable says, at least
-	// one pod is always kept out of the restart window, so a single-replica
-	// cluster is always upgraded serially.
+	// how many pods may be down at the same time during the rolling update;
+	// at least one pod is always kept out of the restart window
 	maxUnavailable := 1
 	if len(podOrdinals) > 1 {
 		maxUnavailable = tc.Spec.TiDB.GetUpgradeMaxUnavailable(len(podOrdinals))
@@ -162,21 +159,15 @@ func (u *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 	return nil
 }
 
-// upgradeParallel is the rolling update used when more than one pod may be
-// down at the same time (spec.tidb.upgradePolicy.maxUnavailable > 1).
+// upgradeParallel is the rolling update used when
+// spec.tidb.upgradePolicy.maxUnavailable resolves to more than 1.
 //
-// Both the native and the advanced statefulset controller delete only ONE
-// outdated pod per sync and wait for its replacement to become healthy, so a
-// lower partition alone still restarts pods strictly one at a time. To reach
-// the requested concurrency the operator deletes the exposed outdated pods
-// itself: their recreation is handled by the statefulset controller, and with
-// the default Parallel pod management policy the replacements are created
-// concurrently.
-//
-// Pods of ANY revision that are out of service -- deleted and not recreated,
-// terminating, not yet available, or unhealthy members -- count against
-// maxUnavailable, so the number of pods simultaneously down never exceeds it.
-// Restarting an outdated pod that is already down consumes nothing extra.
+// The statefulset controllers delete only one outdated pod per sync, so a
+// lower partition alone still restarts pods one at a time: the operator
+// deletes the exposed outdated pods itself, and with the default Parallel pod
+// management policy they are recreated concurrently. Out-of-service pods of
+// any revision count against maxUnavailable; restarting an outdated pod that
+// is already down consumes nothing extra.
 func (u *tidbUpgrader) upgradeParallel(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet, podOrdinals []int32, minReadySeconds int, maxUnavailable int) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -246,18 +237,14 @@ func (u *tidbUpgrader) upgradeParallel(tc *v1alpha1.TidbCluster, oldSet *apps.St
 
 	if len(pending) == 0 {
 		if blocked != "" {
-			// every pod is on the update revision but not all of them are
-			// serving yet: keep requeueing until the last one recovers
+			// all pods updated, some still not serving: keep requeueing
 			return controller.RequeueErrorf("%s", blocked)
 		}
 		return nil
 	}
 
-	// Choose how many of the highest outdated ordinals to expose. The exposed
-	// set must be the largest pending ordinals: the partition exposes every
-	// ordinal at or above it, and everything above the highest pending pod is
-	// already updated. Taking down an available pod costs one unit of the
-	// budget; an outdated pod that is already down is free to restart.
+	// Expose the largest outdated ordinals: taking down an available pod
+	// costs one unit of the budget, one that is already down is free.
 	selected := 0
 	for _, c := range pending {
 		cost := 0
@@ -275,19 +262,16 @@ func (u *tidbUpgrader) upgradeParallel(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	}
 	mngerutils.SetUpgradePartition(newSet, pending[selected-1].ordinal)
 
-	// The lowered partition reaches the statefulset only after this sync, in
-	// UpdateStatefulSetWithPrecheck: a pod deleted while the persisted
-	// partition is still above its ordinal would be recreated at the OLD
-	// revision. Delete only the pods the persisted partition already exposes;
-	// the newly exposed ones are deleted on the next sync.
+	// The lowered partition is persisted only after this sync; a pod deleted
+	// before that would be recreated at the OLD revision. Delete only what
+	// the persisted partition already exposes, the rest on the next sync.
 	persistedPartition := *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition
 	for _, c := range pending[:selected] {
 		if c.ordinal < persistedPartition {
 			continue
 		}
-		// precondition on the UID the lister observed: if the pod has been
-		// deleted and recreated since, the delete fails with a conflict
-		// instead of taking down the new pod
+		// the UID precondition keeps a stale cache entry from deleting the
+		// pod's replacement
 		opts := metav1.DeleteOptions{Preconditions: metav1.NewUIDPreconditions(string(c.pod.UID))}
 		if err := u.deps.KubeClientset.CoreV1().Pods(ns).Delete(context.TODO(), c.pod.Name, opts); err != nil {
 			if errors.IsNotFound(err) || errors.IsConflict(err) {

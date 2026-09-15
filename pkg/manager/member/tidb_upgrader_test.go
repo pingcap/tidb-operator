@@ -312,8 +312,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 
 	tests := []*testcase{
 		{
-			// with the default policy the behavior is the classic serial
-			// rolling update: partition drops by one, no operator-side delete
 			name:           "default is serial: partition drops by one, no direct deletion",
 			maxUnavailable: nil,
 			oldPartition:   4,
@@ -325,8 +323,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
-			// the serial path is the pre-existing code: a missing pod is the
-			// same hard error it always was, not a budget bookkeeping entry
 			name:           "default with a missing pod returns the legacy error",
 			maxUnavailable: nil,
 			oldPartition:   4,
@@ -340,9 +336,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2},
 		},
 		{
-			// the lowered partition has not been persisted yet, so deleting
-			// now would recreate the pods at the old revision: first sync
-			// only exposes them
 			name:           "maxUnavailable=2: first sync only lowers the partition",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   4,
@@ -354,8 +347,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
-			// once the partition has landed on the statefulset, the exposed
-			// pods are deleted in parallel
 			name:           "maxUnavailable=2: next sync deletes the exposed pods",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   2,
@@ -368,7 +359,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1},
 		},
 		{
-			// an upgraded pod that is not yet serving consumes the budget
 			name:           "maxUnavailable=2 with one restarting pod advances by one",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   2,
@@ -393,7 +383,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
-			// a terminating outdated pod is in flight, not a candidate
 			name:           "terminating pod consumes the budget",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   2,
@@ -406,7 +395,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 3},
 		},
 		{
-			// a deleted pod that has not been recreated yet is in flight too
 			name:           "missing pod consumes the budget",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   2,
@@ -419,7 +407,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1},
 		},
 		{
-			// an outdated pod that is already down occupies the budget ...
 			name:           "a down outdated pod below the window consumes the budget",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   3,
@@ -432,8 +419,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2},
 		},
 		{
-			// ... but restarting it takes nothing extra out of service, so it
-			// does not shrink the window when it is the next pod to update
 			name:           "restarting a down outdated pod is free",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   2,
@@ -446,9 +431,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1},
 		},
 		{
-			// the informer cache says ordinal 3 is outdated, but the API
-			// server already holds its updated replacement: the UID
-			// precondition turns the stale delete into a no-op
 			name:           "a stale cache entry cannot delete a replaced pod",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   3,
@@ -464,7 +446,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
-			// at least one pod always stays out of the restart window
 			name:           "maxUnavailable is capped at replicas-1",
 			maxUnavailable: iosPtr(intstr.FromInt(10)),
 			oldPartition:   1,
@@ -477,7 +458,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0},
 		},
 		{
-			// percentages resolve against replicas, rounded down: 50% of 4 = 2
 			name:           "maxUnavailable=50% of 4 replicas restarts two pods",
 			maxUnavailable: iosPtr(intstr.FromString("50%")),
 			oldPartition:   2,
@@ -490,8 +470,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1},
 		},
 		{
-			// a small percentage rounds down to zero and is clamped to one, so
-			// the update still makes progress -- on the serial path
 			name:           "maxUnavailable=5% is clamped to one pod",
 			maxUnavailable: iosPtr(intstr.FromString("5%")),
 			oldPartition:   4,
@@ -503,7 +481,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
-			// oversized percentages are capped at replicas-1, like integers
 			name:           "maxUnavailable=200% is capped at replicas-1",
 			maxUnavailable: iosPtr(intstr.FromString("200%")),
 			oldPartition:   1,
@@ -516,7 +493,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0},
 		},
 		{
-			// an unparsable value falls back to the serial default
 			name:           "invalid maxUnavailable falls back to serial",
 			maxUnavailable: iosPtr(intstr.FromString("half")),
 			oldPartition:   4,
@@ -528,7 +504,6 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
-			// all pods updated but the last one still restarting: keep requeueing
 			name:           "no candidates left but a pod is still restarting",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   0,
@@ -572,9 +547,8 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
-		// The fake object tracker ignores delete preconditions, so enforce
-		// them here the way the API server does, and require every delete
-		// issued by the upgrader to carry a UID precondition.
+		// the fake object tracker ignores delete preconditions: enforce them
+		// like the API server does, and require a UID precondition on every delete
 		fakeCli := fakeDeps.KubeClientset.(*fake.Clientset)
 		podGVR := corev1.SchemeGroupVersion.WithResource("pods")
 		fakeCli.PrependReactor("delete", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
