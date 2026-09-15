@@ -19,9 +19,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
@@ -158,6 +160,32 @@ func TestCondClusterIsPaused(t *testing.T) {
 			s := &fakeClusterState{s: c.state}
 			cond := CondClusterIsPaused(s)
 			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
+		})
+	}
+}
+
+func TestCondGroupIsNotProgressing(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		progressing *bool
+		want        bool
+	}{
+		{name: "omitted"},
+		{name: "enabled", progressing: ptr.To(true)},
+		{name: "paused", progressing: ptr.To(false), want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for name, group := range map[string]runtime.Group{
+				"PDGroup":       runtime.FromPDGroup(&v1alpha1.PDGroup{Spec: v1alpha1.PDGroupSpec{Progressing: tc.progressing}}),
+				"DMGroup":       runtime.FromDMGroup(&v1alpha1.DMGroup{Spec: v1alpha1.DMGroupSpec{Progressing: tc.progressing}}),
+				"DMWorkerGroup": runtime.FromDMWorkerGroup(&v1alpha1.DMWorkerGroup{Spec: v1alpha1.DMWorkerGroupSpec{Progressing: tc.progressing}}),
+			} {
+				t.Run(name, func(t *testing.T) {
+					state := FakeGroupState(group)
+					cond := CondGroupIsNotProgressing(state)
+					assert.Equal(t, tc.want, cond.Satisfy())
+				})
+			}
 		})
 	}
 }

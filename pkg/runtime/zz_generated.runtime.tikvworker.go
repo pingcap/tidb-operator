@@ -459,3 +459,7 @@ func (g *TiKVWorkerGroup) MinReadySeconds() int64 {
 func (g *TiKVWorkerGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
 	return g.Spec.SchedulePolicies
 }
+
+func (g *TiKVWorkerGroup) Progressing() bool {
+	return g.Spec.Progressing == nil || *g.Spec.Progressing
+}

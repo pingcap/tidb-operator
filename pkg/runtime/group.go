@@ -23,6 +23,8 @@ import (
 type Group interface {
 	ClusterObservedObject
 
+	Progressing() bool
+
 	SetReplicas(replicas int32)
 	Replicas() int32
 

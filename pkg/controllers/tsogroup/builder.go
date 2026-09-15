@@ -33,6 +33,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TSOGroup](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
+		task.IfBreak(common.CondGroupIsNotProgressing(state)),
 		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.TSOGroup](state)),
 
 		// get all tsos

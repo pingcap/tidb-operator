@@ -459,3 +459,7 @@ func (g *TiProxyGroup) MinReadySeconds() int64 {
 func (g *TiProxyGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
 	return g.Spec.SchedulePolicies
 }
+
+func (g *TiProxyGroup) Progressing() bool {
+	return g.Spec.Progressing == nil || *g.Spec.Progressing
+}
