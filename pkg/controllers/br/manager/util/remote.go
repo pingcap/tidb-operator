@@ -716,6 +716,8 @@ func makeS3Config(s3Provider *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Co
 	return &conf
 }
 
+// isCOSEndpoint identifies regional COS HTTP(S) endpoints that require
+// virtual-hosted addressing, without matching URL paths or domain suffix lookalikes.
 func isCOSEndpoint(endpoint string) bool {
 	u, err := url.Parse(endpoint)
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {

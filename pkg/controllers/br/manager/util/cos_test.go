@@ -18,18 +18,27 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 )
 
+// cosTransport inspects SDK requests without contacting an object store.
 type cosTransport func(*http.Request) (*http.Response, error)
 
+// RoundTrip delegates HTTP transport to the test's request checker.
 func (f cosTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+// TestCOSMetadataAddressing verifies virtual-hosted metadata HEAD/GET requests
+// and their configured SigV4 credential scope; it does not reimplement signing.
 func TestCOSMetadataAddressing(t *testing.T) {
+	const accessKeyID = "test-id"
+	authPattern := regexp.MustCompile(`^AWS4-HMAC-SHA256 Credential=` + accessKeyID +
+		`/[0-9]{8}/ap-beijing/s3/aws4_request, SignedHeaders=([^,]+), Signature=[0-9a-f]{64}$`)
 	original := http.DefaultTransport
 	t.Cleanup(func() { http.DefaultTransport = original })
 	var methods []string
@@ -41,14 +50,17 @@ func TestCOSMetadataAddressing(t *testing.T) {
 			code = http.StatusForbidden
 			body = "<Error><Code>PathStyleDomainForbidden</Code></Error>"
 		}
-		if r.Header.Get("Authorization") == "" {
-			t.Error("request is not signed")
+		matches := authPattern.FindStringSubmatch(r.Header.Get("Authorization"))
+		if matches == nil {
+			t.Error("request must use the configured access key, COS region, S3 service and SigV4 signature format")
+		} else if !strings.Contains(";"+matches[1]+";", ";host;") {
+			t.Error("virtual-hosted endpoint must be included in signed headers")
 		}
 		return &http.Response{StatusCode: code, Header: http.Header{"Content-Length": []string{"8"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 	})
 	backend, err := NewStorageBackend(v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
 		Provider: "aws", Region: "ap-beijing", Endpoint: "https://cos.ap-beijing.myqcloud.com", Bucket: "backup-1234567890", Prefix: "/full/",
-	}}, &StorageCredential{awsCred: credentials.NewStaticCredentials("test-id", "test-secret", "")})
+	}}, &StorageCredential{awsCred: credentials.NewStaticCredentials(accessKeyID, "test-secret", "")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,6 +82,8 @@ func TestCOSMetadataAddressing(t *testing.T) {
 	}
 }
 
+// TestS3AddressingCompatibility limits the addressing change to regional COS
+// endpoints while preserving other providers and rejecting hostname lookalikes.
 func TestS3AddressingCompatibility(t *testing.T) {
 	for _, tt := range []struct {
 		provider, endpoint string
