@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
@@ -1161,6 +1162,10 @@ type TiDBSpec struct {
 	// ScalePolicy is the scale configuration for TiDB.
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// UpgradePolicy is the rolling-update configuration for TiDB.
+	// +optional
+	UpgradePolicy UpgradePolicy `json:"upgradePolicy,omitempty"`
 
 	// CustomizedStartupProbe is the customized startup probe for TiDB.
 	// You can provide your own startup probe for TiDB.
@@ -3655,6 +3660,21 @@ type ScalePolicy struct {
 	// +kubebuilder:default=1
 	// +optional
 	ScaleOutParallelism *int32 `json:"scaleOutParallelism,omitempty"`
+}
+
+type UpgradePolicy struct {
+	// MaxUnavailable configures how many pods of the component may be
+	// unavailable at the same time during a rolling update, as an absolute
+	// number (e.g. 2) or a percentage of replicas (e.g. "10%", rounded down).
+	// Values that resolve to more than 1 make the rolling update restart that
+	// many pods in parallel, trading capacity for a shorter maintenance
+	// window. Whatever the value, the resolved number is clamped at runtime
+	// to at least 1 and to replicas-1, so the update always makes progress
+	// and at least one pod stays out of the restart window.
+	// Optional: Defaults to 1, the classic one-pod-at-a-time rolling update.
+	// +kubebuilder:validation:XIntOrString
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 }
 
 // +genclient

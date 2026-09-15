@@ -43874,6 +43874,14 @@ spec:
                     x-kubernetes-list-map-keys:
                     - topologyKey
                     x-kubernetes-list-type: map
+                  upgradePolicy:
+                    properties:
+                      maxUnavailable:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        x-kubernetes-int-or-string: true
+                    type: object
                   version:
                     type: string
                   volumeAttributesClassName:
