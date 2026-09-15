@@ -372,12 +372,8 @@ func (tc *TidbCluster) TiCIMetaVersion() string {
 	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil {
 		return ""
 	}
-	image := tc.TiCIMetaImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-	return "latest"
+
+	return getImageVersion(tc.TiCIMetaImage())
 }
 
 // TiCIWorkerVersion returns the image version used by TiCI worker.
@@ -387,12 +383,8 @@ func (tc *TidbCluster) TiCIWorkerVersion() string {
 	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Worker == nil {
 		return ""
 	}
-	image := tc.TiCIWorkerImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-	return "latest"
+
+	return getImageVersion(tc.TiCIWorkerImage())
 }
 
 // TiCDCGracefulShutdownTimeout returns the timeout of gracefully shutdown
