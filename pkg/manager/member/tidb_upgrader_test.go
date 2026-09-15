@@ -28,9 +28,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	podinformers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/utils/pointer"
 )
 
@@ -271,6 +274,7 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tidbPodName(upgradeTcName, ordinal),
 				Namespace: corev1.NamespaceDefault,
+				UID:       types.UID(fmt.Sprintf("uid-%d-rev%s", ordinal, revision)),
 				Labels:    l,
 			},
 		}
@@ -291,10 +295,16 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 	iosPtr := func(v intstr.IntOrString) *intstr.IntOrString { return &v }
 
 	type testcase struct {
-		name            string
-		maxUnavailable  *intstr.IntOrString
-		pods            []*corev1.Pod
+		name           string
+		maxUnavailable *intstr.IntOrString
+		// the partition persisted on the old statefulset when the sync runs
+		oldPartition int32
+		// pods as the informer cache sees them
+		pods []*corev1.Pod
+		// pods as the API server holds them; defaults to pods
+		clientPods      []*corev1.Pod
 		errorExpect     bool
+		expectErrSubstr string
 		expectPartition int32
 		expectDeleted   []int32
 		expectRemaining []int32
@@ -306,6 +316,7 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			// rolling update: partition drops by one, no operator-side delete
 			name:           "default is serial: partition drops by one, no direct deletion",
 			maxUnavailable: nil,
+			oldPartition:   4,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, false),
@@ -314,8 +325,40 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
-			name:           "maxUnavailable=2 exposes and deletes two pods",
+			// the serial path is the pre-existing code: a missing pod is the
+			// same hard error it always was, not a budget bookkeeping entry
+			name:           "default with a missing pod returns the legacy error",
+			maxUnavailable: nil,
+			oldPartition:   4,
+			pods: []*corev1.Pod{
+				newPod(0, "1", true, false), newPod(1, "1", true, false),
+				newPod(2, "1", true, false),
+			},
+			errorExpect:     true,
+			expectErrSubstr: "failed to get pods",
+			expectPartition: 4,
+			expectRemaining: []int32{0, 1, 2},
+		},
+		{
+			// the lowered partition has not been persisted yet, so deleting
+			// now would recreate the pods at the old revision: first sync
+			// only exposes them
+			name:           "maxUnavailable=2: first sync only lowers the partition",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   4,
+			pods: []*corev1.Pod{
+				newPod(0, "1", true, false), newPod(1, "1", true, false),
+				newPod(2, "1", true, false), newPod(3, "1", true, false),
+			},
+			expectPartition: 2,
+			expectRemaining: []int32{0, 1, 2, 3},
+		},
+		{
+			// once the partition has landed on the statefulset, the exposed
+			// pods are deleted in parallel
+			name:           "maxUnavailable=2: next sync deletes the exposed pods",
+			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   2,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, false),
@@ -328,6 +371,7 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			// an upgraded pod that is not yet serving consumes the budget
 			name:           "maxUnavailable=2 with one restarting pod advances by one",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   2,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "2", false, false),
@@ -339,18 +383,20 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 		{
 			name:           "maxUnavailable=2 with two restarting pods requeues",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   2,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "2", false, false), newPod(3, "2", false, false),
 			},
 			errorExpect:     true,
-			expectPartition: 4,
+			expectPartition: 2,
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 		{
 			// a terminating outdated pod is in flight, not a candidate
 			name:           "terminating pod consumes the budget",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   2,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, true),
@@ -363,6 +409,7 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			// a deleted pod that has not been recreated yet is in flight too
 			name:           "missing pod consumes the budget",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   2,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false),
@@ -372,9 +419,55 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1},
 		},
 		{
+			// an outdated pod that is already down occupies the budget ...
+			name:           "a down outdated pod below the window consumes the budget",
+			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   3,
+			pods: []*corev1.Pod{
+				newPod(0, "1", false, false), newPod(1, "1", true, false),
+				newPod(2, "1", true, false), newPod(3, "1", true, false),
+			},
+			expectPartition: 3,
+			expectDeleted:   []int32{3},
+			expectRemaining: []int32{0, 1, 2},
+		},
+		{
+			// ... but restarting it takes nothing extra out of service, so it
+			// does not shrink the window when it is the next pod to update
+			name:           "restarting a down outdated pod is free",
+			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   2,
+			pods: []*corev1.Pod{
+				newPod(0, "1", true, false), newPod(1, "1", true, false),
+				newPod(2, "1", true, false), newPod(3, "1", false, false),
+			},
+			expectPartition: 2,
+			expectDeleted:   []int32{2, 3},
+			expectRemaining: []int32{0, 1},
+		},
+		{
+			// the informer cache says ordinal 3 is outdated, but the API
+			// server already holds its updated replacement: the UID
+			// precondition turns the stale delete into a no-op
+			name:           "a stale cache entry cannot delete a replaced pod",
+			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   3,
+			pods: []*corev1.Pod{
+				newPod(0, "1", true, false), newPod(1, "1", true, false),
+				newPod(2, "1", true, false), newPod(3, "1", true, false),
+			},
+			clientPods: []*corev1.Pod{
+				newPod(0, "1", true, false), newPod(1, "1", true, false),
+				newPod(2, "1", true, false), newPod(3, "2", true, false),
+			},
+			expectPartition: 2,
+			expectRemaining: []int32{0, 1, 2, 3},
+		},
+		{
 			// at least one pod always stays out of the restart window
 			name:           "maxUnavailable is capped at replicas-1",
 			maxUnavailable: iosPtr(intstr.FromInt(10)),
+			oldPartition:   1,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, false),
@@ -387,6 +480,7 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			// percentages resolve against replicas, rounded down: 50% of 4 = 2
 			name:           "maxUnavailable=50% of 4 replicas restarts two pods",
 			maxUnavailable: iosPtr(intstr.FromString("50%")),
+			oldPartition:   2,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, false),
@@ -396,10 +490,11 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1},
 		},
 		{
-			// a small percentage rounds down to zero and is clamped to one so
-			// the update still makes progress
+			// a small percentage rounds down to zero and is clamped to one, so
+			// the update still makes progress -- on the serial path
 			name:           "maxUnavailable=5% is clamped to one pod",
 			maxUnavailable: iosPtr(intstr.FromString("5%")),
+			oldPartition:   4,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, false),
@@ -411,6 +506,7 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			// oversized percentages are capped at replicas-1, like integers
 			name:           "maxUnavailable=200% is capped at replicas-1",
 			maxUnavailable: iosPtr(intstr.FromString("200%")),
+			oldPartition:   1,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, false),
@@ -423,6 +519,7 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			// an unparsable value falls back to the serial default
 			name:           "invalid maxUnavailable falls back to serial",
 			maxUnavailable: iosPtr(intstr.FromString("half")),
+			oldPartition:   4,
 			pods: []*corev1.Pod{
 				newPod(0, "1", true, false), newPod(1, "1", true, false),
 				newPod(2, "1", true, false), newPod(3, "1", true, false),
@@ -434,12 +531,13 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			// all pods updated but the last one still restarting: keep requeueing
 			name:           "no candidates left but a pod is still restarting",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   0,
 			pods: []*corev1.Pod{
 				newPod(0, "2", false, false), newPod(1, "2", true, false),
 				newPod(2, "2", true, false), newPod(3, "2", true, false),
 			},
 			errorExpect:     true,
-			expectPartition: 4,
+			expectPartition: 0,
 			expectRemaining: []int32{0, 1, 2, 3},
 		},
 	}
@@ -462,21 +560,46 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			tc.Status.TiDB.Members[name] = v1alpha1.TiDBMember{Name: name, Health: true}
 		}
 
+		clientPods := test.clientPods
+		if clientPods == nil {
+			clientPods = test.pods
+		}
 		for _, pod := range test.pods {
-			podInformer.Informer().GetIndexer().Add(pod)
+			g.Expect(podInformer.Informer().GetIndexer().Add(pod)).To(Succeed())
+		}
+		for _, pod := range clientPods {
 			_, err := fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
+		// The fake object tracker ignores delete preconditions, so enforce
+		// them here the way the API server does, and require every delete
+		// issued by the upgrader to carry a UID precondition.
+		fakeCli := fakeDeps.KubeClientset.(*fake.Clientset)
+		podGVR := corev1.SchemeGroupVersion.WithResource("pods")
+		fakeCli.PrependReactor("delete", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			da := action.(k8stesting.DeleteActionImpl)
+			g.Expect(da.DeleteOptions.Preconditions).NotTo(BeNil(), "delete of %s must carry preconditions", da.Name)
+			g.Expect(da.DeleteOptions.Preconditions.UID).NotTo(BeNil(), "delete of %s must carry a UID precondition", da.Name)
+			obj, err := fakeCli.Tracker().Get(podGVR, da.Namespace, da.Name)
+			if err == nil && obj.(*corev1.Pod).UID != *da.DeleteOptions.Preconditions.UID {
+				return true, nil, apierrors.NewConflict(podGVR.GroupResource(), da.Name, fmt.Errorf("uid precondition failed"))
+			}
+			return false, nil, nil
+		})
+
 		oldSet := newStatefulSetForTiDBUpgrader()
 		oldSet.Spec.Replicas = pointer.Int32Ptr(4)
-		oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(4)
+		oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(test.oldPartition)
 		mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 		newSet := oldSet.DeepCopy()
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		if test.errorExpect {
 			g.Expect(err).To(HaveOccurred())
+			if test.expectErrSubstr != "" {
+				g.Expect(err.Error()).To(ContainSubstring(test.expectErrSubstr))
+			}
 		} else {
 			g.Expect(err).NotTo(HaveOccurred())
 		}

@@ -3668,9 +3668,12 @@ type UpgradePolicy struct {
 	// number (e.g. 2) or a percentage of replicas (e.g. "10%", rounded down).
 	// Values that resolve to more than 1 make the rolling update restart that
 	// many pods in parallel, trading capacity for a shorter maintenance
-	// window. Whatever the value, the resolved number is clamped at runtime
-	// to at least 1 and to replicas-1, so the update always makes progress
-	// and at least one pod stays out of the restart window.
+	// window. Pods of any revision that are out of service count against the
+	// budget, so the number of pods simultaneously down never exceeds the
+	// resolved value. Whatever the value, the resolved number is clamped at
+	// runtime to at least 1 and to replicas-1, so the update always makes
+	// progress and at least one pod stays out of the restart window (a
+	// single-replica component is always updated serially).
 	// Optional: Defaults to 1, the classic one-pod-at-a-time rolling update.
 	// +kubebuilder:validation:XIntOrString
 	// +optional
