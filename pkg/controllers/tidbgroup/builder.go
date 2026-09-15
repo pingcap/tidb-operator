@@ -15,6 +15,8 @@
 package tidbgroup
 
 import (
+	"k8s.io/utils/ptr"
+
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tidbgroup/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -33,6 +35,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiDBGroup](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
+		task.IfBreak(task.CondFunc(func() bool {
+			return !ptr.Deref(state.Object().Spec.Progressing, true)
+		})),
 		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.TiDBGroup](state)),
 
 		// get all tidbs

@@ -103,8 +103,9 @@ type TiCDC struct {
 
 // TiCDCGroupSpec describes the common attributes of a TiCDCGroup
 type TiCDCGroupSpec struct {
-	// Progressing allows instance updates, scaling, and deferred deletion cleanup.
-	// When false, existing instances continue reconciling, including Pod recreation and recovery.
+	// Progressing controls group reconciliation, including updates, scaling, deletion, and status.
+	// When false, group reconciliation is paused. Existing instances continue reconciling,
+	// including Pod recreation and recovery.
 	// Defaults to true. Already issued operations are not canceled.
 	// Cluster.spec.paused takes precedence and also stops instance reconciliation.
 	// +optional
