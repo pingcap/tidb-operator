@@ -81,11 +81,6 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	if tc.Spec.TiCI != nil && !tc.TiCIAllMembersReady() {
-		klog.Infof("TidbCluster: [%s/%s], TiFlash is waiting for TiCI meta/worker ready, skip syncing", tc.GetNamespace(), tc.GetName())
-		return nil
-	}
-
 	// skip sync if tiflash is suspended
 	component := v1alpha1.TiFlashMemberType
 	needSuspend, err := m.suspender.SuspendComponent(tc, component)
@@ -94,6 +89,15 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 	if needSuspend {
 		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
+	// Wait for TiCI to be ready before syncing TiFlash: the FTS reader runs
+	// inside TiFlash, so TiCI meta/worker are deployed first. This is checked
+	// after the suspension check, so that suspending TiFlash is not blocked
+	// when TiCI is not available.
+	if tc.Spec.TiCI != nil && !tc.TiCIAllMembersReady() {
+		klog.Infof("TidbCluster: [%s/%s], TiFlash is waiting for TiCI meta/worker ready, skip syncing", tc.GetNamespace(), tc.GetName())
 		return nil
 	}
 

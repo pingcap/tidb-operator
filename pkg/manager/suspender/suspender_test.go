@@ -435,6 +435,32 @@ func TestCanSuspendComponent(t *testing.T) {
 				g.Expect(reason).To(BeEmpty())
 			},
 		},
+		"wait for TiCI to be suspended": {
+			setup: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+
+				// TiCI is enabled and needs to be suspended as well
+				tc.Spec.TiCI = &v1alpha1.TiCISpec{
+					Meta:   &v1alpha1.TiCIMetaSpec{},
+					Worker: &v1alpha1.TiCIWorkerSpec{},
+				}
+
+				// prior components are fully suspended except TiCI worker
+				tc.Status.TiDB.Phase = v1alpha1.SuspendPhase
+				tc.Status.TiDB.StatefulSet = nil
+				tc.Status.TiFlash.Phase = v1alpha1.SuspendPhase
+				tc.Status.TiFlash.StatefulSet = nil
+				tc.Status.TiCDC.Phase = v1alpha1.SuspendPhase
+				tc.Status.TiCDC.StatefulSet = nil
+				tc.Status.TiCIMeta.Phase = v1alpha1.SuspendPhase
+				tc.Status.TiCIMeta.StatefulSet = nil
+			},
+			component: v1alpha1.TiKVMemberType,
+			expect: func(can bool, reason string) {
+				g.Expect(can).To(BeFalse())
+				g.Expect(reason).To(Equal("wait another component tici-worker to be suspended"))
+			},
+		},
 	}
 
 	for name, c := range cases {
