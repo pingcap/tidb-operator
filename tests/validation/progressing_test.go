@@ -24,7 +24,7 @@ import (
 func TestGroupProgressingDefault(t *testing.T) {
 	for _, component := range []string{
 		"pd", "tikv", "tidb", "tiflash", "ticdc", "tiproxy", "tikvworker",
-		"tso", "scheduling", "scheduler", "router", "resourcemanager",
+		"tso", "scheduling", "scheduler", "router", "resourcemanager", "dm", "dmworker",
 	} {
 		t.Run(component, func(t *testing.T) {
 			s := structuralSchemaFromCRD(t, "crd/core.pingcap.com_"+component+"groups.yaml", "v1alpha1")

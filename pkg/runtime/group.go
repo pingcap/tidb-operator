@@ -23,6 +23,8 @@ import (
 type Group interface {
 	ClusterObservedObject
 
+	Progressing() bool
+
 	SetReplicas(replicas int32)
 	Replicas() int32
 
@@ -49,12 +51,6 @@ type Group interface {
 	MinReadySeconds() int64
 
 	SchedulePolicies() []v1alpha1.SchedulePolicy
-}
-
-// ProgressingGroup is a group whose reconciliation can be paused independently of its cluster.
-type ProgressingGroup interface {
-	Group
-	Progressing() bool
 }
 
 type GroupT[T GroupSet] interface {

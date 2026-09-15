@@ -559,23 +559,11 @@ func (g *$.|pub$) MinReadySeconds() int64 {
 func (g *$.|pub$) SchedulePolicies() []v1alpha1.SchedulePolicy {
 	return g.Spec.SchedulePolicies
 }
-`, t)
 
-	// Only groups with spec.progressing support independent reconciliation control.
-	for _, member := range t.Members {
-		if member.Name != "Spec" {
-			continue
-		}
-		for _, field := range member.Type.Members {
-			if field.Name == "Progressing" {
-				sw.Do(`
 func (g *$.|pub$) Progressing() bool {
 	return g.Spec.Progressing == nil || *g.Spec.Progressing
 }
 `, t)
-			}
-		}
-	}
 
 	return sw.Error()
 }

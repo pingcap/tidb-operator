@@ -175,10 +175,17 @@ func TestCondGroupIsNotProgressing(t *testing.T) {
 		{name: "paused", progressing: ptr.To(false), want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			group := &v1alpha1.PDGroup{Spec: v1alpha1.PDGroupSpec{Progressing: tc.progressing}}
-			state := FakeGroupState(runtime.FromPDGroup(group))
-			cond := CondGroupIsNotProgressing(state)
-			assert.Equal(t, tc.want, cond.Satisfy())
+			for name, group := range map[string]runtime.Group{
+				"PDGroup":       runtime.FromPDGroup(&v1alpha1.PDGroup{Spec: v1alpha1.PDGroupSpec{Progressing: tc.progressing}}),
+				"DMGroup":       runtime.FromDMGroup(&v1alpha1.DMGroup{Spec: v1alpha1.DMGroupSpec{Progressing: tc.progressing}}),
+				"DMWorkerGroup": runtime.FromDMWorkerGroup(&v1alpha1.DMWorkerGroup{Spec: v1alpha1.DMWorkerGroupSpec{Progressing: tc.progressing}}),
+			} {
+				t.Run(name, func(t *testing.T) {
+					state := FakeGroupState(group)
+					cond := CondGroupIsNotProgressing(state)
+					assert.Equal(t, tc.want, cond.Satisfy())
+				})
+			}
 		})
 	}
 }

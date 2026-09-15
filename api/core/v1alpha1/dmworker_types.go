@@ -26,8 +26,8 @@ const (
 
 	DefaultDMWorkerMinReadySeconds = 5
 
-	VolumeMountTypeDMWorkerRelay    VolumeMountType = "relay-dir"
-	VolumeMountDMWorkerRelayDefaultPath             = "/var/lib/dm-worker/relay"
+	VolumeMountTypeDMWorkerRelay        VolumeMountType = "relay-dir"
+	VolumeMountDMWorkerRelayDefaultPath                 = "/var/lib/dm-worker/relay"
 )
 
 const (
@@ -111,6 +111,15 @@ type DMWorker struct {
 
 // DMWorkerGroupSpec describes the common attributes of a DMWorkerGroup
 type DMWorkerGroupSpec struct {
+	// Progressing controls group reconciliation, including updates, scaling, deletion, and status.
+	// When false, group reconciliation is paused. Existing instances continue reconciling,
+	// including Pod recreation and recovery.
+	// Defaults to true. Already issued operations are not canceled.
+	// Cluster.spec.paused takes precedence and also stops instance reconciliation.
+	// +optional
+	// +kubebuilder:default=true
+	Progressing *bool `json:"progressing,omitempty"`
+
 	Cluster ClusterReference `json:"cluster"`
 	// DMGroupRef is a reference to the DMGroup (dm-master cluster) that workers join.
 	DMGroupRef DMGroupReference `json:"dmGroupRef"`
