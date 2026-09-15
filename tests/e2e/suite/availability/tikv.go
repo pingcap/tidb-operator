@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 
 			nctx, cancel := context.WithCancel(ctx)
 
-			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 3)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 3, false)
 			defer func() { <-done }()
 
 			done2 := workload.MustRunWorkload(
@@ -94,7 +94,7 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 
 			nctx, cancel := context.WithCancel(ctx)
 
-			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 3)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 3, false)
 			defer func() { <-done }()
 
 			done2 := workload.MustRunWorkload(

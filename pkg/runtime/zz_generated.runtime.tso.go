@@ -390,6 +390,10 @@ func (g *TSOGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *TSOGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *TSOGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

@@ -46,7 +46,7 @@ func WaitForPDsHealthy(ctx context.Context, c client.Client, pdg *v1alpha1.PDGro
 	})
 }
 
-func PDHasLeader(items []*v1alpha1.PD) error {
+func AssertPDListHasLeader(items []*v1alpha1.PD) error {
 	if len(items) == 0 {
 		return fmt.Errorf("no pd")
 	}

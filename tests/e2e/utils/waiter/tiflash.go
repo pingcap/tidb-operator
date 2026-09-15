@@ -48,7 +48,7 @@ func WaitForTiFlashesHealthy(ctx context.Context, c client.Client, fg *v1alpha1.
 	})
 }
 
-func WaitForTiFlashOfflineCompleted(expectTiFlash *v1alpha1.TiFlash) func(flash *v1alpha1.TiFlash) (bool, error) {
+func AssertTiFlashOfflineIsCompleted(expectTiFlash *v1alpha1.TiFlash) func(flash *v1alpha1.TiFlash) (bool, error) {
 	return func(flash *v1alpha1.TiFlash) (bool, error) {
 		if flash.Name != expectTiFlash.Name || flash.Namespace != expectTiFlash.Namespace || flash.UID != expectTiFlash.UID {
 			return false, nil

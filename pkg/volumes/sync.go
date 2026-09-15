@@ -108,6 +108,7 @@ func syncPVC(ctx context.Context, c client.Client, pvc *corev1.PersistentVolumeC
 	if err := c.Apply(
 		ctx,
 		pvc,
+		retainPVCRequestIfSufficient(),
 		// If VAC is not enabled, we use params in SC to modify volume.
 		// So we allow SC ref being changed.
 		// If VAC is enabled, we should also not apply changed SC to PVC.

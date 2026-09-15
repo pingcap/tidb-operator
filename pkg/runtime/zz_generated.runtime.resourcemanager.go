@@ -390,6 +390,10 @@ func (g *ResourceManagerGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *ResourceManagerGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *ResourceManagerGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

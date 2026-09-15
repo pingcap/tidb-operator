@@ -69,6 +69,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
+		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.TiKV](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.TiKV](state),
 
 		// check whether the cluster is suspending

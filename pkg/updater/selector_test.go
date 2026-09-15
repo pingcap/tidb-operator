@@ -450,3 +450,39 @@ func TestFilterAnnotationAbsent(t *testing.T) {
 	assert.Equal(t, []*runtime.TiProxy{revivable}, filter.Filter([]*runtime.TiProxy{revivable, abandoned}))
 	assert.Empty(t, filter.Filter([]*runtime.TiProxy{abandoned}))
 }
+
+func TestPreferVolumeCapacityExceedsRequest(t *testing.T) {
+	makeInstance := func(name string, status metav1.ConditionStatus, generation int64) *runtime.PD {
+		in := fakePD(name, true, true)
+		in.Generation = 7
+		if status != "" {
+			coreutil.SetStatusCondition[scope.PD](runtime.ToPD(in), metav1.Condition{
+				Type: v1alpha1.CondVolumeCapacityExceedsRequest, Status: status, Reason: "CapacityObserved",
+			})
+			for i := range in.Status.Conditions {
+				if in.Status.Conditions[i].Type == v1alpha1.CondVolumeCapacityExceedsRequest {
+					in.Status.Conditions[i].ObservedGeneration = generation
+				}
+			}
+		}
+		return in
+	}
+	absent := makeInstance("absent", "", 7)
+	current := makeInstance("current", metav1.ConditionTrue, 7)
+	other := makeInstance("other", metav1.ConditionTrue, 7)
+	stale := makeInstance("stale", metav1.ConditionTrue, 6)
+	matched := makeInstance("matched", metav1.ConditionFalse, 7)
+	unknown := makeInstance("unknown", metav1.ConditionUnknown, 7)
+	policy := PreferVolumeCapacityExceedsRequest[*runtime.PD]()
+	assert.Equal(t, []*runtime.PD{current, other}, policy.Prefer([]*runtime.PD{absent, stale, matched, current, unknown, other}))
+	assert.Empty(t, policy.Prefer([]*runtime.PD{absent, stale, matched, unknown}))
+	selector := NewSelector(PreferPriority[*runtime.PD](), PreferUnready[*runtime.PD](), PreferNotRunning[*runtime.PD](), policy)
+	absent.Annotations = map[string]string{v1alpha1.AnnoKeyPriority: "0"}
+	assert.Equal(t, "current", selector.Choose([]*runtime.PD{absent, current}))
+	assert.Equal(t, "absent", selector.Choose([]*runtime.PD{absent, stale}))
+	other.Annotations = map[string]string{v1alpha1.AnnoKeyPriority: "0"}
+	assert.Equal(t, "other", selector.Choose([]*runtime.PD{current, other}))
+	// A group-specific policy appended by the builder retains higher priority.
+	topology := PreferPolicyFunc[*runtime.PD](func(in []*runtime.PD) []*runtime.PD { return in[:1] })
+	assert.Equal(t, "absent", NewSelector(policy, topology).Choose([]*runtime.PD{absent, current}))
+}

@@ -111,7 +111,7 @@ var _ = ginkgo.Describe("MultiPDGroup", label.Cluster, func() {
 
 			f.WaitForPDGroupReady(ctx, pdg2)
 
-			waiter.WaitForInstanceList[scope.PDGroup](ctx, f.Client, pdg2, waiter.PDHasLeader, waiter.LongTaskTimeout)
+			f.Must(waiter.WaitForInstanceList[scope.PDGroup](ctx, f.Client, pdg2, waiter.AssertPDListHasLeader, waiter.LongTaskTimeout))
 
 			workload.MustPing(ctx,
 				data.DefaultTiDBServiceName,

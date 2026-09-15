@@ -329,16 +329,23 @@ func AsyncWaitPodsRollingUpdateOnce[
 	S scope.Group[F, T],
 	F client.Object,
 	T runtime.Group,
-](ctx context.Context, f *Framework, obj F, to int) chan struct{} {
+](ctx context.Context, f *Framework, obj F, to int, noRestart bool) chan struct{} {
+	ginkgo.GinkgoHelper()
+	synced := make(chan struct{})
 	maxSurge := rollingUpdateMaxSurge(obj)
 	ch := make(chan struct{})
 	nobj := obj.DeepCopyObject().(F)
 	go func() {
 		defer close(ch)
 		defer ginkgo.GinkgoRecover()
-		f.Must(waiter.WaitPodsRollingUpdateOnce[S](ctx, f.Client, nobj, to, maxSurge, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitPodsRollingUpdateOnce[S](ctx, f.Client, nobj, to, maxSurge, noRestart, waiter.LongTaskTimeout, synced))
 	}()
 
+	select {
+	case <-synced:
+	case <-ch:
+		f.Must(fmt.Errorf("pod observation ended before initial synchronization"))
+	}
 	return ch
 }
 

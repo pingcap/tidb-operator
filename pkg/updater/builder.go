@@ -90,6 +90,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
+		PreferVolumeCapacityExceedsRequest[R](),
 	}
 	scaleInPolicies = append(scaleInPolicies, b.scaleInPreferPolicies...)
 
