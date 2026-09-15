@@ -85,6 +85,8 @@ func (b *builder[T, O, R]) Build() Executor {
 	updatePolicies = append(updatePolicies, b.updatePreferPolicies...)
 
 	scaleInPolicies := []PreferPolicy[R]{
+		// Prefer newer instances when higher-priority policies do not decide.
+		PreferNewer[R](),
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
