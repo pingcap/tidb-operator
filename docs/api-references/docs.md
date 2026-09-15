@@ -19030,6 +19030,20 @@ ScalePolicy
 </tr>
 <tr>
 <td>
+<code>upgradePolicy</code></br>
+<em>
+<a href="#upgradepolicy">
+UpgradePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>UpgradePolicy is the rolling-update configuration for TiDB.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>customizedStartupProbe</code></br>
 <em>
 <a href="#customizedprobe">
@@ -27621,6 +27635,46 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="upgradepolicy">UpgradePolicy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>maxUnavailable</code></br>
+<em>
+k8s.io/apimachinery/pkg/util/intstr.IntOrString
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxUnavailable configures how many pods of the component may be
+unavailable at the same time during a rolling update, as an absolute
+number (e.g. 2) or a percentage of replicas (e.g. &ldquo;10%&rdquo;, rounded down).
+Values that resolve to more than 1 make the rolling update restart that
+many pods in parallel, trading capacity for a shorter maintenance
+window. Pods of any revision that are out of service count against the
+budget, so the number of pods simultaneously down never exceeds the
+resolved value. Whatever the value, the resolved number is clamped at
+runtime to at least 1 and to replicas-1, so the update always makes
+progress and at least one pod stays out of the restart window (a
+single-replica component is always updated serially).
+Optional: Defaults to 1, the classic one-pod-at-a-time rolling update.</p>
 </td>
 </tr>
 </tbody>
