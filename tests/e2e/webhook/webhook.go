@@ -236,7 +236,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				InitialStorage: "20Gi",
 				UpdatedStorage: "10Gi",
 				ShouldFail:     true,
-				ExpectedError:  "Volume storage can only be increased, not decreased",
+				ExpectedError:  "Volume storage can only be decreased when VolumeAttributesClass is enabled",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
 					return data.NewTiKVGroup(ns, data.GroupPatchFunc[*v1alpha1.TiKVGroup](func(group *v1alpha1.TiKVGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{

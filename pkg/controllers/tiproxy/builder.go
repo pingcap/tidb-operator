@@ -71,6 +71,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),
+		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.TiProxy](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.TiProxy](state),
 
 		// check whether the cluster is suspending

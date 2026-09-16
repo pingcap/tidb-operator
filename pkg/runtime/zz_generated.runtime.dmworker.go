@@ -390,6 +390,10 @@ func (g *DMWorkerGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *DMWorkerGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *DMWorkerGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

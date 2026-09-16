@@ -90,7 +90,7 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		// LeadersEvicted transition can be missed.
 		<-watchSynced
 
-		rollingDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, replicas)
+		rollingDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, replicas, false)
 		defer func() {
 			cancel()
 			<-rollingDone
@@ -157,7 +157,7 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 
 		nctx, cancel := context.WithCancel(ctx)
-		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 6)
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 6, false)
 		defer func() { <-done }()
 		defer cancel()
 

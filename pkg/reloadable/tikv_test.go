@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -161,4 +162,18 @@ func TestCheckTiKVPodVersionChangeIsNotReloadable(t *testing.T) {
 	currentInstance.Spec.Version = "v1.3.3"
 
 	assert.False(t, CheckTiKVPod(currentInstance, pod))
+}
+
+func TestVolumeRequestDecreaseIsReloadable(t *testing.T) {
+	instance := &v1alpha1.TiKV{}
+	instance.Spec.Volumes = []v1alpha1.Volume{{Name: "data", Storage: resource.MustParse("100Gi")}}
+	pod := &corev1.Pod{}
+	require.NoError(t, EncodeLastTiKVTemplate(instance, pod))
+	group := &v1alpha1.TiKVGroup{}
+	group.Spec.Template.Spec = *instance.Spec.TiKVTemplateSpec.DeepCopy()
+	group.Spec.Template.Spec.Volumes[0].Storage = resource.MustParse("50Gi")
+	require.True(t, CheckTiKV(group, instance))
+	instance.Spec.TiKVTemplateSpec = *group.Spec.Template.Spec.DeepCopy()
+	require.True(t, CheckTiKVPod(instance, pod))
+	require.Zero(t, instance.Spec.Volumes[0].Storage.Cmp(resource.MustParse("50Gi")))
 }

@@ -390,6 +390,10 @@ func (g *SchedulingGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *SchedulingGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *SchedulingGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

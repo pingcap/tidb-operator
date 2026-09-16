@@ -44,8 +44,12 @@ type podInfo struct {
 	uid          string
 	creationTime metav1.Time
 	deletionTime metav1.Time
+	terminating  bool
 }
 
+// WaitPodsRollingUpdateOnce observes pods until the context ends or timeout expires.
+// If noRestart is true, only scaling is expected; retained pods must not be
+// recreated during observation.
 // nolint: gocyclo // optimize later
 func WaitPodsRollingUpdateOnce[
 	S scope.Group[F, T],
@@ -57,12 +61,14 @@ func WaitPodsRollingUpdateOnce[
 	g F,
 	to int,
 	surge int,
+	noRestart bool,
 	timeout time.Duration,
+	synced chan struct{},
 ) error {
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(ctx, timeout)
 	defer cancel()
 
-	podMap, err := generatePodInfoMapByWatch[S](ctx, c, g)
+	podMap, err := generatePodInfoMapByWatch[S](ctx, c, g, synced)
 	if err != nil {
 		return err
 	}
@@ -71,6 +77,10 @@ func WaitPodsRollingUpdateOnce[
 	for _, v := range podMap {
 		infos = append(infos, v)
 	}
+	return checkPodsRollingUpdateOnce(infos, int(coreutil.Replicas[S](g)), to, surge, noRestart)
+}
+
+func checkPodsRollingUpdateOnce(infos []podInfo, from, to, surge int, noRestart bool) error {
 	sortPodInfos(infos)
 	detail := strings.Builder{}
 	for _, info := range infos {
@@ -83,7 +93,6 @@ func WaitPodsRollingUpdateOnce[
 
 	var scaleOut, scaleIn, rollingUpdateTimes int
 
-	from := int(coreutil.Replicas[S](g))
 	delta := to - from
 
 	if delta > 0 {
@@ -103,8 +112,20 @@ func WaitPodsRollingUpdateOnce[
 		rollingUpdateTimes = from - scaleIn
 	}
 
+	unchanged := 0
+	if noRestart {
+		scaleOut = max(to-from, 0)
+		scaleIn = max(from-to, 0)
+		rollingUpdateTimes = 0
+		unchanged = min(from, to)
+	}
+	expected := scaleOut + scaleIn + 2*rollingUpdateTimes + unchanged
+	if scaleOut < 0 || scaleIn < 0 || rollingUpdateTimes < 0 || unchanged < 0 || len(infos) != expected {
+		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", expected, len(infos), detail.String())
+	}
+
 	for i := range scaleOut {
-		if !infos[i].deletionTime.IsZero() {
+		if !infos[i].deletionTime.IsZero() || (noRestart && infos[i].terminating) {
 			return fmt.Errorf("expect scale out %v pods before rolling update, detail:\n%v", scaleOut, detail.String())
 		}
 	}
@@ -118,8 +139,10 @@ func WaitPodsRollingUpdateOnce[
 	}
 	infos = infos[:len(infos)-scaleIn]
 
-	if len(infos) != 2*rollingUpdateTimes {
-		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*rollingUpdateTimes, len(infos), detail.String())
+	for i := range unchanged {
+		if !infos[i].deletionTime.IsZero() || infos[i].terminating {
+			return fmt.Errorf("pod %s(%s) should not be deleted, detail:\n%v", infos[i].name, infos[i].uid, detail.String())
+		}
 	}
 
 	for i := range rollingUpdateTimes {
@@ -146,10 +169,24 @@ func generatePodInfoMapByWatch[
 	S scope.Group[F, T],
 	F client.Object,
 	T runtime.Group,
-](ctx context.Context, c client.Client, g F) (map[string]podInfo, error) {
+](ctx context.Context, c client.Client, g F, synced chan struct{}) (map[string]podInfo, error) {
 	podMap := map[string]podInfo{}
 	lw := newListWatch[S](ctx, c, g)
-	_, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watch.Event) (bool, error) {
+	initialized := false
+	_, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, func(store cache.Store) (bool, error) {
+		for _, obj := range store.List() {
+			pod := obj.(*corev1.Pod)
+			podMap[string(pod.UID)] = podInfo{
+				name: pod.Name, uid: string(pod.UID), creationTime: pod.CreationTimestamp,
+				terminating: !pod.DeletionTimestamp.IsZero(),
+			}
+		}
+		initialized = true
+		if synced != nil {
+			close(synced)
+		}
+		return false, nil
+	}, func(event watch.Event) (bool, error) {
 		pod, ok := event.Object.(*corev1.Pod)
 		if !ok {
 			// ignore events without pod
@@ -164,6 +201,8 @@ func generatePodInfoMapByWatch[
 				creationTime: pod.CreationTimestamp,
 			}
 		}
+		info.terminating = info.terminating || !pod.DeletionTimestamp.IsZero()
+
 		// Use DeletionTimestamp can only get the deleting time.
 		// If the new pod is created immediately after the old one is deleted, the test is also passed
 		//
@@ -186,6 +225,9 @@ func generatePodInfoMapByWatch[
 		return nil, fmt.Errorf("watch stopped unexpected: %w", err)
 	}
 
+	if !initialized {
+		return nil, fmt.Errorf("pod watch stopped before initial synchronization: %w", err)
+	}
 	return podMap, nil
 }
 

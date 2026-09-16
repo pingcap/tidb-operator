@@ -390,6 +390,10 @@ func (g *TiKVGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *TiKVGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *TiKVGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

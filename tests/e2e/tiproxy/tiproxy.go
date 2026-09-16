@@ -352,7 +352,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
 
 				nctx, cancel := context.WithCancel(ctx)
-				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 2)
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 2, false)
 				defer func() { <-done }()
 				defer cancel()
 
@@ -400,13 +400,14 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				f.WaitForTiDBGroupReady(ctx, dbg)
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
 
-				currentRevision := dbg.Status.CurrentRevision
+				currentRevision := proxyg.Status.CurrentRevision
 
 				patch := client.MergeFrom(proxyg.DeepCopy())
 				change(proxyg)
 
-				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
-				f.Must(err)
+				nctx, cancel := context.WithCancel(ctx)
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, int(*proxyg.Spec.Replicas), true)
+				defer func() { cancel(); <-done }()
 
 				ginkgo.By("Patch TiProxyGroup")
 				f.Must(f.Client.Patch(ctx, proxyg, patch))
@@ -423,9 +424,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				}, waiter.LongTaskTimeout))
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
 
-				newMaxTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
-				f.Must(err)
-				f.True(changeTime.Equal(*newMaxTime))
+				cancel()
+				<-done
 			},
 			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiProxyGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicyForTiProxy()),
 			ginkgo.Entry("change pod annotations and labels", func(g *v1alpha1.TiProxyGroup) {
@@ -458,7 +458,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
 
 			nctx, cancel := context.WithCancel(ctx)
-			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 2)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 2, false)
 			defer func() { <-done }()
 			defer cancel()
 

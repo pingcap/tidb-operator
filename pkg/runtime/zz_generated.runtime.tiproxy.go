@@ -390,6 +390,10 @@ func (g *TiProxyGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *TiProxyGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *TiProxyGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

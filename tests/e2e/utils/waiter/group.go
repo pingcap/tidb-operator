@@ -91,7 +91,7 @@ func WaitForInstanceListRecreated[
 	changeTime time.Time,
 	timeout time.Duration,
 ) error {
-	return WaitForInstanceList[GS](ctx, c, g, ListIsRecreated[I](changeTime), timeout)
+	return WaitForInstanceList[GS](ctx, c, g, AssertInstanceListIsRecreated[I](changeTime), timeout)
 }
 
 func WaitForInstanceListDeleted[
@@ -107,7 +107,7 @@ func WaitForInstanceListDeleted[
 	g GF,
 	timeout time.Duration,
 ) error {
-	return WaitForInstanceList[GS](ctx, c, g, ListIsEmpty, timeout)
+	return WaitForInstanceList[GS](ctx, c, g, AssertInstanceListIsEmpty, timeout)
 }
 
 func WaitForInstanceListCondition[
@@ -126,7 +126,7 @@ func WaitForInstanceListCondition[
 	status metav1.ConditionStatus,
 	timeout time.Duration,
 ) error {
-	return WaitForInstanceList[GS](ctx, c, g, ListCondition[IS](condType, status), timeout)
+	return WaitForInstanceList[GS](ctx, c, g, AssertInstanceListCondition[IS](condType, status), timeout)
 }
 
 func WaitForOneInstanceDeleting[
@@ -143,10 +143,10 @@ func WaitForOneInstanceDeleting[
 	target *I,
 	timeout time.Duration,
 ) error {
-	return WaitForInstanceList[GS](ctx, c, g, OneDeleting(target), timeout)
+	return WaitForInstanceList[GS](ctx, c, g, AssertInstanceListHasOneDeleting(target), timeout)
 }
 
-func ListIsEmpty[I client.Object](items []I) error {
+func AssertInstanceListIsEmpty[I client.Object](items []I) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -154,7 +154,7 @@ func ListIsEmpty[I client.Object](items []I) error {
 	return fmt.Errorf("there are still %v items", len(items))
 }
 
-func ListIsRecreated[I client.Object](changeTime time.Time) func(items []I) error {
+func AssertInstanceListIsRecreated[I client.Object](changeTime time.Time) func(items []I) error {
 	return func(items []I) error {
 		if len(items) == 0 {
 			return nil
@@ -176,7 +176,7 @@ func ListIsRecreated[I client.Object](changeTime time.Time) func(items []I) erro
 	}
 }
 
-func OneDeleting[I client.Object](target *I) func(items []I) error {
+func AssertInstanceListHasOneDeleting[I client.Object](target *I) func(items []I) error {
 	return func(items []I) error {
 		var deleting []I
 		for _, item := range items {
@@ -192,7 +192,7 @@ func OneDeleting[I client.Object](target *I) func(items []I) error {
 	}
 }
 
-func ListCondition[
+func AssertInstanceListCondition[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,

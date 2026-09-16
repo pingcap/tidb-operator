@@ -390,6 +390,10 @@ func (g *TiCDCGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *TiCDCGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *TiCDCGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

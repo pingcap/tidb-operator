@@ -23,6 +23,15 @@ import (
 )
 
 const (
+	// CondVolumeCapacityExceedsRequest reports excess allocated capacity, a normal steady state.
+	CondVolumeCapacityExceedsRequest   = "VolumeCapacityExceedsRequest"
+	ReasonCapacityExceedsRequest       = "CapacityExceedsRequest"
+	ReasonCapacityDoesNotExceedRequest = "CapacityDoesNotExceedRequest"
+	ReasonCapacityUnknown              = "CapacityUnknown"
+	ReasonNoVolumes                    = "NoVolumes"
+)
+
+const (
 	// CondSuspended is a condition to display whether the group or instance is suspended
 	CondSuspended     = "Suspended"
 	ReasonSuspended   = "Suspended"
@@ -54,6 +63,7 @@ const (
 	// condition
 	CondRunning = "Running"
 	CondReady   = "Ready"
+
 	// reason for both
 	ReasonReady   = CondReady
 	ReasonRunning = CondRunning

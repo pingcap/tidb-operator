@@ -40,6 +40,8 @@ type Group interface {
 	SetStatusSelector(l string)
 	StatusSelector() string
 
+	Volumes() []v1alpha1.Volume
+
 	TemplateLabels() map[string]string
 	TemplateAnnotations() map[string]string
 

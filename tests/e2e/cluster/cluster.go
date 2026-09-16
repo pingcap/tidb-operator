@@ -20,9 +20,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -35,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -50,6 +47,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
 	utiltidb "github.com/pingcap/tidb-operator/v2/tests/e2e/utils/tidb"
@@ -638,36 +636,24 @@ var _ = Describe("TiDB Cluster", func() {
 					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil, nil)).To(Succeed())
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
-			By("Recording the pod's UID")
-			listOpts := metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name),
-			}
-			podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
-			Expect(err).To(BeNil())
-			Expect(len(podList.Items)).To(Equal(1))
-			originalPodName, originalPodUID := podList.Items[0].Name, podList.Items[0].UID
-
+			outCtx, outCancel := context.WithCancel(ctx)
+			outDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](outCtx, &framework.Framework{Client: k8sClient}, dbg, 2, true)
+			defer func() { outCancel(); <-outDone }()
 			By("scale out tidb from 1 to 2")
 			var dbgGet v1alpha1.TiDBGroup
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: dbg.Name}, &dbgGet)).To(Succeed())
 			dbgGet.Spec.Replicas = ptr.To(int32(2))
 			Expect(k8sClient.Update(ctx, &dbgGet)).To(Succeed())
 
-			podNameToUID := make(map[string]types.UID, 2)
 			Eventually(func(g Gomega) {
 				g.Expect(utiltidb.AreAllTiDBHealthy(k8sClient, &dbgGet, false)).To(Succeed())
-				podList, err = clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
-				g.Expect(err).To(BeNil())
-				g.Expect(len(podList.Items)).To(Equal(2))
-
-				// Should not recreate the pod
-				for _, pod := range podList.Items {
-					podNameToUID[pod.Name] = pod.UID
-				}
-				g.Expect(podNameToUID[originalPodName]).To(Equal(originalPodUID))
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
+			outCancel()
+			<-outDone
+			inCtx, inCancel := context.WithCancel(ctx)
+			inDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](inCtx, &framework.Framework{Client: k8sClient}, &dbgGet, 1, true)
+			defer func() { inCancel(); <-inDone }()
 			By("scale in tidb from 2 to 1")
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: dbg.Name}, &dbgGet)).To(Succeed())
 			dbgGet.Spec.Replicas = ptr.To(int32(1))
@@ -675,12 +661,10 @@ var _ = Describe("TiDB Cluster", func() {
 
 			Eventually(func(g Gomega) {
 				g.Expect(utiltidb.AreAllTiDBHealthy(k8sClient, &dbgGet, false)).To(Succeed())
-				podList, err = clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
-				g.Expect(err).To(BeNil())
-				g.Expect(len(podList.Items)).To(Equal(1))
-				// Should not recreate the pod
-				g.Expect(podNameToUID[podList.Items[0].Name]).To(Equal(podList.Items[0].UID))
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
+			inCancel()
+			<-inDone
+
 		})
 
 		It("should be able to increase the volume size without restarting", func() {
@@ -726,12 +710,9 @@ var _ = Describe("TiDB Cluster", func() {
 			Expect(len(pvcList.Items)).To(Equal(1))
 			Expect(pvcList.Items[0].Status.Capacity.Storage().Equal(data.StorageSizeGi2quantity(2))).To(BeTrue())
 
-			By("Recording the pod's UID")
-			podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
-			Expect(err).To(BeNil())
-			Expect(len(podList.Items)).To(Equal(1))
-			originalPodName, originalPodUID := podList.Items[0].Name, podList.Items[0].UID
-
+			watchCtx, watchCancel := context.WithCancel(ctx)
+			watchDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](watchCtx, &framework.Framework{Client: k8sClient}, kvg, 1, true)
+			defer func() { watchCancel(); <-watchDone }()
 			By("Increasing the tikv's volume size from 2Gi to 5Gi")
 			var kvgGet v1alpha1.TiKVGroup
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: kvg.Name}, &kvgGet)).To(Succeed())
@@ -742,17 +723,15 @@ var _ = Describe("TiDB Cluster", func() {
 			Eventually(func(g Gomega) {
 				g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
 					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil, nil)).To(Succeed())
-				podList, err = clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
-				g.Expect(err).To(BeNil())
-				g.Expect(len(podList.Items)).To(Equal(1))
-				g.Expect(podList.Items[0].Name).To(Equal(originalPodName))
-				g.Expect(podList.Items[0].UID).To(Equal(originalPodUID))
 
 				pvcList, err := clientSet.CoreV1().PersistentVolumeClaims(tc.Namespace).List(ctx, listOpts)
 				Expect(err).To(BeNil())
 				Expect(len(pvcList.Items)).To(Equal(1))
 				Expect(pvcList.Items[0].Status.Capacity.Storage()).To(Equal(data.StorageSizeGi2quantity(5)))
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
+			watchCancel()
+			<-watchDone
+
 		})
 
 		It("should recreate pods for labels/annotations modification", func() {
@@ -841,12 +820,11 @@ var _ = Describe("TiDB Cluster", func() {
 				}
 			}
 
-			By("Recording tikv pods' UID before changes")
-			podMap, err := k8s.GetPodUIDMap(ctx, clientSet, tc.Namespace, listOpts)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(podMap).To(HaveLen(3))
-
 			testUpdateWithoutRolling := func(updateName string, modifySpec func(*v1alpha1.TiKVGroup)) {
+				watchCtx, watchCancel := context.WithCancel(ctx)
+				watchDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](watchCtx, &framework.Framework{Client: k8sClient}, kvg, 3, true)
+				defer func() { watchCancel(); <-watchDone }()
+
 				By(fmt.Sprintf("Applying %s change", updateName))
 				var kvgGet v1alpha1.TiKVGroup
 				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(kvg), &kvgGet)).To(Succeed())
@@ -860,11 +838,10 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
 						[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil, nil)).To(Succeed())
 
-					// Ensure pods are not re-created
-					currentPodMap, err := k8s.GetPodUIDMap(ctx, clientSet, tc.Namespace, listOpts)
-					g.Expect(err).NotTo(HaveOccurred())
-					g.Expect(currentPodMap).To(Equal(podMap))
 				}).WithTimeout(3 * time.Minute).WithPolling(createClusterPolling).Should(Succeed())
+				watchCancel()
+				<-watchDone
+
 			}
 
 			testUpdateWithoutRolling("config", func(tk *v1alpha1.TiKVGroup) {
@@ -906,8 +883,6 @@ var _ = Describe("TiDB Cluster", func() {
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
 			groupNames := []string{pdg.Name, kvg.Name, flashg.Name}
-			outerCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
 			for _, groupName := range groupNames {
 				By("Checking the logic of rolling update for " + groupName)
 				listOpts := metav1.ListOptions{
@@ -915,52 +890,18 @@ var _ = Describe("TiDB Cluster", func() {
 						v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, groupName),
 				}
 
-				By("collecting the events of pods for verifying rolling update")
-				watchCtx, cancel := context.WithCancel(outerCtx)
-				podWatcher, err := clientSet.CoreV1().Pods(tc.Namespace).Watch(watchCtx, listOpts)
-				Expect(err).NotTo(HaveOccurred())
-				type podInfo struct {
-					name         string
-					uid          string
-					creationTime metav1.Time
-					deletionTime metav1.Time
+				watchCtx, cancel := context.WithCancel(ctx)
+				var done chan struct{}
+				f := &framework.Framework{Client: k8sClient}
+				switch groupName {
+				case "pd":
+					done = framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](watchCtx, f, pdg, 3, false)
+				case "tikv":
+					done = framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](watchCtx, f, kvg, 3, false)
+				case "flash":
+					done = framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](watchCtx, f, flashg, 3, false)
 				}
-
-				podMap := map[string]podInfo{}
-				wg := sync.WaitGroup{}
-				wg.Add(1)
-
-				go func() {
-					defer GinkgoRecover()
-					for {
-						select {
-						case <-watchCtx.Done():
-							GinkgoWriter.Println("podWatcher is stopped")
-							podWatcher.Stop()
-							wg.Done()
-							return
-
-						case event := <-podWatcher.ResultChan():
-							pod, isPod := event.Object.(*corev1.Pod)
-							if !isPod {
-								continue
-							}
-							info, ok := podMap[string(pod.UID)]
-							if !ok {
-								info = podInfo{
-									name:         pod.Name,
-									uid:          string(pod.UID),
-									creationTime: pod.CreationTimestamp,
-								}
-							}
-							if !pod.DeletionTimestamp.IsZero() && pod.DeletionGracePeriodSeconds != nil && *pod.DeletionGracePeriodSeconds == 0 {
-								info.deletionTime = *pod.DeletionTimestamp
-							}
-							podMap[string(pod.UID)] = info
-						}
-					}
-				}()
-
+				defer func() { cancel(); <-done }()
 				By("Changing the spec")
 				cfg := "log.level = 'debug'"
 				var updateTime time.Time
@@ -1001,39 +942,10 @@ var _ = Describe("TiDB Cluster", func() {
 						g.Expect(pod.Status.StartTime).ShouldNot(BeNil())
 						g.Expect(pod.Status.StartTime.After(updateTime)).To(BeTrue())
 					}
-					// g.Expect(k8s.CheckRollingRestartLogic(eventSlice)).To(BeTrue())
 				}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 				cancel()
 
-				wg.Wait()
-
-				infos := []podInfo{}
-				for _, v := range podMap {
-					infos = append(infos, v)
-				}
-				slices.SortFunc(infos, func(a podInfo, b podInfo) int {
-					if a.deletionTime.IsZero() && b.deletionTime.IsZero() {
-						return a.creationTime.Compare(b.creationTime.Time)
-					}
-					if a.deletionTime.IsZero() {
-						return a.creationTime.Compare(b.deletionTime.Time)
-					}
-					if b.deletionTime.IsZero() {
-						return a.deletionTime.Compare(b.creationTime.Time)
-					}
-					return a.deletionTime.Compare(b.deletionTime.Time)
-				})
-				for _, info := range infos {
-					if info.deletionTime.IsZero() {
-						GinkgoWriter.Printf("%v(%v) created at %s\n", info.name, info.uid, info.creationTime)
-					} else {
-						GinkgoWriter.Printf("%v(%v) created at %s, deleted at %s\n", info.name, info.uid, info.creationTime, info.deletionTime)
-					}
-				}
-				Expect(len(infos)).To(Equal(6))
-				Expect(infos[0].name).To(Equal(infos[1].name))
-				Expect(infos[2].name).To(Equal(infos[3].name))
-				Expect(infos[4].name).To(Equal(infos[5].name))
+				<-done
 			}
 		})
 
@@ -1058,51 +970,9 @@ var _ = Describe("TiDB Cluster", func() {
 				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
 					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, kvg.Name),
 			}
-			watchCtx, cancel := context.WithCancel(ctx)
-			podWatcher, err := clientSet.CoreV1().Pods(tc.Namespace).Watch(watchCtx, listOpts)
-			Expect(err).NotTo(HaveOccurred())
-			type podInfo struct {
-				name         string
-				uid          string
-				creationTime metav1.Time
-				deletionTime metav1.Time
-			}
-
-			podMap := map[string]podInfo{}
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-
-			go func() {
-				defer GinkgoRecover()
-				for {
-					select {
-					case <-watchCtx.Done():
-						GinkgoWriter.Println("podWatcher is stopped")
-						podWatcher.Stop()
-						wg.Done()
-						return
-
-					case event := <-podWatcher.ResultChan():
-						pod, isPod := event.Object.(*corev1.Pod)
-						if !isPod {
-							continue
-						}
-						info, ok := podMap[string(pod.UID)]
-						if !ok {
-							info = podInfo{
-								name:         pod.Name,
-								uid:          string(pod.UID),
-								creationTime: pod.CreationTimestamp,
-							}
-						}
-						if !pod.DeletionTimestamp.IsZero() && pod.DeletionGracePeriodSeconds != nil && *pod.DeletionGracePeriodSeconds == 0 {
-							info.deletionTime = *pod.DeletionTimestamp
-						}
-						podMap[string(pod.UID)] = info
-					}
-				}
-			}()
-
+			firstCtx, firstCancel := context.WithCancel(ctx)
+			firstDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](firstCtx, &framework.Framework{Client: k8sClient}, kvg, 3, false)
+			defer func() { firstCancel(); <-firstDone }()
 			By("Add the restart annotation to TiKVGroup")
 			var updateTime time.Time
 			var kvgGet v1alpha1.TiKVGroup
@@ -1129,37 +999,11 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(pod.Status.StartTime.After(updateTime)).To(BeTrue())
 				}
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
-			cancel()
-			wg.Wait()
-
-			var infos []podInfo
-			for _, v := range podMap {
-				infos = append(infos, v)
-			}
-			slices.SortFunc(infos, func(a podInfo, b podInfo) int {
-				if a.deletionTime.IsZero() && b.deletionTime.IsZero() {
-					return a.creationTime.Compare(b.creationTime.Time)
-				}
-				if a.deletionTime.IsZero() {
-					return a.creationTime.Compare(b.deletionTime.Time)
-				}
-				if b.deletionTime.IsZero() {
-					return a.deletionTime.Compare(b.creationTime.Time)
-				}
-				return a.deletionTime.Compare(b.deletionTime.Time)
-			})
-			for _, info := range infos {
-				if info.deletionTime.IsZero() {
-					GinkgoWriter.Printf("%v(%v) created at %s\n", info.name, info.uid, info.creationTime)
-				} else {
-					GinkgoWriter.Printf("%v(%v) created at %s, deleted at %s\n", info.name, info.uid, info.creationTime, info.deletionTime)
-				}
-			}
-			Expect(len(infos)).To(Equal(6))
-			Expect(infos[0].name).To(Equal(infos[1].name))
-			Expect(infos[2].name).To(Equal(infos[3].name))
-			Expect(infos[4].name).To(Equal(infos[5].name))
-
+			firstCancel()
+			<-firstDone
+			secondCtx, secondCancel := context.WithCancel(ctx)
+			secondDone := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](secondCtx, &framework.Framework{Client: k8sClient}, &kvgGet, 3, false)
+			defer func() { secondCancel(); <-secondDone }()
 			By("Update the restart annotation to TiKVGroup")
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: kvg.Name}, &kvgGet)).To(Succeed())
 			if kvgGet.Spec.Template.Annotations == nil {
@@ -1183,6 +1027,9 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(pod.Status.StartTime.After(updateTime)).To(BeTrue())
 				}
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
+			secondCancel()
+			<-secondDone
+
 		})
 	})
 

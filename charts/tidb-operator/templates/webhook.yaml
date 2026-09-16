@@ -44,7 +44,7 @@ spec:
 # This policy validates volume storage requirements for TiDB Operator managed resources.
 # It ensures that:
 # 1. Storage values must be greater than 0
-# 2. Storage values can only increase, never decrease (for UPDATE operations)
+# 2. Storage values can decrease only when VolumeAttributesClass is enabled
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -66,9 +66,9 @@ spec:
   - expression: "!has(object.spec.template) || !has(object.spec.template.spec) || !has(object.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(vol, quantity(vol.storage).compareTo(quantity('0')) > 0)"
     messageExpression: "'Volume storage must be greater than 0 for all volumes'"
     reason: Invalid
-  # Validate that storage values can only increase during UPDATE operations
-  - expression: "request.operation != 'UPDATE' || !has(object.spec.template) || !has(object.spec.template.spec) || !has(object.spec.template.spec.volumes) || !has(oldObject.spec.template) || !has(oldObject.spec.template.spec) || !has(oldObject.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(newVol, oldObject.spec.template.spec.volumes.filter(oldVol, oldVol.name == newVol.name).all(oldVol, quantity(oldVol.storage).compareTo(quantity(newVol.storage)) <= 0))"
-    messageExpression: "'Volume storage can only be increased, not decreased. One or more volumes have smaller storage than before'"
+  # Existing PVCs retain their capacity when a VAC-enabled group requests less storage.
+  - expression: "request.operation != 'UPDATE' || (has(object.spec.features) && 'VolumeAttributesClass' in object.spec.features) || !has(object.spec.template) || !has(object.spec.template.spec) || !has(object.spec.template.spec.volumes) || !has(oldObject.spec.template) || !has(oldObject.spec.template.spec) || !has(oldObject.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(newVol, oldObject.spec.template.spec.volumes.filter(oldVol, oldVol.name == newVol.name).all(oldVol, quantity(oldVol.storage).compareTo(quantity(newVol.storage)) <= 0))"
+    messageExpression: "'Volume storage can only be decreased when VolumeAttributesClass is enabled'"
     reason: Invalid
 ---
 apiVersion: admissionregistration.k8s.io/v1

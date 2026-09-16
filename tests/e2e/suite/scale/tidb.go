@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("Scale TiDB", label.TiDB, label.P0, label.Scale, func() 
 		f.WaitForTiDBGroupReady(ctx, dbg)
 
 		nctx, cancel := context.WithCancel(ctx)
-		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 5)
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 5, false)
 		defer func() { <-done }()
 		defer cancel()
 

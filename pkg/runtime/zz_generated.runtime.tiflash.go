@@ -390,6 +390,10 @@ func (g *TiFlashGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *TiFlashGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *TiFlashGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

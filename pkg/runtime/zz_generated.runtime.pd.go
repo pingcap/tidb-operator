@@ -390,6 +390,10 @@ func (g *PDGroup) StatusSelector() string {
 	return g.Status.Selector
 }
 
+func (g *PDGroup) Volumes() []v1alpha1.Volume {
+	return g.Spec.Template.Spec.Volumes
+}
+
 func (g *PDGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

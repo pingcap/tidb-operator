@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("Scale TiProxy", label.TiProxy, label.P0, label.Scale, f
 		f.WaitForTiProxyGroupReady(ctx, proxyg)
 
 		nctx, cancel := context.WithCancel(ctx)
-		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 5)
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 5, false)
 		defer func() { <-done }()
 		defer cancel()
 

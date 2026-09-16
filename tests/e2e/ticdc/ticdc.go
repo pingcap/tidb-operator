@@ -136,7 +136,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 			f.WaitForTiCDCGroupReady(ctx, cdcg)
 
 			nctx, cancel := context.WithCancel(ctx)
-			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiCDCGroup](nctx, f, cdcg, 2)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiCDCGroup](nctx, f, cdcg, 2, false)
 			defer func() { <-done }()
 			defer cancel()
 

@@ -31,7 +31,7 @@ func TestPDAvailability(ctx context.Context, f *framework.Framework, pdg *v1alph
 	pdEndpoints := pdg.Name + "-pd." + f.Namespace.Name + ":2379"
 
 	nctx, cancel := context.WithCancel(ctx)
-	done := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, int(*pdg.Spec.Replicas))
+	done := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, int(*pdg.Spec.Replicas), false)
 	defer func() { <-done }()
 
 	done2 := w.MustRunPDRegionAccess(nctx, pdEndpoints)
@@ -52,7 +52,7 @@ func TestTSOAvailability(ctx context.Context, f *framework.Framework, tg *v1alph
 	pdEndpoints := f.Cluster.Status.PD
 
 	nctx, cancel := context.WithCancel(ctx)
-	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.TSOGroup](nctx, f, tg, int(*tg.Spec.Replicas))
+	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.TSOGroup](nctx, f, tg, int(*tg.Spec.Replicas), false)
 	defer func() { <-rolling }()
 
 	done := w.MustRunPDRegionAccess(nctx, pdEndpoints)
@@ -73,7 +73,7 @@ func TestResourceManagerAvailability(ctx context.Context, f *framework.Framework
 	pdEndpoints := f.Cluster.Status.PD
 
 	nctx, cancel := context.WithCancel(ctx)
-	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.ResourceManagerGroup](nctx, f, rmg, int(*rmg.Spec.Replicas))
+	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.ResourceManagerGroup](nctx, f, rmg, int(*rmg.Spec.Replicas), false)
 	defer func() { <-rolling }()
 
 	done := w.MustRunPDRegionAccess(nctx, pdEndpoints)
@@ -90,7 +90,7 @@ func TestResourceManagerAvailability(ctx context.Context, f *framework.Framework
 
 func TestTiDBAvailability(ctx context.Context, f *framework.Framework, ep string, dbg *v1alpha1.TiDBGroup, w *framework.Workload, opts ...workload.Option) {
 	nctx, cancel := context.WithCancel(ctx)
-	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, int(*dbg.Spec.Replicas))
+	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, int(*dbg.Spec.Replicas), false)
 	defer func() { <-rolling }()
 
 	done := w.MustRunWorkload(nctx, ep, opts...)
