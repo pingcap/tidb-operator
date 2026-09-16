@@ -559,6 +559,10 @@ func (g *$.|pub$) MinReadySeconds() int64 {
 func (g *$.|pub$) SchedulePolicies() []v1alpha1.SchedulePolicy {
 	return g.Spec.SchedulePolicies
 }
+
+func (g *$.|pub$) Progressing() bool {
+	return g.Spec.Progressing == nil || *g.Spec.Progressing
+}
 `, t)
 
 	return sw.Error()

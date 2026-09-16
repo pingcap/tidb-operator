@@ -459,3 +459,7 @@ func (g *DMGroup) MinReadySeconds() int64 {
 func (g *DMGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
 	return g.Spec.SchedulePolicies
 }
+
+func (g *DMGroup) Progressing() bool {
+	return g.Spec.Progressing == nil || *g.Spec.Progressing
+}

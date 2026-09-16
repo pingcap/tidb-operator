@@ -28,8 +28,8 @@ const (
 
 	DefaultDMMinReadySeconds = 5
 
-	VolumeMountTypeDMData    VolumeMountType = "data"
-	VolumeMountDMDataDefaultPath             = "/var/lib/dm"
+	VolumeMountTypeDMData        VolumeMountType = "data"
+	VolumeMountDMDataDefaultPath                 = "/var/lib/dm"
 )
 
 const (
@@ -106,6 +106,15 @@ type DM struct {
 
 // DMGroupSpec describes the common attributes of a DMGroup
 type DMGroupSpec struct {
+	// Progressing controls group reconciliation, including updates, scaling, deletion, and status.
+	// When false, group reconciliation is paused. Existing instances continue reconciling,
+	// including Pod recreation and recovery.
+	// Defaults to true. Already issued operations are not canceled.
+	// Cluster.spec.paused takes precedence and also stops instance reconciliation.
+	// +optional
+	// +kubebuilder:default=true
+	Progressing *bool `json:"progressing,omitempty"`
+
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled features
 	Features []meta.Feature `json:"features,omitempty"`

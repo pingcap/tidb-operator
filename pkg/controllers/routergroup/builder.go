@@ -27,6 +27,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextObject[scope.RouterGroup](state, r.Client),
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.RouterGroup](state)),
 
+		common.TaskContextCluster[scope.RouterGroup](state, r.Client),
+		task.IfBreak(common.CondClusterIsPaused(state)),
+		task.IfBreak(common.CondGroupIsNotProgressing(state)),
+
 		task.IfBreak(common.CondObjectIsDeleting[scope.RouterGroup](state),
 			common.TaskContextSlice[scope.RouterGroup](state, r.Client),
 			common.TaskGroupFinalizerDel[scope.RouterGroup](state, r.Client),
@@ -36,8 +40,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskStatusPersister[scope.RouterGroup](state, r.Client),
 		),
 
-		common.TaskContextCluster[scope.RouterGroup](state, r.Client),
-		task.IfBreak(common.CondClusterIsPaused(state)),
 		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.RouterGroup](state)),
 
 		common.TaskContextSlice[scope.RouterGroup](state, r.Client),
