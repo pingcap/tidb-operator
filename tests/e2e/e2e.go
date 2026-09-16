@@ -78,12 +78,20 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		return fmt.Errorf("operator deployment not ready")
 	}).WithTimeout(5 * time.Minute).WithPolling(5 * time.Second).Should(Succeed()) //nolint:mnd // refactor to use constant
 
-	// set zone labels for nodes if not exists
+	// Set topology labels for nodes if they do not exist.
 	nodeList, err := clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	for _, node := range nodeList.Items {
+		updated := false
+		if _, ok := node.Labels[corev1.LabelTopologyRegion]; !ok {
+			node.Labels[corev1.LabelTopologyRegion] = "region-1" // just for test
+			updated = true
+		}
 		if _, ok := node.Labels[corev1.LabelTopologyZone]; !ok {
 			node.Labels[corev1.LabelTopologyZone] = "az-1" // just for test
+			updated = true
+		}
+		if updated {
 			_, err = clientset.CoreV1().Nodes().Update(context.Background(), &node, metav1.UpdateOptions{})
 			Expect(err).NotTo(HaveOccurred())
 		}
