@@ -14,6 +14,7 @@
 package v1
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -95,6 +96,40 @@ func TestBuildTiCIChangefeedInfoDisabledByFlag(t *testing.T) {
 	}
 	if info.Enabled {
 		t.Fatalf("expected changefeed disabled when tici.changefeed.enable=false")
+	}
+}
+
+func TestRenderTiCDCStartScriptTiCIChangefeedBootstrap(t *testing.T) {
+	tc := newTiCIChangefeedTestCluster("http://minio-service:9000", "minio", "minio-secret")
+	tc.Name = "tici-test"
+	tc.Namespace = "tici-test-ns"
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{}
+
+	script, err := RenderTiCDCStartScript(tc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := validateScript(script); err != nil {
+		t.Fatalf("rendered script is not valid shell: %v", err)
+	}
+	for _, want := range []string{
+		"--newarch=true",
+		"--no-confirm",
+		"timeout 10 /cdc cli capture list",
+		"timeout 10 /cdc cli changefeed query",
+		"timeout 300 /cdc cli changefeed create",
+		"exit 1",
+		`echo "tici: changefeed ${CHANGEFEED_ID} already exists, skip creation"`,
+		`echo "tici: changefeed ${CHANGEFEED_ID} created"`,
+		`echo "tici: failed to bootstrap changefeed ${CHANGEFEED_ID} after 15 attempts; exiting to trigger pod restart"`,
+		"wait ${CDC_PID}",
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("rendered script does not contain %q:\n%s", want, script)
+		}
+	}
+	if strings.Contains(script, ">/dev/null") {
+		t.Errorf("rendered script should not silently discard changefeed CLI output:\n%s", script)
 	}
 }
 
