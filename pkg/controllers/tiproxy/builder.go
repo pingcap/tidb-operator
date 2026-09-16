@@ -15,6 +15,8 @@
 package tiproxy
 
 import (
+	"context"
+
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxy/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -70,7 +72,15 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskContextInfoFromTiProxy(state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiProxy](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
+<<<<<<< HEAD
 		tasks.TaskPod(state, r.Client),
+=======
+		tasks.TaskPod(state, r.Client, r.EventRecorder),
+		// Custom labels are available from the startup config, while Node labels can only be added after scheduling.
+		common.TaskServerLabels[scope.TiProxy](state, r.Client, r.PDClientManager, func(ctx context.Context, labels map[string]string) error {
+			return state.TiProxyClient.SetLabels(ctx, labels)
+		}),
+>>>>>>> 337787f81 (tiproxy: restore node label synchronization (#7079))
 		common.TaskInstanceConditionSynced[scope.TiProxy](state),
 		common.TaskInstanceConditionReady[scope.TiProxy](state),
 		common.TaskInstanceConditionRunning[scope.TiProxy](state),
