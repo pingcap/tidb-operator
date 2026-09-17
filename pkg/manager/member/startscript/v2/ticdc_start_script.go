@@ -319,6 +319,7 @@ while [ $j -lt 15 ]; do
         echo "tici: changefeed ${CHANGEFEED_ID} already exists, skip creation"
         break
     fi
+    echo "tici: creating changefeed ${CHANGEFEED_ID} (attempt $((j+1))/15; this can take a while on large clusters)"
     if /cdc cli changefeed create --no-confirm --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}"{{- if .IncludeChangefeedConf }} --config="${CHANGEFEED_CONFIG}"{{- end }} ${CHANGEFEED_TLS_ARGS} >"${CHANGEFEED_LOG}" 2>&1; then
         echo "tici: changefeed ${CHANGEFEED_ID} created"
         break

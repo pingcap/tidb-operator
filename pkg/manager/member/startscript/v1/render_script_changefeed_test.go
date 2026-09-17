@@ -125,6 +125,7 @@ func TestRenderTiCDCStartScriptTiCIChangefeedBootstrap(t *testing.T) {
 		"exit 1",
 		`echo "tici: changefeed ${CHANGEFEED_ID} already exists, skip creation"`,
 		`echo "tici: changefeed ${CHANGEFEED_ID} created"`,
+		`tici: creating changefeed ${CHANGEFEED_ID} (attempt`,
 		`echo "tici: failed to bootstrap changefeed ${CHANGEFEED_ID} after 15 attempts; exiting to trigger pod restart"`,
 		"wait ${CDC_PID}",
 	} {
