@@ -16,6 +16,7 @@ package tiproxy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -30,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	k8sutil "github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
@@ -81,6 +83,35 @@ func tiproxyHealthStatusCode(ctx context.Context, f *framework.Framework, pod *c
 	defer resp.Body.Close()
 
 	return resp.StatusCode, nil
+}
+
+func tiproxyLabels(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (map[string]string, error) {
+	probeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	ports := f.PortForwardPod(probeCtx, pod, []string{fmt.Sprintf(":%d", v1alpha1.DefaultTiProxyPortAPI)})
+	req, err := http.NewRequestWithContext(probeCtx, http.MethodGet,
+		fmt.Sprintf("http://127.0.0.1:%d/api/admin/config?format=json", ports[0].Local), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code %d from TiProxy config API", resp.StatusCode)
+	}
+
+	cfg := struct {
+		Labels map[string]string `json:"labels"`
+	}{}
+	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
+		return nil, err
+	}
+	return cfg.Labels, nil
 }
 
 func tiproxySupportsHealthOverrideAPI(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (bool, error) {
@@ -165,6 +196,59 @@ func manuallyTriggerTiProxyUnhealthy(
 var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 	f := framework.New()
 	f.Setup()
+
+	ginkgo.Context("Server Labels", label.P0, func() {
+		ginkgo.It("syncs Node labels while preserving configured labels", func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx, data.GroupPatchFunc[*v1alpha1.PDGroup](func(group *v1alpha1.PDGroup) {
+				group.Spec.Template.Spec.Config = `[replication]
+location-labels = ["region", "zone", "host"]`
+			}))
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx)
+			proxyg := f.MustCreateTiProxy(ctx, data.GroupPatchFunc[*v1alpha1.TiProxyGroup](func(group *v1alpha1.TiProxyGroup) {
+				group.Spec.Template.Spec.Server.Labels = map[string]string{
+					"workload": "oltp",
+				}
+			}))
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiProxyGroupReady(ctx, proxyg)
+
+			pods := &corev1.PodList{}
+			f.Must(f.Client.List(ctx, pods, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
+			}))
+			gomega.Expect(pods.Items).To(gomega.HaveLen(1))
+
+			pod := &pods.Items[0]
+			node := &corev1.Node{}
+			f.Must(f.Client.Get(ctx, client.ObjectKey{Name: pod.Spec.NodeName}, node))
+			nodeLabels := k8sutil.GetNodeLabelsForKeys(node, []string{"region", "zone", "host"})
+			gomega.Expect(nodeLabels).To(gomega.HaveLen(3))
+
+			// The group can become ready before the PD client caches have synced. Node
+			// labels are applied by a later reconcile, so verify the eventual API state.
+			gomega.Eventually(func() error {
+				labels, err := tiproxyLabels(ctx, f, pod)
+				if err != nil {
+					return err
+				}
+				if labels["workload"] != "oltp" {
+					return fmt.Errorf("custom label is not preserved: %v", labels)
+				}
+				for key, value := range nodeLabels {
+					if labels[key] != value {
+						return fmt.Errorf("label %s is %q, expected %q: %v", key, labels[key], value, labels)
+					}
+				}
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(2 * time.Second).Should(gomega.Succeed())
+		})
+	})
 
 	ginkgo.Context("Scale and Update", label.P0, func() {
 		ginkgo.It("scale out and in TiProxy", label.Scale, func(ctx context.Context) {
