@@ -288,6 +288,16 @@ date-separator = "none"
 EOF
 {{- end }}
 CHANGEFEED_LOG="/tmp/ticdc-changefeed.log"
+redact() {
+    sed \
+        -e 's#://[^/@[:space:]]\+@#://<REDACTED>@#g' \
+        -e 's#secret-access-key=[^&[:space:]]*#secret-access-key=<REDACTED>#g' \
+        -e 's#access-key=[^&[:space:]]*#access-key=<REDACTED>#g' \
+        -e 's#secret-key=[^&[:space:]]*#secret-key=<REDACTED>#g' \
+        -e 's#password=[^&[:space:]]*#password=<REDACTED>#g' \
+        -e 's#token=[^&[:space:]]*#token=<REDACTED>#g' \
+        -e 's#signature=[^&[:space:]]*#signature=<REDACTED>#g'
+}
 echo "tici: bootstrapping changefeed ${CHANGEFEED_ID}"
 i=0
 while [ $i -lt 15 ]; do
@@ -295,7 +305,7 @@ while [ $i -lt 15 ]; do
         break
     fi
     echo "tici: ticdc server is not ready yet (attempt $((i+1))/15), last error:"
-    tail -5 "${CHANGEFEED_LOG}"
+    redact < "${CHANGEFEED_LOG}" | tail -5
     i=$((i+1))
     sleep 2
 done
@@ -309,12 +319,12 @@ while [ $j -lt 15 ]; do
         echo "tici: changefeed ${CHANGEFEED_ID} already exists, skip creation"
         break
     fi
-    if timeout 300 /cdc cli changefeed create --no-confirm --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}"{{- if .IncludeChangefeedConf }} --config="${CHANGEFEED_CONFIG}"{{- end }} ${CHANGEFEED_TLS_ARGS} >"${CHANGEFEED_LOG}" 2>&1; then
+    if /cdc cli changefeed create --no-confirm --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}"{{- if .IncludeChangefeedConf }} --config="${CHANGEFEED_CONFIG}"{{- end }} ${CHANGEFEED_TLS_ARGS} >"${CHANGEFEED_LOG}" 2>&1; then
         echo "tici: changefeed ${CHANGEFEED_ID} created"
         break
     fi
     echo "tici: changefeed create failed (attempt $((j+1))/15), last error:"
-    tail -5 "${CHANGEFEED_LOG}"
+    redact < "${CHANGEFEED_LOG}" | tail -5
     j=$((j+1))
     sleep 2
 done
