@@ -16,11 +16,7 @@ package tiproxy
 
 import (
 	"context"
-<<<<<<< HEAD
-=======
-	"database/sql"
 	"encoding/json"
->>>>>>> 337787f81 (tiproxy: restore node label synchronization (#7079))
 	"fmt"
 	"net/http"
 	"strconv"
@@ -35,11 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-<<<<<<< HEAD
-=======
-	tiproxyapi "github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	k8sutil "github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
->>>>>>> 337787f81 (tiproxy: restore node label synchronization (#7079))
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
@@ -93,17 +85,6 @@ func tiproxyHealthStatusCode(ctx context.Context, f *framework.Framework, pod *c
 	return resp.StatusCode, nil
 }
 
-<<<<<<< HEAD
-=======
-func tiproxyConnectionCount(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (float64, error) {
-	probeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	ports := f.PortForwardPod(probeCtx, pod, []string{fmt.Sprintf(":%d", v1alpha1.DefaultTiProxyPortAPI)})
-	tpClient := tiproxyapi.NewTiProxyClient(fmt.Sprintf("127.0.0.1:%d", ports[0].Local), 10*time.Second, nil)
-	return tpClient.ConnectionCount(probeCtx)
-}
-
 func tiproxyLabels(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (map[string]string, error) {
 	probeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -133,39 +114,6 @@ func tiproxyLabels(ctx context.Context, f *framework.Framework, pod *corev1.Pod)
 	return cfg.Labels, nil
 }
 
-func holdTiProxySQLConnection(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (func(), error) {
-	forwardCtx, cancel := context.WithCancel(ctx)
-	ports := f.PortForwardPod(forwardCtx, pod, []string{fmt.Sprintf(":%d", v1alpha1.DefaultTiProxyPortClient)})
-
-	db, err := sql.Open("mysql", fmt.Sprintf("root:@tcp(127.0.0.1:%d)/?timeout=10s", ports[0].Local))
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-	db.SetMaxIdleConns(1)
-	db.SetMaxOpenConns(1)
-
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		_ = db.Close()
-		cancel()
-		return nil, err
-	}
-	if err := conn.PingContext(ctx); err != nil {
-		_ = conn.Close()
-		_ = db.Close()
-		cancel()
-		return nil, err
-	}
-
-	return func() {
-		_ = conn.Close()
-		_ = db.Close()
-		cancel()
-	}, nil
-}
-
->>>>>>> 337787f81 (tiproxy: restore node label synchronization (#7079))
 func tiproxySupportsHealthOverrideAPI(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (bool, error) {
 	probeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -268,8 +216,12 @@ location-labels = ["region", "zone", "host"]`
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
 
-			pods, err := listTiProxyPods(ctx, f, proxyg)
-			f.Must(err)
+			pods := &corev1.PodList{}
+			f.Must(f.Client.List(ctx, pods, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
+			}))
 			gomega.Expect(pods.Items).To(gomega.HaveLen(1))
 
 			pod := &pods.Items[0]
