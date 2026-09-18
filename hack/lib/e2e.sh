@@ -167,7 +167,21 @@ function e2e::install_old_version() {
     local old_version_dir
     old_version_dir=$(repo::fetch)
 
-    pushd $old_version_dir
+    # Upgrade builds need reachable release tags for both Go's VCS version and
+    # CRD version annotations. Keep the shared lint checkout shallow by default.
+    local fetch_args=(--tags)
+    if [[ $(git -C "$old_version_dir" rev-parse --is-shallow-repository) == true ]]; then
+        fetch_args+=(--unshallow)
+    fi
+    git -C "$old_version_dir" fetch "${fetch_args[@]}" origin "$V_REPO_REF"
+    local old_version
+    old_version=$(cd "$old_version_dir" && version::get_version_vars && echo "${GIT_VERSION:-}")
+    if [[ -z "$old_version" ]]; then
+        echo "Cannot determine old operator version from release tags" >&2
+        return 1
+    fi
+
+    pushd "$old_version_dir"
 
     # Build the operator image from the old version source
     echo "Building old version operator image from ${old_version_dir}"
@@ -178,12 +192,13 @@ function e2e::install_old_version() {
     make bin/kind
     make V_KIND=${V_KIND} push/prestop-checker
 
-    local old_operator_image="${V_IMG_PROJECT}/tidb-operator:old-${commit_hash}"
+    local old_image_tag="old-${commit_hash}-${old_version//+/-}"
+    local old_operator_image="${V_IMG_PROJECT}/tidb-operator:${old_image_tag}"
 
     # Prepare build/cache directories (re-use paths from hack/lib/image.sh)
     mkdir -p ${IMAGE_DIR}
     mkdir -p ${CACHE_DIR}
-    local image_tar="${IMAGE_DIR}/tidb-operator-${commit_hash}.tar"
+    local image_tar="${IMAGE_DIR}/tidb-operator-${old_image_tag}.tar"
 
     # If the OCI archive already exists, reuse it to skip rebuild
     if [[ -f "${image_tar}" ]]; then
@@ -218,6 +233,8 @@ function e2e::install_old_version() {
         fi
     fi
 
+    popd
+
     echo "Loading old operator image into kind cluster"
     $V_KIND load image-archive "${image_tar}" --name "${V_KIND_CLUSTER}"
 
@@ -225,7 +242,11 @@ function e2e::install_old_version() {
     echo "Deploying old version CRDs"
     e2e::delete_crds
     local old_crd_path="${old_version_dir}/manifests/crd"
-    if ! $KUBECTL apply --server-side=true -f "${old_crd_path}"; then
+    # Source manifests contain a version placeholder, which is not valid semver.
+    # The e2e deployment enables --allow-empty-old-version: leave the annotation
+    # unset so the old operator stamps its actual binary version at startup.
+    if ! sed '/^[[:space:]]*pingcap.com\/version: ${CRD_VERSION}$/d' "${old_crd_path}"/*.yaml |
+        $KUBECTL apply --server-side=true -f -; then
         echo "Failed to apply old CRDs"
         exit 1
     fi
@@ -238,10 +259,24 @@ function e2e::install_old_version() {
     fi
 
     echo "Waiting for old operator to be ready"
-    if ! $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=condition=Available --timeout=5m deployment/tidb-operator; then
+    if ! $KUBECTL -n "$V_DEPLOY_NAMESPACE" rollout status --timeout=5m deployment/tidb-operator; then
         echo "Timed out waiting for old operator to be ready"
+        e2e::dump_operator
         exit 1
     fi
+}
+
+function e2e::dump_operator() {
+    # Best effort: diagnostic failures must not hide the original failure.
+    $KUBECTL --request-timeout=30s -n "$V_DEPLOY_NAMESPACE" get deployment,replicaset,pods -o wide || true
+    $KUBECTL --request-timeout=30s -n "$V_DEPLOY_NAMESPACE" describe pods || true
+    $KUBECTL --request-timeout=30s -n "$V_DEPLOY_NAMESPACE" get events --sort-by=.metadata.creationTimestamp || true
+    local previous
+    for previous in false true; do
+        $KUBECTL --request-timeout=30s -n "$V_DEPLOY_NAMESPACE" logs \
+            -l app.kubernetes.io/component=tidb-operator --all-containers=true \
+            --prefix=true --tail=300 --previous="$previous" || true
+    done
 }
 
 function e2e::install_ginkgo() {
