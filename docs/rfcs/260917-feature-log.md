@@ -1,5 +1,16 @@
 # Feature log generation
 
+<!-- toc -->
+- [Revisions](#revisions)
+- [Hash protocol](#hash-protocol)
+- [Generation and tests](#generation-and-tests)
+- [Lint entry point](#lint-entry-point)
+- [Append-only lint](#append-only-lint)
+- [Constructing feature gates](#constructing-feature-gates)
+- [Restart requirements](#restart-requirements)
+- [Cluster status checkpoint](#cluster-status-checkpoint)
+<!-- /toc -->
+
 Feature constants and their histories in `api/meta/v1alpha1/feature.go` are the
 inputs for generated feature histories. Definitions are private constants whose
 values are irrelevant to feature identity:
