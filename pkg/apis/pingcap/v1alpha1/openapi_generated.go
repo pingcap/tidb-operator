@@ -9809,21 +9809,21 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIChangefeedSpec(ref common.ReferenceCal
 				Properties: map[string]spec.Schema{
 					"enable": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Enable changefeed creation",
+							Description: "Enable changefeed creation. Defaults to true. When enabled, each TiCDC pod bootstraps the changefeed idempotently at startup (see the changefeed field of TiCISpec). Set to false to manage the changefeed with an external workflow.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"sinkURI": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SinkURI overrides the computed TiCI sink uri",
+							Description: "SinkURI overrides the computed TiCI sink uri, which defaults to a sink uri derived from s3. Changing the sink uri after the changefeed has been created has no effect on the existing changefeed.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"changefeedID": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ChangefeedID is the changefeed id",
+							Description: "ChangefeedID is the changefeed id. Defaults to \"tici-replication-task\". If a changefeed with the same id already exists, creation is skipped.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -10394,7 +10394,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCISpec(ref common.ReferenceCallback) com
 					},
 					"changefeed": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Changefeed controls the TiCDC changefeed creation for TiCI",
+							Description: "Changefeed controls the TiCDC changefeed that replicates change logs into the TiCI S3 storage. When enabled (the default), every TiCDC pod bootstraps the changefeed idempotently at startup: the changefeed is created via the cdc CLI if it does not exist, and creation is skipped if a changefeed with the same id already exists (e.g. one created by an external workflow). The operator never updates or deletes the changefeed afterwards. Bootstrap failures are logged in the TiCDC pod and retried via pod restarts. Set enable to false to manage the changefeed with an external workflow.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCIChangefeedSpec"),
 						},
 					},
