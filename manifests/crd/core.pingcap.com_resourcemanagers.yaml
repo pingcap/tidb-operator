@@ -72,10 +72,7 @@ spec:
               features:
                 description: Features are enabled feature
                 items:
-                  description: |-
-                    Feature defines a supported feature of a tidb cluster.
-                    NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
-                    NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                  description: Feature defines a supported feature of a TiDB cluster.
                   enum:
                   - FeatureModification
                   - VolumeAttributesClass

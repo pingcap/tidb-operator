@@ -34,6 +34,15 @@ readonly LC_ALL=C
 # All variables should be in format V_XXX
 # ---
 
+# V_REPO_REF selects the branch, tag or commit used as the comparison baseline.
+readonly V_REPO_REF=${V_REPO_REF:-"main"}
+
+# V_REPO_URL identifies the repository shared by upgrade e2e and feature-log lint.
+readonly V_REPO_URL=${V_REPO_URL:-"https://github.com/pingcap/tidb-operator.git"}
+
+# V_REPO_DIR defines the cached checkout directory for the selected revision.
+readonly V_REPO_DIR=${V_REPO_DIR:-"${ROOT}/_output/old-version-repo/${V_REPO_REF//\//-}"}
+
 # V_ARCH defines architecture, which is used to build and test
 # - amd64
 # - arm64

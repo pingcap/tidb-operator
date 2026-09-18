@@ -108,12 +108,15 @@ spec:
                 type: object
               featureGates:
                 items:
+                  description: FeatureGate is an explicit Cluster feature override.
                   properties:
+                    enabled:
+                      default: true
+                      description: Enabled overrides the default for this feature.
+                        If omitted, it defaults to true.
+                      type: boolean
                     name:
-                      description: |-
-                        Feature defines a supported feature of a tidb cluster.
-                        NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
-                        NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                      description: Feature defines a supported feature of a TiDB cluster.
                       enum:
                       - FeatureModification
                       - VolumeAttributesClass
@@ -134,17 +137,20 @@ spec:
                   required:
                   - name
                   type: object
+                maxItems: 256
                 type: array
                 x-kubernetes-list-map-keys:
                 - name
                 x-kubernetes-list-type: map
                 x-kubernetes-validations:
                 - message: can only enable FeatureModification if it's not enabled
-                  rule: oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg,
-                    fg.name != 'FeatureModification') == oldSelf
+                  rule: oldSelf.exists(fg, fg.name == 'FeatureModification' && (!has(fg.enabled)
+                    || fg.enabled)) || self.filter(fg, fg.name != 'FeatureModification')
+                    == oldSelf.filter(fg, fg.name != 'FeatureModification')
                 - message: cannot disable FeatureModification
-                  rule: self.exists(fg, fg.name == 'FeatureModification') || !oldSelf.exists(fg,
-                    fg.name == 'FeatureModification')
+                  rule: self.exists(fg, fg.name == 'FeatureModification' && (!has(fg.enabled)
+                    || fg.enabled)) || !oldSelf.exists(fg, fg.name == 'FeatureModification'
+                    && (!has(fg.enabled) || fg.enabled))
               paused:
                 description: Paused specifies whether to pause the reconciliation
                   loop for all components of the cluster.
@@ -347,42 +353,11 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              featureGates:
-                description: FeatureGates of this cluster
-                items:
-                  properties:
-                    name:
-                      description: |-
-                        Feature defines a supported feature of a tidb cluster.
-                        NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
-                        NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
-                      enum:
-                      - FeatureModification
-                      - VolumeAttributesClass
-                      - DisablePDDefaultReadinessProbe
-                      - UsePDReadyAPI
-                      - SessionTokenSigning
-                      - ClusterSubdomain
-                      - TerminableLogTailer
-                      - UseTSOReadyAPI
-                      - UseSchedulingReadyAPI
-                      - UseTiKVReadyAPI
-                      - UsePDReadyAPIV2
-                      - UseTiFlashReadyAPI
-                      - MultiPDGroup
-                      - TiCDCDynamicSecretSyncer
-                      - IndependentKVEngineWorker
-                      type: string
-                    stage:
-                      type: string
-                  required:
-                  - name
-                  - stage
-                  type: object
-                type: array
-                x-kubernetes-list-map-keys:
-                - name
-                x-kubernetes-list-type: map
+              featureGatesHash:
+                description: |-
+                  FeatureGatesHash identifies the feature definitions adopted by the operator.
+                  It is persisted before any other Cluster reconciliation changes.
+                type: string
               id:
                 description: ID is the cluster id.
                 type: string

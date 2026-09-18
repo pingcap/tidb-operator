@@ -81,8 +81,9 @@ type ClusterSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
-	// +kubebuilder:validation:XValidation:rule="oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg, fg.name != 'FeatureModification') == oldSelf",message="can only enable FeatureModification if it's not enabled"
-	// +kubebuilder:validation:XValidation:rule="self.exists(fg, fg.name == 'FeatureModification') || !oldSelf.exists(fg, fg.name == 'FeatureModification')",message="cannot disable FeatureModification"
+	// +kubebuilder:validation:MaxItems=256
+	// +kubebuilder:validation:XValidation:rule="oldSelf.exists(fg, fg.name == 'FeatureModification' && (!has(fg.enabled) || fg.enabled)) || self.filter(fg, fg.name != 'FeatureModification') == oldSelf.filter(fg, fg.name != 'FeatureModification')",message="can only enable FeatureModification if it's not enabled"
+	// +kubebuilder:validation:XValidation:rule="self.exists(fg, fg.name == 'FeatureModification' && (!has(fg.enabled) || fg.enabled)) || !oldSelf.exists(fg, fg.name == 'FeatureModification' && (!has(fg.enabled) || fg.enabled))",message="cannot disable FeatureModification"
 	// +listType=map
 	// +listMapKey=name
 	FeatureGates []meta.FeatureGate `json:"featureGates,omitempty"`
@@ -216,10 +217,10 @@ type ClusterStatus struct {
 	// e.g. https://pd:2379
 	PD string `json:"pd,omitempty"`
 
-	// FeatureGates of this cluster
-	// +listType=map
-	// +listMapKey=name
-	FeatureGates []meta.FeatureGateStatus `json:"featureGates,omitempty"`
+	// FeatureGatesHash identifies the feature definitions adopted by the operator.
+	// It is persisted before any other Cluster reconciliation changes.
+	// +optional
+	FeatureGatesHash string `json:"featureGatesHash,omitempty"`
 }
 
 type ComponentKind string

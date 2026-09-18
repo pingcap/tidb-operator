@@ -15,60 +15,30 @@
 package features
 
 import (
+	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
 
-func TestFeatureGates(t *testing.T) {
-	cases := []struct {
-		desc string
-
-		obj *v1alpha1.PD
-
-		feat    meta.Feature
-		enabled bool
-	}{
-		{
-			desc: "aaa is enabled",
-			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Spec.Features = []meta.Feature{"aaa"}
-				return obj
-			}),
-			feat:    meta.Feature("aaa"),
-			enabled: true,
-		},
-		{
-			desc: "bbb is not enabled",
-			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Spec.Features = []meta.Feature{"aaa"}
-				return obj
-			}),
-			feat:    meta.Feature("bbb"),
-			enabled: false,
-		},
-		{
-			desc: "no feature",
-			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				return obj
-			}),
-			feat:    meta.Feature("aaa"),
-			enabled: false,
-		},
+func TestClusterFeatures(t *testing.T) {
+	installTestDefaults(t)
+	disabled := false
+	enabled := true
+	spec := []meta.FeatureGate{
+		{Name: "Alpha"},
+		{Name: "Beta", Enabled: &disabled},
+		{Name: "Explicit", Enabled: &enabled},
 	}
-
-	for i := range cases {
-		c := &cases[i]
-
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
-			fg := New[scope.PD](c.obj)
-			assert.Equal(tt, c.enabled, fg.Enabled(c.feat), c.desc)
-		})
+	configured := NewFromCluster(spec)
+	want := []meta.Feature{"Alpha", "Explicit", "NewBeta"}
+	if got := ClusterFeatures(spec); !reflect.DeepEqual(got, want) {
+		t.Fatalf("wrong propagated features: got %v, want %v", got, want)
+	}
+	group := NewFromFeatures(ClusterFeatures(spec))
+	for _, name := range []meta.Feature{"Alpha", "Beta", "NewBeta", "Explicit", "Unknown"} {
+		if group.Enabled(name) != configured.Enabled(name) {
+			t.Fatalf("propagated gate mismatch for %s", name)
+		}
 	}
 }

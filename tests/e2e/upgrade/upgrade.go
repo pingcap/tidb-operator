@@ -45,7 +45,7 @@ const (
 )
 
 // RunCmd runs a command and returns its output.
-func runCmd(cmd string) (string, error) {
+func runCmd(ctx context.Context, cmd string) (string, error) {
 	// Find project root using similar method as hack/lib/e2e.sh
 	// This file is at tests/e2e/upgrade/upgrade.go, so project root is ../../../
 	_, currentFile, _, ok := runtime.Caller(0)
@@ -71,7 +71,7 @@ func runCmd(cmd string) (string, error) {
 	}
 
 	fullCmd := fmt.Sprintf("cd %s && %s", absProjectRoot, finalCmd)
-	output, err := exec.Command("bash", "-c", fullCmd).CombinedOutput()
+	output, err := exec.CommandContext(ctx, "bash", "-c", fullCmd).CombinedOutput()
 	if err != nil {
 		return string(output), fmt.Errorf("failed to run command: %s, output: %s, error: %w", fullCmd, string(output), err)
 	}
@@ -81,6 +81,34 @@ func runCmd(cmd string) (string, error) {
 var _ = ginkgo.Describe("Upgrade TiDB Operator", label.P0, func() {
 	f := framework.New()
 	f.Setup()
+
+	// JustAfterEach runs before the framework deletes the cluster and namespace.
+	ginkgo.JustAfterEach(func(ctx context.Context) {
+		if !ginkgo.CurrentSpecReport().Failed() {
+			return
+		}
+		commands := []string{
+			"source hack/lib/e2e.sh && e2e::dump_operator",
+			"kubectl --request-timeout=30s get crd clusters.core.pingcap.com -o yaml",
+		}
+		if f.Namespace != nil {
+			ns := f.Namespace.Name
+			commands = append(commands,
+				fmt.Sprintf("kubectl --request-timeout=30s -n %s get clusters,pdgroups,pds,tikvgroups,tidbgroups -o yaml", ns),
+				fmt.Sprintf("kubectl --request-timeout=30s -n %s describe pods", ns),
+				fmt.Sprintf("kubectl --request-timeout=30s -n %s get events --sort-by=.metadata.creationTimestamp", ns),
+			)
+		}
+		for _, cmd := range commands {
+			cmdCtx, cancel := context.WithTimeout(ctx, time.Minute)
+			output, err := runCmd(cmdCtx, cmd)
+			cancel()
+			ginkgo.GinkgoWriter.Printf("Diagnostics: %s\n%s\n", cmd, output)
+			if err != nil {
+				ginkgo.GinkgoWriter.Printf("Cannot collect diagnostics: %v\n", err)
+			}
+		}
+	})
 
 	ginkgo.Context("should not restart pods after upgrade", label.P0, func() {
 		ginkgo.It("with basic spec", func(ctx context.Context) {
@@ -122,14 +150,19 @@ var _ = ginkgo.Describe("Upgrade TiDB Operator", label.P0, func() {
 			gomega.Expect(f.Client.Patch(ctx, deploy, patch)).NotTo(gomega.HaveOccurred())
 
 			ginkgo.By("Waiting for new operator to be ready")
+			generation := deploy.Generation
 			gomega.Eventually(func(g gomega.Gomega) {
 				err := f.Client.Get(ctx, client.ObjectKey{
 					Namespace: operatorNs,
 					Name:      operatorDeployName,
 				}, deploy)
 				g.Expect(err).NotTo(gomega.HaveOccurred())
-				g.Expect(deploy.Status.UpdatedReplicas).To(gomega.BeNumerically(">=", 1))
-				g.Expect(deploy.Status.ReadyReplicas).To(gomega.Equal(deploy.Status.Replicas))
+				g.Expect(deploy.Status.ObservedGeneration).To(gomega.BeNumerically(">=", generation))
+				g.Expect(deploy.Spec.Replicas).NotTo(gomega.BeNil())
+				g.Expect(*deploy.Spec.Replicas).To(gomega.BeNumerically(">=", 1))
+				g.Expect(deploy.Status.UpdatedReplicas).To(gomega.Equal(*deploy.Spec.Replicas))
+				g.Expect(deploy.Status.Replicas).To(gomega.Equal(*deploy.Spec.Replicas))
+				g.Expect(deploy.Status.AvailableReplicas).To(gomega.Equal(*deploy.Spec.Replicas))
 			}).WithTimeout(3 * time.Minute).WithPolling(createClusterPolling).Should(gomega.Succeed())
 
 			ginkgo.By("Verifying pods are not restarted")
