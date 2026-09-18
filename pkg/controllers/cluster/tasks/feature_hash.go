@@ -20,32 +20,32 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
 
-// TaskFeatureGateHash persists the adopted definitions before reconciliation
+// TaskFeatureGatesHash persists the adopted definitions before reconciliation
 // changes finalizers, propagates features, or updates managed resources.
-type TaskFeatureGateHash struct {
+type TaskFeatureGatesHash struct {
 	Client client.Client
 }
 
-func NewTaskFeatureGateHash(c client.Client) task.Task[ReconcileContext] {
-	return &TaskFeatureGateHash{Client: c}
+func NewTaskFeatureGatesHash(c client.Client) task.Task[ReconcileContext] {
+	return &TaskFeatureGatesHash{Client: c}
 }
 
-func (*TaskFeatureGateHash) Name() string { return "FeatureGateHash" }
+func (*TaskFeatureGatesHash) Name() string { return "FeatureGatesHash" }
 
-func (t *TaskFeatureGateHash) Sync(ctx task.Context[ReconcileContext]) task.Result {
+func (t *TaskFeatureGatesHash) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 	hash := features.CurrentFeatureGateDefinitionHash
-	if rtx.Cluster.Status.FeatureGateHash == hash {
+	if rtx.Cluster.Status.FeatureGatesHash == hash {
 		return task.Complete().With("feature gate hash is recorded")
 	}
 	// Do not publish the new hash in the reconcile context before persistence.
 	updated := rtx.Cluster.DeepCopy()
-	updated.Status.FeatureGateHash = hash
+	updated.Status.FeatureGatesHash = hash
 	if err := t.Client.Status().Update(ctx, updated); err != nil {
 		return task.Fail().With("can't record feature gate hash: %w", err)
 	}
 	// An outdated CRD can prune unknown status fields even on successful writes.
-	if updated.Status.FeatureGateHash != hash {
+	if updated.Status.FeatureGatesHash != hash {
 		return task.Fail().With("feature gate hash was not persisted; check the Cluster CRD schema")
 	}
 	rtx.Cluster = updated

@@ -352,9 +352,9 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              featureGateHash:
+              featureGatesHash:
                 description: |-
-                  FeatureGateHash identifies the feature definitions adopted by the operator.
+                  FeatureGatesHash identifies the feature definitions adopted by the operator.
                   It is persisted before any other Cluster reconciliation changes.
                 type: string
               id:

@@ -31,7 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
 
-func TestFeatureGateHash(t *testing.T) {
+func TestFeatureGatesHash(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		previous  string
@@ -46,24 +46,24 @@ func TestFeatureGateHash(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cluster := fake.FakeObj[v1alpha1.Cluster]("test")
-			cluster.Status.FeatureGateHash = tc.previous
+			cluster.Status.FeatureGatesHash = tc.previous
 			cluster.Status.ID = "keep"
 			fc := client.NewFakeClient(cluster)
 			if tc.updateErr != nil {
 				fc.WithError("update", "clusters", tc.updateErr)
 			}
 			ctx := &ReconcileContext{Context: context.Background(), Cluster: cluster.DeepCopy()}
-			result := NewTaskFeatureGateHash(fc).Sync(ctx)
+			result := NewTaskFeatureGatesHash(fc).Sync(ctx)
 			assert.Equal(t, tc.fails, result.IsFailed())
 			assert.Equal(t, !tc.fails, result.ShouldContinue())
 			expected := features.CurrentFeatureGateDefinitionHash
 			if tc.fails {
 				expected = tc.previous
 			}
-			assert.Equal(t, expected, ctx.Cluster.Status.FeatureGateHash)
+			assert.Equal(t, expected, ctx.Cluster.Status.FeatureGatesHash)
 			stored := &v1alpha1.Cluster{}
 			require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(cluster), stored))
-			assert.Equal(t, expected, stored.Status.FeatureGateHash)
+			assert.Equal(t, expected, stored.Status.FeatureGatesHash)
 			assert.Equal(t, "keep", stored.Status.ID)
 			assert.Equal(t, cluster.Spec, stored.Spec)
 		})
@@ -79,16 +79,16 @@ func (c pruningStatusClient) Status() ctrlclient.SubResourceWriter {
 type pruningStatusWriter struct{ ctrlclient.SubResourceWriter }
 
 func (pruningStatusWriter) Update(_ context.Context, obj ctrlclient.Object, _ ...ctrlclient.SubResourceUpdateOption) error {
-	obj.(*v1alpha1.Cluster).Status.FeatureGateHash = ""
+	obj.(*v1alpha1.Cluster).Status.FeatureGatesHash = ""
 	return nil
 }
 
-func TestFeatureGateHashPruned(t *testing.T) {
+func TestFeatureGatesHashPruned(t *testing.T) {
 	cluster := fake.FakeObj[v1alpha1.Cluster]("test")
 	ctx := &ReconcileContext{Context: context.Background(), Cluster: cluster}
 	fc := pruningStatusClient{Client: client.NewFakeClient(cluster)}
-	result := NewTaskFeatureGateHash(fc).Sync(ctx)
+	result := NewTaskFeatureGatesHash(fc).Sync(ctx)
 	assert.True(t, result.IsFailed())
 	assert.False(t, result.ShouldContinue())
-	assert.Empty(t, ctx.Cluster.Status.FeatureGateHash)
+	assert.Empty(t, ctx.Cluster.Status.FeatureGatesHash)
 }

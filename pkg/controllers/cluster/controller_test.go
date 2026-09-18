@@ -56,7 +56,7 @@ func TestDMGroupEventsEnqueueCluster(t *testing.T) {
 	assert.Equal(t, expected, enqueueForGroupFunc[scope.DMWorkerGroup]()(context.Background(), dmWorkerGroup))
 }
 
-func TestFeatureGateHashBeforeClusterChanges(t *testing.T) {
+func TestFeatureGatesHashBeforeClusterChanges(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		name := "persisted"
 		if fail {
@@ -85,11 +85,11 @@ func TestFeatureGateHashBeforeClusterChanges(t *testing.T) {
 			services := &corev1.ServiceList{}
 			require.NoError(t, fc.List(ctx, services))
 			if fail {
-				assert.Empty(t, stored.Status.FeatureGateHash)
+				assert.Empty(t, stored.Status.FeatureGatesHash)
 				assert.Empty(t, stored.Finalizers)
 				assert.Empty(t, services.Items)
 			} else {
-				assert.Equal(t, features.CurrentFeatureGateDefinitionHash, stored.Status.FeatureGateHash)
+				assert.Equal(t, features.CurrentFeatureGateDefinitionHash, stored.Status.FeatureGatesHash)
 				assert.NotEmpty(t, stored.Finalizers)
 				assert.Len(t, services.Items, 1)
 			}

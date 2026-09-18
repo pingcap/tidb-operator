@@ -191,7 +191,7 @@ is separate from the stage/default history and does not change its hashes.
 
 ## Cluster status checkpoint
 
-`status.featureGateHash` records the adopted feature-definition hash. The Cluster
+`status.featureGatesHash` records the adopted feature-definition hash. The Cluster
 controller persists the current hash after loading its context and before
 changing finalizers, propagating features, or reconciling Services and other
 status fields. A failed write, conflict, or a response with the field pruned stops
