@@ -238,18 +238,9 @@ function e2e::install_old_version() {
     echo "Loading old operator image into kind cluster"
     $V_KIND load image-archive "${image_tar}" --name "${V_KIND_CLUSTER}"
 
-    # Apply CRDs from the old version
-    echo "Deploying old version CRDs"
+    # The selected old operator manages CRDs itself and recreates them at startup.
+    echo "Removing CRDs before starting the old operator"
     e2e::delete_crds
-    local old_crd_path="${old_version_dir}/manifests/crd"
-    # Source manifests contain a version placeholder, which is not valid semver.
-    # The e2e deployment enables --allow-empty-old-version: leave the annotation
-    # unset so the old operator stamps its actual binary version at startup.
-    if ! sed '/^[[:space:]]*pingcap.com\/version: ${CRD_VERSION}$/d' "${old_crd_path}"/*.yaml |
-        $KUBECTL apply --server-side=true -f -; then
-        echo "Failed to apply old CRDs"
-        exit 1
-    fi
 
     # Patch the operator deployment to use the just-built image
     echo "Updating operator deployment to old version image"
