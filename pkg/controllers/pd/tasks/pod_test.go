@@ -564,7 +564,7 @@ func TestTaskPod(t *testing.T) {
 
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
 
-			g := features.New[scope.PD](c.state.Object())
+			g := features.NewFromObject[scope.PD](c.state.Object())
 
 			if c.expectUpdatedPod {
 				expectedPod := newPod(c.state.Cluster(), c.state.PD(), g, "", "")
@@ -607,6 +607,6 @@ func transferLeader(ctx context.Context, name string, err error) action {
 }
 
 func fakePod(c *v1alpha1.Cluster, pd *v1alpha1.PD) *corev1.Pod {
-	g := features.New[scope.PD](pd)
+	g := features.NewFromObject[scope.PD](pd)
 	return newPod(c, pd, g, "", "")
 }

@@ -22,67 +22,6 @@ import (
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
-// This variable records whether a component will be restarted when enabling/disabling a feature
-// IMPORTANT: Every Feature constant defined in api/meta/v1alpha1/feature.go MUST have
-// a corresponding entry in this map. Use an empty slice {} if the feature doesn't require
-// any component restarts, or specify the affected components if it does.
-// The CI enforces this consistency with 'make verify/feature-gates'.
-// TODO: maybe moved to meta pkg
-var unreloadable = map[meta.Feature][]meta.Component{
-	meta.FeatureModification:   {},
-	meta.VolumeAttributesClass: {},
-	meta.DisablePDDefaultReadinessProbe: {
-		meta.ComponentPD,
-	},
-	meta.UsePDReadyAPI: {
-		meta.ComponentPD,
-	},
-	meta.SessionTokenSigning: {
-		meta.ComponentTiDB,
-	},
-	meta.ClusterSubdomain: {
-		meta.ComponentPD,
-		meta.ComponentTiDB,
-		meta.ComponentTiKV,
-		meta.ComponentTiFlash,
-		meta.ComponentTiCDC,
-		meta.ComponentTSO,
-		meta.ComponentScheduling,
-		meta.ComponentRouter,
-		meta.ComponentResourceManager,
-		meta.ComponentScheduler,
-		meta.ComponentTiProxy,
-		meta.ComponentTiKVWorker,
-	},
-	meta.TerminableLogTailer: {
-		meta.ComponentTiDB,
-		meta.ComponentTiFlash,
-	},
-	meta.UseTSOReadyAPI: {
-		meta.ComponentTSO,
-	},
-	meta.UseSchedulingReadyAPI: {
-		meta.ComponentScheduling,
-	},
-	meta.UseTiKVReadyAPI: {
-		meta.ComponentTiKV,
-	},
-	meta.UsePDReadyAPIV2: {
-		meta.ComponentPD,
-	},
-	meta.UseTiFlashReadyAPI: {
-		meta.ComponentTiFlash,
-	},
-	// NOTE: this feature cannot be changed now
-	meta.MultiPDGroup: {},
-	meta.TiCDCDynamicSecretSyncer: {
-		meta.ComponentTiCDC,
-	},
-	meta.IndependentKVEngineWorker: {
-		meta.ComponentTiKV,
-	},
-}
-
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {
 	updateSet, currentSet := sets.New(update...), sets.New(current...)
 

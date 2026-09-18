@@ -49,7 +49,7 @@ func (*TaskService) Name() string {
 func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
-	fg := features.NewFromFeatures(coreutil.EnabledFeatures(rtx.Cluster))
+	fg := features.NewFromCluster(rtx.Cluster.Spec.FeatureGates)
 	if fg.Enabled(metav1alpha1.ClusterSubdomain) {
 		headless := newHeadlessService(rtx.Cluster)
 		if err := t.Client.Apply(ctx, headless); err != nil {

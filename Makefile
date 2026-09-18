@@ -20,6 +20,7 @@ PD_API_PATH = $(ROOT)/pkg/timanager/apis/pd
 VALIDATION_TEST_PATH = $(ROOT)/tests/validation
 TOOLS_PATH = $(ROOT)/tools
 GO_MODULE := github.com/pingcap/tidb-operator/v2
+FEATURE_PKG_DIR = $(ROOT)/pkg/features
 OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
 RUNTIME_PKG_DIR = $(ROOT)/pkg/runtime
 BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.go.txt
@@ -117,7 +118,7 @@ gengo: bin/mockgen
 license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header fix
 
-ALL_GEN = tidy codegen crd runtimegen gengo overlaygen doc
+ALL_GEN = tidy codegen crd runtimegen gengo overlaygen featuregen doc
 .PHONY: generate
 generate: $(ALL_GEN) license
 
@@ -125,25 +126,39 @@ generate: $(ALL_GEN) license
 verify/license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header check
 
-.PHONY: verify/feature-gates
-verify/feature-gates:
-	cd $(ROOT) && go run cmd/verify-feature-gates/main.go
+.PHONY: featuregen
+featuregen: bin/feature-gen
+	$(FEATURE_GEN) \
+		--root=$(ROOT) \
+		--output-dir=$(FEATURE_PKG_DIR) \
+		--go-header-file=$(BOILERPLATE_FILE) \
+		github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1
 
 .PHONY: verify
-verify: $(addprefix verify/,$(ALL_GEN)) verify/license verify/feature-gates
+verify: $(addprefix verify/,$(ALL_GEN)) verify/license
 verify/%:
 	$(ROOT)/hack/verify.sh make $*
 
 .PHONY: lint
-lint: bin/golangci-lint
-	$(GOLANGCI_LINT) run -v ./...
+lint: bin/golangci-lint bin/feature-log-lint
+	$(ROOT)/hack/lint.sh
 
-.PHONY: lint-fix
-lint-fix: bin/golangci-lint
+.PHONY: lint/golangci
+lint/golangci: bin/golangci
+	$(ROOT)/hack/lint.sh golangci
+
+# Compare the complete PR against the fetched target revision.
+.PHONY: lint/feature-log
+lint/feature-log: bin/feature-log-lint
+	$(ROOT)/hack/lint.sh feature-log
+
+.PHONY: fix/lint
+fix/lint: bin/golangci-lint
 	$(GOLANGCI_LINT) run -v ./... --fix
 
 .PHONY: unit
 unit:
+	go test -race ./cmd/feature-gen ./cmd/feature-log-lint
 	cd $(VALIDATION_TEST_PATH) && go test -race ./...
 	go test -race $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests/e2e | grep -v third_party) \
 		-cover -coverprofile=coverage.txt -covermode=atomic
@@ -202,6 +217,14 @@ reload/operator: bin/kubectl
 .PHONY: logs/operator
 logs/operator: bin/kubectl
 	$(KUBECTL) $(KUBE_OPT) logs -f `$(KUBECTL) $(KUBE_OPT) get pods | awk '/operator/{ print $$1 }'`
+
+FEATURE_LOG_LINT = $(BIN_DIR)/feature-log-lint
+bin/feature-log-lint:
+	$(ROOT)/hack/build.sh feature-log-lint
+
+FEATURE_GEN = $(BIN_DIR)/feature-gen
+bin/feature-gen:
+	$(ROOT)/hack/build.sh feature-gen
 
 OVERLAY_GEN = $(BIN_DIR)/overlay-gen
 bin/overlay-gen:
