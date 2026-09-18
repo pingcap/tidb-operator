@@ -15,10 +15,16 @@
 package validation
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	crdvalidation "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/validation"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/defaulting"
+	"sigs.k8s.io/yaml"
 )
 
 func TestClusterFeatureGateEnabledDefault(t *testing.T) {
@@ -68,4 +74,18 @@ func TestClusterExplicitFeatureModification(t *testing.T) {
 		},
 	}
 	Validate(t, "crd/core.pingcap.com_clusters.yaml", transferClusterCases(t, cases, "spec", "featureGates"))
+}
+
+// Rule evaluation alone does not cover the static CEL cost check performed when
+// the API server registers a CRD. Exceeding that budget prevents operator startup.
+func TestClusterCRDRegistration(t *testing.T) {
+	data, err := os.ReadFile("crd/core.pingcap.com_clusters.yaml")
+	require.NoError(t, err)
+	var crd apiextensionsv1.CustomResourceDefinition
+	require.NoError(t, yaml.Unmarshal(data, &crd))
+	apiextensionsv1.SetDefaults_CustomResourceDefinition(&crd)
+	var internal apiextensions.CustomResourceDefinition
+	require.NoError(t, apiextensionsv1.Convert_v1_CustomResourceDefinition_To_apiextensions_CustomResourceDefinition(&crd, &internal, nil))
+	internal.Status.StoredVersions = []string{"v1alpha1"}
+	assert.Empty(t, crdvalidation.ValidateCustomResourceDefinition(t.Context(), &internal))
 }
