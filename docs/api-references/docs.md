@@ -18032,7 +18032,10 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Enable changefeed creation</p>
+<p>Enable changefeed creation.
+Defaults to true. When enabled, each TiCDC pod bootstraps the changefeed idempotently at
+startup (see the changefeed field of TiCISpec). Set to false to manage the changefeed with
+an external workflow.</p>
 </td>
 </tr>
 <tr>
@@ -18044,7 +18047,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SinkURI overrides the computed TiCI sink uri</p>
+<p>SinkURI overrides the computed TiCI sink uri, which defaults to a sink uri derived from s3.
+Changing the sink uri after the changefeed has been created has no effect on the existing
+changefeed.</p>
 </td>
 </tr>
 <tr>
@@ -18056,7 +18061,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ChangefeedID is the changefeed id</p>
+<p>ChangefeedID is the changefeed id.
+Defaults to &ldquo;tici-replication-task&rdquo;. If a changefeed with the same id already exists,
+creation is skipped.</p>
 </td>
 </tr>
 </tbody>
@@ -18523,7 +18530,13 @@ TiCIChangefeedSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Changefeed controls the TiCDC changefeed creation for TiCI</p>
+<p>Changefeed controls the TiCDC changefeed that replicates change logs into the TiCI S3 storage.
+When enabled (the default), every TiCDC pod bootstraps the changefeed idempotently at startup:
+the changefeed is created via the cdc CLI if it does not exist, and creation is skipped if a
+changefeed with the same id already exists (e.g. one created by an external workflow).
+The operator never updates or deletes the changefeed afterwards. Bootstrap failures are logged
+in the TiCDC pod and retried via pod restarts. Set enable to false to manage the changefeed
+with an external workflow.</p>
 </td>
 </tr>
 </tbody>

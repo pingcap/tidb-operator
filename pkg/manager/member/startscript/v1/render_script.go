@@ -201,29 +201,56 @@ CHANGEFEED_ID="%s"
 CHANGEFEED_SINK_URI='%s'
 CHANGEFEED_TLS_ARGS="%s"
 CHANGEFEED_CONFIG="/tmp/ticdc-changefeed-config.toml"
+CHANGEFEED_LOG="/tmp/ticdc-changefeed.log"
+redact() {
+    sed \
+        -e 's#://[^/@[:space:]]\+@#://<REDACTED>@#g' \
+        -e 's#secret-access-key=[^&[:space:]]*#secret-access-key=<REDACTED>#g' \
+        -e 's#access-key=[^&[:space:]]*#access-key=<REDACTED>#g' \
+        -e 's#secret-key=[^&[:space:]]*#secret-key=<REDACTED>#g' \
+        -e 's#password=[^&[:space:]]*#password=<REDACTED>#g' \
+        -e 's#token=[^&[:space:]]*#token=<REDACTED>#g' \
+        -e 's#signature=[^&[:space:]]*#signature=<REDACTED>#g'
+}
 cat <<'EOF' > "${CHANGEFEED_CONFIG}"
 [sink]
 date-separator = "none"
 EOF
+echo "tici: bootstrapping changefeed ${CHANGEFEED_ID}"
 i=0
 while [ $i -lt 15 ]; do
-    if /cdc cli capture list --server="${CHANGEFEED_SERVER}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+    if timeout 10 /cdc cli capture list --server="${CHANGEFEED_SERVER}" ${CHANGEFEED_TLS_ARGS} >"${CHANGEFEED_LOG}" 2>&1; then
         break
     fi
+    echo "tici: ticdc server is not ready yet (attempt $((i+1))/15), last error:"
+    redact < "${CHANGEFEED_LOG}" | tail -5
     i=$((i+1))
     sleep 2
 done
+if [ $i -ge 15 ]; then
+    echo "tici: ticdc server did not become ready in time; exiting to trigger pod restart"
+    exit 1
+fi
 j=0
 while [ $j -lt 15 ]; do
-    if /cdc cli changefeed query --server="${CHANGEFEED_SERVER}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+    if timeout 10 /cdc cli changefeed query --server="${CHANGEFEED_SERVER}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >"${CHANGEFEED_LOG}" 2>&1; then
+        echo "tici: changefeed ${CHANGEFEED_ID} already exists, skip creation"
         break
     fi
-    if /cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" --config="${CHANGEFEED_CONFIG}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+    echo "tici: creating changefeed ${CHANGEFEED_ID} (attempt $((j+1))/15; this can take a while on large clusters)"
+    if /cdc cli changefeed create --no-confirm --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" --config="${CHANGEFEED_CONFIG}" ${CHANGEFEED_TLS_ARGS} >"${CHANGEFEED_LOG}" 2>&1; then
+        echo "tici: changefeed ${CHANGEFEED_ID} created"
         break
     fi
+    echo "tici: changefeed create failed (attempt $((j+1))/15), last error:"
+    redact < "${CHANGEFEED_LOG}" | tail -5
     j=$((j+1))
     sleep 2
 done
+if [ $j -ge 15 ]; then
+    echo "tici: failed to bootstrap changefeed ${CHANGEFEED_ID} after 15 attempts; exiting to trigger pod restart"
+    exit 1
+fi
 wait ${CDC_PID}
 `, serverCmd, changefeedInfo.ServerAddr, changefeedInfo.ID, escapeSingleQuotes(changefeedInfo.SinkURI), changefeedInfo.TLSArgs)
 
