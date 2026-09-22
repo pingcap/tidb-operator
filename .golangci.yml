@@ -37,6 +37,11 @@ linters:
       - path: tests/
         linters:
           - gosec
+      # SecretName fields reference a Kubernetes Secret by name, not an inline credential.
+      - path: _test\.go
+        linters:
+          - gosec
+        text: "G101:"
       - path: (pkg|tests)/third_party/
         linters:
           - staticcheck

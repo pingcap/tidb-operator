@@ -279,7 +279,7 @@ function hack::ensure_misspell() {
 }
 
 function hack::ensure_golangci_lint() {
-  local version="2.8.0"
+  local version="2.13.2"
   if test -x "$OUTPUT_BIN/golangci-lint"; then
     local v=$($OUTPUT_BIN/golangci-lint --version | awk '{print $4}')
     if [[ "$v" == "$version" ]]; then
