@@ -56,7 +56,7 @@ import (
 //
 // CompactBackup observation is independent of the step dispatch. Until
 // CompactSettled is written, each Sync tries to settle it with one of the
-// marker reasons consumed by phase-2 BR: AllShardsComplete,
+// marker reasons used when creating the phase-2 Job: AllShardsComplete,
 // ShardsPartialFailed, CompactBackupMismatch, or CompactBackupWaitTimeout.
 // jobBuilderFunc produces the standard PiTR Restore Job that
 // applyReplicationPhase post-processes for one phase of a replication
@@ -388,8 +388,19 @@ func applyReplicationPhase(job *batchv1.Job, restore *v1alpha1.Restore, step str
 			job.Spec.Template.Spec.Containers[0].Args,
 			fmt.Sprintf("--replicationPhase=%d", phase),
 		)
+		if step == label.ReplicationStepLogRestoreVal && shouldDisableRetainLatestMVCCVersion(restore) {
+			job.Spec.Template.Spec.Containers[0].Args = append(
+				job.Spec.Template.Spec.Containers[0].Args,
+				"--replicationRetainLatestMVCCVersion=false",
+			)
+		}
 	}
 	return job
+}
+
+func shouldDisableRetainLatestMVCCVersion(restore *v1alpha1.Restore) bool {
+	_, c := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreCompactSettled)
+	return c != nil && c.Status == corev1.ConditionTrue && c.Reason != "AllShardsComplete"
 }
 
 // compactIsTerminal returns true if CompactBackup has reached either

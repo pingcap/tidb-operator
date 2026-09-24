@@ -36,27 +36,36 @@ func TestOptions_ReplicationPhase_DefaultsToZero(t *testing.T) {
 // PiTR); phases 1 and 2 produce the flags spec §6 mandates.
 func TestReplicationBRFlags(t *testing.T) {
 	cases := []struct {
-		phase int
-		want  []string
+		name                    string
+		phase                   int
+		retainLatestMVCCVersion bool
+		want                    []string
 	}{
-		{phase: 0, want: nil},
-		{phase: 1, want: []string{
+		{name: "standard restore", phase: 0, retainLatestMVCCVersion: true, want: nil},
+		{name: "phase 1 retains latest mvcc", phase: 1, retainLatestMVCCVersion: true, want: []string{
 			"--restore-phase=1",
 			"--pitr-concurrency=1024",
 			"--metadata-download-batch-size=512",
 			"--retain-latest-mvcc-version",
 		}},
-		{phase: 2, want: []string{
+		{name: "phase 2 retains latest mvcc after all compact shards complete", phase: 2, retainLatestMVCCVersion: true, want: []string{
 			"--restore-phase=2",
 			"--pitr-concurrency=1024",
 			"--metadata-download-batch-size=512",
 			"--retain-latest-mvcc-version",
 		}},
+		{name: "phase 2 omits retain latest mvcc when compact has failed shards", phase: 2, retainLatestMVCCVersion: false, want: []string{
+			"--restore-phase=2",
+			"--pitr-concurrency=1024",
+			"--metadata-download-batch-size=512",
+		}},
 	}
 	for _, c := range cases {
-		got := replicationBRFlags(c.phase)
-		if !reflect.DeepEqual(got, c.want) {
-			t.Fatalf("phase=%d: got %v, want %v", c.phase, got, c.want)
-		}
+		t.Run(c.name, func(t *testing.T) {
+			got := replicationBRFlags(c.phase, c.retainLatestMVCCVersion)
+			if !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("phase=%d: got %v, want %v", c.phase, got, c.want)
+			}
+		})
 	}
 }
