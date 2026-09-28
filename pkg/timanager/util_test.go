@@ -15,6 +15,7 @@
 package timanager
 
 import (
+	"context"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -24,6 +25,15 @@ import (
 
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
+
+func TestCacheStopBeforeStart(t *testing.T) {
+	c := NewCache[int, int](nil, 0, nil).(*cached[int, int])
+	c.Stop()
+	c.Start(context.Background())
+	assert.False(t, c.started, "a deregistered cache must not start asynchronously")
+	// Also clean up on the unfixed implementation.
+	c.Stop()
+}
 
 func TestList(t *testing.T) {
 	// test with a corev1.PodList

@@ -80,7 +80,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSynced[scope.TiKV](state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
 			common.TaskInstanceConditionRunning[scope.TiKV](state),
-			common.TaskInstanceConditionOffline[scope.TiKV](state),
+			task.If(PDIsSynced(state), common.TaskInstanceConditionOffline[scope.TiKV](state)),
 			common.TaskStatusPersister[scope.TiKV](state, r.Client),
 			tasks.TaskSuspendPod(state, r.Client),
 		),
