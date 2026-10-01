@@ -317,31 +317,6 @@ func (tc *TidbCluster) TiCDCVersion() string {
 	return getImageVersion(tc.TiCDCImage())
 }
 
-<<<<<<< HEAD
-=======
-// TiCIMetaVersion returns the image version used by TiCI meta.
-//
-// If TiCI meta isn't specified, return empty string.
-func (tc *TidbCluster) TiCIMetaVersion() string {
-	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil {
-		return ""
-	}
-
-	return getImageVersion(tc.TiCIMetaImage())
-}
-
-// TiCIWorkerVersion returns the image version used by TiCI worker.
-//
-// If TiCI worker isn't specified, return empty string.
-func (tc *TidbCluster) TiCIWorkerVersion() string {
-	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Worker == nil {
-		return ""
-	}
-
-	return getImageVersion(tc.TiCIWorkerImage())
-}
-
->>>>>>> f78a38073 (Fix version parsing for digest-pinned image references (#7065))
 // TiCDCGracefulShutdownTimeout returns the timeout of gracefully shutdown
 // a TiCDC pod.
 func (tc *TidbCluster) TiCDCGracefulShutdownTimeout() time.Duration {
