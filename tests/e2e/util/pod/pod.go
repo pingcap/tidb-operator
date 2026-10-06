@@ -94,3 +94,13 @@ func ListContainerFromPod(spec v1.PodSpec, pred func(container v1.Container) boo
 	}
 	return list
 }
+
+// IsPodReady returns true if the pod's Ready condition is True.
+func IsPodReady(pod *v1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == v1.PodReady {
+			return cond.Status == v1.ConditionTrue
+		}
+	}
+	return false
+}
