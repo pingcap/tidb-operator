@@ -2123,6 +2123,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					// change so the first restarts are not missed.
 					ginkgo.By("Start sampling how many TiDB pods are out of service")
 					sampleCtx, stopSampling := context.WithCancel(context.Background())
+					// Also stop sampling when a wait below aborts the spec.
+					defer stopSampling()
 					peakDown := make(chan int, 1)
 					go func() {
 						peak := 0
