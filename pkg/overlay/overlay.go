@@ -44,6 +44,9 @@ func OverlayPod(pod *corev1.Pod, overlay *v1alpha1.PodOverlay) {
 	// TODO: validate that conflict keys cannot be added into overlay
 	// But now, just overwrite the conflict keys.
 	if pod.Spec.NodeSelector != nil {
+		if src.Spec == nil {
+			src.Spec = &corev1.PodSpec{}
+		}
 		if src.Spec.NodeSelector == nil {
 			src.Spec.NodeSelector = map[string]string{}
 		}
