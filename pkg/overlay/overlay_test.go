@@ -104,6 +104,49 @@ func TestOverlayPod(t *testing.T) {
 	assert.Equal(t, int64(100), *base.Spec.TerminationGracePeriodSeconds)
 }
 
+func TestOverlayPodWithoutSpec(t *testing.T) {
+	base := corev1.Pod{}
+	base.Annotations = map[string]string{
+		"aa": "aa",
+		"zz": "123",
+	}
+	base.Labels = map[string]string{
+		"aa": "aa",
+		"zz": "123",
+	}
+	base.Spec.NodeSelector = map[string]string{
+		"aa": "aa",
+		"zz": "123",
+	}
+
+	overlay := v1alpha1.PodOverlay{}
+	overlay.Annotations = map[string]string{
+		"bb": "bb",
+		"zz": "456",
+	}
+	overlay.Labels = map[string]string{
+		"bb": "bb",
+		"zz": "456",
+	}
+
+	OverlayPod(&base, &overlay)
+
+	assert.Equal(t, map[string]string{
+		"aa": "aa",
+		"bb": "bb",
+		"zz": "456",
+	}, base.Annotations)
+	assert.Equal(t, map[string]string{
+		"aa": "aa",
+		"bb": "bb",
+		"zz": "456",
+	}, base.Labels)
+	assert.Equal(t, map[string]string{
+		"aa": "aa",
+		"zz": "123",
+	}, base.Spec.NodeSelector)
+}
+
 func randString() string {
 	return random.Random(10)
 }
