@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -2081,6 +2082,107 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
 			// the 0th container for tidb pod is slowlog, which runs busybox
 			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
+		})
+
+		// spec.tidb.upgradePolicy.maxUnavailable controls how many TiDB pods the
+		// operator restarts at the same time during a rolling update. Each case
+		// rolls a 4-replica TiDB through a config change while sampling how many
+		// pods are out of service, and expects the peak to match the budget:
+		// exactly 1 for the default serial path and exactly 2 for
+		// maxUnavailable=2 (never more, so the budget is honoured; never less,
+		// so the pods really restart in parallel).
+		ginkgo.Context("for TiDB rolling update with upgradePolicy.maxUnavailable", func() {
+			type maxUnavailableCase struct {
+				name           string
+				maxUnavailable *intstr.IntOrString
+				wantPeakDown   int
+			}
+			cases := []maxUnavailableCase{
+				{name: "default", maxUnavailable: nil, wantPeakDown: 1},
+				{name: "maxUnavailable=2", maxUnavailable: &[]intstr.IntOrString{intstr.FromInt(2)}[0], wantPeakDown: 2},
+			}
+			for i := range cases {
+				ucase := cases[i]
+				ginkgo.It(fmt.Sprintf("should restart %d TiDB pod(s) at a time with %s", ucase.wantPeakDown, ucase.name), func() {
+					const tidbReplicas = 4
+
+					ginkgo.By("Deploy initial tc")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("upgrade-max-unavail-%d", ucase.wantPeakDown), utilimage.TiDBLatest)
+					tc.Spec.TiDB.Replicas = tidbReplicas
+					tc.Spec.TiDB.UpgradePolicy.MaxUnavailable = ucase.maxUnavailable
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
+
+					ginkgo.By("Record the TiDB pods before the rolling update")
+					tidbSelector := labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String()
+					oldPods := utilpod.MustListPods(tidbSelector, ns, c)
+					framework.ExpectEqual(len(oldPods), tidbReplicas, "expected %d TiDB pods before the rolling update", tidbReplicas)
+
+					// Sample how many TiDB pods are out of service (missing,
+					// terminating, or not Ready) until the rolling update is
+					// over, keeping the peak. Sampling starts before the spec
+					// change so the first restarts are not missed.
+					ginkgo.By("Start sampling how many TiDB pods are out of service")
+					sampleCtx, stopSampling := context.WithCancel(context.Background())
+					// Also stop sampling when a wait below aborts the spec.
+					defer stopSampling()
+					peakDown := make(chan int, 1)
+					go func() {
+						peak := 0
+						defer func() { peakDown <- peak }()
+						for {
+							select {
+							case <-sampleCtx.Done():
+								return
+							case <-time.After(500 * time.Millisecond):
+							}
+							pods, err := utilpod.ListPods(tidbSelector, ns, c)
+							if err != nil {
+								log.Logf("failed to list TiDB pods while sampling: %v", err)
+								continue
+							}
+							serving := 0
+							for _, pod := range pods {
+								if pod.DeletionTimestamp == nil && utilpod.IsPodReady(&pod) {
+									serving++
+								}
+							}
+							if down := tidbReplicas - serving; down > peak {
+								peak = down
+								log.Logf("%d TiDB pod(s) out of service at the same time", down)
+							}
+						}
+					}()
+
+					ginkgo.By("Update the TiDB configuration to trigger a TiDB-only rolling update")
+					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tidbCfg := v1alpha1.NewTiDBConfig()
+						tidbCfg.Set("token-limit", 10000)
+						tc.Spec.TiDB.Config = tidbCfg
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to update TiDB configuration of TidbCluster %s/%s", ns, tc.Name)
+
+					ginkgo.By("Wait for TiDB to be in UpgradePhase")
+					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
+
+					ginkgo.By("Wait for every TiDB pod to be replaced and the cluster to be ready")
+					err = utilpod.WaitForPodsAreChanged(c, oldPods, 15*time.Minute)
+					framework.ExpectNoError(err, "failed to wait for all TiDB pods of TidbCluster %s/%s to be recreated", ns, tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready", ns, tc.Name)
+					stopSampling()
+
+					ginkgo.By("Check the TiDB StatefulSet finished the rolling update")
+					tidbSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), controller.TiDBMemberName(tc.Name), metav1.GetOptions{})
+					framework.ExpectNoError(err, "failed to get TiDB StatefulSet of TidbCluster %s/%s", ns, tc.Name)
+					framework.ExpectEqual(tidbSts.Status.UpdateRevision, tidbSts.Status.CurrentRevision, "TiDB StatefulSet should have finished the rolling update")
+					framework.ExpectEqual(tidbSts.Status.UpdatedReplicas, int32(tidbReplicas), "all TiDB pods should be on the new revision")
+
+					ginkgo.By(fmt.Sprintf("Check that at most and at least %d TiDB pod(s) were out of service at the same time", ucase.wantPeakDown))
+					peak := <-peakDown
+					framework.ExpectEqual(peak, ucase.wantPeakDown, "peak number of TiDB pods out of service during the rolling update")
+				})
+			}
 		})
 
 		ginkgo.It("for configuration update", func() {
