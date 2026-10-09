@@ -227,7 +227,6 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 				m.logger.Error(err, "failed to add event handler")
 			}
 			cacheObj.Start(m.ctx)
-			f.WaitForCacheSync(m.ctx.Done())
 		}()
 	}
 

@@ -139,13 +139,27 @@ func (p *poller[T, PT, L]) Run(ctx context.Context, ch chan<- watch.Event) {
 	p.lock.Unlock()
 
 	nctx := p.renew(ctx)
-	defer p.Stop()
+	forwarded := make(chan struct{})
+	defer func() {
+		p.Stop()
+		// The caller may close ch once Run returns, so wait for the forwarding
+		// goroutine to exit before returning.
+		<-forwarded
+	}()
 
 	go func() {
+		defer close(forwarded)
 		for {
 			select {
-			case event := <-p.resultCh:
-				ch <- event
+			case event, ok := <-p.resultCh:
+				if !ok {
+					return
+				}
+				select {
+				case ch <- event:
+				case <-nctx.Done():
+					return
+				}
 			case <-nctx.Done():
 				return
 			}
@@ -161,22 +175,29 @@ func (p *poller[T, PT, L]) Run(ctx context.Context, ch chan<- watch.Event) {
 			return
 		case <-p.refreshCh:
 			p.logger.Info("poller refresh", "cluster", p.name, "kind", p.typeName)
-			p.poll(ctx)
+			p.poll(nctx)
 		case <-timer.C:
 			p.logger.Info("poller poll", "cluster", p.name, "kind", p.typeName)
-			p.poll(ctx)
+			p.poll(nctx)
 		}
 		timer.Reset(p.interval)
 	}
 }
 
 func (p *poller[T, PT, L]) Refresh() {
-	p.refreshCh <- struct{}{}
+	select {
+	case p.refreshCh <- struct{}{}:
+	default:
+		// A refresh is already pending; callers may still hold a stopped cache.
+	}
 }
 
 func (p *poller[T, PT, L]) poll(ctx context.Context) {
 	list, err := p.lister.List(ctx)
 	if err != nil {
+		if ctx.Err() != nil {
+			return
+		}
 		p.logger.Error(err, "poll err", "cluster", p.name, "type", new(T))
 		p.markStateInvalid(ctx)
 		return

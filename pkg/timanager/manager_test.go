@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -149,6 +151,60 @@ func TestClientManager(t *testing.T) {
 			_, ok2 := cm.Get(updated.GetName())
 			assert.False(tt, ok2)
 		})
+	}
+}
+
+type countingStoreLister struct {
+	*FakeLister[pdv1.Store, *pdv1.Store]
+	calls atomic.Int64
+}
+
+func (l *countingStoreLister) List(ctx context.Context) (*List[pdv1.Store, *pdv1.Store], error) {
+	l.calls.Add(1)
+	return l.FakeLister.List(ctx)
+}
+
+type trackedPoller struct {
+	Poller
+	done chan struct{}
+}
+
+func (p *trackedPoller) Run(ctx context.Context, ch chan<- watch.Event) {
+	defer close(p.done)
+	p.Poller.Run(ctx, ch)
+}
+
+func TestClientManagerDeregisterStopsPolling(t *testing.T) {
+	lister := &countingStoreLister{FakeLister: NewFakeLister([]pdv1.Store{})}
+	var pollerDone chan struct{}
+	m := NewManagerBuilder[client.Object, int, int]().
+		WithNewUnderlayClientFunc(func(client.Object) (int, error) { return 0, nil }).
+		WithCacheKeysFunc(func(obj client.Object) ([]string, error) { return []string{obj.GetName()}, nil }).
+		WithNewClientFunc(func(_ client.Object, _ int, f SharedInformerFactory[int]) (int, error) {
+			f.InformerFor(&pdv1.Store{})
+			return 0, nil
+		}).
+		WithNewPollerFunc(&pdv1.Store{}, func(name string, logger logr.Logger, _ int) Poller {
+			pollerDone = make(chan struct{})
+			return &trackedPoller{
+				Poller: NewPoller(name, logger, lister, NewDeepEquality[pdv1.Store](logger), 5*time.Millisecond),
+				done:   pollerDone,
+			}
+		}).Build()
+	m.Start(t.Context())
+	t.Cleanup(func() { m.Deregister("test") })
+	for range 2 {
+		before := lister.calls.Load()
+		require.NoError(t, m.Register(fake.FakeObj[corev1.Pod]("test")))
+		require.Eventually(t, func() bool { return lister.calls.Load() > before+1 }, time.Second, time.Millisecond)
+		m.Deregister("test")
+		select {
+		case <-pollerDone:
+		case <-time.After(time.Second):
+			t.Fatal("deregister did not stop the poller")
+		}
+		stopped := lister.calls.Load()
+		require.Never(t, func() bool { return lister.calls.Load() != stopped }, 30*time.Millisecond, time.Millisecond)
 	}
 }
 

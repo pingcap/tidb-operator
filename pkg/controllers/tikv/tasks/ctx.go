@@ -64,6 +64,9 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		ck := state.Cluster()
 		c, ok := state.GetPDClient(cm)
 		if !ok {
+			if coreutil.ShouldSuspendCompute(ck) && state.Pod() == nil {
+				return task.Complete().With("suspended instance does not need a pd client")
+			}
 			// We have to retry here because the store may be removed and cannot trigger the changes
 			return task.Retry(defaultTaskWaitDuration).With("pd client is not registered")
 		}
