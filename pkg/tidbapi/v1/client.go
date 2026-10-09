@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -28,11 +29,18 @@ import (
 )
 
 const (
-	statusPath           = "status"
-	infoPath             = "info"
-	labelsPath           = "labels"
-	tidbPoolActivatePath = "tidb-pool/activate"
-	tidbPoolStatusPath   = "tidb-pool/status"
+	statusPath            = "status"
+	infoPath              = "info"
+	labelsPath            = "labels"
+	tidbPoolActivatePath  = "tidb-pool/activate"
+	tidbPoolStatusPath    = "tidb-pool/status"
+	tidbUpgradeStartPath  = "upgrade/start"
+	tidbUpgradeFinishPath = "upgrade/finish"
+
+	tidbUpgradeSuccessBody            = "success!"
+	tidbUpgradeDuplicateUpgradingBody = "It's a duplicated operation and the cluster is already in upgrading state."
+	tidbUpgradeDuplicateNormalBody    = "It's a duplicated operation and the cluster is already in normal state."
+	tidbUpgradeStartTimeout           = 30 * time.Second
 )
 
 // TiDBClient provides TiDB server's APIs used by TiDB Operator.
@@ -48,6 +56,11 @@ type TiDBClient interface {
 	GetPoolStatus(ctx context.Context) (*PoolStatus, error)
 	// Activate sets the keyspace of a standby TiDB instance.
 	Activate(ctx context.Context, keyspace string) error
+
+	// StartUpgrade sets TiDB cluster upgrade state before rolling TiDB binaries.
+	StartUpgrade(ctx context.Context) error
+	// FinishUpgrade clears TiDB cluster upgrade state after rolling TiDB binaries.
+	FinishUpgrade(ctx context.Context) error
 }
 
 // tidbClient is the default implementation of TiDBClient.
@@ -152,4 +165,60 @@ func (c *tidbClient) GetPoolStatus(ctx context.Context) (*PoolStatus, error) {
 		return nil, err
 	}
 	return &status, nil
+}
+
+func (c *tidbClient) StartUpgrade(ctx context.Context) error {
+	return c.upgrade(ctx, tidbUpgradeStartPath, tidbUpgradeDuplicateUpgradingBody, tidbUpgradeStartTimeout)
+}
+
+func (c *tidbClient) FinishUpgrade(ctx context.Context) error {
+	return c.upgrade(ctx, tidbUpgradeFinishPath, tidbUpgradeDuplicateNormalBody, 0)
+}
+
+func (c *tidbClient) upgrade(ctx context.Context, path, duplicateSuccessBody string, timeout time.Duration) error {
+	httpClient := c.httpClient
+	if timeout != 0 {
+		transport := http.DefaultTransport
+		if c.httpClient.Transport != nil {
+			transport = c.httpClient.Transport
+		}
+		httpClient = &http.Client{
+			Timeout:   timeout,
+			Transport: transport,
+		}
+	}
+
+	apiURL := fmt.Sprintf("%s/%s", c.url, path)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	res, err := httpClient.Do(req) //nolint:gosec // G704: URL is constructed from trusted internal config
+	if err != nil {
+		return err
+	}
+	defer httputil.DeferClose(res.Body)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	bodyText := string(body)
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("tidb %s error response %d %q URL: %s", path, res.StatusCode, bodyText, apiURL)
+	}
+	successText := normalizeTiDBUpgradeResponse(body)
+	if successText == tidbUpgradeSuccessBody || successText == duplicateSuccessBody {
+		return nil
+	}
+	return fmt.Errorf("tidb %s unexpected response %d %q URL: %s", path, res.StatusCode, bodyText, apiURL)
+}
+
+func normalizeTiDBUpgradeResponse(body []byte) string {
+	var decoded string
+	if err := json.Unmarshal(body, &decoded); err == nil {
+		return decoded
+	}
+	return string(body)
 }
