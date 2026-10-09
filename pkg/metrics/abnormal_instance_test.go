@@ -119,7 +119,7 @@ func TestObserveCondition(t *testing.T) {
 			if !tc.omitCond {
 				conds = []metav1.Condition{{Type: tc.condType, Status: tc.status}}
 			}
-			ObserveCondition(obj, conds, tc.condType)
+			ObserveCondition(obj, conds, tc.condType, nil)
 
 			val, present := abnormalGaugeValue(t, instanceName, tc.condType)
 			require.True(t, present)
@@ -130,13 +130,71 @@ func TestObserveCondition(t *testing.T) {
 	}
 }
 
+func TestObserveConditionSuspend(t *testing.T) {
+	cases := []struct {
+		name     string
+		condType string
+		reason   string
+		suspend  bool
+		want     float64
+	}{
+		{"suspended pod absent", v1alpha1.CondReady, v1alpha1.ReasonPodNotCreated, true, 0},
+		{"suspending pod terminating", v1alpha1.CondReady, v1alpha1.ReasonPodTerminating, true, 0},
+		{"suspended pod not ready", v1alpha1.CondReady, v1alpha1.ReasonPodNotReady, true, 1},
+		{"suspended instance unhealthy", v1alpha1.CondReady, v1alpha1.ReasonInstanceNotHealthy, true, 1},
+		{"suspend deletion stuck", v1alpha1.CondSynced, v1alpha1.ReasonPodNotDeleted, true, 1},
+		{"resume pod absent", v1alpha1.CondReady, v1alpha1.ReasonPodNotCreated, false, 1},
+		{"resume pod terminating", v1alpha1.CondReady, v1alpha1.ReasonPodTerminating, false, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			obj := newTiKVForMetricTest(tc.name)
+			defer ClearInstanceConditionMetrics(obj)
+			cluster := &v1alpha1.Cluster{}
+			cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: tc.suspend}
+			conds := []metav1.Condition{
+				{Type: tc.condType, Status: metav1.ConditionFalse, Reason: tc.reason},
+				// This can remain True immediately after resume; desired state takes precedence.
+				{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonSuspended},
+			}
+			ObserveCondition(obj, conds, tc.condType, cluster)
+			val, present := abnormalGaugeValue(t, obj.Name, tc.condType)
+			require.True(t, present)
+			assert.Equal(t, tc.want, val)
+			assert.True(t, gaugeSeriesExists(t, obj.Name, tc.condType))
+			assert.Equal(t, metav1.ConditionFalse, conds[0].Status, "metrics must not change readiness")
+		})
+	}
+}
+
+func TestObserveConditionsSuspendResume(t *testing.T) {
+	obj := newTiKVForMetricTest("suspend-resume")
+	defer ClearInstanceConditionMetrics(obj)
+	cluster := &v1alpha1.Cluster{}
+	cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
+	conds := []metav1.Condition{
+		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonPodNotCreated},
+		{Type: v1alpha1.CondSynced, Status: metav1.ConditionTrue},
+		{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue},
+	}
+	ObserveConditions(obj, conds, cluster)
+	val, _ := abnormalGaugeValue(t, obj.Name, v1alpha1.CondReady)
+	assert.Equal(t, float64(0), val)
+	val, _ = abnormalGaugeValue(t, obj.Name, v1alpha1.CondSynced)
+	assert.Equal(t, float64(0), val)
+	cluster.Spec.SuspendAction.SuspendCompute = false
+	ObserveConditions(obj, conds, cluster)
+	val, _ = abnormalGaugeValue(t, obj.Name, v1alpha1.CondReady)
+	assert.Equal(t, float64(1), val)
+}
+
 func TestClearInstanceConditionMetrics(t *testing.T) {
 	name := "tikv-clear"
 	obj := newTiKVForMetricTest(name)
 
 	// Pre-populate both tracked conditions.
-	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced)
-	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
+	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced, nil)
+	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady, nil)
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced))
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady))
 
@@ -153,8 +211,8 @@ func TestClearInstanceConditionMetricsByKey(t *testing.T) {
 	obj := newTiKVForMetricTest(name)
 
 	// Seed two series under the normal labels.
-	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced)
-	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
+	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced, nil)
+	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady, nil)
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced))
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady))
 
@@ -167,7 +225,7 @@ func TestClearInstanceConditionMetricsByKey(t *testing.T) {
 	// Seed a sibling instance (same namespace + same component) that must
 	// survive the partial-match clear.
 	sibling := newTiKVForMetricTest("tikv-sibling")
-	ObserveCondition(sibling, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
+	ObserveCondition(sibling, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady, nil)
 	defer ClearInstanceConditionMetrics(sibling)
 
 	// Seed another component that happens to share namespace + instance name

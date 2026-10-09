@@ -25,9 +25,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		common.TaskContextObject[scope.Router](state, r.Client),
 		common.TaskTrack[scope.Router](state, r.Tracker),
-		// refresh the abnormal_instance gauge, or clear it if the CR is gone
-		common.TaskObserveInstance[scope.Router](state),
-		task.IfBreak(common.CondObjectHasBeenDeleted[scope.Router](state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.Router](state), common.TaskObserveInstance[scope.Router](state)),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.Router](state),
 			common.TaskInstanceFinalizerDel[scope.Router](state, r.Client, common.DefaultInstanceSubresourceLister),
@@ -38,6 +36,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		common.TaskContextCluster[scope.Router](state, r.Client),
+		common.TaskObserveInstance[scope.Router](state),
 		task.IfBreak(common.CondClusterIsPaused(state)),
 		task.IfBreak(common.CondClusterIsDeleting(state),
 			common.TaskInstanceFinalizerDel[scope.Router](state, r.Client, common.DefaultInstanceSubresourceLister),

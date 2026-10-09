@@ -26,12 +26,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get DMWorker instance
 		common.TaskContextObject[scope.DMWorker](state, r.Client),
 		common.TaskTrack[scope.DMWorker](state, r.Tracker),
-		common.TaskObserveInstance[scope.DMWorker](state),
 		// if it's deleted just return
-		task.IfBreak(common.CondObjectHasBeenDeleted[scope.DMWorker](state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.DMWorker](state), common.TaskObserveInstance[scope.DMWorker](state)),
 
 		// get cluster info
 		common.TaskContextCluster[scope.DMWorker](state, r.Client),
+		common.TaskObserveInstance[scope.DMWorker](state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
