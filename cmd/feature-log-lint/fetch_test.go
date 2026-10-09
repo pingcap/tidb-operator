@@ -70,8 +70,13 @@ func TestFetchOldVersion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if actual != checkout {
-			t.Fatalf("stdout must contain only checkout path, got %q", actual)
+		// repo::fetch returns pwd -P, which resolves symlinked temp directories.
+		physicalCheckout, err := filepath.EvalSymlinks(checkout)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if actual != physicalCheckout {
+			t.Fatalf("stdout must contain only checkout path %q, got %q", physicalCheckout, actual)
 		}
 		if actual := git(checkout, "rev-parse", "HEAD"); actual != want {
 			t.Fatalf("want %s, got %s", want, actual)

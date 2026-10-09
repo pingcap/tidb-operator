@@ -144,7 +144,7 @@ lint: bin/golangci-lint bin/feature-log-lint
 	$(ROOT)/hack/lint.sh
 
 .PHONY: lint/golangci
-lint/golangci: bin/golangci
+lint/golangci: bin/golangci-lint
 	$(ROOT)/hack/lint.sh golangci
 
 # Compare the complete PR against the fetched target revision.
