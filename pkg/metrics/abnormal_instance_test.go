@@ -160,7 +160,7 @@ func TestObserveConditionSuspend(t *testing.T) {
 			ObserveCondition(obj, conds, tc.condType, cluster)
 			val, present := abnormalGaugeValue(t, obj.Name, tc.condType)
 			require.True(t, present)
-			assert.Equal(t, tc.want, val)
+			assert.InDelta(t, tc.want, val, 1e-9)
 			assert.True(t, gaugeSeriesExists(t, obj.Name, tc.condType))
 			assert.Equal(t, metav1.ConditionFalse, conds[0].Status, "metrics must not change readiness")
 		})
@@ -179,13 +179,13 @@ func TestObserveConditionsSuspendResume(t *testing.T) {
 	}
 	ObserveConditions(obj, conds, cluster)
 	val, _ := abnormalGaugeValue(t, obj.Name, v1alpha1.CondReady)
-	assert.Equal(t, float64(0), val)
+	assert.InDelta(t, float64(0), val, 1e-9)
 	val, _ = abnormalGaugeValue(t, obj.Name, v1alpha1.CondSynced)
-	assert.Equal(t, float64(0), val)
+	assert.InDelta(t, float64(0), val, 1e-9)
 	cluster.Spec.SuspendAction.SuspendCompute = false
 	ObserveConditions(obj, conds, cluster)
 	val, _ = abnormalGaugeValue(t, obj.Name, v1alpha1.CondReady)
-	assert.Equal(t, float64(1), val)
+	assert.InDelta(t, float64(1), val, 1e-9)
 }
 
 func TestClearInstanceConditionMetrics(t *testing.T) {

@@ -142,7 +142,7 @@ func TestTaskObserveInstanceSuspendResume(t *testing.T) {
 		if suspend {
 			want = 0
 		}
-		assert.Equal(t, want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(ns, "", "", "", name, v1alpha1.CondReady)))
+		assert.InDelta(t, want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(ns, "", "", "", name, v1alpha1.CondReady)), 1e-9)
 	}
 }
 
@@ -179,8 +179,8 @@ func TestTaskContextClusterObservesInstanceOnError(t *testing.T) {
 			assert.Equal(t, task.SFail, res.Status())
 			assert.False(t, done)
 			require.True(t, hasGaugeSample(t, obj.Namespace, obj.Name), "fallback must publish metrics before returning the error")
-			assert.Equal(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)))
-			assert.Equal(t, float64(1), testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondSynced)))
+			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
+			assert.InDelta(t, float64(1), testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondSynced)), 1e-9)
 		})
 	}
 }
@@ -212,7 +212,7 @@ func TestTaskContextClusterObservationRecovers(t *testing.T) {
 	require.Equal(t, task.SFail, res.Status())
 	require.True(t, hasGaugeSample(t, obj.Namespace, obj.Name))
 	gauge := metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)
-	assert.Equal(t, float64(1), testutil.ToFloat64(gauge))
+	assert.InDelta(t, float64(1), testutil.ToFloat64(gauge), 1e-9)
 
 	cluster := &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: obj.Namespace, Name: "c"}}
 	cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
@@ -223,5 +223,5 @@ func TestTaskContextClusterObservationRecovers(t *testing.T) {
 	}{&fakeState[v1alpha1.PD]{ns: obj.Namespace, name: obj.Name, obj: obj}, state}
 	res, _ = task.RunTask(ctx, task.Block(TaskContextCluster[scope.PD](state, fc), TaskObserveInstance[scope.PD](observeState)))
 	require.Equal(t, task.SComplete, res.Status())
-	assert.Equal(t, float64(0), testutil.ToFloat64(gauge), "successful Cluster read must restore suspend filtering")
+	assert.InDelta(t, float64(0), testutil.ToFloat64(gauge), 1e-9, "successful Cluster read must restore suspend filtering")
 }

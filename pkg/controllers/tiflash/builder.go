@@ -29,7 +29,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextObject[scope.TiFlash](state, r.Client),
 		common.TaskTrack[scope.TiFlash](state, r.Tracker),
 		// if it's deleted just return
-		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlash](state), common.TaskObserveInstance[scope.TiFlash](state), tasks.TaskDeregisterTiFlashClient(state, r.TiFlashClientManager)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlash](state),
+			common.TaskObserveInstance[scope.TiFlash](state),
+			tasks.TaskDeregisterTiFlashClient(state, r.TiFlashClientManager),
+		),
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiFlash](state, r.Client),

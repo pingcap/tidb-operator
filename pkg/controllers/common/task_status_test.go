@@ -1726,7 +1726,7 @@ func TestTaskInstanceConditionReadySuspend(t *testing.T) {
 			require.Len(t, obj.Status.Conditions, 1)
 			assert.Equal(t, metav1.ConditionFalse, obj.Status.Conditions[0].Status)
 			assert.Equal(t, reason, obj.Status.Conditions[0].Reason)
-			assert.Equal(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)))
+			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
 		})
 	}
 }
