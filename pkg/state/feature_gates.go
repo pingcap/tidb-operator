@@ -16,7 +16,6 @@ package state
 
 import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -44,12 +43,11 @@ type featureGates[
 
 func (s *featureGates[S, F, T]) FeatureGates() features.Gates {
 	if s.gates == nil {
-		gates := features.New[S](s.obj.Object())
+		gates := features.NewFromObject[S](s.obj.Object())
 		// if feature modification is not enabled, use features defined in cluster directly
 		if !gates.Enabled(metav1alpha1.FeatureModification) {
 			c := s.obj.Cluster()
-			fs := coreutil.EnabledFeatures(c)
-			s.gates = features.NewFromFeatures(fs)
+			s.gates = features.NewFromCluster(c.Spec.FeatureGates)
 		} else {
 			s.gates = gates
 		}

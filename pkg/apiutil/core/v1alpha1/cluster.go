@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
 )
 
 // ShouldSuspendCompute returns whether the cluster should suspend compute.
@@ -46,22 +47,11 @@ func ShouldPauseReconcile(c *v1alpha1.Cluster) bool {
 }
 
 func EnabledFeatures(c *v1alpha1.Cluster) []metav1alpha1.Feature {
-	fs := make([]metav1alpha1.Feature, 0, len(c.Spec.FeatureGates))
-	for _, fg := range c.Spec.FeatureGates {
-		fs = append(fs, fg.Name)
-	}
-
-	return fs
+	return features.ClusterFeatures(c.Spec.FeatureGates)
 }
 
 func IsFeatureEnabled(c *v1alpha1.Cluster, f metav1alpha1.Feature) bool {
-	for _, fg := range c.Spec.FeatureGates {
-		if fg.Name == f {
-			return true
-		}
-	}
-
-	return false
+	return features.NewFromCluster(c.Spec.FeatureGates).Enabled(f)
 }
 
 // ClusterSubdomain returns the subdomain for all components of the cluster

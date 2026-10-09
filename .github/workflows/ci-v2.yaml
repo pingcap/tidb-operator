@@ -108,6 +108,11 @@ jobs:
       with:
         go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
+    - name: lint feature history
+      if: github.event_name == 'pull_request'
+      env:
+        V_REPO_REF: ${{ github.event.pull_request.base.sha }}
+      run: make lint/feature-log
     - name: verify
       run: |
         make verify

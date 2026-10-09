@@ -14,38 +14,25 @@
 
 package features
 
-import (
-	"k8s.io/apimachinery/pkg/util/sets"
+import meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-)
-
-type Gates interface {
-	Enabled(feat meta.Feature) bool
-}
-
-type gates struct {
-	s sets.Set[meta.Feature]
-}
-
-func (g *gates) Enabled(feat meta.Feature) bool {
-	return g.s.Has(feat)
-}
-
-func New[
-	S scope.Object[F, T],
-	F client.Object,
-	T runtime.Object,
-](obj F) Gates {
-	return NewFromFeatures(coreutil.Features[S](obj))
-}
-
-func NewFromFeatures(fs []meta.Feature) Gates {
-	return &gates{
-		s: sets.New(fs...),
+// ClusterFeatures returns the effective list to propagate to Groups/Instances.
+// Explicit entries retain spec order; default-only entries follow log order.
+func ClusterFeatures(fs []meta.FeatureGate) []meta.Feature {
+	configured := NewFromCluster(fs)
+	enabled := make([]meta.Feature, 0, len(fs))
+	seen := make(map[meta.Feature]bool)
+	appendEnabled := func(name meta.Feature) {
+		if !seen[name] && configured.Enabled(name) {
+			enabled = append(enabled, name)
+			seen[name] = true
+		}
 	}
+	for _, feature := range fs {
+		appendEnabled(feature.Name)
+	}
+	for _, feature := range logs[len(logs)-1] {
+		appendEnabled(feature.Name)
+	}
+	return enabled
 }

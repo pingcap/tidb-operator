@@ -12,56 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This file defines feature constants and their append-only histories for feature-gen.
+// The generated definitions in zz_generated.features.go are used at runtime.
 package v1alpha1
-
-// Feature defines a supported feature of a tidb cluster.
-// NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
-// NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
-//
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup;TiCDCDynamicSecretSyncer;IndependentKVEngineWorker
-// +enum
-type Feature string
-
-type FeatureStage string
-
-const (
-	FeatureStageAlpha      FeatureStage = "ALPHA"
-	FeatureStageBeta       FeatureStage = "BETA"
-	FeatureStageStable     FeatureStage = "STABLE"
-	FeatureStageDeprecated FeatureStage = "DEPRECATED"
-)
-
-type FeatureGate struct {
-	Name Feature `json:"name"`
-}
-
-type FeatureGateStatus struct {
-	FeatureGate `json:",inline"`
-	Stage       FeatureStage `json:"stage"`
-}
 
 const (
 	// Support modify feature after cluster creation
 	// Now enable/disable any features will update groups by rolling update
 	// This feature cannot be disabled
-	FeatureModification      Feature      = "FeatureModification"
-	FeatureModificationStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_FeatureModification = iota
 
 	// Support modify volume by VolumeAttributesClass
-	VolumeAttributesClass      Feature      = "VolumeAttributesClass"
-	VolumeAttributesClassStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_VolumeAttributesClass
 
 	// Disable PD's default readiness probe
 	// Now the pd's default readiness probe use TCP to probe client port
 	// It's not useful and will print so many warn logs in PD's stdout/stderr
-	DisablePDDefaultReadinessProbe      Feature      = "DisablePDDefaultReadinessProbe"
-	DisablePDDefaultReadinessProbeStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=pd
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_DisablePDDefaultReadinessProbe
 
 	// Deprecated: use UsePDReadyAPIV2
 	// UsePDReadyAPI means use PD's /ready API as the readiness probe.
 	// It requires PD v8.5.2 or later.
-	UsePDReadyAPI      Feature      = "UsePDReadyAPI"
-	UsePDReadyAPIStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=pd
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_UsePDReadyAPI
 
 	// SessionTokenSigning means tidb operator will always set the two tiproxy related configs for tidb:
 	// - `session-token-signing-cert`
@@ -72,51 +56,73 @@ const (
 	// By default, tidb operator will use the cluster TLS cert as the session token signing cert and key.
 	// If different TiDBGroups use different cluster TLS certs, or you want to use custom TLS certs for session token signing,
 	// you can specify it via `cluster.spec.security.sessionTokenSigningCertKeyPair`, with this feature enabled.
-	SessionTokenSigning      Feature      = "SessionTokenSigning"
-	SessionTokenSigningStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=tidb
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_SessionTokenSigning
 
 	// If this feature is enabled, all instances will use a same headless svc as their subdomain
-	ClusterSubdomain      Feature      = "ClusterSubdomain"
-	ClusterSubdomainStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=*
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_ClusterSubdomain
 
 	// If this feature is enabled, log tailer in sidecar can exit immediately after main container is exited
-	TerminableLogTailer      Feature      = "TerminableLogTailer"
-	TerminableLogTailerStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=tidb,tiflash
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_TerminableLogTailer
 
 	// UseTSOReadyAPI calls /health api to check readiness for tso pods
-	UseTSOReadyAPI      Feature      = "UseTSOReadyAPI"
-	UseTSOReadyAPIStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=tso
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_UseTSOReadyAPI
 
 	// UseSchedulingReadyAPI calls /health api to check readiness for scheduling pods.
-	UseSchedulingReadyAPI      Feature      = "UseSchedulingReadyAPI"
-	UseSchedulingReadyAPIStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=scheduling
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_UseSchedulingReadyAPI
 
 	// UseTiKVReadyAPI means use TiKV's /ready API as the readiness probe.
-	UseTiKVReadyAPI      Feature      = "UseTiKVReadyAPI"
-	UseTiKVReadyAPIStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=tikv
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_UseTiKVReadyAPI
 
 	// UsePDReadyAPIV2 means use PD's /readyz API as the readiness probe.
-	UsePDReadyAPIV2      Feature      = "UsePDReadyAPIV2"
-	UsePDReadyAPIV2Stage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=pd
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_UsePDReadyAPIV2
 
 	// UseTiFlashReadyAPI means use TiFlash's /readyz API as the readiness probe.
-	UseTiFlashReadyAPI      Feature      = "UseTiFlashReadyAPI"
-	UseTiFlashReadyAPIStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=tiflash
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_UseTiFlashReadyAPI
 
 	// If this feature is enabled
 	// - More than one pd group can be created for one cluster.
 	// - A new PD service will be created for all PDGroups.
 	// - The default internal pd svc of the PDGroup will be not created.
 	// - Cannot customize advertised client port
-	MultiPDGroup      Feature      = "MultiPDGroup"
-	MultiPDGroupStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_MultiPDGroup
 
 	// If this feature is enabled, TiCDC pods can dynamically load secrets with specific labels into pods
-	TiCDCDynamicSecretSyncer      Feature      = "TiCDCDynamicSecretSyncer"
-	TiCDCDynamicSecretSyncerStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=ticdc
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_TiCDCDynamicSecretSyncer
 
 	// By default, kvengine.remote-worker-addr follows the coprocessor ref.
 	// If this feature is enabled, kvengine.remote-worker-addr will use the default worker ref.
-	IndependentKVEngineWorker      Feature      = "IndependentKVEngineWorker"
-	IndependentKVEngineWorkerStage FeatureStage = FeatureStageAlpha
+	//
+	// +feature:unreloadable=tikv
+	// +feature:log=rev=0,stage=ALPHA,default=false
+	_IndependentKVEngineWorker
 )

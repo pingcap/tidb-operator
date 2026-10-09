@@ -204,7 +204,9 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 	if in.FeatureGates != nil {
 		in, out := &in.FeatureGates, &out.FeatureGates
 		*out = make([]metav1alpha1.FeatureGate, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.CustomizedPDServiceName != nil {
 		in, out := &in.CustomizedPDServiceName, &out.CustomizedPDServiceName
@@ -248,11 +250,6 @@ func (in *ClusterStatus) DeepCopyInto(out *ClusterStatus) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
-	}
-	if in.FeatureGates != nil {
-		in, out := &in.FeatureGates, &out.FeatureGates
-		*out = make([]metav1alpha1.FeatureGateStatus, len(*in))
-		copy(*out, *in)
 	}
 	return
 }
