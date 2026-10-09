@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -30,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -468,6 +470,7 @@ func TestTaskInstanceConditionReady(t *testing.T) {
 
 			ctrl := gomock.NewController(tt)
 			state := NewMockInstanceCondReadyUpdater[*v1alpha1.PD](ctrl)
+			state.EXPECT().Cluster().Return(nil)
 			state.EXPECT().Object().Return(c.obj)
 			state.EXPECT().Pod().Return(c.pod)
 			switch {
@@ -1685,6 +1688,45 @@ func TestTaskGroupStatusSelector(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 			assert.Equal(tt, c.expectedObj.Status, c.obj.Status, c.desc)
+		})
+	}
+}
+
+func TestTaskInstanceConditionReadySuspend(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		terminating bool
+		suspend     bool
+		want        float64
+	}{
+		{"suspend absent", false, true, 0},
+		{"suspend terminating", true, true, 0},
+		{"resume absent", false, false, 1},
+		{"resume terminating", true, false, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			obj := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Namespace: "ready-suspend", Name: tc.name}}
+			defer metrics.ClearInstanceConditionMetrics(obj)
+			cluster := &v1alpha1.Cluster{}
+			cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: tc.suspend}
+			state := NewMockInstanceCondReadyUpdater[*v1alpha1.PD](gomock.NewController(t))
+			state.EXPECT().Object().Return(obj)
+			state.EXPECT().Cluster().Return(cluster)
+			reason := v1alpha1.ReasonPodNotCreated
+			if tc.terminating {
+				state.EXPECT().Pod().Return(&corev1.Pod{})
+				state.EXPECT().IsPodTerminating().Return(true)
+				reason = v1alpha1.ReasonPodTerminating
+			} else {
+				state.EXPECT().Pod().Return(nil)
+			}
+			state.EXPECT().SetStatusChanged()
+			res, _ := task.RunTask(context.Background(), TaskInstanceConditionReady[scope.PD](state))
+			assert.Equal(t, task.SWait, res.Status())
+			require.Len(t, obj.Status.Conditions, 1)
+			assert.Equal(t, metav1.ConditionFalse, obj.Status.Conditions[0].Status)
+			assert.Equal(t, reason, obj.Status.Conditions[0].Reason)
+			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
 		})
 	}
 }
