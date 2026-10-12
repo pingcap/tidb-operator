@@ -196,6 +196,7 @@ func (p *poller[T, PT, L]) poll(ctx context.Context) {
 	list, err := p.lister.List(ctx)
 	if err != nil {
 		if ctx.Err() != nil {
+			p.logger.Info("poll failed while stopping", "cluster", p.name, "kind", p.typeName, "error", err)
 			return
 		}
 		p.logger.Error(err, "poll err", "cluster", p.name, "type", new(T))
