@@ -431,6 +431,29 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1},
 		},
 		{
+			name:           "down outdated pods beyond the budget are still exposed",
+			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   4,
+			pods: []*corev1.Pod{
+				newPod(0, "1", true, false), newPod(1, "1", false, false),
+				newPod(2, "1", false, false), newPod(3, "1", false, false),
+			},
+			expectPartition: 1,
+			expectRemaining: []int32{0, 1, 2, 3},
+		},
+		{
+			name:           "down outdated pods beyond the budget are restarted",
+			maxUnavailable: iosPtr(intstr.FromInt(2)),
+			oldPartition:   1,
+			pods: []*corev1.Pod{
+				newPod(0, "1", true, false), newPod(1, "1", false, false),
+				newPod(2, "1", false, false), newPod(3, "1", false, false),
+			},
+			expectPartition: 1,
+			expectDeleted:   []int32{1, 2, 3},
+			expectRemaining: []int32{0},
+		},
+		{
 			name:           "a stale cache entry cannot delete a replaced pod",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   3,

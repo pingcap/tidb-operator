@@ -247,14 +247,16 @@ func (u *tidbUpgrader) upgradeParallel(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	}
 
 	// Expose the largest outdated ordinals: taking down an available pod
-	// costs one unit of the budget, one that is already down is free.
+	// costs one unit of the budget, one that is already down is free, even
+	// when more pods are down than the budget allows (otherwise pods broken
+	// at the old revision could never receive a fixed one).
 	selected := 0
 	for _, c := range pending {
 		cost := 0
 		if c.available {
 			cost = 1
 		}
-		if unavailable+cost > maxUnavailable {
+		if cost > 0 && unavailable+cost > maxUnavailable {
 			break
 		}
 		unavailable += cost
