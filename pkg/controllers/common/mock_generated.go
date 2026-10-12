@@ -197,6 +197,20 @@ func (m *MockInstanceCondReadyUpdater[T]) EXPECT() *MockInstanceCondReadyUpdater
 	return m.recorder
 }
 
+// Cluster mocks base method.
+func (m *MockInstanceCondReadyUpdater[T]) Cluster() *v1alpha1.Cluster {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Cluster")
+	ret0, _ := ret[0].(*v1alpha1.Cluster)
+	return ret0
+}
+
+// Cluster indicates an expected call of Cluster.
+func (mr *MockInstanceCondReadyUpdaterMockRecorder[T]) Cluster() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cluster", reflect.TypeOf((*MockInstanceCondReadyUpdater[T])(nil).Cluster))
+}
+
 // IsHealthy mocks base method.
 func (m *MockInstanceCondReadyUpdater[T]) IsHealthy() bool {
 	m.ctrl.T.Helper()

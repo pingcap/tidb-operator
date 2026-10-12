@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 )
 
 // trackedConditions are the condition types observed by ObserveInstance* and
@@ -44,16 +45,23 @@ func instanceMetricBaseLabels(obj client.Object) []string {
 
 // ObserveCondition writes 1 to the abnormal-instance gauge when the named
 // condition is False; 0 otherwise (True or absent are treated as healthy).
+// Expected Pod absence or termination during suspend does not count as a
+// Ready abnormality. The current Cluster spec, rather than a potentially stale
+// Suspended condition, determines whether this exception applies.
 // The series stays present so PromQL `for:` alerts can fire reliably without
 // gaps, and so dashboards never see missing samples for managed instances.
 //
 // condType must be one of trackedConditions so the finalize-time cleanup in
 // ClearInstanceConditionMetrics covers the same set of series this writes.
-func ObserveCondition(obj client.Object, conds []metav1.Condition, condType string) {
+func ObserveCondition(obj client.Object, conds []metav1.Condition, condType string, cluster *v1alpha1.Cluster) {
 	labels := append(instanceMetricBaseLabels(obj), condType)
 	value := 0.0
 	if cond := meta.FindStatusCondition(conds, condType); cond != nil && cond.Status == metav1.ConditionFalse {
 		value = 1
+		if condType == v1alpha1.CondReady && cluster != nil && coreutil.ShouldSuspendCompute(cluster) &&
+			(cond.Reason == v1alpha1.ReasonPodNotCreated || cond.Reason == v1alpha1.ReasonPodTerminating) {
+			value = 0
+		}
 	}
 	AbnormalInstance.WithLabelValues(labels...).Set(value)
 }
@@ -61,9 +69,9 @@ func ObserveCondition(obj client.Object, conds []metav1.Condition, condType stri
 // ObserveConditions records the gauge for every condition type tracked by this
 // package. This is the convenience entry point from reconcile tasks that want
 // to refresh the full picture in one call.
-func ObserveConditions(obj client.Object, conds []metav1.Condition) {
+func ObserveConditions(obj client.Object, conds []metav1.Condition, cluster *v1alpha1.Cluster) {
 	for _, condType := range trackedConditions {
-		ObserveCondition(obj, conds, condType)
+		ObserveCondition(obj, conds, condType, cluster)
 	}
 }
 

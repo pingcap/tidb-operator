@@ -28,13 +28,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tiproxy
 		common.TaskContextObject[scope.TiProxy](state, r.Client),
 		common.TaskTrack[scope.TiProxy](state, r.Tracker),
-		// refresh the abnormal_instance gauge, or clear it if the CR is gone
-		common.TaskObserveInstance[scope.TiProxy](state),
 		// if it's deleted just return
-		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiProxy](state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiProxy](state), common.TaskObserveInstance[scope.TiProxy](state)),
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiProxy](state, r.Client),
+		common.TaskObserveInstance[scope.TiProxy](state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 		common.TaskContextPod[scope.TiProxy](state, r.Client),

@@ -168,6 +168,7 @@ func TaskInstanceConditionRunning[
 }
 
 type InstanceCondReadyUpdater[T client.Object] interface {
+	ClusterState
 	StatusUpdater
 	PodState
 	HealthyState
@@ -227,7 +228,7 @@ func TaskInstanceConditionReady[
 		// Refresh the abnormal-instance gauge so a long-running Ready=False
 		// (e.g. pod up but cannot serve) becomes alertable without any
 		// per-component glue.
-		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondReady)
+		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondReady, state.Cluster())
 
 		if !isReady {
 			return task.Wait().With("instance is unready: %s", coreutil.SprintCondition(cond))
@@ -292,7 +293,7 @@ func TaskInstanceConditionSynced[
 		// Refresh the abnormal-instance gauge so a long-running Synced=False
 		// (rolling restart stuck, scale-in stuck, ...) becomes alertable
 		// without any per-component glue.
-		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondSynced)
+		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondSynced, cluster)
 
 		if !isSynced {
 			return task.Wait().With("instance is unsynced: %s", coreutil.SprintCondition(cond))

@@ -28,13 +28,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tikv
 		common.TaskContextObject[scope.TiKV](state, r.Client),
 		common.TaskTrack[scope.TiKV](state, r.Tracker),
-		// refresh the abnormal_instance gauge, or clear it if the CR is gone
-		common.TaskObserveInstance[scope.TiKV](state),
 		// if it's deleted just return
-		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKV](state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKV](state), common.TaskObserveInstance[scope.TiKV](state)),
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiKV](state, r.Client),
+		common.TaskObserveInstance[scope.TiKV](state),
 
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),

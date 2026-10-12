@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -153,6 +154,10 @@ func TaskContextCluster[
 	return task.NameTaskFunc("ContextCluster", func(ctx context.Context) task.Result {
 		cluster, err := apicall.GetCluster[S](ctx, c, state.Object())
 		if err != nil {
+			if instance, ok := any(scope.From[S](state.Object())).(runtime.Instance); ok {
+				// Without the current Cluster spec, publish conditions without suspend filtering.
+				metrics.ObserveConditions(state.Object(), instance.Conditions(), nil)
+			}
 			return task.Fail().With("cannot get cluster: %v", err)
 		}
 		state.SetCluster(cluster)
