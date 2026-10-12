@@ -95,6 +95,7 @@ type cached[Client, UnderlayClient any] struct {
 	cacheKeys []string
 
 	started bool
+	stopped bool
 	cancel  context.CancelFunc
 	lock    sync.Mutex
 }
@@ -123,7 +124,7 @@ func (c *cached[Client, UnderlayClient]) Start(ctx context.Context) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	if c.started {
+	if c.started || c.stopped {
 		return
 	}
 
@@ -140,6 +141,7 @@ func (c *cached[Client, UnderlayClient]) Stop() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	c.stopped = true
 	if !c.started {
 		return
 	}

@@ -75,12 +75,24 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	needUpdate = compare.SetIfDstEmpty(&rtx.Cluster.Status.PD, addr) || needUpdate
 	needUpdate = t.syncComponentStatus(rtx) || needUpdate
 	needUpdate = t.syncConditions(rtx) || needUpdate
-	needUpdate = t.syncClusterID(ctx, rtx) || needUpdate
+	suspended := meta.FindStatusCondition(rtx.Cluster.Status.Conditions, v1alpha1.ClusterCondSuspended)
+	fullySuspended := coreutil.ShouldSuspendCompute(rtx.Cluster) && suspended != nil &&
+		suspended.Status == metav1.ConditionTrue && suspended.ObservedGeneration == rtx.Cluster.Generation
+	if !fullySuspended {
+		needUpdate = t.syncClusterID(ctx, rtx) || needUpdate
+	}
 
 	if needUpdate {
 		if err := t.Client.Status().Update(ctx, rtx.Cluster); err != nil {
 			return task.Fail().With(fmt.Sprintf("can't update cluster status: %v", err))
 		}
+	}
+
+	if fullySuspended {
+		// Keep polling while suspension is in progress, then release the client
+		// and its informers. Resume will register a fresh client below.
+		t.PDClientManager.Deregister(timanager.PrimaryKey(rtx.Cluster.Namespace, rtx.Cluster.Name))
+		return task.Complete().With("updated status")
 	}
 
 	if rtx.Cluster.Status.PD != "" {

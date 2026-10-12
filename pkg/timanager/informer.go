@@ -252,10 +252,14 @@ func (lw *listerWatcher[UnderlayClient]) Watch(_ metav1.ListOptions) (watch.Inte
 	go func() {
 		<-w.StopChan()
 		cancel()
-		close(resultCh)
 	}()
 
-	go lw.p.Run(ctx, resultCh)
+	go func() {
+		// Cancellation does not wait for pending sends. Close the channel only
+		// after Run has stopped all senders, to avoid send-on-closed-channel panics.
+		defer close(resultCh)
+		lw.p.Run(ctx, resultCh)
+	}()
 
 	return w, nil
 }

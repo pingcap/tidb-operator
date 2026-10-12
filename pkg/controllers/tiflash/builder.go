@@ -70,7 +70,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSynced[scope.TiFlash](state),
 			common.TaskInstanceConditionReady[scope.TiFlash](state),
 			common.TaskInstanceConditionRunning[scope.TiFlash](state),
-			common.TaskInstanceConditionOffline[scope.TiFlash](state),
+			task.If(PDIsSynced(state), common.TaskInstanceConditionOffline[scope.TiFlash](state)),
 			common.TaskStatusPersister[scope.TiFlash](state, r.Client),
 			common.TaskSuspendPod(state, r.Client),
 		),

@@ -131,6 +131,70 @@ func TestStatusUpdater(t *testing.T) {
 	}
 }
 
+func TestStatusPDClientSuspendResume(t *testing.T) {
+	ctx := FakeContext(types.NamespacedName{Name: "test"})
+	ctx.Cluster = &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 2},
+		Spec:       v1alpha1.ClusterSpec{SuspendAction: &v1alpha1.SuspendAction{SuspendCompute: true}},
+		Status:     v1alpha1.ClusterStatus{PD: "http://pd:2379", ID: "123"},
+	}
+	group := &v1alpha1.PDGroup{
+		ObjectMeta: metav1.ObjectMeta{Name: "pd", Generation: 1},
+		Status: v1alpha1.PDGroupStatus{CommonStatus: v1alpha1.CommonStatus{
+			ObservedGeneration: 1, ObservedClusterGeneration: 1,
+			Conditions: []metav1.Condition{{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue, ObservedGeneration: 1}},
+		}},
+	}
+	ctx.PDGroups = []*v1alpha1.PDGroup{group}
+	fc := client.NewFakeClient(ctx.Cluster, group)
+	m := newFakePDClientManager(t, fc)
+	m.Start(ctx)
+	tk := NewTaskStatus(logr.Discard(), fc, m)
+	key := timanager.PrimaryKey(ctx.Cluster.Namespace, ctx.Cluster.Name)
+
+	// A previous generation's suspended Group must not stop the client.
+	require.Equal(t, task.Complete().With("updated status"), tk.Sync(ctx))
+	before, ok := m.Get(key)
+	require.True(t, ok)
+	group.Status.ObservedClusterGeneration = ctx.Cluster.Generation
+	for range 2 {
+		require.Equal(t, task.Complete().With("updated status"), tk.Sync(ctx))
+		_, ok = m.Get(key)
+		require.False(t, ok, "completed suspension must stop and not re-register the client")
+	}
+
+	ctx.Cluster.Spec.SuspendAction.SuspendCompute = false
+	ctx.Cluster.Generation++
+	require.Equal(t, task.Complete().With("updated status"), tk.Sync(ctx))
+	after, ok := m.Get(key)
+	require.True(t, ok)
+	require.NotSame(t, before, after, "resume must create a fresh client")
+}
+
+func TestStatusSuspendedWithoutClusterID(t *testing.T) {
+	for _, registered := range []bool{false, true} {
+		t.Run(strconv.FormatBool(registered), func(t *testing.T) {
+			ctx := FakeContext(types.NamespacedName{Name: "test"})
+			ctx.Cluster = &v1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
+				Spec:       v1alpha1.ClusterSpec{SuspendAction: &v1alpha1.SuspendAction{SuspendCompute: true}},
+				Status:     v1alpha1.ClusterStatus{PD: "http://pd:2379"},
+			}
+			fc := client.NewFakeClient(ctx.Cluster)
+			// No PD calls are expected, even when a client existed before suspension.
+			m := newFakePDClientManager(t, fc)
+			m.Start(ctx)
+			if registered {
+				require.NoError(t, m.Register(ctx.Cluster))
+			}
+			tk := NewTaskStatus(logr.Discard(), fc, m)
+			require.Equal(t, task.Complete().With("updated status"), tk.Sync(ctx))
+			_, ok := m.Get(timanager.PrimaryKey(ctx.Cluster.Namespace, ctx.Cluster.Name))
+			require.False(t, ok)
+		})
+	}
+}
+
 func TestSyncSuspendedConditionCoversAllGroupTypes(t *testing.T) {
 	const (
 		groupGeneration   = int64(7)

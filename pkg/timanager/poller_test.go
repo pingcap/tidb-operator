@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -203,7 +204,11 @@ func TestPoller(t *testing.T) {
 			events := []watch.Event{}
 			ch := make(chan watch.Event, bufSize)
 
-			go p.Run(ctx, ch)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				p.Run(ctx, ch)
+			}()
 
 			waited := false
 			func() {
@@ -223,6 +228,7 @@ func TestPoller(t *testing.T) {
 			}()
 
 			cancel()
+			<-done
 			close(ch)
 
 			slices.SortFunc(c.expectedEvents, CompareEvent)
@@ -237,6 +243,36 @@ func CompareObject(a, b runtime.Object) int {
 	bname := b.(client.Object).GetName()
 
 	return cmp.Compare(aname, bname)
+}
+
+type slowStoppingPoller struct {
+	Poller
+	canceled chan struct{}
+	release  chan struct{}
+}
+
+func (p *slowStoppingPoller) Run(ctx context.Context, _ chan<- watch.Event) {
+	<-ctx.Done()
+	close(p.canceled)
+	<-p.release
+}
+
+func TestWatchWaitsForPollerBeforeClosing(t *testing.T) {
+	p := &slowStoppingPoller{canceled: make(chan struct{}), release: make(chan struct{})}
+	defer close(p.release)
+	w, err := NewListerWatcher[int](logr.Discard(), p).Watch(metav1.ListOptions{})
+	require.NoError(t, err)
+	w.Stop()
+	select {
+	case <-p.canceled:
+	case <-time.After(time.Second):
+		t.Fatal("watch did not cancel the poller")
+	}
+	select {
+	case <-w.ResultChan():
+		t.Fatal("result channel closed before the poller exited")
+	default:
+	}
 }
 
 func CompareEvent(a, b watch.Event) int {
