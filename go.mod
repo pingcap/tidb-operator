@@ -4,7 +4,7 @@
 
 module github.com/pingcap/tidb-operator
 
-go 1.25.12
+go 1.26.0
 
 require (
 	cloud.google.com/go/storage v1.41.0
@@ -54,9 +54,9 @@ require (
 	github.com/tikv/pd v2.1.17+incompatible
 	go.etcd.io/etcd/client/v3 v3.5.16
 	gocloud.dev v0.18.0
-	golang.org/x/sync v0.21.0
+	golang.org/x/sync v0.22.0
 	golang.org/x/time v0.5.0
-	golang.org/x/tools v0.47.0
+	golang.org/x/tools v0.48.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	google.golang.org/grpc v1.82.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -224,13 +224,13 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
-	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/term v0.44.0 // indirect
-	golang.org/x/text v0.39.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/api v0.187.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
