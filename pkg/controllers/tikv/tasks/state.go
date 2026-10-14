@@ -41,6 +41,7 @@ type state struct {
 
 	cluster *v1alpha1.Cluster
 	tikv    *v1alpha1.TiKV
+	tikvs   []*v1alpha1.TiKV
 	pod     *corev1.Pod
 
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
@@ -61,6 +62,7 @@ type state struct {
 
 type State interface {
 	common.TiKVState
+	common.TiKVSliceState
 	common.ClusterState
 	common.ObjectState[*v1alpha1.TiKV]
 
@@ -71,6 +73,7 @@ type State interface {
 
 	common.ContextClusterNewer[*v1alpha1.TiKV]
 	common.ContextObjectNewer[*v1alpha1.TiKV]
+	common.ContextSliceNewer[*v1alpha1.TiKV, *v1alpha1.TiKV]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiKV]
@@ -208,4 +211,12 @@ func isLeaderCountEnough(leaderCount, regionCount int) bool {
 
 func IsStoreReady(s State) bool {
 	return !s.IsStoreBusy() && isLeaderCountEnough(s.GetLeaderCount(), s.GetRegionCount())
+}
+
+func (s *state) TiKVSlice() []*v1alpha1.TiKV {
+	return s.tikvs
+}
+
+func (s *state) SetInstanceSlice(tikvs []*v1alpha1.TiKV) {
+	s.tikvs = tikvs
 }

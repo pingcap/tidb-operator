@@ -86,6 +86,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// normal process
+		common.TaskContextPeerSlice[scope.TiKV](state, r.Client),
+		tasks.TaskStoreLimitAdjust(state, r.Client, r.PDClientManager),
 		tasks.TaskOfflineStore(state, r.PDClientManager),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiKV](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),

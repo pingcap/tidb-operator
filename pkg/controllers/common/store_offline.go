@@ -74,6 +74,7 @@ func TaskOfflineStore[
 	// storeID may be empty if the store is not found or info from pd is not synced
 	storeID string,
 	state pdv1.NodeState,
+	isSelected bool,
 ) error {
 	isOffline := coreutil.IsOffline[S](obj)
 
@@ -86,6 +87,9 @@ func TaskOfflineStore[
 		return fmt.Errorf("%w: store does not exist and is offline", task.ErrWait)
 
 	case isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
+		if !isSelected {
+			return fmt.Errorf("%w: waiting for the selected instance to remove its store", task.ErrWait)
+		}
 		if err := c.DeleteStore(ctx, storeID); err != nil {
 			return err
 		}

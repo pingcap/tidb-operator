@@ -23,150 +23,135 @@ Status: Draft.
 
 ## Release Signoff Checklist
 
-Items marked with (R) are required prior to targeting a release.
-
 - [ ] (R) This design has been discussed and approved.
-- [ ] (R) Test plan is in place, including e2e tests in kind.
-- [ ] (R) Supported PD versions and store-limit modes have been validated.
-- [ ] (R) Feature graduation criteria are defined.
-- [ ] (R) User-facing documentation is available in the TiDB Operator documentation.
+- [ ] (R) Unit and integration tests pass.
+- [ ] (R) Supported PD versions and store-limit behavior have been validated.
+- [ ] (R) A complete scale-in has been tested in kind.
 
 ## Summary
 
-Change the TiKV Instance Controller's offline handling to suppress incoming peers and leaders, then remove stores one at a time. Reconciles remain parallel and operate only on their own instances. TiKVGroup and Updater behavior stay unchanged. The feature is controlled by `TiKVSequentialScaleIn`.
+Keep TiKVGroup and Updater behavior unchanged. Under `TiKVSequentialScaleIn`, each offlining TiKV adjusts its own incoming store limits, then uses the shared peer context to check whether it is selected before requesting store deletion.
 
 ## Motivation
 
-Currently, the Updater can mark several TiKV instances offline together. Each instance starts leader eviction, waits for eviction or its timeout, then calls DeleteStore independently. Concurrent eviction can leave Regions without an eligible leader target, while rapid leader movement can increase cache warm-up pressure. Migrating peers onto stores that are also being removed causes repeated migration.
+The existing Updater can mark several TiKVs offline together. Their instance controllers independently evict leaders and delete stores, which can cause conflicting leader eviction and repeated peer migration.
 
 ### Goals
 
-- Keep existing target selection and offline marking.
-- Immediately suppress peers and leaders entering each offlining store.
-- Allow only one store removal at a time per Cluster, with each reconcile acting only on itself.
-- Remove offline-triggered leader eviction and reuse existing completion and cancellation paths.
+- Limit incoming peers and leaders on each offlining store.
+- Select one store for deletion using the same deterministic ordering in each reconcile.
+- Restore the original incoming limits when offline is cleared.
 
 ### Non-Goals
 
-- Change rolling-update eviction or TiFlash scale-in.
-- Limit leader transfers into retained stores or modify global leader/replica scheduling concurrency or remove-peer limits.
-- Add spec/status fields, user-configurable rates, or additional timing settings.
+- Change Group-level offline marking, Pod handling, finalizers, or normal rolling-update eviction.
+- Add locks, removal-request markers, a separate admission coordinator, or new event handlers.
+- Add spec/status fields, user-configurable rates, or timing settings.
+- Change retained stores, remove-peer limits, or global scheduling settings.
 
 ## Proposal
 
-Instance reconciles immediately apply their own add-peer and transfer-leader-in limits. Before DeleteStore, each reconcile sorts the offlining instances and checks whether the selected instance is itself. Otherwise, it waits. Offline no longer requests leader eviction.
+Limit implementation changes to four parts:
 
-| Behavior | Current | New |
-| --- | --- | --- |
-| Select instances and set offline | Updater may mark several instances offline | Unchanged |
-| Prepare incoming limits | No scale-in-specific incoming limits | Apply add-peer and transfer-leader-in limits to the current store immediately after observing offline |
-| Evict leaders | Offline triggers eviction and an eviction wait | No offline-triggered eviction or eviction wait |
-| DeleteStore | Multiple instances may remove stores concurrently | Only the selected instance removes its own store |
-| Completion | PD Removed, followed by CR deletion and finalization | Unchanged; Removed allows the next store to proceed |
-| Cancel | Clear offline and cancel store removal | Reuse cancellation and restore its original add-peer and transfer-leader-in limits |
+1. Add a **Store Limit Adjust task** for offline limits and non-offline restoration.
+2. Add **Context Peer Slice** to the TiKV controller to load TiKV peers across Groups in the same Cluster.
+3. Add a **self-selection condition at store deletion**. An unselected instance returns Wait.
+4. Add **TiKVSequentialScaleIn** to switch between the existing and new offline behavior.
+
+With the gate enabled, offline handling no longer requests leader eviction or waits for eviction. Other controller tasks retain their existing behavior.
 
 ### Risks and Mitigations
 
 | Risk | Handling |
 | --- | --- |
-| Unsupported PD capability | Require transfer-leader-in support introduced by PD PR #11197 and manual v1 store limits; block new removal rather than silently skipping either limit |
-| Tiny positive limits are not a strict prohibition | Token buckets, in-flight work, urgent paths, and Raft elections can allow incoming work; validate actual behavior and do not promise absolute zero |
-| Concurrent removal attempts | Revalidate admission in a short Cluster-scoped critical section and retain a per-instance removal-request marker |
-| Regions whose peers are all on offlining stores may have restricted transfer targets | Validate this layout in integration/e2e tests; do not bypass the limits or remove another store when progress stalls |
-| Temporary limits survive interruption | Persist original values before writing PD and restore owned values on cancellation/recovery |
+| PD does not support transfer-leader-in | Fail limit adjustment before reaching store deletion |
+| One limit write fails | Keep the saved originals and retry adjustment on the current instance |
+| Tiny positive limits are not a strict prohibition | Validate token-bucket, urgent scheduling, and Raft-election behavior with the supported PD version |
+| Peers are observed at different times | Validate candidate changes, cancellation, and restart behavior separately; do not add a coordination mechanism in this change |
 
 ## Design Details
 
 ### Instance Reconcile Flow
 
-Every reconcile operates only on its current instance X. Reading other instances does not authorize modifying their CRs or stores. An offlining store is **limited** when both its add-peer and transfer-leader-in limits have been applied and verified.
+Each reconcile operates only on its current instance X.
 
 ```text
-Reconcile current instance X
-         |
-         v
-Observe X is offline
-         |
-         v
-Ensure X is limited: check and apply
-add-peer and transfer-leader-in limits
-         |
-         v
-Read and sort offlining instances
-         |
-         v
-Is X selected? ---------------- No ----------------> Wait
-         |
-        Yes
-         |
-         v
-Is X Removing?
-         |                          |
-        Yes                        No
-         |                          |
-         v                          v
-Observe X until Removed    DeleteStore for X only
-                                    |
-                                    v
-                           Observe X until Removed
+Reconcile X
+    |
+    v
+Context Peer Slice: load TiKV peers
+    |
+    v
+Store Limit Adjust
+    |-- offline: save originals and limit X
+    |-- not offline: restore X's limits without waiting for its store to return to Up
+    |
+    v
+Existing offline handling
+    |
+    |-- gate disabled: keep existing eviction and deletion flow
+    |
+    v
+Before DeleteStore: sort candidates and check self
+    |                         |
+ X selected              Another TiKV selected
+    |                         |
+    v                         v
+DeleteStore(X)               Wait
+    |
+    v
+Existing store observation and cleanup
 ```
 
-1. **Ensure X is limited immediately.** Check X's add-peer and transfer-leader-in values. If needed, save their originals, apply the fixed limits, and verify both writes. If X is already limited, skip the writes. Complete this step before sorting, including when another store is Removing. Each instance handles its own limits; failures use existing retries and stop this reconcile from reaching DeleteStore.
-2. **Read the candidate set.** Include offlining TiKVs in the same namespace and Cluster, across TiKVGroups, until PD confirms Removed. A Removing store still blocks another deletion even if its offline flag was cleared for cancellation.
-3. **Sort and check self.** Keep a Removing store first. Otherwise sort by creation timestamp, name, and UID, all ascending. If the selected UID differs from X's UID, return Wait without operating on the selected instance.
-4. **Check Removing and delete self.** If X is Removing, observe its progress. Otherwise, call DeleteStore for X directly. The earlier limit step has already completed; do not repeat the limited check here.
-5. **Wait for Removed.** A successful DELETE only starts removal. Once PD confirms Removed, exclude X from selection and wake waiting instances. Their own reconciles perform the next deletion. Existing resource cleanup proceeds independently.
+Candidates are offlining TiKVs in the peer slice, plus Removing stores whose offline flag has been cleared for cancellation. Exclude Removed stores. Sort Removing stores first, then creation timestamp, name, and UID, all ascending. Compare the selected UID with the current instance UID.
 
-For A before B, reconcile(B) applies B's two incoming limits and returns Wait. Reconcile(A) deletes A after its own limit step succeeds and A is selected. After A is Removed, reconcile(B) can delete B. Reconcile(A) never deletes B.
-
-Reconciles and per-instance preparation remain parallel. Use a Cluster-scoped mutex only for the final fresh-read/select/self-check/DeleteStore admission section, never while waiting for removal. Reuse Operator leader election. Record an internal removal-request marker on X before DELETE to retain the selected instance across retries and restarts. If multiple stores are already Removing, admit no additional removal until they finish.
+Given the same candidate set, parallel reconciles select the same TiKV. Only that instance calls DeleteStore for itself. There is no lock or second check of incoming limits at the deletion point.
 
 ### Module Responsibilities
 
-| Module | Responsibility |
+| Module | Change |
 | --- | --- |
-| TiKVGroup Controller and Updater | Keep target selection, offline marking, replica accounting, and cancellation intent unchanged |
-| TiKV Instance Controller | Apply its own two incoming limits, sort candidates, check self, admit one store removal, and restore its original values |
-| TiKV Instance Controller — Pod and leader eviction handling | Do not request eviction because an instance is offline; preserve normal rolling-update eviction |
-| TiKV Instance Controller — event handling | Wake waiting instances when offline membership, preparation readiness, or store removal state changes |
-| PD Client Manager | Reuse existing Store events, cache, and refresh mechanisms |
-| PD API Client | Provide add-peer and transfer-leader-in limit reads/writes; reuse DeleteStore and CancelDeleteStore |
-| Feature Gates | Register the new gate through the existing feature-generation mechanism |
+| TiKV Instance Controller | Load Context Peer Slice and run Store Limit Adjust before offline handling |
+| Store Limit Adjust task | Adjust or restore only the current instance's two incoming limits |
+| TiKV offline task | Switch eviction behavior with the gate and always call the common offline task with an `isSelected` boolean |
+| Common offline task | Check `isSelected` immediately before deleting a store; other offline and cancellation handling remains unchanged |
+| PD API Client | Read store limits and write explicitly named incoming limit types |
+| Feature Gates | Register the new gate through the existing generation mechanism |
 
-The Task framework continues later tasks after Wait or Retry. Pod and leader eviction handling must therefore preserve the rule that offline alone never starts eviction or waits for leaders to be evicted. CR deletion and finalizer handling remain unchanged.
+All other controller behavior remains unchanged.
 
 ### Incoming Store Limits
 
-Immediately after observing offline, each instance sets these two limits on its own store through `POST /pd/api/v1/store/{id}/limit`:
+Use fixed code constants through the existing per-store limit endpoint:
 
-| Limit | Request body | Purpose |
-| --- | --- | --- |
-| Add peer | `{"type":"add-peer","rate":0.000001}` | Suppress new peers entering the offlining store |
-| Transfer leader in | `{"type":"transfer-leader-in","rate":0.000001}` | Suppress leaders entering the offlining store |
+| Limit | Request body |
+| --- | --- |
+| Add peer | `{"type":"add-peer","rate":0.000001}` |
+| Transfer leader in | `{"type":"transfer-leader-in","rate":0.000001}` |
 
-Both values are fixed in code. The API requires positive rates, so use `0.000001` rather than zero and always specify the limit type. Transfer-leader-in is a per-store incoming rate expressed per minute, not a global concurrency limit. Retained stores and other scheduling limits remain unchanged. Existing store observation, deletion, and cancellation operations are reused.
+Both requests use `POST /pd/api/v1/store/{id}/limit`. PD requires positive rates. Transfer-leader-in is a per-store incoming rate, not global scheduling concurrency. Skip writes when the current rate already equals the target.
 
 ### Cancellation and Recovery
 
-Each instance saves its original add-peer and transfer-leader-in values and removal-request marker in internal annotations bound to its store ID. Save before writing PD, do not replace originals with already reduced values, and reuse the records after restart.
+Before the first limit write, save the original two values in the current instance's `core.pingcap.com/store-limits` annotation, using the format `add-peer:10,transfer-leader-in:10`. Do not overwrite those originals on retries.
 
-When offline is cleared, only that instance's reconcile restores both original incoming-limit values. If its store is Removing, first reuse CancelDeleteStore and wait for Up. Removed stores remain irreversible and follow existing cleanup. Restore only settings still equal to this feature's writes; preserve external changes.
+When offline is cleared, reuse existing cancellation handling. Restore settings still equal to the reduced rate and remove the annotation. Preserve settings changed by another writer. This annotation stores limit values only; it does not coordinate store deletion.
 
 ### Test Plan
 
-Unit tests cover admission, per-instance ownership, request payloads, and restoration. Integration tests validate the PD capability and concurrency behavior. E2e tests in kind cover a complete 6-to-3 scale-in, cancellation, and recovery:
+- Offline adjustment changes only add-peer and transfer-leader-in on the current store.
+- Already limited stores need no additional writes.
+- Partial write failures retain the original values for retries and restoration.
+- Non-offline restoration proceeds even while the store is Removing and preserves external changes.
+- Candidate ordering is deterministic; an unselected reconcile never deletes another store.
+- Removing candidates take priority, and Removed candidates no longer delay selection.
+- The gate switches offline eviction behavior and preserves the disabled flow.
 
-- The existing Updater still marks multiple instances offline; their reconciles apply their own add-peer and transfer-leader-in limits in parallel before checking deletion order.
-- A non-selected instance returns Wait and never modifies or deletes another instance.
-- The limit step checks X once and skips writes when already limited. After selection, Removing waits and the No branch calls DeleteStore directly without another limited check. No second removal starts while one is Removing.
-- Removed wakes the next instance without waiting for resource cleanup. Existing finalization still works.
-- Offline never requests leader eviction or waits for eviction; normal rolling-update eviction is unchanged.
-- Cancellation, concurrent reconciles, lost responses, restart, and gate changes preserve single-store removal and restore owned add-peer and transfer-leader-in settings. No path writes limits on another instance or changes global leader scheduling, remove-peer, or replica scheduling limits.
-- Reject unsupported transfer-leader-in capability or store-limit mode; verify partial preparation cannot admit deletion. Cover Regions whose current peers are all on offlining stores to check that serial removal can still make progress.
+Integration validation remains necessary for complete scale-in, cancellation, and PD scheduling behavior.
 
 ### Feature Gate
 
-`TiKVSequentialScaleIn`: Alpha, disabled by default, no Pod restart required. Register it at the next feature-log revision without modifying published history.
+`TiKVSequentialScaleIn`: Alpha, disabled by default, no Pod restart required. Register it at the next feature-log revision without changing published history.
 
 ```yaml
 spec:
@@ -175,17 +160,14 @@ spec:
       enabled: true
 ```
 
-With the gate disabled and no recovery records, retain the current behavior. Disabling during removal stops new admissions through this branch; finish or cancel the outstanding request and restore owned add-peer and transfer-leader-in settings before returning to legacy handling.
-
-Beta graduation requires passing the supported-PD compatibility matrix, the serial-removal and recovery tests, and workload tests showing acceptable cache hit rate, latency, and throughput during scale-in. Validate the fixed rates before graduation.
+Gate-off retains the existing offline flow. Restoration of saved limits still runs when the instance becomes non-offline. Handling gate changes while instances remain offline is deferred for separate discussion.
 
 ## Drawbacks
 
-Serial removal can increase total scale-in time. Applying both limits to offlining stores reduces scheduling choices. Because preparation is per-instance and parallel, another offlining store may still be applying its limits when the first removal starts. The proposal suppresses incoming leaders on removal targets but does not directly throttle migration into retained stores, so it cannot guarantee a particular cache impact or leader-transfer rate for the Cluster.
+Sequential removal can take longer. Incoming limits suppress scheduling onto removal targets but do not throttle leader transfers into retained stores or guarantee a particular cache impact.
 
 ## Alternatives
 
-- **Keep concurrent eviction and deletion:** retains the current scheduling conflicts and migration bursts.
-- **Issue one DELETE per reconcile without checking other stores:** concurrent or subsequent reconciles can still start multiple removals.
-- **Change Group-level offline marking to one instance at a time:** changes existing Updater behavior and leaves future removal targets without incoming limits.
-- **Limit global leader scheduling concurrency:** controls a different mechanism and affects the entire Cluster; use only the requested per-store incoming limits.
+- Keep concurrent eviction and deletion: retains the existing scheduling conflicts.
+- Change Group-level offline marking: changes Updater behavior beyond this proposal.
+- Limit global leader scheduling: affects a different mechanism and the whole Cluster.
