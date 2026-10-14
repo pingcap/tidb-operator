@@ -133,6 +133,7 @@ spec:
                       - MultiPDGroup
                       - TiCDCDynamicSecretSyncer
                       - IndependentKVEngineWorker
+                      - TiKVSequentialScaleIn
                       type: string
                   required:
                   - name

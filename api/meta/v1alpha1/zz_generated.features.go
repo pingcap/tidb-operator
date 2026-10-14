@@ -18,7 +18,7 @@ package v1alpha1
 
 // Feature defines a supported feature of a TiDB cluster.
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup;TiCDCDynamicSecretSyncer;IndependentKVEngineWorker
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup;TiCDCDynamicSecretSyncer;IndependentKVEngineWorker;TiKVSequentialScaleIn
 // +enum
 type Feature string
 
@@ -116,4 +116,9 @@ const (
 	IndependentKVEngineWorker      Feature      = "IndependentKVEngineWorker"
 	IndependentKVEngineWorkerStage FeatureStage = "ALPHA"
 	_                                           = _IndependentKVEngineWorker
+
+	// TiKVSequentialScaleIn limits incoming peers and leaders and removes stores sequentially.
+	TiKVSequentialScaleIn      Feature      = "TiKVSequentialScaleIn"
+	TiKVSequentialScaleInStage FeatureStage = "ALPHA"
+	_                                       = _TiKVSequentialScaleIn
 )

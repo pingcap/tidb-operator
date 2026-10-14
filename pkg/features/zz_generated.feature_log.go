@@ -23,7 +23,7 @@ import (
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
-const CurrentFeatureGateDefinitionHash = "sha256:7f739c68838babaf882fb52819d0093f1478e11ce49da6b3a6592c078b92944d"
+const CurrentFeatureGateDefinitionHash = "sha256:d7ae6da3660948e9fcaf31959886a25fdc6b965606bd34499fbc869802465d07"
 
 var logs = [][]FeatureLog{
 	{
@@ -43,8 +43,27 @@ var logs = [][]FeatureLog{
 		{Name: meta.UseTiKVReadyAPI, Stage: meta.FeatureStageAlpha, Default: false},
 		{Name: meta.VolumeAttributesClass, Stage: meta.FeatureStageAlpha, Default: false},
 	},
+	{
+		{Name: meta.ClusterSubdomain, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.DisablePDDefaultReadinessProbe, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.FeatureModification, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.IndependentKVEngineWorker, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.MultiPDGroup, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.SessionTokenSigning, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.TerminableLogTailer, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.TiCDCDynamicSecretSyncer, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.TiKVSequentialScaleIn, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.UsePDReadyAPI, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.UsePDReadyAPIV2, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.UseSchedulingReadyAPI, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.UseTSOReadyAPI, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.UseTiFlashReadyAPI, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.UseTiKVReadyAPI, Stage: meta.FeatureStageAlpha, Default: false},
+		{Name: meta.VolumeAttributesClass, Stage: meta.FeatureStageAlpha, Default: false},
+	},
 }
 
 var hashToRev = map[string]int{
 	"sha256:7f739c68838babaf882fb52819d0093f1478e11ce49da6b3a6592c078b92944d": 0,
+	"sha256:d7ae6da3660948e9fcaf31959886a25fdc6b965606bd34499fbc869802465d07": 1,
 }

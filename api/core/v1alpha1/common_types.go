@@ -189,6 +189,9 @@ const (
 	// means the instance is marked as deleted and will be deleted later
 	AnnoKeyDeferDelete = AnnoKeyPrefix + "defer-delete"
 
+	// AnnoKeyStoreLimits records original incoming store limits for restoration after scale-in cancellation.
+	AnnoKeyStoreLimits = AnnoKeyPrefix + "store-limits"
+
 	// Last instance template is recorded to check whether the pod should be restarted because of changes of instance template
 	AnnoKeyLastInstanceTemplate = AnnoKeyPrefix + "last-instance-template"
 
