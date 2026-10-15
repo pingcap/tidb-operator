@@ -84,9 +84,8 @@ func (b *builder[T, O, R]) Build() Executor {
 	}
 	updatePolicies = append(updatePolicies, b.updatePreferPolicies...)
 
+	podDeletionCost := newPodDeletionCostPolicy[R]()
 	scaleInPolicies := []PreferPolicy[R]{
-		// Prefer newer instances when higher-priority policies do not decide.
-		PreferNewer[R](),
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
@@ -114,9 +113,12 @@ func (b *builder[T, O, R]) Build() Executor {
 		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R](), KeepResourceVersion[R]()),
 		delHooks:    b.delHooks,
 
-		scaleInSelector:       NewSelector(scaleInPolicies...),
-		updateSelector:        NewSelector(updatePolicies...),
-		cancelOfflineSelector: NewSelectorWithFilter(b.cancelOfflineFilterPolicies, cancelOfflinePolicies...),
+		scaleInSelector: NewSelector(scaleInPolicies...),
+		// Read Pod costs only after higher-priority policies leave a tie.
+		scaleInFallbackSelector: NewSelector(PreferNewer[R](), podDeletionCost),
+		podDeletionCost:         podDeletionCost,
+		updateSelector:          NewSelector(updatePolicies...),
+		cancelOfflineSelector:   NewSelectorWithFilter(b.cancelOfflineFilterPolicies, cancelOfflinePolicies...),
 	}
 	return NewExecutor(
 		actor,

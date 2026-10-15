@@ -102,7 +102,7 @@ func TestBuilderScaleInPrefersNewer(t *testing.T) {
 			tc.older.SetCreationTimestamp(metav1.NewTime(time.Unix(100, 0)))
 			newer := fakePD("newer", true, true)
 			newer.SetCreationTimestamp(metav1.NewTime(time.Unix(200, 0)))
-			b := New[runtime.PDTuple]()
+			b := New[runtime.PDTuple]().WithClient(client.NewFakeClient())
 			if tc.custom {
 				b.WithScaleInPreferPolicy(PreferPolicyFunc[*runtime.PD](func([]*runtime.PD) []*runtime.PD {
 					return []*runtime.PD{tc.older}
@@ -110,7 +110,9 @@ func TestBuilderScaleInPrefersNewer(t *testing.T) {
 			}
 			act := b.Build().(*executor).act.(*actor[runtime.PDTuple, *v1alpha1.PD, *runtime.PD])
 			instances := []*runtime.PD{tc.older, newer}
-			assert.Equal(t, tc.want, act.scaleInSelector.Choose(instances))
+			chosen, err := act.chooseToScaleIn(context.Background(), instances)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, chosen)
 			assert.Equal(t, "older", act.updateSelector.Choose(instances))
 		})
 	}
