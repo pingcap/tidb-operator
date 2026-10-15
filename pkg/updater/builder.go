@@ -84,9 +84,11 @@ func (b *builder[T, O, R]) Build() Executor {
 	}
 	updatePolicies = append(updatePolicies, b.updatePreferPolicies...)
 
+	podDeletionCost := newPodDeletionCostPolicy[R]()
 	scaleInPolicies := []PreferPolicy[R]{
 		// Prefer newer instances when higher-priority policies do not decide.
 		PreferNewer[R](),
+		podDeletionCost,
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
@@ -115,6 +117,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		delHooks:    b.delHooks,
 
 		scaleInSelector:       NewSelector(scaleInPolicies...),
+		podDeletionCost:       podDeletionCost,
 		updateSelector:        NewSelector(updatePolicies...),
 		cancelOfflineSelector: NewSelectorWithFilter(b.cancelOfflineFilterPolicies, cancelOfflinePolicies...),
 	}

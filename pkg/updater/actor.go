@@ -99,6 +99,7 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	delHooks    []DelHook[R]
 
 	scaleInSelector       Selector[R]
+	podDeletionCost       *podDeletionCostPolicy[R]
 	updateSelector        Selector[R]
 	cancelOfflineSelector Selector[R]
 
@@ -120,7 +121,12 @@ func (act *actor[T, O, R]) chooseToUpdate(s []R) (string, error) {
 // chooseToScaleIn selects an instance for scale-in operation.
 // Uses the scaleInSelector to determine which instance should be scaled in next.
 // Returns the name of the selected instance or an error if no instance can be scaled in.
-func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
+func (act *actor[T, O, R]) chooseToScaleIn(ctx context.Context, s []R) (string, error) {
+	if len(s) > 1 && act.podDeletionCost != nil {
+		if err := act.podDeletionCost.load(ctx, act.c, s); err != nil {
+			return "", err
+		}
+	}
 	name := act.scaleInSelector.Choose(s)
 	if name == "" {
 		return "", fmt.Errorf("no instance can be scale in")
@@ -195,7 +201,7 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 // It operates on the "update" state collection which contains instances with the current revision.
 func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	name, err := act.chooseToScaleIn(act.update.List())
+	name, err := act.chooseToScaleIn(ctx, act.update.List())
 	if err != nil {
 		return false, err
 	}
@@ -234,7 +240,7 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, name string, deferDel bool) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	if name == "" {
-		chosen, err := act.chooseToScaleIn(act.outdated.List())
+		chosen, err := act.chooseToScaleIn(ctx, act.outdated.List())
 		if err != nil {
 			return false, err
 		}
