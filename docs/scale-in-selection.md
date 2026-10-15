@@ -1,5 +1,8 @@
 # Group scale-in selection
 
+<!-- toc -->
+<!-- /toc -->
+
 All v2 component Group controllers use the shared updater to select instances
 when scaling in. The executor first determines the eligible updated or outdated
 instances. Within that candidate set, preferences run in this order:
@@ -36,8 +39,9 @@ positive leading zeros, or invalid/out-of-range integers count as zero, matching
 [Kubernetes deletion-cost parsing](https://github.com/kubernetes/kubernetes/blob/v1.32.0/pkg/apis/core/helper/helpers.go).
 
 A missing Pod has cost zero. Pod lookup failures and ambiguous or mismatched
-ownership stop that scale-in attempt so reconciliation can retry. Pod costs are
-read when choosing among multiple instances and reused within that updater
+ownership among remaining candidates stop that scale-in attempt so reconciliation
+can retry. Higher-priority preferences run first; Pod costs are read only if
+multiple candidates remain, and reused within that updater
 execution; subsequent reconciliations read them again. Both updated and outdated
 scale-in candidates use this preference. In-place update selection and cancellation
 of offlining retain their existing preferences.

@@ -226,3 +226,47 @@ func TestPodDeletionCostSnapshot(t *testing.T) {
 	require.NoError(t, p.load(context.Background(), cli, instances))
 	assert.EqualValues(t, 20, p.costs[key])
 }
+
+func TestScaleInSkipsPodLookupWhenHigherPriorityDecides(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		preferred *runtime.PD
+		custom    bool
+	}{
+		{name: "instance priority", preferred: fakePDWithPriority("preferred", true, true, "0")},
+		{name: "not running", preferred: fakePD("preferred", false, true)},
+		{name: "not ready", preferred: fakePD("preferred", true, false)},
+		{name: "group policy", preferred: fakePD("preferred", true, true), custom: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cli := client.NewFakeClient()
+			cli.WithError("list", "pods", fmt.Errorf("Pod lookup must not be called"))
+			b := New[runtime.PDTuple]().WithClient(cli)
+			if tc.custom {
+				b.WithScaleInPreferPolicy(PreferPolicyFunc[*runtime.PD](func([]*runtime.PD) []*runtime.PD {
+					return []*runtime.PD{tc.preferred}
+				}))
+			}
+			act := b.Build().(*executor).act.(*actor[runtime.PDTuple, *v1alpha1.PD, *runtime.PD])
+			chosen, err := act.chooseToScaleIn(context.Background(), []*runtime.PD{fakePD("other", true, true), tc.preferred})
+			require.NoError(t, err)
+			assert.Equal(t, tc.preferred.Name, chosen)
+			assert.Empty(t, act.podDeletionCost.costs)
+		})
+	}
+}
+
+func TestScaleInReadsCostsOnlyForRemainingCandidates(t *testing.T) {
+	first := fakePDWithPriority("first", true, true, "0")
+	second := fakePDWithPriority("second", true, true, "0")
+	excluded := fakePD("excluded", true, true)
+	badPod := podWithDeletionCost(excluded, "-1000")
+	badPod.OwnerReferences[0].UID = "wrong-owner"
+	cli := client.NewFakeClient(podWithDeletionCost(first, "10"), podWithDeletionCost(second, "-10"), badPod)
+	act := New[runtime.PDTuple]().WithClient(cli).Build().(*executor).act.(*actor[runtime.PDTuple, *v1alpha1.PD, *runtime.PD])
+	chosen, err := act.chooseToScaleIn(context.Background(), []*runtime.PD{excluded, first, second})
+	require.NoError(t, err)
+	assert.Equal(t, "second", chosen)
+	assert.Len(t, act.podDeletionCost.costs, 2)
+	assert.NotContains(t, act.podDeletionCost.costs, types.NamespacedName{Namespace: excluded.Namespace, Name: excluded.Name})
+}

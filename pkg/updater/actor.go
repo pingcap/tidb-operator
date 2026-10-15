@@ -98,10 +98,11 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	updateHooks []UpdateHook[R]
 	delHooks    []DelHook[R]
 
-	scaleInSelector       Selector[R]
-	podDeletionCost       *podDeletionCostPolicy[R]
-	updateSelector        Selector[R]
-	cancelOfflineSelector Selector[R]
+	scaleInSelector         Selector[R]
+	scaleInFallbackSelector Selector[R]
+	podDeletionCost         *podDeletionCostPolicy[R]
+	updateSelector          Selector[R]
+	cancelOfflineSelector   Selector[R]
 
 	actions []action
 }
@@ -122,17 +123,17 @@ func (act *actor[T, O, R]) chooseToUpdate(s []R) (string, error) {
 // Uses the scaleInSelector to determine which instance should be scaled in next.
 // Returns the name of the selected instance or an error if no instance can be scaled in.
 func (act *actor[T, O, R]) chooseToScaleIn(ctx context.Context, s []R) (string, error) {
-	if len(s) > 1 && act.podDeletionCost != nil {
-		if err := act.podDeletionCost.load(ctx, act.c, s); err != nil {
-			return "", err
-		}
-	}
-	name := act.scaleInSelector.Choose(s)
-	if name == "" {
+	candidates := act.scaleInSelector.Candidates(s)
+	if len(candidates) == 0 {
 		return "", fmt.Errorf("no instance can be scale in")
 	}
-
-	return name, nil
+	if len(candidates) == 1 || act.scaleInFallbackSelector == nil {
+		return candidates[0].GetName(), nil
+	}
+	if err := act.podDeletionCost.load(ctx, act.c, candidates); err != nil {
+		return "", err
+	}
+	return act.scaleInFallbackSelector.Choose(candidates), nil
 }
 
 // chooseToCancelOffline selects a being-offline instance to revive during scale-out.
