@@ -28,6 +28,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 func TestBuildTiCIWorkerConfigWithCustomConfig(t *testing.T) {
@@ -138,6 +139,83 @@ func TestAppendTiCICustomConfig(t *testing.T) {
 	if pdAddr == nil || pdAddr.MustString() != "y" {
 		t.Fatalf("custom server.pd-addr should override generated value, got: %v", pdAddr)
 	}
+}
+
+func TestTiCIReadinessProbe(t *testing.T) {
+	metaSts, err := getNewTiCIMetaStatefulSet(newTidbClusterForTiCIConfig(), nil)
+	if err != nil {
+		t.Fatalf("failed to build TiCI meta statefulset: %v", err)
+	}
+	workerSts, err := getNewTiCIWorkerStatefulSet(newTidbClusterForTiCIConfig(), nil)
+	if err != nil {
+		t.Fatalf("failed to build TiCI worker statefulset: %v", err)
+	}
+
+	t.Run("DefaultHTTPProbe", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		metaProbe := metaSts.Spec.Template.Spec.Containers[0].ReadinessProbe
+		g.Expect(metaProbe).NotTo(BeNil())
+		g.Expect(metaProbe.HTTPGet).NotTo(BeNil())
+		g.Expect(metaProbe.HTTPGet.Path).To(Equal("/status"))
+		g.Expect(metaProbe.HTTPGet.Port.IntValue()).To(Equal(int(v1alpha1.DefaultTiCIMetaStatusPort)))
+		g.Expect(metaProbe.InitialDelaySeconds).To(Equal(int32(10)))
+
+		workerProbe := workerSts.Spec.Template.Spec.Containers[0].ReadinessProbe
+		g.Expect(workerProbe).NotTo(BeNil())
+		g.Expect(workerProbe.HTTPGet).NotTo(BeNil())
+		g.Expect(workerProbe.HTTPGet.Path).To(Equal("/status"))
+		g.Expect(workerProbe.HTTPGet.Port.IntValue()).To(Equal(int(v1alpha1.DefaultTiCIWorkerStatusPort)))
+	})
+
+	t.Run("OverrideProbeParameters", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		tc := newTidbClusterForTiCIConfig()
+		tc.Spec.TiCI.Meta.ReadinessProbe = &v1alpha1.Probe{
+			InitialDelaySeconds: pointer.Int32Ptr(30),
+			PeriodSeconds:       pointer.Int32Ptr(15),
+		}
+		sts, err := getNewTiCIMetaStatefulSet(tc, nil)
+		g.Expect(err).To(Succeed())
+
+		probe := sts.Spec.Template.Spec.Containers[0].ReadinessProbe
+		g.Expect(probe.InitialDelaySeconds).To(Equal(int32(30)))
+		g.Expect(probe.PeriodSeconds).To(Equal(int32(15)))
+		// only probe parameters are overridden, the handler stays HTTP
+		g.Expect(probe.HTTPGet).NotTo(BeNil())
+	})
+
+	t.Run("TCPProbeType", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		tc := newTidbClusterForTiCIConfig()
+		tc.Spec.TiCI.Worker.ReadinessProbe = &v1alpha1.Probe{
+			Type: pointer.StringPtr(v1alpha1.TCPProbeType),
+		}
+		sts, err := getNewTiCIWorkerStatefulSet(tc, nil)
+		g.Expect(err).To(Succeed())
+
+		probe := sts.Spec.Template.Spec.Containers[0].ReadinessProbe
+		g.Expect(probe.TCPSocket).NotTo(BeNil())
+		g.Expect(probe.TCPSocket.Port.IntValue()).To(Equal(int(v1alpha1.DefaultTiCIWorkerStatusPort)))
+		g.Expect(probe.HTTPGet).To(BeNil())
+	})
+
+	t.Run("CommandProbeType", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		tc := newTidbClusterForTiCIConfig()
+		tc.Spec.TiCI.Meta.ReadinessProbe = &v1alpha1.Probe{
+			Type: pointer.StringPtr(v1alpha1.CommandProbeType),
+		}
+		sts, err := getNewTiCIMetaStatefulSet(tc, nil)
+		g.Expect(err).To(Succeed())
+
+		probe := sts.Spec.Template.Spec.Containers[0].ReadinessProbe
+		g.Expect(probe.Exec).NotTo(BeNil())
+		g.Expect(strings.Join(probe.Exec.Command, " ")).To(ContainSubstring("/status"))
+	})
 }
 
 func TestPrepareTiCIRollingUpgrade(t *testing.T) {
