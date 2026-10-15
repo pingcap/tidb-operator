@@ -1,0 +1,39 @@
+// Copyright 2026 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package backupschedule
+
+import (
+	"testing"
+	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/stretchr/testify/require"
+)
+
+func TestScheduleEncryptionContext(t *testing.T) {
+	template := v1alpha1.BackupSpec{
+		BR: &v1alpha1.BRConfig{Cluster: "test"},
+		StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+			Bucket: "bucket", SSEKMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "original"}},
+		}},
+	}
+	schedule := &v1alpha1.BackupSchedule{Spec: v1alpha1.BackupScheduleSpec{
+		BackupTemplate: template, LogBackupTemplate: &template,
+	}}
+	for _, backup := range []*v1alpha1.Backup{buildBackup(schedule, time.Now()), buildLogBackup(schedule, time.Now())} {
+		require.Equal(t, "original", backup.Spec.S3.SSEKMSEncryptionContext.Values["tenant"])
+		backup.Spec.S3.SSEKMSEncryptionContext.Values["tenant"] = "changed"
+		require.Equal(t, "original", template.S3.SSEKMSEncryptionContext.Values["tenant"], "scheduled backups must not share the template's map")
+	}
+}
