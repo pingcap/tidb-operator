@@ -130,7 +130,7 @@ func (ro *Options) restoreData(
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	klog.Infof("Running br command with args: %v", fullArgs)
+	klog.Infof("Running br command with args: %v", backupUtil.RedactBRArgs(fullArgs))
 	bin := path.Join(util.BRBinPath, "br")
 	cmd := exec.Command(bin, fullArgs...)
 
@@ -144,7 +144,7 @@ func (ro *Options) restoreData(
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, backupUtil.RedactBRArgs(fullArgs), err)
 	}
 
 	var (
