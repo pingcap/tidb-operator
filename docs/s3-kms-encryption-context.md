@@ -34,7 +34,7 @@ kind: Backup
 metadata:
   name: kms-context-backup
 spec:
-  mode: snapshot
+  backupMode: snapshot
   toolImage: your-registry/br:sse-kms-context
   br:
     cluster: source-tidb
@@ -66,7 +66,7 @@ metadata:
 spec:
   schedule: "0 2 * * *"
   backupTemplate:
-    mode: snapshot
+    backupMode: snapshot
     toolImage: your-registry/br:sse-kms-context
     br:
       cluster: source-tidb
@@ -82,7 +82,7 @@ spec:
         values:
           tenant: tenant-a
   logBackupTemplate:
-    mode: log
+    backupMode: log
     toolImage: your-registry/br:sse-kms-context
     br:
       cluster: source-tidb
@@ -114,7 +114,7 @@ kind: Restore
 metadata:
   name: kms-context-restore
 spec:
-  mode: snapshot
+  restoreMode: snapshot
   toolImage: your-registry/br:sse-kms-context
   br:
     cluster: target-tidb
