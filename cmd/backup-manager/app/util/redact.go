@@ -25,7 +25,8 @@ func RedactBRArgs(args []string) []string {
 	for i := 0; i < len(redacted); i++ {
 		name, value, hasValue := strings.Cut(redacted[i], "=")
 		switch name {
-		case "--s3.sse-kms-context", "--storage", "--full-backup-storage", "-s":
+		case "--s3.sse-kms-context", "--storage", "--full-backup-storage", "--checkpoint-storage",
+			"--pitr-add-index-sql-storage", "--upstream-storage", "--downstream-storage", "-s":
 			if !hasValue {
 				if i+1 == len(redacted) || strings.HasPrefix(redacted[i+1], "--") {
 					continue
@@ -44,9 +45,9 @@ func RedactBRArgs(args []string) []string {
 				redacted[i] = value
 			}
 		default:
-			// Also cover attached -s URLs and other BR storage URL options.
-			if start := strings.Index(redacted[i], "s3://"); start >= 0 {
-				redacted[i] = redacted[i][:start] + redactStorageURL(redacted[i][start:])
+			// pflag also accepts an attached value for the -s shorthand.
+			if value, ok := strings.CutPrefix(redacted[i], "-s"); ok {
+				redacted[i] = "-s" + redactStorageURL(value)
 			}
 		}
 	}
@@ -65,6 +66,11 @@ func redactStorageURL(value string) string {
 	}
 	changed := u.User != nil
 	u.User = nil
+	if u.Scheme != "" && u.Fragment != "" {
+		// Unescaped '#' in JSON can put part of the context in the fragment.
+		u.Fragment, u.RawFragment = "", ""
+		changed = true
+	}
 	for key := range query {
 		switch strings.ReplaceAll(strings.ToLower(key), "_", "-") {
 		case "sse-kms-context", "access-key", "secret-access-key", "session-token":
