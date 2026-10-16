@@ -391,10 +391,8 @@ func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]st
 			if encryptionContext.Values == nil {
 				return nil, fmt.Errorf("s3.sseKmsEncryptionContext.values must be an object of string key-value pairs")
 			}
-			encoded, err := json.Marshal(encryptionContext.Values)
-			if err != nil {
-				return nil, fmt.Errorf("cannot encode s3.sseKmsEncryptionContext.values")
-			}
+			// A map of strings contains no unsupported JSON values.
+			encoded, _ := json.Marshal(encryptionContext.Values)
 			if flag == "" || flag == defaultStorageFlag {
 				// exec.Command receives this JSON as one argument, without shell quoting.
 				s = append(s, "--s3.sse-kms-context="+string(encoded))

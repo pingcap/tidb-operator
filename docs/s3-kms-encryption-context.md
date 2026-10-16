@@ -165,7 +165,7 @@ header to S3 reads. Read access still depends on the existing S3/KMS permissions
 
 [Encryption context is not encrypted](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingKMSEncryption.html#encryption-context) and is not a secret store. It remains visible in Kubernetes
 objects and must not contain credentials or other sensitive information.
-Operator omits the full CR from startup logs and redacts context in its own BR
+Operator omits the full CR from startup logs and redacts context and S3 URL credentials in its own BR
 command logs and startup errors, including context supplied through options or
 storage URLs. It still forwards BR/TiKV output; those binaries must independently
 handle their own log redaction.

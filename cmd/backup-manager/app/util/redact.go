@@ -36,7 +36,7 @@ func RedactBRArgs(args []string) []string {
 			if name == "--s3.sse-kms-context" {
 				value = "<redacted>"
 			} else {
-				value = redactStorageContext(value)
+				value = redactStorageURL(value)
 			}
 			if hasValue {
 				redacted[i] = name + "=" + value
@@ -46,14 +46,14 @@ func RedactBRArgs(args []string) []string {
 		default:
 			// Also cover attached -s URLs and other BR storage URL options.
 			if start := strings.Index(redacted[i], "s3://"); start >= 0 {
-				redacted[i] = redacted[i][:start] + redactStorageContext(redacted[i][start:])
+				redacted[i] = redacted[i][:start] + redactStorageURL(redacted[i][start:])
 			}
 		}
 	}
 	return redacted
 }
 
-func redactStorageContext(value string) string {
+func redactStorageURL(value string) string {
 	u, err := url.Parse(value)
 	if err != nil {
 		return "<redacted>"
@@ -63,9 +63,11 @@ func redactStorageContext(value string) string {
 		// Do not expose malformed input while reporting a BR startup failure.
 		return "<redacted>"
 	}
-	changed := false
+	changed := u.User != nil
+	u.User = nil
 	for key := range query {
-		if strings.ReplaceAll(strings.ToLower(key), "_", "-") == "sse-kms-context" {
+		switch strings.ReplaceAll(strings.ToLower(key), "_", "-") {
+		case "sse-kms-context", "access-key", "secret-access-key", "session-token":
 			query.Set(key, "<redacted>")
 			changed = true
 		}
