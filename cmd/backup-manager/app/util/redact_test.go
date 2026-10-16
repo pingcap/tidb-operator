@@ -38,6 +38,9 @@ func TestRedactBRArgs(t *testing.T) {
 		{"attached short flag", []string{"-ss3://bucket?sse-kms-context=value"}, []string{"-ss3://bucket?sse-kms-context=%3Credacted%3E"}},
 		{"checkpoint URL", []string{"--checkpoint-storage=s3://bucket?sse-kms-context=value"}, []string{"--checkpoint-storage=s3://bucket?sse-kms-context=%3Credacted%3E"}},
 		{"missing storage value", []string{"--storage", "--s3.sse-kms-context", context}, []string{"--storage", "--s3.sse-kms-context", "<redacted>"}},
+		{"credentials with context", []string{"--storage=s3://user:password@bucket/path?access-key=access&secret-access-key=secret&session-token=token&sse-kms-context=value"}, []string{"--storage=s3://bucket/path?access-key=%3Credacted%3E&secret-access-key=%3Credacted%3E&session-token=%3Credacted%3E&sse-kms-context=%3Credacted%3E"}},
+		{"credentials without context", []string{"--full-backup-storage", "s3://bucket/path?SESSION_TOKEN=token&region=us-east-1"}, []string{"--full-backup-storage", "s3://bucket/path?SESSION_TOKEN=%3Credacted%3E&region=us-east-1"}},
+		{"userinfo only", []string{"-s=s3://user:password@bucket/path"}, []string{"-s=s3://bucket/path"}},
 		{"missing argument", []string{"--s3.sse-kms-context"}, []string{"--s3.sse-kms-context"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
