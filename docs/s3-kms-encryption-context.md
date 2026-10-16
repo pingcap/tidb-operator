@@ -148,8 +148,14 @@ header to S3 reads. Read access still depends on the existing S3/KMS permissions
 - Omitted `sseKmsEncryptionContext`: no new parameter, preserving existing behavior.
 - `sseKmsEncryptionContext: {values: {}}`: explicit empty JSON object (`{}`).
 - `values` is required when the field is present. Numbers, booleans, nested
-  objects, arrays and null are not accepted as string values. Quote numeric
-  strings in YAML, for example `tenant: "123"`.
+  objects and arrays are not accepted as string values. Quote numeric strings
+  in YAML, for example `tenant: "123"`.
+- Kubernetes removes null fields before validation: `values: {tenant: null}`
+  becomes `values: {}`, and `sseKmsEncryptionContext: null` is omitted.
+  `sseKmsEncryptionContext: {values: null}` is rejected because the required
+  `values` field is missing after that removal. Use strings for every context
+  value. Raw JSON passed through `spec.br.options` is validated by BR, which
+  rejects null context values.
 - `spec.br.options` retains its existing highest priority over generated CLI
   flags. A later `--s3.sse-kms-context=...` (or two-element flag/value pair)
   overrides the generated main-storage argument. An explicit storage URL can
