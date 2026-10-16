@@ -294,7 +294,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	if len(fullArgs) == 0 {
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
 	}
-	klog.Infof("Running br command with args: %v", fullArgs)
+	klog.Infof("Running br command with args: %v", backupUtil.RedactBRArgs(fullArgs))
 	bin := filepath.Join(util.BRBinPath, "br")
 	cmd := exec.Command(bin, fullArgs...)
 
@@ -308,7 +308,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, backupUtil.RedactBRArgs(fullArgs), err)
 	}
 
 	// only the initialization command of volume snapshot backup use gracefully shutting down
@@ -351,7 +351,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 
 	e2eTestSimulate(bo)
 
-	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
+	klog.Infof("Run br commond %v for cluster %s successfully", backupUtil.RedactBRArgs(fullArgs), bo)
 	return nil
 }
 

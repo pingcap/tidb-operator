@@ -2276,6 +2276,15 @@ spec:
                     type: string
                   sse:
                     type: string
+                  sseKmsEncryptionContext:
+                    properties:
+                      values:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    required:
+                    - values
+                    type: object
                   storageClass:
                     type: string
                 required:
@@ -4737,6 +4746,15 @@ spec:
                         type: string
                       sse:
                         type: string
+                      sseKmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
                       storageClass:
                         type: string
                     required:
@@ -6934,6 +6952,15 @@ spec:
                         type: string
                       sse:
                         type: string
+                      sseKmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
                       storageClass:
                         type: string
                     required:
@@ -9931,6 +9958,15 @@ spec:
                         type: string
                       sse:
                         type: string
+                      sseKmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
                       storageClass:
                         type: string
                     required:
@@ -10014,6 +10050,15 @@ spec:
                     type: string
                   sse:
                     type: string
+                  sseKmsEncryptionContext:
+                    properties:
+                      values:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    required:
+                    - values
+                    type: object
                   storageClass:
                     type: string
                 required:
@@ -12218,6 +12263,15 @@ spec:
                     type: string
                   sse:
                     type: string
+                  sseKmsEncryptionContext:
+                    properties:
+                      values:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    required:
+                    - values
+                    type: object
                   storageClass:
                     type: string
                 required:
@@ -24401,6 +24455,15 @@ spec:
                         type: string
                       sse:
                         type: string
+                      sseKmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
                       storageClass:
                         type: string
                     required:
@@ -24539,6 +24602,15 @@ spec:
                     type: string
                   sse:
                     type: string
+                  sseKmsEncryptionContext:
+                    properties:
+                      values:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    required:
+                    - values
+                    type: object
                   storageClass:
                     type: string
                 required:

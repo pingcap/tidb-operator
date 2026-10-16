@@ -32,7 +32,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -100,12 +99,8 @@ func (bm *BackupManager) ProcessBackup() error {
 		return errorutils.NewAggregate(errs)
 	}
 
-	crData, err := json.Marshal(backup)
-	if err != nil {
-		klog.Errorf("failed to marshal backup %v to json, err: %v", backup, err)
-	} else {
-		klog.Infof("start to process backup: %s", string(crData))
-	}
+	// The CR can contain encryption context in storage fields, BR options or annotations.
+	klog.Infof("start to process backup: %s/%s", backup.Namespace, backup.Name)
 
 	reason, err := bm.setOptions(backup)
 	if err != nil {
