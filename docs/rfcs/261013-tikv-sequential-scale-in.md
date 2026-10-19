@@ -30,7 +30,7 @@ Status: Draft.
 
 ## Summary
 
-Keep TiKVGroup and Updater behavior unchanged. Under `TiKVSequentialScaleIn`, each offlining TiKV adjusts its own incoming store limits, then uses the shared peer context to check whether it is selected before requesting store deletion.
+Keep TiKVGroup and Updater behavior unchanged. Under `TiKVSequentialScaleIn`, each offlining TiKV adjusts its own incoming store limits, then checks the selection annotation before requesting store deletion.
 
 ## Motivation
 
@@ -45,7 +45,7 @@ The existing Updater can mark several TiKVs offline together. Their instance con
 ### Non-Goals
 
 - Change Group-level offline marking, Pod handling, finalizers, or normal rolling-update eviction.
-- Add locks, removal-request markers, a separate admission coordinator, or new event handlers.
+- Add a separate admission controller.
 - Add spec/status fields, user-configurable rates, or timing settings.
 - Change retained stores, remove-peer limits, or global scheduling settings.
 
@@ -54,8 +54,8 @@ The existing Updater can mark several TiKVs offline together. Their instance con
 Limit implementation changes to four parts:
 
 1. Add a **Store Limit Adjust task** for offline limits and non-offline restoration.
-2. Add **Context Peer Slice** to the TiKV controller to load TiKV peers across Groups in the same Cluster.
-3. Add a **self-selection condition at store deletion**. An unselected instance returns Wait.
+2. Add a **Select TiKV task** to the Cluster controller. Pass its shared Order directly to the task.
+3. Pass all offline TiKV instances from cache to Order.Sort, and Patch its `core.pingcap.com/selected-to-delete` annotation. The instance controller checks that annotation before DeleteStore.
 4. Add **TiKVSequentialScaleIn** to switch between the existing and new offline behavior.
 
 With the gate enabled, offline handling no longer requests leader eviction or waits for eviction. Other controller tasks retain their existing behavior.
@@ -67,53 +67,64 @@ With the gate enabled, offline handling no longer requests leader eviction or wa
 | PD does not support transfer-leader-in | Fail limit adjustment before reaching store deletion |
 | One limit write fails | Keep the saved originals and retry adjustment on the current instance |
 | Tiny positive limits are not a strict prohibition | Validate token-bucket, urgent scheduling, and Raft-election behavior with the supported PD version |
-| Peers are observed at different times | Validate candidate changes, cancellation, and restart behavior separately; do not add a coordination mechanism in this change |
+| Peers are observed at different times | Keep a successful selection pinned across observations and persist it before DeleteStore |
 
 ## Design Details
 
 ### Instance Reconcile Flow
 
-Each reconcile operates only on its current instance X.
+The Cluster controller watches TiKV create, update, and delete events.
 
 ```text
-Reconcile X
+Cluster reconcile
     |
     v
-Context Peer Slice: load TiKV peers
+List TiKV instances from cache
+    |
+    v
+Clear selection annotations on non-offline instances
+    |
+    v
+Order.Sort(cluster, all spec.offline=true instances)
+    |
+    v
+Returns the selected TiKV
+    |
+    v
+Patch selected-to-delete=true on the selected instance
+
+TiKV instance reconcile
     |
     v
 Store Limit Adjust
-    |-- offline: save originals and limit X
-    |-- not offline: restore X's limits without waiting for its store to return to Up
     |
     v
-Existing offline handling
-    |
-    |-- gate disabled: keep existing eviction and deletion flow
-    |
-    v
-Before DeleteStore: sort candidates and check self
+Before DeleteStore: check selected-to-delete
     |                         |
- X selected              Another TiKV selected
+ Present                    Absent
     |                         |
     v                         v
-DeleteStore(X)               Wait
-    |
-    v
-Existing store observation and cleanup
+DeleteStore(self)            Wait
 ```
 
-Candidates are offlining TiKVs in the peer slice, plus Removing stores whose offline flag has been cleared for cancellation. Exclude Removed stores. Sort Removing stores first, then creation timestamp, name, and UID, all ascending. Compare the selected UID with the current instance UID.
+Order is shared by Cluster reconciles and scoped by namespace and Cluster. Its constructor accepts the sorting and key functions. Sort persisted selections first, then Removing stores, creation timestamp, name, and UID.
 
-Given the same candidate set, parallel reconciles select the same TiKV. Only that instance calls DeleteStore for itself. There is no lock or second check of incoming limits at the deletion point.
+Sort receives all TiKV instances with `spec.offline=true`, regardless of store state. It returns the instance with the previously selected name from the current input if present; otherwise it sorts the supplied slice in place and selects a new top. Empty input clears the Cluster’s selection. Order stores only selected keys, not candidate lists, and exposes only Sort.
+
+The Cluster controller clears annotations on non-offline instances before observing and selecting candidates. A failed Patch returns an error. An annotation write failure retains the in-memory selection for retry. On restart, persisted selection annotations take priority.
+
+The instance controller does not sort, call Sort, or write selection annotations. It keeps its existing offline and cancellation handling, checking the annotation only to authorize DeleteStore.
 
 ### Module Responsibilities
 
 | Module | Change |
 | --- | --- |
-| TiKV Instance Controller | Load Context Peer Slice and run Store Limit Adjust before offline handling |
+| Cluster Controller | Watch TiKV events and pass the shared Order to Select TiKV |
+| Select TiKV task | Read TiKV instances from cache through apicall, clear canceled annotations, call Sort with offline peers, and Patch the selected annotation |
+| Utils Order | Return Sort from the supplied instances, retaining only the selected key while present |
+| TiKV Instance Controller | Adjust its own limits and check its selection annotation before deletion |
 | Store Limit Adjust task | Adjust or restore only the current instance's two incoming limits |
-| TiKV offline task | Switch eviction behavior with the gate and always call the common offline task with an `isSelected` boolean |
+| TiKV offline task | Check the selection annotation, switch eviction behavior with the gate, and always call the common offline task with an `isSelected` boolean |
 | Common offline task | Check `isSelected` immediately before deleting a store; other offline and cancellation handling remains unchanged |
 | PD API Client | Read store limits and write explicitly named incoming limit types |
 | Feature Gates | Register the new gate through the existing generation mechanism |
@@ -135,7 +146,7 @@ Both requests use `POST /pd/api/v1/store/{id}/limit`. PD requires positive rates
 
 Before the first limit write, save the original two values in the current instance's `core.pingcap.com/store-limits` annotation, using the format `add-peer:10,transfer-leader-in:10`. Do not overwrite those originals on retries.
 
-When offline is cleared, reuse existing cancellation handling. Restore settings still equal to the reduced rate and remove the annotation. Preserve settings changed by another writer. This annotation stores limit values only; it does not coordinate store deletion.
+When offline is cleared, reuse existing cancellation handling. Restore settings still equal to the reduced rate and remove the annotation. Preserve settings changed by another writer. The store-limits annotation stores limit values only; the separate selected-to-delete annotation persists deletion selection.
 
 ### Test Plan
 
@@ -144,7 +155,9 @@ When offline is cleared, reuse existing cancellation handling. Restore settings 
 - Partial write failures retain the original values for retries and restoration.
 - Non-offline restoration proceeds even while the store is Removing and preserves external changes.
 - Candidate ordering is deterministic; an unselected reconcile never deletes another store.
-- Removing candidates take priority, and Removed candidates no longer delay selection.
+- Persisted selections take priority on restart; successful selections remain stable across observations.
+- Failed annotation writes prevent DeleteStore; successful writes precede DeleteStore.
+- Selection remains stable while its name is observed; an absent name allows the next selection.
 - The gate switches offline eviction behavior and preserves the disabled flow.
 
 Integration validation remains necessary for complete scale-in, cancellation, and PD scheduling behavior.

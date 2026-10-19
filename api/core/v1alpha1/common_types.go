@@ -189,6 +189,9 @@ const (
 	// means the instance is marked as deleted and will be deleted later
 	AnnoKeyDeferDelete = AnnoKeyPrefix + "defer-delete"
 
+	// AnnoKeySelectedToDelete persists the instance selected for sequential store removal.
+	AnnoKeySelectedToDelete = AnnoKeyPrefix + "selected-to-delete"
+
 	// AnnoKeyStoreLimits records original incoming store limits for restoration after scale-in cancellation.
 	AnnoKeyStoreLimits = AnnoKeyPrefix + "store-limits"
 

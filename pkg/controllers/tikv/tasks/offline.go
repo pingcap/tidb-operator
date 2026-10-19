@@ -15,9 +15,7 @@
 package tasks
 
 import (
-	"cmp"
 	"context"
-	"slices"
 	"time"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -60,7 +58,7 @@ func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task 
 		}
 
 		isSelected := !state.FeatureGates().Enabled(meta.TiKVSequentialScaleIn) ||
-			isSelectedForScaleIn(tikv, state.TiKVSlice())
+			tikv.Annotations[v1alpha1.AnnoKeySelectedToDelete] == v1alpha1.AnnoValTrue
 
 		if err := common.TaskOfflineStore[scope.TiKV](
 			ctx,
@@ -82,31 +80,4 @@ func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task 
 
 		return task.Complete().With("offline is completed or no need, spec.offline: %v", isOffline)
 	})
-}
-
-func isSelectedForScaleIn(current *v1alpha1.TiKV, peers []*v1alpha1.TiKV) bool {
-	candidates := make([]*v1alpha1.TiKV, 0, len(peers))
-	for _, peer := range peers {
-		if peer.Status.State != v1alpha1.StoreStateRemoved &&
-			(coreutil.IsOffline[scope.TiKV](peer) || peer.Status.State == v1alpha1.StoreStateRemoving) {
-			candidates = append(candidates, peer)
-		}
-	}
-	slices.SortFunc(candidates, func(a, b *v1alpha1.TiKV) int {
-		aRemoving, bRemoving := a.Status.State == v1alpha1.StoreStateRemoving, b.Status.State == v1alpha1.StoreStateRemoving
-		if aRemoving != bRemoving {
-			if aRemoving {
-				return -1
-			}
-			return 1
-		}
-		if order := a.CreationTimestamp.Compare(b.CreationTimestamp.Time); order != 0 {
-			return order
-		}
-		if order := cmp.Compare(a.Name, b.Name); order != 0 {
-			return order
-		}
-		return cmp.Compare(a.UID, b.UID)
-	})
-	return len(candidates) > 0 && candidates[0].UID == current.UID
 }

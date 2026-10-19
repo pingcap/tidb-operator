@@ -18,12 +18,10 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -154,6 +152,9 @@ func TestOfflineStoreFeatureSwitchAndSelection(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			kv := &v1alpha1.TiKV{ObjectMeta: metav1.ObjectMeta{Name: "b", UID: "b"}}
 			kv.Spec.Offline = ptr.To(true)
+			if scenario == "selected self" {
+				kv.Annotations = map[string]string{v1alpha1.AnnoKeySelectedToDelete: v1alpha1.AnnoValTrue}
+			}
 			if scenario != "legacy eviction" {
 				kv.Spec.Features = []meta.Feature{meta.TiKVSequentialScaleIn}
 			}
@@ -193,27 +194,6 @@ func TestOfflineStoreFeatureSwitchAndSelection(t *testing.T) {
 			require.Equal(t, scenario == "legacy eviction", rtx.ShouldEvictLeader)
 		})
 	}
-}
-
-func TestScaleInSelection(t *testing.T) {
-	a := &v1alpha1.TiKV{ObjectMeta: metav1.ObjectMeta{Name: "a", UID: types.UID("a")}}
-	a.Spec.Offline = ptr.To(true)
-	b := a.DeepCopy()
-	b.Name = "b"
-	b.UID = "b"
-	require.True(t, isSelectedForScaleIn(a, []*v1alpha1.TiKV{b, a}))
-	require.False(t, isSelectedForScaleIn(b, []*v1alpha1.TiKV{a, b}))
-	b.CreationTimestamp = metav1.NewTime(time.Unix(-1, 0))
-	// Use explicit timestamps so b is older than a.
-	a.CreationTimestamp = metav1.NewTime(time.Unix(0, 0))
-	require.True(t, isSelectedForScaleIn(b, []*v1alpha1.TiKV{a, b}))
-	a.Status.State = v1alpha1.StoreStateRemoving
-	a.Spec.Offline = ptr.To(false)
-	require.False(t, isSelectedForScaleIn(b, []*v1alpha1.TiKV{b, a}), "Removing retains its position during cancellation")
-	a.Status.State = v1alpha1.StoreStateRemoved
-	require.True(t, isSelectedForScaleIn(b, []*v1alpha1.TiKV{a, b}), "Removed does not wait for CR cleanup")
-	b.Spec.Offline = ptr.To(false)
-	require.False(t, isSelectedForScaleIn(b, []*v1alpha1.TiKV{a, b}))
 }
 
 func TestParseOriginalStoreLimits(t *testing.T) {
