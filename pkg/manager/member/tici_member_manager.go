@@ -487,7 +487,12 @@ func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		VolumeMounts:    volMounts,
 		Env:             util.AppendEnv(envs, baseSpec.Env()),
 		EnvFrom:         baseSpec.EnvFrom(),
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler:        buildTiCIReadinessProbHandler(tc, v1alpha1.TiCIMetaMemberType),
+			InitialDelaySeconds: int32(10),
+		},
 	}
+	applyTiCIReadinessProbeOverride(container.ReadinessProbe, spec.ReadinessProbe)
 
 	podSpec := baseSpec.BuildPodSpec()
 	var err error
@@ -585,7 +590,12 @@ func getNewTiCIWorkerStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		VolumeMounts:    volMounts,
 		Env:             util.AppendEnv(envs, baseSpec.Env()),
 		EnvFrom:         baseSpec.EnvFrom(),
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler:        buildTiCIReadinessProbHandler(tc, v1alpha1.TiCIWorkerMemberType),
+			InitialDelaySeconds: int32(10),
+		},
 	}
+	applyTiCIReadinessProbeOverride(container.ReadinessProbe, spec.ReadinessProbe)
 
 	podSpec := baseSpec.BuildPodSpec()
 	var err error
@@ -633,6 +643,72 @@ func getNewTiCIWorkerStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	return set, nil
+}
+
+// buildTiCIReadinessProbHandler builds the readiness probe handler for TiCI
+// meta/worker containers. By default it sends an HTTP GET to the "/status"
+// endpoint of the tici status server, so the probe verifies the process and
+// its async runtime are actually serving requests rather than merely
+// listening. The handler can be overridden via
+// spec.tici.<meta|worker>.readinessProbe.type: "tcp" downgrades to a TCP
+// socket check against the status port, and "command" runs curl against the
+// same endpoint (requires curl in the image).
+func buildTiCIReadinessProbHandler(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) corev1.ProbeHandler {
+	var statusPort int32
+	var override *v1alpha1.Probe
+	if memberType == v1alpha1.TiCIMetaMemberType {
+		statusPort = v1alpha1.DefaultTiCIMetaStatusPort
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+			override = tc.Spec.TiCI.Meta.ReadinessProbe
+		}
+	} else {
+		statusPort = v1alpha1.DefaultTiCIWorkerStatusPort
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+			override = tc.Spec.TiCI.Worker.ReadinessProbe
+		}
+	}
+
+	if override != nil && override.Type != nil {
+		switch *override.Type {
+		case v1alpha1.TCPProbeType:
+			return corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(int(statusPort)),
+				},
+			}
+		case v1alpha1.CommandProbeType:
+			return corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: []string{
+						"curl",
+						fmt.Sprintf("http://127.0.0.1:%d/status", statusPort),
+						"--fail",
+					},
+				},
+			}
+		}
+	}
+
+	return corev1.ProbeHandler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Path: "/status",
+			Port: intstr.FromInt(int(statusPort)),
+		},
+	}
+}
+
+// applyTiCIReadinessProbeOverride applies the user-specified probe parameters
+// (initialDelaySeconds/periodSeconds) from the CR spec onto the default probe.
+func applyTiCIReadinessProbeOverride(probe *corev1.Probe, override *v1alpha1.Probe) {
+	if override == nil {
+		return
+	}
+	if override.InitialDelaySeconds != nil {
+		probe.InitialDelaySeconds = *override.InitialDelaySeconds
+	}
+	if override.PeriodSeconds != nil {
+		probe.PeriodSeconds = *override.PeriodSeconds
+	}
 }
 
 func getNewTiCIHeadlessService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) *corev1.Service {
