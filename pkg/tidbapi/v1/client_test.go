@@ -75,16 +75,47 @@ func TestTiDBClient_GetInfo(t *testing.T) {
 }
 
 func TestTiDBClient_SetServerLabels(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/labels", r.URL.Path)
-		assert.Equal(t, http.MethodPost, r.Method)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+	for _, tt := range []struct {
+		name    string
+		info    string
+		status  int
+		wantErr string
+	}{
+		{name: "updated", info: `{"labels":{"region":"us-west-1"}}`, status: http.StatusOK},
+		{name: "preserves other labels", info: `{"labels":{"region":"us-west-1","zone":"a"}}`, status: http.StatusOK},
+		{name: "update silently failed", info: `{"labels":{}}`, status: http.StatusOK, wantErr: "server label"},
+		{name: "stale value", info: `{"labels":{"region":"us-east-1"}}`, status: http.StatusOK, wantErr: "server label"},
+		{name: "verification failed", status: http.StatusServiceUnavailable, wantErr: "verify server labels"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/labels":
+					assert.Equal(t, http.MethodPost, r.Method)
+					body, err := io.ReadAll(r.Body)
+					assert.NoError(t, err)
+					assert.JSONEq(t, `{"region":"us-west-1"}`, string(body))
+					w.WriteHeader(http.StatusOK)
+				case "/info":
+					assert.Equal(t, http.MethodGet, r.Method)
+					w.WriteHeader(tt.status)
+					_, err := w.Write([]byte(tt.info))
+					assert.NoError(t, err)
+				default:
+					t.Errorf("unexpected request: %s", r.URL.Path)
+				}
+			}))
+			defer server.Close()
 
-	client := NewTiDBClient(server.URL, 5*time.Second, nil)
-	err := client.SetServerLabels(context.Background(), map[string]string{"region": "us-west-1"})
-	require.NoError(t, err)
+			client := NewTiDBClient(server.URL, 5*time.Second, nil)
+			err := client.SetServerLabels(context.Background(), map[string]string{"region": "us-west-1"})
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestTiDBClient_Activate(t *testing.T) {
