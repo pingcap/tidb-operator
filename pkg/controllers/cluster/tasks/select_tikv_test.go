@@ -31,7 +31,7 @@ import (
 )
 
 func TestSelectTiKV(t *testing.T) {
-	for _, scenario := range []string{"sorted", "removing", "restart", "disabled", "patch failure", "canceled", "cleanup failure"} {
+	for _, scenario := range []string{"sorted", "removing", "restart", "disabled", "patch failure", "canceled", "canceled stale state"} {
 		t.Run(scenario, func(t *testing.T) {
 			cluster := &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "tc", Namespace: "ns"}}
 			cluster.Spec.FeatureGates = []meta.FeatureGate{{Name: meta.TiKVSequentialScaleIn}}
@@ -52,14 +52,18 @@ func TestSelectTiKV(t *testing.T) {
 			if scenario == "removing" {
 				b.Status.State = v1alpha1.StoreStateRemoving
 			}
-			if scenario == "restart" || scenario == "canceled" || scenario == "cleanup failure" {
+			if scenario == "restart" || scenario == "canceled" || scenario == "canceled stale state" {
 				b.Annotations = map[string]string{v1alpha1.AnnoKeySelectedToDelete: v1alpha1.AnnoValTrue}
 			}
-			if scenario == "canceled" || scenario == "cleanup failure" {
+			if scenario == "canceled" || scenario == "canceled stale state" {
 				b.Spec.Offline = ptr.To(false)
+				b.Status.State = map[string]string{
+					"canceled":             v1alpha1.StoreStateRemoving,
+					"canceled stale state": v1alpha1.StoreStateServing,
+				}[scenario]
 			}
 			fc := client.NewFakeClient(a, b)
-			fails := scenario == "patch failure" || scenario == "cleanup failure"
+			fails := scenario == "patch failure"
 			if fails {
 				fc.WithError("patch", "*", errors.New("patch failed"))
 			}
@@ -70,9 +74,18 @@ func TestSelectTiKV(t *testing.T) {
 			for _, kv := range []*v1alpha1.TiKV{a, b} {
 				stored := &v1alpha1.TiKV{}
 				require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(kv), stored))
-				selected := (scenario == "sorted" || scenario == "canceled") && kv.Name == "a" ||
-					(scenario == "removing" || scenario == "restart" || scenario == "cleanup failure") && kv.Name == "b"
+				selected := scenario == "sorted" && kv.Name == "a" ||
+					(scenario == "removing" || scenario == "restart" || scenario == "canceled" || scenario == "canceled stale state") && kv.Name == "b"
 				require.Equal(t, selected, stored.Annotations[v1alpha1.AnnoKeySelectedToDelete] == v1alpha1.AnnoValTrue)
+			}
+			if scenario == "canceled" || scenario == "canceled stale state" {
+				// Simulate the instance controller's acknowledgment after PD confirms cancellation.
+				require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(b), b))
+				delete(b.Annotations, v1alpha1.AnnoKeySelectedToDelete)
+				require.NoError(t, fc.Update(ctx, b))
+				require.False(t, NewTaskSelectTiKV(fc, o).Sync(ctx).IsFailed())
+				require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(a), a))
+				require.Equal(t, v1alpha1.AnnoValTrue, a.Annotations[v1alpha1.AnnoKeySelectedToDelete])
 			}
 			if scenario == "sorted" {
 				require.NoError(t, fc.Delete(ctx, a))

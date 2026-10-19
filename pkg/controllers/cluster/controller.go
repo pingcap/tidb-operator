@@ -22,9 +22,12 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -60,7 +63,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		Watches(&v1alpha1.ResourceManagerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.ResourceManagerGroup]())).
 		Watches(&v1alpha1.RouterGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.RouterGroup]())).
 		Watches(&v1alpha1.SchedulerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.SchedulerGroup]())).
-		Watches(&v1alpha1.TiKV{}, handler.EnqueueRequestsFromMapFunc(enqueueForTiKV)).
+		Watches(&v1alpha1.TiKV{}, handler.EnqueueRequestsFromMapFunc(enqueueForTiKV), builder.WithPredicates(tiKVSelectionPredicate())).
 		Watches(&v1alpha1.TiKVGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiKVGroup]())).
 		Watches(&v1alpha1.TiDBGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiDBGroup]())).
 		Watches(&v1alpha1.TiFlashGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiFlashGroup]())).
@@ -71,6 +74,18 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		Watches(&v1alpha1.DMWorkerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.DMWorkerGroup]())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
+}
+
+// tiKVSelectionPredicate ignores status churn but observes selection completion.
+func tiKVSelectionPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() ||
+				e.ObjectOld.GetAnnotations()[v1alpha1.AnnoKeySelectedToDelete] !=
+					e.ObjectNew.GetAnnotations()[v1alpha1.AnnoKeySelectedToDelete]
+		},
+		GenericFunc: func(event.GenericEvent) bool { return false },
+	}
 }
 
 func enqueueForTiKV(_ context.Context, obj client.Object) []reconcile.Request {

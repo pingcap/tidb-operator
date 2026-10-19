@@ -148,51 +148,56 @@ func TestStoreLimitTaskRestoresDuringCancellation(t *testing.T) {
 }
 
 func TestOfflineStoreFeatureSwitchAndSelection(t *testing.T) {
-	for _, scenario := range []string{"legacy eviction", "selected self", "selected peer"} {
-		t.Run(scenario, func(t *testing.T) {
-			kv := &v1alpha1.TiKV{ObjectMeta: metav1.ObjectMeta{Name: "b", UID: "b"}}
-			kv.Spec.Offline = ptr.To(true)
-			if scenario == "selected self" {
-				kv.Annotations = map[string]string{v1alpha1.AnnoKeySelectedToDelete: v1alpha1.AnnoValTrue}
+	for _, stale := range []bool{false, true} {
+		for _, scenario := range []string{"legacy eviction", "selected self", "selected peer"} {
+			name := scenario
+			if stale {
+				name += " with stale instance features"
 			}
-			if scenario != "legacy eviction" {
-				kv.Spec.Features = []meta.Feature{meta.TiKVSequentialScaleIn}
-			}
-			other := kv.DeepCopy()
-			other.Name = "a"
-			other.UID = "a"
-			peers := []*v1alpha1.TiKV{kv}
-			if scenario == "selected peer" {
-				peers = append(peers, other)
-			}
-			st := &state{tikv: kv, tikvs: peers, storeState: pdv1.NodeStateServing}
-			st.cluster = &v1alpha1.Cluster{}
-			for _, feature := range kv.Spec.Features {
-				st.cluster.Spec.FeatureGates = append(st.cluster.Spec.FeatureGates, meta.FeatureGate{Name: feature})
-			}
-			st.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](st)
-			ctrl := gomock.NewController(t)
-			pc := pdm.NewMockPDClient(ctrl)
-			st.IPDClient = &stubPDClientState{client: pc}
-			if scenario != "legacy eviction" {
-				pd := pdapi.NewMockPDClient(ctrl)
-				pc.EXPECT().Underlay().Return(pd)
+			t.Run(name, func(t *testing.T) {
+				kv := &v1alpha1.TiKV{ObjectMeta: metav1.ObjectMeta{Name: "b", UID: "b"}}
+				kv.Spec.Offline = ptr.To(true)
 				if scenario == "selected self" {
-					pd.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
+					kv.Annotations = map[string]string{v1alpha1.AnnoKeySelectedToDelete: v1alpha1.AnnoValTrue}
 				}
-				cache := pdm.NewMockStoreCache[pdv1.Store, *pdv1.Store](ctrl)
-				pc.EXPECT().Stores().Return(cache)
-				cache.EXPECT().Refresh()
-			}
-			rtx := &ReconcileContext{State: st, PDSynced: true, Store: &pdv1.Store{ID: "1"}}
-			result, _ := task.RunTask(context.Background(), TaskOfflineStore(rtx, nil))
-			expected := task.SWait
-			if scenario == "legacy eviction" {
-				expected = task.SRetry
-			}
-			require.Equal(t, expected, result.Status(), result.Message())
-			require.Equal(t, scenario == "legacy eviction", rtx.ShouldEvictLeader)
-		})
+				if scenario != "legacy eviction" {
+					kv.Spec.Features = []meta.Feature{meta.TiKVSequentialScaleIn}
+				}
+				st := &state{tikv: kv, storeState: pdv1.NodeStateServing}
+				st.cluster = &v1alpha1.Cluster{}
+				for _, feature := range kv.Spec.Features {
+					st.cluster.Spec.FeatureGates = append(st.cluster.Spec.FeatureGates, meta.FeatureGate{Name: feature})
+				}
+				if stale {
+					kv.Spec.Features = []meta.Feature{meta.FeatureModification}
+					if scenario == "legacy eviction" {
+						kv.Spec.Features = append(kv.Spec.Features, meta.TiKVSequentialScaleIn)
+					}
+				}
+				st.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](st)
+				ctrl := gomock.NewController(t)
+				pc := pdm.NewMockPDClient(ctrl)
+				st.IPDClient = &stubPDClientState{client: pc}
+				if scenario != "legacy eviction" {
+					pd := pdapi.NewMockPDClient(ctrl)
+					pc.EXPECT().Underlay().Return(pd)
+					if scenario == "selected self" {
+						pd.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
+					}
+					cache := pdm.NewMockStoreCache[pdv1.Store, *pdv1.Store](ctrl)
+					pc.EXPECT().Stores().Return(cache)
+					cache.EXPECT().Refresh()
+				}
+				rtx := &ReconcileContext{State: st, PDSynced: true, Store: &pdv1.Store{ID: "1"}}
+				result, _ := task.RunTask(context.Background(), TaskOfflineStore(rtx, nil, client.NewFakeClient(kv)))
+				expected := task.SWait
+				if scenario == "legacy eviction" {
+					expected = task.SRetry
+				}
+				require.Equal(t, expected, result.Status(), result.Message())
+				require.Equal(t, scenario == "legacy eviction", rtx.ShouldEvictLeader)
+			})
+		}
 	}
 }
 
@@ -208,5 +213,79 @@ func TestParseOriginalStoreLimits(t *testing.T) {
 	for _, value := range []string{"add-peer:10", "add-peer:bad,transfer-leader-in:10", "add-peer=10,transfer-leader-in:10", "add-peer:10,other:10"} {
 		_, err := parseOriginalStoreLimits(value)
 		require.Error(t, err, value)
+	}
+}
+
+func TestStoreLimitUsesClusterGate(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		kv := &v1alpha1.TiKV{}
+		kv.Spec.Offline = ptr.To(true)
+		kv.Spec.Features = []meta.Feature{meta.FeatureModification}
+		if !enabled {
+			kv.Spec.Features = append(kv.Spec.Features, meta.TiKVSequentialScaleIn)
+		}
+		st := &state{tikv: kv, cluster: &v1alpha1.Cluster{}}
+		if enabled {
+			st.cluster.Spec.FeatureGates = []meta.FeatureGate{{Name: meta.TiKVSequentialScaleIn}}
+		}
+		st.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](st)
+		result, _ := task.RunTask(context.Background(), TaskStoreLimitAdjust(&ReconcileContext{State: st}, nil, nil))
+		expected := task.SComplete
+		if enabled {
+			expected = task.SWait
+		}
+		require.Equal(t, expected, result.Status())
+	}
+}
+
+func TestOfflineCancellationRetainsSelection(t *testing.T) {
+	for _, scenario := range []string{"cancel pending", "cancel failed", "confirmed", "removed", "patch failed"} {
+		t.Run(scenario, func(t *testing.T) {
+			ctx := context.Background()
+			kv := &v1alpha1.TiKV{ObjectMeta: metav1.ObjectMeta{Name: "a", ResourceVersion: "1", Annotations: map[string]string{
+				v1alpha1.AnnoKeySelectedToDelete: v1alpha1.AnnoValTrue,
+			}}}
+			kv.Spec.Offline = ptr.To(false)
+			st := &state{tikv: kv, cluster: &v1alpha1.Cluster{}, storeState: pdv1.NodeStateServing}
+			if scenario == "cancel pending" || scenario == "cancel failed" {
+				st.storeState = pdv1.NodeStateRemoving
+			}
+			if scenario == "removed" {
+				st.storeState = pdv1.NodeStateRemoved
+			}
+			ctrl := gomock.NewController(t)
+			pc := pdm.NewMockPDClient(ctrl)
+			pd := pdapi.NewMockPDClient(ctrl)
+			st.IPDClient = &stubPDClientState{client: pc}
+			pc.EXPECT().Underlay().Return(pd)
+			if st.storeState == pdv1.NodeStateRemoving {
+				var err error
+				if scenario == "cancel failed" {
+					err = errors.New("PD unavailable")
+				}
+				pd.EXPECT().CancelDeleteStore(ctx, "1").Return(err)
+				cache := pdm.NewMockStoreCache[pdv1.Store, *pdv1.Store](ctrl)
+				pc.EXPECT().Stores().Return(cache)
+				cache.EXPECT().Refresh()
+			}
+			fc := client.NewFakeClient(kv)
+			if scenario == "patch failed" {
+				fc.WithError("patch", "*", errors.New("patch failed"))
+			}
+			rtx := &ReconcileContext{State: st, PDSynced: true, Store: &pdv1.Store{ID: "1"}}
+			result, _ := task.RunTask(ctx, TaskOfflineStore(rtx, nil, fc))
+			expected := task.SComplete
+			if scenario == "cancel pending" {
+				expected = task.SWait
+			}
+			if scenario == "cancel failed" || scenario == "patch failed" {
+				expected = task.SFail
+			}
+			require.Equal(t, expected, result.Status(), result.Message())
+			saved := &v1alpha1.TiKV{}
+			require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(kv), saved))
+			released := scenario == "confirmed" || scenario == "removed"
+			require.Equal(t, !released, saved.Annotations[v1alpha1.AnnoKeySelectedToDelete] == v1alpha1.AnnoValTrue)
+		})
 	}
 }

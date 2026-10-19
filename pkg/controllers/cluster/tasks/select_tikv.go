@@ -62,9 +62,9 @@ func (t *TaskSelectTiKV) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		if coreutil.IsOffline[scope.TiKV](kv) {
 			candidates = append(candidates, kv)
 		} else if kv.Annotations[v1alpha1.AnnoKeySelectedToDelete] == v1alpha1.AnnoValTrue {
-			if err := setSelectedToDelete(ctx, t.Client, kv, false); err != nil {
-				return task.Fail().With("cannot clear selected-to-delete annotation: %v", err)
-			}
+			// The instance controller clears this only after PD confirms cancellation.
+			// Do not infer completion from the CR's potentially stale store state.
+			return task.Complete().With("waiting for TiKV %s to finish offline cancellation", kv.Name)
 		}
 	}
 	key := client.ObjectKeyFromObject(cluster)
@@ -73,7 +73,7 @@ func (t *TaskSelectTiKV) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		return task.Complete().With("no offline TiKV instances")
 	}
 	if kv.Annotations[v1alpha1.AnnoKeySelectedToDelete] != v1alpha1.AnnoValTrue {
-		if err := setSelectedToDelete(ctx, t.Client, kv, true); err != nil {
+		if err := setSelectedToDelete(ctx, t.Client, kv); err != nil {
 			return task.Fail().With("cannot persist selected-to-delete annotation: %v", err)
 		}
 	}
@@ -104,16 +104,12 @@ func CompareScaleIn(a, b *v1alpha1.TiKV) int {
 	return cmp.Compare(a.UID, b.UID)
 }
 
-func setSelectedToDelete(ctx context.Context, c client.Client, kv *v1alpha1.TiKV, selected bool) error {
+func setSelectedToDelete(ctx context.Context, c client.Client, kv *v1alpha1.TiKV) error {
 	updated := kv.DeepCopy()
-	if selected {
-		if updated.Annotations == nil {
-			updated.Annotations = make(map[string]string)
-		}
-		updated.Annotations[v1alpha1.AnnoKeySelectedToDelete] = v1alpha1.AnnoValTrue
-	} else {
-		delete(updated.Annotations, v1alpha1.AnnoKeySelectedToDelete)
+	if updated.Annotations == nil {
+		updated.Annotations = make(map[string]string)
 	}
+	updated.Annotations[v1alpha1.AnnoKeySelectedToDelete] = v1alpha1.AnnoValTrue
 	// Check resourceVersion so a concurrent offline change invalidates this selection write.
 	patch := ctrlclient.MergeFromWithOptions(kv, ctrlclient.MergeFromWithOptimisticLock{})
 	if err := c.Patch(ctx, updated, patch); err != nil {

@@ -24,6 +24,7 @@ import (
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	pdapi "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
@@ -44,7 +45,7 @@ func TaskStoreLimitAdjust(state *ReconcileContext, c client.Client, m pdm.PDClie
 		kv := state.Object()
 		offline := coreutil.IsOffline[scope.TiKV](kv)
 		saved := kv.Annotations[v1alpha1.AnnoKeyStoreLimits]
-		if offline && !state.FeatureGates().Enabled(meta.TiKVSequentialScaleIn) || !offline && saved == "" {
+		if offline && !features.NewFromCluster(state.Cluster().Spec.FeatureGates).Enabled(meta.TiKVSequentialScaleIn) || !offline && saved == "" {
 			return task.Complete().With("no store limit adjustment needed")
 		}
 		if !state.PDSynced {
