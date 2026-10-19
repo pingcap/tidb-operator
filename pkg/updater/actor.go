@@ -98,11 +98,10 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	updateHooks []UpdateHook[R]
 	delHooks    []DelHook[R]
 
-	scaleInSelector         Selector[R]
-	scaleInFallbackSelector Selector[R]
-	podDeletionCost         *podDeletionCostPolicy[R]
-	updateSelector          Selector[R]
-	cancelOfflineSelector   Selector[R]
+	scaleInSelector       Selector[R]
+	podDeletionCost       *podDeletionCostPolicy[R]
+	updateSelector        Selector[R]
+	cancelOfflineSelector Selector[R]
 
 	actions []action
 }
@@ -110,7 +109,10 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 // chooseToUpdate selects an outdated instance for update operation.
 // Uses the updateSelector to determine which instance should be updated next.
 // Returns the name of the selected instance or an error if no instance can be updated.
-func (act *actor[T, O, R]) chooseToUpdate(s []R) (string, error) {
+func (act *actor[T, O, R]) chooseToUpdate(ctx context.Context, s []R) (string, error) {
+	if len(s) > 1 && act.podDeletionCost != nil {
+		act.podDeletionCost.load(ctx, act.c, s)
+	}
 	name := act.updateSelector.Choose(s)
 	if name == "" {
 		return "", fmt.Errorf("no instance can be updated")
@@ -123,21 +125,22 @@ func (act *actor[T, O, R]) chooseToUpdate(s []R) (string, error) {
 // Uses the scaleInSelector to determine which instance should be scaled in next.
 // Returns the name of the selected instance or an error if no instance can be scaled in.
 func (act *actor[T, O, R]) chooseToScaleIn(ctx context.Context, s []R) (string, error) {
-	candidates := act.scaleInSelector.Candidates(s)
-	if len(candidates) == 0 {
+	if len(s) > 1 && act.podDeletionCost != nil {
+		act.podDeletionCost.load(ctx, act.c, s)
+	}
+	name := act.scaleInSelector.Choose(s)
+	if name == "" {
 		return "", fmt.Errorf("no instance can be scale in")
 	}
-	if len(candidates) == 1 || act.scaleInFallbackSelector == nil {
-		return candidates[0].GetName(), nil
-	}
-	if err := act.podDeletionCost.load(ctx, act.c, candidates); err != nil {
-		return "", err
-	}
-	return act.scaleInFallbackSelector.Choose(candidates), nil
+
+	return name, nil
 }
 
 // chooseToCancelOffline selects a being-offline instance to revive during scale-out.
-func (act *actor[T, O, R]) chooseToCancelOffline(s []R) (string, bool) {
+func (act *actor[T, O, R]) chooseToCancelOffline(ctx context.Context, s []R) (string, bool) {
+	if len(s) > 1 && act.podDeletionCost != nil {
+		act.podDeletionCost.load(ctx, act.c, s)
+	}
 	name := act.cancelOfflineSelector.Choose(s)
 	if name == "" {
 		return "", false
@@ -165,7 +168,7 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	if act.beingOffline.Len() > 0 {
-		if name, ok := act.chooseToCancelOffline(act.beingOffline.List()); ok {
+		if name, ok := act.chooseToCancelOffline(ctx, act.beingOffline.List()); ok {
 			if err := act.cancelOneOfflining(ctx, act.beingOffline.Get(name)); err != nil {
 				return err
 			}
@@ -328,7 +331,7 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 func (act *actor[T, O, R]) Update(ctx context.Context, unavailable bool) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	name, err := act.chooseToUpdate(act.outdated.List())
+	name, err := act.chooseToUpdate(ctx, act.outdated.List())
 	if err != nil {
 		return err
 	}

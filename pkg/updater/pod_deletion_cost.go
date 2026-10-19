@@ -16,11 +16,9 @@ package updater
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
@@ -29,33 +27,33 @@ import (
 )
 
 // podDeletionCostPolicy prefers the lowest cost on the actual managed Pod.
-// Costs are loaded only for scale-in and cached for this updater execution.
+// Costs are loaded before selection and cached for this updater execution.
 // Instance annotations and Pod overlays are deliberately not consulted.
 type podDeletionCostPolicy[R runtime.Instance] struct {
 	costs map[types.NamespacedName]int32
 }
 
-func newPodDeletionCostPolicy[R runtime.Instance]() *podDeletionCostPolicy[R] {
+// PreferPodDeletionCost prefers lower Pod deletion costs, after instance priority.
+// Like the other preferences, Prefer only reads data already available in memory.
+func PreferPodDeletionCost[R runtime.Instance]() *podDeletionCostPolicy[R] {
 	return &podDeletionCostPolicy[R]{costs: make(map[types.NamespacedName]int32)}
 }
 
-func (p *podDeletionCostPolicy[R]) load(ctx context.Context, c client.Client, instances []R) error {
+func (p *podDeletionCostPolicy[R]) load(ctx context.Context, c client.Client, instances []R) {
 	for _, in := range instances {
 		key := types.NamespacedName{Namespace: in.GetNamespace(), Name: in.GetName()}
 		if _, ok := p.costs[key]; ok {
 			continue
 		}
 		pod, err := apicall.GetInstancePod(ctx, c, in)
-		if errors.IsNotFound(err) {
+		if err != nil {
+			// This preference is best effort. Missing Pods and lookup/ownership
+			// errors use the default cost instead of blocking reconciliation.
 			p.costs[key] = 0
 			continue
 		}
-		if err != nil {
-			return fmt.Errorf("cannot read pod deletion cost for instance %s: %w", key, err)
-		}
 		p.costs[key] = podDeletionCost(pod.Annotations)
 	}
-	return nil
 }
 
 func (p *podDeletionCostPolicy[R]) Prefer(instances []R) []R {

@@ -51,8 +51,6 @@ func (f FilterPolicyFunc[R]) Filter(in []R) []R {
 
 type Selector[R runtime.Instance] interface {
 	Choose([]R) string
-	// Candidates applies the policies without breaking a tie between remaining instances.
-	Candidates([]R) []R
 }
 
 type selector[R runtime.Instance] struct {
@@ -78,25 +76,17 @@ func applyFilters[R runtime.Instance](allowed []R, filters []FilterPolicy[R]) []
 }
 
 func (s *selector[R]) Choose(allowed []R) string {
-	candidates := s.Candidates(allowed)
-	if len(candidates) == 0 {
-		return ""
-	}
-	return candidates[0].GetName()
-}
-
-func (s *selector[R]) Candidates(allowed []R) []R {
 	allowed = applyFilters(allowed, s.filters)
 	if len(allowed) == 0 {
-		return nil
+		return ""
 	}
 
 	for _, p := range slices.Backward(s.ps) {
 		preferred := p.Prefer(allowed)
 		switch {
 		case len(preferred) == 1:
-			// Only one preferred; lower-priority policies cannot change the choice.
-			return preferred
+			// only one preferred, return this one
+			return preferred[0].GetName()
 		case len(preferred) == 0:
 			// no preferred, see next policy
 			continue
@@ -106,7 +96,11 @@ func (s *selector[R]) Candidates(allowed []R) []R {
 		allowed = preferred
 	}
 
-	return allowed
+	// no preferred, return first allowed
+	if len(allowed) > 0 {
+		return allowed[0].GetName()
+	}
+	return ""
 }
 
 // PreferNewer returns instances with the latest creation timestamp.

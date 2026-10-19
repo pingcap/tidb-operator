@@ -110,9 +110,7 @@ func TestBuilderPodDeletionCostOrder(t *testing.T) {
 			chosen, err := act.chooseToScaleIn(context.Background(), instances)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, chosen)
-			// Update and cancel-offline selectors do not use Pod deletion cost.
-			assert.Equal(t, "older", act.updateSelector.Choose(instances))
-			assert.Equal(t, "older", act.cancelOfflineSelector.Choose(instances))
+
 		})
 	}
 }
@@ -164,16 +162,16 @@ func TestPodDeletionCostOnlyReadsPod(t *testing.T) {
 	newer.Annotations = map[string]string{corev1.PodDeletionCost: "100"}
 	olderPod := podWithDeletionCost(older, "10")
 	newerPod := podWithDeletionCost(newer, "-10")
-	p := newPodDeletionCostPolicy[*runtime.PD]()
+	p := PreferPodDeletionCost[*runtime.PD]()
 	instances := []*runtime.PD{older, newer}
-	require.NoError(t, p.load(context.Background(), client.NewFakeClient(olderPod, newerPod), instances))
+	p.load(context.Background(), client.NewFakeClient(olderPod, newerPod), instances)
 	assert.Equal(t, []*runtime.PD{newer}, p.Prefer(instances))
 
 	// Without Pod annotations, even valid CR annotations do not break a tie.
 	olderPod.Annotations = nil
 	newerPod.Annotations = nil
-	p = newPodDeletionCostPolicy[*runtime.PD]()
-	require.NoError(t, p.load(context.Background(), client.NewFakeClient(olderPod, newerPod), instances))
+	p = PreferPodDeletionCost[*runtime.PD]()
+	p.load(context.Background(), client.NewFakeClient(olderPod, newerPod), instances)
 	assert.Equal(t, instances, p.Prefer(instances))
 }
 
@@ -203,8 +201,8 @@ func TestPodDeletionCostReadErrors(t *testing.T) {
 			tc.modify(cli, pod)
 			act := New[runtime.PDTuple]().WithClient(cli).Build().(*executor).act.(*actor[runtime.PDTuple, *v1alpha1.PD, *runtime.PD])
 			chosen, err := act.chooseToScaleIn(context.Background(), []*runtime.PD{in, fakePD("other", true, true)})
-			require.Error(t, err)
-			assert.Empty(t, chosen)
+			require.NoError(t, err)
+			assert.Equal(t, in.Name, chosen)
 		})
 	}
 }
@@ -213,21 +211,21 @@ func TestPodDeletionCostSnapshot(t *testing.T) {
 	in := fakePD("instance", true, true)
 	pod := podWithDeletionCost(in, "-10")
 	cli := client.NewFakeClient(pod)
-	p := newPodDeletionCostPolicy[*runtime.PD]()
+	p := PreferPodDeletionCost[*runtime.PD]()
 	instances := []*runtime.PD{in}
-	require.NoError(t, p.load(context.Background(), cli, instances))
+	p.load(context.Background(), cli, instances)
 	pod.Annotations[corev1.PodDeletionCost] = "20"
 	require.NoError(t, cli.Update(context.Background(), pod))
-	require.NoError(t, p.load(context.Background(), cli, instances))
+	p.load(context.Background(), cli, instances)
 	key := types.NamespacedName{Namespace: in.Namespace, Name: in.Name}
 	assert.EqualValues(t, -10, p.costs[key])
 	// A new updater execution observes changes made on the Pod.
-	p = newPodDeletionCostPolicy[*runtime.PD]()
-	require.NoError(t, p.load(context.Background(), cli, instances))
+	p = PreferPodDeletionCost[*runtime.PD]()
+	p.load(context.Background(), cli, instances)
 	assert.EqualValues(t, 20, p.costs[key])
 }
 
-func TestScaleInSkipsPodLookupWhenHigherPriorityDecides(t *testing.T) {
+func TestScaleInIgnoresPodErrorsWhenHigherPriorityDecides(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		preferred *runtime.PD
@@ -240,7 +238,7 @@ func TestScaleInSkipsPodLookupWhenHigherPriorityDecides(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cli := client.NewFakeClient()
-			cli.WithError("list", "pods", fmt.Errorf("Pod lookup must not be called"))
+			cli.WithError("list", "pods", fmt.Errorf("Pod lookup failed"))
 			b := New[runtime.PDTuple]().WithClient(cli)
 			if tc.custom {
 				b.WithScaleInPreferPolicy(PreferPolicyFunc[*runtime.PD](func([]*runtime.PD) []*runtime.PD {
@@ -251,12 +249,12 @@ func TestScaleInSkipsPodLookupWhenHigherPriorityDecides(t *testing.T) {
 			chosen, err := act.chooseToScaleIn(context.Background(), []*runtime.PD{fakePD("other", true, true), tc.preferred})
 			require.NoError(t, err)
 			assert.Equal(t, tc.preferred.Name, chosen)
-			assert.Empty(t, act.podDeletionCost.costs)
+			assert.Len(t, act.podDeletionCost.costs, 2)
 		})
 	}
 }
 
-func TestScaleInReadsCostsOnlyForRemainingCandidates(t *testing.T) {
+func TestScaleInIgnoresExcludedCandidatePodErrors(t *testing.T) {
 	first := fakePDWithPriority("first", true, true, "0")
 	second := fakePDWithPriority("second", true, true, "0")
 	excluded := fakePD("excluded", true, true)
@@ -267,6 +265,48 @@ func TestScaleInReadsCostsOnlyForRemainingCandidates(t *testing.T) {
 	chosen, err := act.chooseToScaleIn(context.Background(), []*runtime.PD{excluded, first, second})
 	require.NoError(t, err)
 	assert.Equal(t, "second", chosen)
-	assert.Len(t, act.podDeletionCost.costs, 2)
-	assert.NotContains(t, act.podDeletionCost.costs, types.NamespacedName{Namespace: excluded.Namespace, Name: excluded.Name})
+	assert.Len(t, act.podDeletionCost.costs, 3)
+	assert.Zero(t, act.podDeletionCost.costs[types.NamespacedName{Namespace: excluded.Namespace, Name: excluded.Name}])
+}
+
+func TestPodDeletionCostInAllSelectors(t *testing.T) {
+	for _, operation := range []string{"scale-in", "update", "cancel-offline"} {
+		for _, tc := range []struct {
+			name           string
+			manualPriority bool
+			readError      bool
+			want           string
+		}{
+			{name: "lower cost", want: "second"},
+			{name: "instance priority wins", manualPriority: true, want: "first"},
+			{name: "read error ignored", readError: true, want: "first"},
+		} {
+			t.Run(operation+"/"+tc.name, func(t *testing.T) {
+				first, second := fakePD("first", true, true), fakePD("second", true, true)
+				if tc.manualPriority {
+					first.Annotations = map[string]string{v1alpha1.AnnoKeyPriority: "0"}
+				}
+				cli := client.NewFakeClient(podWithDeletionCost(first, "10"), podWithDeletionCost(second, "-10"))
+				if tc.readError {
+					cli.WithError("list", "pods", fmt.Errorf("pod read failed"))
+				}
+				act := New[runtime.PDTuple]().WithClient(cli).Build().(*executor).act.(*actor[runtime.PDTuple, *v1alpha1.PD, *runtime.PD])
+				instances := []*runtime.PD{first, second}
+				var chosen string
+				var err error
+				switch operation {
+				case "scale-in":
+					chosen, err = act.chooseToScaleIn(context.Background(), instances)
+				case "update":
+					chosen, err = act.chooseToUpdate(context.Background(), instances)
+				case "cancel-offline":
+					var ok bool
+					chosen, ok = act.chooseToCancelOffline(context.Background(), instances)
+					require.True(t, ok)
+				}
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, chosen)
+			})
+		}
+	}
 }
