@@ -205,6 +205,9 @@ func PreferPriority[R runtime.Instance]() PreferPolicy[R] {
 // annotation means zero. This is a best-effort preference, not a deletion-order
 // guarantee: higher-priority policies run first.
 func PreferPodDeletionCost[R runtime.Instance](c client.Client) PreferPolicy[R] {
+	// Build creates fresh policies for each executor. Reuse costs across its selections,
+	// including zero fallbacks, to avoid repeatedly listing the same Pods.
+	costs := make(map[string]int32)
 	return PreferPolicyFunc[R](func(instances []R) []R {
 		if c == nil || len(instances) < 2 {
 			return instances
@@ -212,11 +215,15 @@ func PreferPodDeletionCost[R runtime.Instance](c client.Client) PreferPolicy[R] 
 		var chosen []R
 		var minimum int32
 		for _, in := range instances {
-			var cost int32
-			// Prefer has no reconcile context; the manager client reads Pods from cache.
-			pod, err := apicall.GetInstancePod(context.Background(), c, in)
-			if err == nil {
-				cost = podDeletionCost(pod.Annotations)
+			key := in.GetNamespace() + "/" + in.Component() + "/" + in.GetName() + "/" + string(in.GetUID())
+			cost, ok := costs[key]
+			if !ok {
+				// Prefer has no reconcile context; the manager client reads Pods from cache.
+				pod, err := apicall.GetInstancePod(context.Background(), c, in)
+				if err == nil {
+					cost = podDeletionCost(pod.Annotations)
+				}
+				costs[key] = cost
 			}
 			switch {
 			case len(chosen) == 0 || cost < minimum:

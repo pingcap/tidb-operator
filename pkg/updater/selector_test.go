@@ -15,6 +15,7 @@
 package updater
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -550,6 +552,37 @@ func TestPreferPodDeletionCost(t *testing.T) {
 			assert.ElementsMatch(t, tc.expected, names)
 		})
 	}
+}
+
+func TestPreferPodDeletionCostCachesReads(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprintf("readError=%t", fail), func(t *testing.T) {
+			first, second := fakePD("first", true, true), fakePD("second", true, true)
+			cli := client.NewFakeClient(podWithDeletionCost(first, "-1"), podWithDeletionCost(second, "1"))
+			if fail {
+				cli.WithError("list", "pods", fmt.Errorf("pod read failed"))
+			}
+			counted := &podListCountingClient{Client: cli}
+			instances := []*runtime.PD{first, second}
+			policy := PreferPodDeletionCost[*runtime.PD](counted)
+			want := policy.Prefer(instances)
+			assert.Equal(t, want, policy.Prefer(instances))
+			assert.Equal(t, 2, counted.lists)
+			// A new policy must read Pods again on the next updater execution.
+			assert.Equal(t, want, PreferPodDeletionCost[*runtime.PD](counted).Prefer(instances))
+			assert.Equal(t, 4, counted.lists)
+		})
+	}
+}
+
+type podListCountingClient struct {
+	client.Client
+	lists int
+}
+
+func (c *podListCountingClient) List(ctx context.Context, list ctrlclient.ObjectList, opts ...ctrlclient.ListOption) error {
+	c.lists++
+	return c.Client.List(ctx, list, opts...)
 }
 
 func podWithDeletionCost(in runtime.Instance, cost string) *corev1.Pod {
