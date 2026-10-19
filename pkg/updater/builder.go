@@ -77,9 +77,8 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 func (b *builder[T, O, R]) Build() Executor {
 	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
-	podDeletionCost := PreferPodDeletionCost[R]()
 	updatePolicies := []PreferPolicy[R]{
-		podDeletionCost,
+		PreferPodDeletionCost[R](b.c),
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
@@ -89,7 +88,7 @@ func (b *builder[T, O, R]) Build() Executor {
 	scaleInPolicies := []PreferPolicy[R]{
 		// Prefer newer instances when higher-priority policies do not decide.
 		PreferNewer[R](),
-		podDeletionCost,
+		PreferPodDeletionCost[R](b.c),
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
@@ -98,7 +97,7 @@ func (b *builder[T, O, R]) Build() Executor {
 	scaleInPolicies = append(scaleInPolicies, b.scaleInPreferPolicies...)
 
 	cancelOfflinePolicies := []PreferPolicy[R]{
-		podDeletionCost,
+		PreferPodDeletionCost[R](b.c),
 		PreferPriority[R](),
 	}
 
@@ -119,7 +118,6 @@ func (b *builder[T, O, R]) Build() Executor {
 		delHooks:    b.delHooks,
 
 		scaleInSelector:       NewSelector(scaleInPolicies...),
-		podDeletionCost:       podDeletionCost,
 		updateSelector:        NewSelector(updatePolicies...),
 		cancelOfflineSelector: NewSelectorWithFilter(b.cancelOfflineFilterPolicies, cancelOfflinePolicies...),
 	}

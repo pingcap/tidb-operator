@@ -15,14 +15,18 @@
 package updater
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
@@ -485,4 +489,85 @@ func TestPreferVolumeCapacityExceedsRequest(t *testing.T) {
 	// A group-specific policy appended by the builder retains higher priority.
 	topology := PreferPolicyFunc[*runtime.PD](func(in []*runtime.PD) []*runtime.PD { return in[:1] })
 	assert.Equal(t, "absent", NewSelector(policy, topology).Choose([]*runtime.PD{absent, current}))
+}
+
+func TestPodDeletionCost(t *testing.T) {
+	assert.Zero(t, podDeletionCost(nil))
+	for _, tc := range []struct {
+		value string
+		want  int32
+	}{
+		{"0", 0}, {"10", 10}, {"-10", -10},
+		{"2147483647", 2147483647}, {"-2147483648", -2147483648},
+		{"2147483648", 0}, {"-2147483649", 0},
+		{"invalid", 0}, {"+10", 0}, {"01", 0}, {"", 0},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			assert.Equal(t, tc.want, podDeletionCost(map[string]string{corev1.PodDeletionCost: tc.value}))
+		})
+	}
+}
+
+func TestPreferPodDeletionCost(t *testing.T) {
+	cases := []struct {
+		name                              string
+		firstCost, secondCost             string
+		missingPod, wrongOwner, readError bool
+		expected                          []string
+	}{
+		{name: "lower cost", firstCost: "10", secondCost: "1", expected: []string{"second"}},
+		{name: "negative cost", firstCost: "-1", secondCost: "0", expected: []string{"first"}},
+		{name: "equal costs", firstCost: "1", secondCost: "1", expected: []string{"first", "second"}},
+		{name: "unset costs", expected: []string{"first", "second"}},
+		{name: "invalid cost is zero", firstCost: "invalid", secondCost: "1", expected: []string{"first"}},
+		{name: "missing pod costs zero", missingPod: true, secondCost: "1", expected: []string{"first"}},
+		{name: "wrong owner costs zero", firstCost: "-10", wrongOwner: true, secondCost: "-1", expected: []string{"second"}},
+		{name: "read errors ignored", firstCost: "-10", readError: true, expected: []string{"first", "second"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			first, second := fakePD("first", true, true), fakePD("second", true, true)
+			// CR annotations must not affect the cost read from Pods.
+			first.Annotations = map[string]string{corev1.PodDeletionCost: "-100"}
+			second.Annotations = map[string]string{corev1.PodDeletionCost: "100"}
+			pod := podWithDeletionCost(first, tc.firstCost)
+			if tc.wrongOwner {
+				pod.OwnerReferences[0].UID = "other-owner"
+			}
+			objects := []client.Object{podWithDeletionCost(second, tc.secondCost)}
+			if !tc.missingPod {
+				objects = append(objects, pod)
+			}
+			cli := client.NewFakeClient(objects...)
+			if tc.readError {
+				cli.WithError("list", "pods", fmt.Errorf("pod read failed"))
+			}
+			policy := PreferPodDeletionCost[*runtime.PD](cli)
+			var names []string
+			for _, in := range policy.Prefer([]*runtime.PD{first, second}) {
+				names = append(names, in.GetName())
+			}
+			assert.ElementsMatch(t, tc.expected, names)
+		})
+	}
+}
+
+func podWithDeletionCost(in runtime.Instance, cost string) *corev1.Pod {
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		// A non-default name also covers adopted Pods.
+		Name: "adopted-" + in.GetName(), Namespace: in.GetNamespace(),
+		Labels: map[string]string{
+			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+			v1alpha1.LabelKeyComponent: in.Component(),
+			v1alpha1.LabelKeyInstance:  in.GetName(),
+		},
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: "PD",
+			Name: in.GetName(), UID: in.GetUID(), Controller: ptr.To(true),
+		}},
+	}}
+	if cost != "" {
+		pod.Annotations = map[string]string{corev1.PodDeletionCost: cost}
+	}
+	return pod
 }
