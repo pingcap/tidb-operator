@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -246,6 +247,7 @@ func TestSelector(t *testing.T) {
 
 func fakePD(name string, running, ready bool) *runtime.PD {
 	return runtime.FromPD(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+		obj.UID = types.UID(name)
 		obj.Generation = 2
 		obj.Labels = map[string]string{
 			v1alpha1.LabelKeyInstanceRevisionHash: "test",
@@ -567,10 +569,14 @@ func TestPreferPodDeletionCostCachesReads(t *testing.T) {
 			policy := PreferPodDeletionCost[*runtime.PD](counted)
 			want := policy.Prefer(instances)
 			assert.Equal(t, want, policy.Prefer(instances))
-			assert.Equal(t, 2, counted.lists)
+			expectedReads := 2
+			if fail {
+				expectedReads = 4 // Failed reads are retried on each selection.
+			}
+			assert.Equal(t, expectedReads, counted.lists)
 			// A new policy must read Pods again on the next updater execution.
 			assert.Equal(t, want, PreferPodDeletionCost[*runtime.PD](counted).Prefer(instances))
-			assert.Equal(t, 4, counted.lists)
+			assert.Equal(t, expectedReads+2, counted.lists)
 		})
 	}
 }

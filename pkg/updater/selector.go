@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
@@ -206,8 +207,8 @@ func PreferPriority[R runtime.Instance]() PreferPolicy[R] {
 // guarantee: higher-priority policies run first.
 func PreferPodDeletionCost[R runtime.Instance](c client.Client) PreferPolicy[R] {
 	// Build creates fresh policies for each executor. Reuse costs across its selections,
-	// including zero fallbacks, to avoid repeatedly listing the same Pods.
-	costs := make(map[string]int32)
+	// to avoid repeatedly listing the same Pods. Failed reads remain retryable.
+	costs := make(map[types.UID]int32)
 	return PreferPolicyFunc[R](func(instances []R) []R {
 		if c == nil || len(instances) < 2 {
 			return instances
@@ -215,15 +216,14 @@ func PreferPodDeletionCost[R runtime.Instance](c client.Client) PreferPolicy[R] 
 		var chosen []R
 		var minimum int32
 		for _, in := range instances {
-			key := in.GetNamespace() + "/" + in.Component() + "/" + in.GetName() + "/" + string(in.GetUID())
-			cost, ok := costs[key]
+			cost, ok := costs[in.GetUID()]
 			if !ok {
 				// Prefer has no reconcile context; the manager client reads Pods from cache.
 				pod, err := apicall.GetInstancePod(context.Background(), c, in)
 				if err == nil {
 					cost = podDeletionCost(pod.Annotations)
+					costs[in.GetUID()] = cost
 				}
-				costs[key] = cost
 			}
 			switch {
 			case len(chosen) == 0 || cost < minimum:
