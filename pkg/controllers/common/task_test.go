@@ -308,6 +308,7 @@ func TestTaskSuspendPod(t *testing.T) {
 func TestTaskServerLabels(t *testing.T) {
 	cases := []struct {
 		desc          string
+		pdUnavailable bool
 		state         *fakeServerLabelsState
 		objs          []client.Object
 		pdConfig      *pdapi.PDConfigFromAPI
@@ -318,6 +319,12 @@ func TestTaskServerLabels(t *testing.T) {
 		expectedResult task.Status
 		expectedLabels map[string]string
 	}{
+		{
+			desc:           "pd client is unavailable or caches are not synced",
+			pdUnavailable:  true,
+			state:          &fakeServerLabelsState{healthy: true},
+			expectedResult: task.SRetry,
+		},
 		{
 			desc: "instance is not healthy",
 			state: &fakeServerLabelsState{
@@ -518,7 +525,9 @@ func TestTaskServerLabels(t *testing.T) {
 					},
 				}, nil).AnyTimes()
 			}
-			c.state.SetPDClient(pdClient)
+			if !c.pdUnavailable {
+				c.state.SetPDClient(pdClient)
+			}
 			setLabelsCalled := false
 			setLabelsFunc := func(ctx context.Context, labels map[string]string) error {
 				setLabelsCalled = true
@@ -532,6 +541,10 @@ func TestTaskServerLabels(t *testing.T) {
 			res, done := task.RunTask(context.Background(), TaskServerLabels[scope.TiDB](c.state, fc, nil, setLabelsFunc))
 			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
+			if c.pdUnavailable {
+				assert.Equal(tt, task.DefaultRequeueAfter, res.RequeueAfter())
+				assert.False(tt, setLabelsCalled)
+			}
 
 			if c.expectedLabels != nil {
 				assert.True(tt, setLabelsCalled, c.desc)

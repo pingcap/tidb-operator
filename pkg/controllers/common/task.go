@@ -207,7 +207,9 @@ func TaskServerLabels[
 	return task.NameTaskFunc("ServerLabels", func(ctx context.Context) task.Result {
 		pdc, ok := state.GetPDClient(m)
 		if !ok {
-			return task.Wait().With("wait if pd client is not registered")
+			// TiDB and TiProxy do not watch PD cache events, so sync completion
+			// must not depend on another resource change to trigger reconciliation.
+			return task.Retry(task.DefaultRequeueAfter).With("wait for pd client caches to sync")
 		}
 
 		pod := state.Pod()
