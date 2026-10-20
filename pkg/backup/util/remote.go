@@ -401,6 +401,11 @@ func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]st
 				// rather than a separate set of global S3 flags.
 				// BR treats '+' literally in storage URLs, so encode spaces as %20.
 				s[0] += "?sse-kms-context=" + strings.ReplaceAll(url.QueryEscape(string(encoded)), "+", "%20")
+				// BR rejects a context without SSE-KMS on AWS. Carry this storage's
+				// own SSE mode instead of inheriting the main storage's --s3.sse.
+				if provider.S3.SSE != "" {
+					s[0] += "&sse=" + url.QueryEscape(provider.S3.SSE)
+				}
 			}
 		}
 		return s, nil

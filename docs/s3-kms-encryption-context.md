@@ -19,9 +19,11 @@ An old BR can reject the new flag; an old TiKV does not consume the new protocol
 field. Upgrade all participating components before enabling this option.
 
 Use an S3 bucket and KMS key that the backup/restore identities are authorized to
-access. Configure `sse: aws:kms` explicitly for writes with context; Operator
-does not infer the SSE mode or a KMS key ID from the context. The key ID remains
-available through `spec.br.options`.
+access. With provider `aws` or no provider, BR rejects a context unless `sse` is
+`aws:kms` or `aws:kms:dsse`, because S3 rejects the context header without an
+explicit SSE-KMS mode. This applies to Backup and Restore alike. Operator does not
+infer the SSE mode or a KMS key ID from the context. The key ID remains available
+through `spec.br.options`.
 
 ## Backup
 
@@ -136,8 +138,9 @@ For PITR, `spec.s3` describes the log storage. If a separate full backup storage
 is configured, its context belongs under
 `spec.pitrFullBackupStorageProvider.s3.sseKmsEncryptionContext.values`.
 Operator URL-encodes this JSON in `--full-backup-storage`, so it does not overwrite
-the main storage's context. This does not add separate CLI flags for that URL's
-other S3 settings.
+the main storage's context. When a context is set, the URL also carries that
+provider's `sse`, so set `spec.pitrFullBackupStorageProvider.s3.sse: aws:kms`
+as well. Other S3 settings of that URL are not added.
 
 These settings configure BR storage; they do not add an encryption-context
 header to S3 reads. Read access still depends on the existing S3/KMS permissions. See the
@@ -146,6 +149,8 @@ header to S3 reads. Read access still depends on the existing S3/KMS permissions
 ## Validation and precedence
 
 - Omitted `sseKmsEncryptionContext`: no new parameter, preserving existing behavior.
+- A context requires `sse: aws:kms` or `sse: aws:kms:dsse` when the provider is
+  `aws` or unset; otherwise BR fails while parsing the storage configuration.
 - `sseKmsEncryptionContext: {values: {}}`: explicit empty JSON object (`{}`).
 - `values` is required when the field is present. Numbers, booleans, nested
   objects and arrays are not accepted as string values. Quote numeric strings

@@ -52,6 +52,7 @@ func TestS3EncryptionContextArgs(t *testing.T) {
 					require.Equal(t, "backup-bucket", u.Host)
 					require.Equal(t, "/test", u.Path)
 					raw = u.Query().Get("sse-kms-context")
+					require.Equal(t, "aws:kms", u.Query().Get("sse"))
 				} else {
 					require.Equal(t, without, args[:len(without)])
 					require.Len(t, args, len(without)+1)
