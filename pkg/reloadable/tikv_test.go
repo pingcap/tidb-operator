@@ -177,3 +177,45 @@ func TestVolumeRequestDecreaseIsReloadable(t *testing.T) {
 	require.True(t, CheckTiKVPod(instance, pod))
 	require.Zero(t, instance.Spec.Volumes[0].Storage.Cmp(resource.MustParse("50Gi")))
 }
+
+func TestTiKVScaleInAnnotationsAreReloadable(t *testing.T) {
+	for _, annotation := range []struct {
+		key, original, updated string
+	}{
+		{v1alpha1.AnnoKeyStoreLimits, "add-peer:10,transfer-leader-in:10", "add-peer:20,transfer-leader-in:20"},
+		{v1alpha1.AnnoKeySelectedToDelete, "true", "false"},
+	} {
+		key := annotation.key
+		for _, change := range []struct {
+			name, before, after string
+		}{
+			{name: "add", after: annotation.original},
+			{name: "update", before: annotation.original, after: annotation.updated},
+			{name: "remove", before: annotation.original},
+		} {
+			t.Run(key+"/"+change.name, func(t *testing.T) {
+				previous := &v1alpha1.TiKV{}
+				if change.before != "" {
+					previous.Annotations = map[string]string{key: change.before}
+				}
+				pod := &corev1.Pod{}
+				require.NoError(t, EncodeLastTiKVTemplate(previous, pod))
+				current := previous.DeepCopy()
+				current.Annotations = map[string]string{}
+				if change.after != "" {
+					current.Annotations[key] = change.after
+				}
+				beforeCheck := current.DeepCopy()
+
+				group := &v1alpha1.TiKVGroup{}
+				assert.True(t, CheckTiKV(group, current))
+				assert.True(t, CheckTiKVPod(current, pod))
+				assert.Equal(t, beforeCheck, current, "comparison must not remove annotations from the instance")
+
+				current.Annotations["example.com/restart"] = "changed"
+				assert.False(t, CheckTiKV(group, current))
+				assert.False(t, CheckTiKVPod(current, pod))
+			})
+		}
+	}
+}

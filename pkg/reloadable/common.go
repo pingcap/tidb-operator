@@ -89,6 +89,9 @@ func convertAnnotations(ls map[string]string) map[string]string {
 	delete(ls, v1alpha1.AnnoKeyInitialClusterNum)
 	// ignore TiProxy graceful shutdown delete delay annotation
 	delete(ls, v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds)
+	// Ignore TiKV scale-in bookkeeping; it does not change the pod template.
+	delete(ls, v1alpha1.AnnoKeyStoreLimits)
+	delete(ls, v1alpha1.AnnoKeySelectedToDelete)
 
 	return ls
 }
