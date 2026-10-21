@@ -15,6 +15,7 @@ package util
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -386,6 +387,27 @@ func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]st
 	case v1alpha1.BackupStorageTypeS3:
 		qs := makeS3Config(provider.S3, false)
 		s := newS3StorageOptionForFlag(qs, flag)
+		if encryptionContext := provider.S3.SSEKMSEncryptionContext; encryptionContext != nil {
+			if encryptionContext.Values == nil {
+				return nil, fmt.Errorf("s3.sseKmsEncryptionContext.values must be an object of string key-value pairs")
+			}
+			// A map of strings contains no unsupported JSON values.
+			encoded, _ := json.Marshal(encryptionContext.Values)
+			if flag == "" || flag == defaultStorageFlag {
+				// exec.Command receives this JSON as one argument, without shell quoting.
+				s = append(s, "--s3.sse-kms-context="+string(encoded))
+			} else {
+				// A secondary storage (e.g. PITR's full backup) has its own URL,
+				// rather than a separate set of global S3 flags.
+				// BR treats '+' literally in storage URLs, so encode spaces as %20.
+				s[0] += "?sse-kms-context=" + strings.ReplaceAll(url.QueryEscape(string(encoded)), "+", "%20")
+				// BR rejects a context without SSE-KMS on AWS. Carry this storage's
+				// own SSE mode instead of inheriting the main storage's --s3.sse.
+				if provider.S3.SSE != "" {
+					s[0] += "&sse=" + url.QueryEscape(provider.S3.SSE)
+				}
+			}
+		}
 		return s, nil
 	case v1alpha1.BackupStorageTypeGcs:
 		qs := makeGcsConfig(provider.Gcs, false)

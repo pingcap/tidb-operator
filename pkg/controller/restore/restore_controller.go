@@ -170,10 +170,9 @@ func (c *Controller) syncRestore(restore *v1alpha1.Restore) error {
 
 func (c *Controller) updateRestore(cur interface{}) {
 	newRestore := cur.(*v1alpha1.Restore)
-	klog.V(4).Infof("restore-manager update %v", newRestore)
-
 	ns := newRestore.GetNamespace()
 	name := newRestore.GetName()
+	klog.V(4).Infof("restore-manager update %s/%s", ns, name)
 
 	if v1alpha1.IsRestoreInvalid(newRestore) {
 		klog.V(4).Infof("restore %s/%s is Invalid, skipping.", ns, name)

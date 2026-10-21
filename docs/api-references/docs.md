@@ -16217,6 +16217,37 @@ Set by the controller when creating each phase&rsquo;s Job.</p>
 <p>
 <p>RestoreWarmupStrategy represents how to initialize TiKV volumes</p>
 </p>
+<h3 id="s3encryptioncontext">S3EncryptionContext</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#s3storageprovider">S3StorageProvider</a>)
+</p>
+<p>
+<p>S3EncryptionContext contains the additional SSE-KMS encryption context for BR.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>values</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Values is a required object of string key-value pairs. An empty object sends
+an explicit empty context; omitting SSEKMSEncryptionContext sends no context.
+Encryption context is not secret and must not contain sensitive information.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
@@ -16345,6 +16376,23 @@ string
 </td>
 <td>
 <p>SSE Sever-Side Encryption.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sseKmsEncryptionContext</code></br>
+<em>
+<a href="#s3encryptioncontext">
+S3EncryptionContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
+BR encodes these values for S3; do not Base64-encode them here.
+Requires BR and TiKV versions that support custom encryption context.
+Changing this field does not update an existing log backup task.</p>
 </td>
 </tr>
 <tr>

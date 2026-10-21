@@ -34,7 +34,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -107,12 +106,8 @@ func (rm *Manager) ProcessRestore() error {
 		return fmt.Errorf("no br config in %s", rm)
 	}
 
-	crData, err := json.Marshal(restore)
-	if err != nil {
-		klog.Errorf("failed to marshal restore %v to json, err: %s", restore, err)
-	} else {
-		klog.Infof("start to process restore: %s", string(crData))
-	}
+	// The CR can contain encryption context in storage fields, BR options or annotations.
+	klog.Infof("start to process restore: %s/%s", restore.Namespace, restore.Name)
 
 	if restore.Spec.To == nil {
 		return rm.performRestore(ctx, restore.DeepCopy(), nil)
@@ -383,7 +378,7 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 		}, nil)
 		return err
 	}
-	klog.Infof("Running br abort restore command with args: %v", args)
+	klog.Infof("Running br abort restore command with args: %v", backuputil.RedactBRArgs(args))
 
 	// Execute br abort restore command
 	bin := path.Join(util.BRBinPath, "br")
