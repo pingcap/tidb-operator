@@ -245,12 +245,16 @@ type (
 	WorkerReference      corev1.LocalObjectReference
 )
 
+// +kubebuilder:validation:XValidation:rule="!has(self.disableRemoteCoprocessor) || !self.disableRemoteCoprocessor || !has(self.coprocessor)",message="coprocessor cannot be set when disableRemoteCoprocessor is true"
 type TiKVRemoteWorkers struct {
 	// Default worker reference, if remote workers are enabled, this default worker ref must be set
 	Worker WorkerReference `json:"worker"`
 
 	// Coprocessor worker reference, if it's not set, use worker ref by default
 	Coprocessor *CoprocessorReference `json:"coprocessor,omitempty"`
+
+	// DisableRemoteCoprocessor clears the remote coprocessor address from TiKV configuration.
+	DisableRemoteCoprocessor bool `json:"disableRemoteCoprocessor,omitempty"`
 
 	// Compactor worker reference, if it's not set, use worker ref by default
 	Compactor *CompactorReference `json:"compactor,omitempty"`

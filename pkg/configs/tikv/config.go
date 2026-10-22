@@ -66,8 +66,8 @@ type DFS struct {
 }
 
 type KVEngine struct {
-	RemoteCoprocessorAddr string `toml:"remote-coprocessor-addr"`
-	RemoteWorkerAddr      string `toml:"remote-worker-addr"`
+	RemoteCoprocessorAddr *string `toml:"remote-coprocessor-addr"`
+	RemoteWorkerAddr      string  `toml:"remote-worker-addr"`
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, fg features.Gates) error {
@@ -126,7 +126,11 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, fg feat
 			}
 		}
 
-		c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, copr)
+		remoteCoprocessorAddr := ""
+		if !tikv.Spec.RemoteWorkers.DisableRemoteCoprocessor {
+			remoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, copr)
+		}
+		c.KVEngine.RemoteCoprocessorAddr = &remoteCoprocessorAddr
 		c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, worker)
 		c.DFS.RemoteCompactorAddr = coreutil.TiKVWorkerCompactorURLFromRef(cluster, compactor)
 	}

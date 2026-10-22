@@ -34,6 +34,7 @@ func TestTiKV(t *testing.T) {
 	cases = append(cases, transferTiKVCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiKVCases(t, cacheTTLSeconds("spec.cacheTTLSeconds"), "spec", "cacheTTLSeconds")...)
 	cases = append(cases, transferTiKVCases(t, minReadyForLeaderSeconds("spec.minReadyForLeaderSeconds"), "spec", "minReadyForLeaderSeconds")...)
+	cases = append(cases, transferTiKVCases(t, remoteCoprocessorDisableValidation("spec.remoteWorkers"), "spec", "remoteWorkers")...)
 	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
 }
 
@@ -45,7 +46,50 @@ func TestTiKVGroup(t *testing.T) {
 	cases = append(cases, transferTiKVGroupCases(t, cacheTTLSeconds("spec.template.spec.cacheTTLSeconds"), "spec", "template", "spec", "cacheTTLSeconds")...)
 	cases = append(cases, transferTiKVGroupCases(t, minReadyForLeaderSeconds("spec.template.spec.minReadyForLeaderSeconds"), "spec", "template", "spec", "minReadyForLeaderSeconds")...)
 	cases = append(cases, transferTiKVGroupCases(t, PlacementServerLabels("spec", "template", "spec", "server", "labels"), "spec", "template", "spec", "server", "labels")...)
+	cases = append(cases, transferTiKVGroupCases(t, remoteCoprocessorDisableValidation("spec.template.spec.remoteWorkers"), "spec", "template", "spec", "remoteWorkers")...)
 	Validate(t, "crd/core.pingcap.com_tikvgroups.yaml", cases)
+}
+
+func remoteCoprocessorDisableValidation(fieldPath string) []Case {
+	return []Case{
+		{
+			desc:     "coprocessor ref is allowed when remote coprocessor is enabled",
+			isCreate: true,
+			current: map[string]any{
+				"worker":      map[string]any{"name": "worker"},
+				"coprocessor": map[string]any{"name": "coprocessor"},
+			},
+		},
+		{
+			desc:     "explicit false allows a coprocessor ref",
+			isCreate: true,
+			current: map[string]any{
+				"worker":                     map[string]any{"name": "worker"},
+				"coprocessor":                map[string]any{"name": "coprocessor"},
+				"disableRemoteCoprocessor": false,
+			},
+		},
+		{
+			desc:     "remote coprocessor can be disabled without a coprocessor ref",
+			isCreate: true,
+			current: map[string]any{
+				"worker":                    map[string]any{"name": "worker"},
+				"disableRemoteCoprocessor": true,
+			},
+		},
+		{
+			desc:     "disabled remote coprocessor cannot have a coprocessor ref",
+			isCreate: true,
+			current: map[string]any{
+				"worker":                    map[string]any{"name": "worker"},
+				"coprocessor":               map[string]any{"name": "coprocessor"},
+				"disableRemoteCoprocessor": true,
+			},
+			wantErrs: []string{
+				fmt.Sprintf(`%s: Invalid value: "object": coprocessor cannot be set when disableRemoteCoprocessor is true`, fieldPath),
+			},
+		},
+	}
 }
 
 func cacheTTLSeconds(fieldPath string) []Case {

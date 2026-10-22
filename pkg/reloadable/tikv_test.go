@@ -15,6 +15,7 @@
 package reloadable
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -145,6 +146,46 @@ func TestCheckTiKVPodMinReadyForLeaderSecondsIsReloadable(t *testing.T) {
 	currentInstance.Spec.MinReadyForLeaderSeconds = ptr.To[int64](60)
 
 	assert.True(t, CheckTiKVPod(currentInstance, pod))
+}
+
+func TestCheckTiKVRemoteCoprocessorToggleIsNotReloadable(t *testing.T) {
+	for _, oldDisabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("%t to %t", oldDisabled, !oldDisabled), func(t *testing.T) {
+			newRemoteWorkers := func(disabled bool) *v1alpha1.TiKVRemoteWorkers {
+				return &v1alpha1.TiKVRemoteWorkers{
+					Worker:                   v1alpha1.WorkerReference{Name: "worker"},
+					DisableRemoteCoprocessor: disabled,
+				}
+			}
+
+			lastInstance := &v1alpha1.TiKV{
+				Spec: v1alpha1.TiKVSpec{
+					TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+						Version:       "v1.2.3",
+						RemoteWorkers: newRemoteWorkers(oldDisabled),
+					},
+				},
+			}
+			currentRemoteWorkers := newRemoteWorkers(!oldDisabled)
+			group := &v1alpha1.TiKVGroup{
+				Spec: v1alpha1.TiKVGroupSpec{
+					Template: v1alpha1.TiKVTemplate{
+						Spec: v1alpha1.TiKVTemplateSpec{
+							Version:       "v1.2.3",
+							RemoteWorkers: currentRemoteWorkers,
+						},
+					},
+				},
+			}
+			assert.False(t, CheckTiKV(group, lastInstance))
+
+			pod := &corev1.Pod{}
+			require.NoError(t, EncodeLastTiKVTemplate(lastInstance, pod))
+			currentInstance := lastInstance.DeepCopy()
+			currentInstance.Spec.RemoteWorkers.DisableRemoteCoprocessor = !oldDisabled
+			assert.False(t, CheckTiKVPod(currentInstance, pod))
+		})
+	}
 }
 
 func TestCheckTiKVPodVersionChangeIsNotReloadable(t *testing.T) {
