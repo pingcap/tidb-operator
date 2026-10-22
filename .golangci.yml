@@ -43,6 +43,10 @@ linters:
           - typecheck
           - gosec
           - goimports
+      - path: _test\.go
+        text: "G101:"  # Rule: Potential hardcoded credentials; test fixtures only
+        linters:
+          - gosec
       - linters:
           - staticcheck
         text: "SA1019:"  # Rule: Using a deprecated function, variable, constant or field
