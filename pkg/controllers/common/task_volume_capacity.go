@@ -50,7 +50,7 @@ func TaskInstanceConditionVolumeCapacityExceedsRequest[
 				if errors.IsNotFound(err) {
 					continue
 				}
-				return task.Fail().With("cannot observe PVC capacity: %w", err)
+				return task.Fail().With("cannot observe PVC capacity: %v", err)
 			}
 			pvcs[vol.Name] = &pvc
 		}

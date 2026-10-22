@@ -39,10 +39,10 @@ func TaskRBAC(state *ReconcileContext, c client.Client) task.Task {
 		role := newRole(cg)
 		rb := newRoleBinding(cg)
 		if err := c.Apply(ctx, role); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create role: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create role: %v", err))
 		}
 		if err := c.Apply(ctx, rb); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create role binding: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create role binding: %v", err))
 		}
 
 		return task.Complete().With("rbac config has been applied")

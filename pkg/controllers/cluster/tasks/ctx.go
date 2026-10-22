@@ -80,7 +80,7 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	var cluster v1alpha1.Cluster
 	if err := t.Client.Get(ctx, rtx.Key, &cluster); err != nil {
 		if !errors.IsNotFound(err) {
-			return task.Fail().With("can't get tidb cluster: %w", err)
+			return task.Fail().With("can't get tidb cluster: %v", err)
 		}
 
 		return task.Complete().Break().With("tidb cluster has been deleted")
@@ -95,85 +95,85 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	name := rtx.Key.Name
 	pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list pd groups: %w", err)
+		return task.Fail().With("can't list pd groups: %v", err)
 	}
 	rtx.PDGroups = pdgs
 
 	rmgs, err := apicall.ListGroups[scope.ResourceManagerGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list resource manager groups: %w", err)
+		return task.Fail().With("can't list resource manager groups: %v", err)
 	}
 	rtx.ResourceManagerGroups = rmgs
 
 	rgs, err := apicall.ListGroups[scope.RouterGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list router manager groups: %w", err)
+		return task.Fail().With("can't list router manager groups: %v", err)
 	}
 	rtx.RouterGroups = rgs
 
 	tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list tso groups: %w", err)
+		return task.Fail().With("can't list tso groups: %v", err)
 	}
 	rtx.TSOGroups = tgs
 
 	sgs, err := apicall.ListGroups[scope.SchedulingGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list scheduling groups: %w", err)
+		return task.Fail().With("can't list scheduling groups: %v", err)
 	}
 	rtx.SchedulingGroups = sgs
 
 	lsgs, err := apicall.ListGroups[scope.SchedulerGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list scheduler groups: %w", err)
+		return task.Fail().With("can't list scheduler groups: %v", err)
 	}
 	rtx.SchedulerGroups = lsgs
 
 	kvgs, err := apicall.ListGroups[scope.TiKVGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list tikv groups: %w", err)
+		return task.Fail().With("can't list tikv groups: %v", err)
 	}
 	rtx.TiKVGroups = kvgs
 
 	fgs, err := apicall.ListGroups[scope.TiFlashGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list tiflash groups: %w", err)
+		return task.Fail().With("can't list tiflash groups: %v", err)
 	}
 	rtx.TiFlashGroups = fgs
 
 	dbgs, err := apicall.ListGroups[scope.TiDBGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list tidb groups: %w", err)
+		return task.Fail().With("can't list tidb groups: %v", err)
 	}
 	rtx.TiDBGroups = dbgs
 
 	cgs, err := apicall.ListGroups[scope.TiCDCGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list ticdc groups: %w", err)
+		return task.Fail().With("can't list ticdc groups: %v", err)
 	}
 	rtx.TiCDCGroups = cgs
 
 	pgs, err := apicall.ListGroups[scope.TiProxyGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list tiproxy groups: %w", err)
+		return task.Fail().With("can't list tiproxy groups: %v", err)
 	}
 	rtx.TiProxyGroups = pgs
 
 	wgs, err := apicall.ListGroups[scope.TiKVWorkerGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list tikv worker groups: %w", err)
+		return task.Fail().With("can't list tikv worker groups: %v", err)
 	}
 	rtx.TiKVWorkerGroups = wgs
 
 	dmgs, err := apicall.ListGroups[scope.DMGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list dm groups: %w", err)
+		return task.Fail().With("can't list dm groups: %v", err)
 	}
 	rtx.DMGroups = dmgs
 
 	dwgs, err := apicall.ListGroups[scope.DMWorkerGroup](ctx, t.Client, ns, name)
 	if err != nil {
-		return task.Fail().With("can't list dm worker groups: %w", err)
+		return task.Fail().With("can't list dm worker groups: %v", err)
 	}
 	rtx.DMWorkerGroups = dwgs
 

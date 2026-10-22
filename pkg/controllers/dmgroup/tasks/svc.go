@@ -35,12 +35,12 @@ func TaskService(state State, c client.Client) task.Task {
 
 		headless := newHeadlessService(dmg)
 		if err := c.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of dm-master: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of dm-master: %v", err))
 		}
 
 		svc := newInternalService(dmg)
 		if err := c.Apply(ctx, svc); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create internal service of dm-master: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create internal service of dm-master: %v", err))
 		}
 
 		return task.Complete().With("services of dm-master have been applied")

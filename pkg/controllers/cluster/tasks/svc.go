@@ -53,13 +53,13 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	if fg.Enabled(metav1alpha1.ClusterSubdomain) {
 		headless := newHeadlessService(rtx.Cluster)
 		if err := t.Client.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of cluster: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of cluster: %v", err))
 		}
 	}
 	if fg.Enabled(metav1alpha1.MultiPDGroup) {
 		pd := newPDService(rtx.Cluster)
 		if err := t.Client.Apply(ctx, pd); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create pd service of cluster: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create pd service of cluster: %v", err))
 		}
 	}
 

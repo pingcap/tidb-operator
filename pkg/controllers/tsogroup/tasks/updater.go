@@ -75,7 +75,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		is := state.Slice()
 		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, is...)
 		if err != nil {
-			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
+			return task.Fail().With("invalid topo policy, it should be validated: %v", err)
 		}
 
 		var instances []string
@@ -112,7 +112,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			Build().
 			Do(ctx)
 		if err != nil {
-			return task.Fail().With("cannot update instances: %w", err)
+			return task.Fail().With("cannot update instances: %v", err)
 		}
 		if wait {
 			return task.Wait().With("wait for all instances ready")

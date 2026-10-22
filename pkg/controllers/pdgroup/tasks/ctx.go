@@ -52,11 +52,11 @@ func TaskContextPDMSDependencies(state *ReconcileContext, c client.Client) task.
 
 		pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, ns, cluster)
 		if err != nil {
-			return task.Fail().With("cannot list PDGroups: %w", err)
+			return task.Fail().With("cannot list PDGroups: %v", err)
 		}
 		tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, c, ns, cluster)
 		if err != nil {
-			return task.Fail().With("cannot list TSOGroups: %w", err)
+			return task.Fail().With("cannot list TSOGroups: %v", err)
 		}
 
 		state.SetPDMSDependencyGroups(pdgs, tgs)
@@ -82,7 +82,7 @@ func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Ta
 
 		ms, err := pc.Members().List(labels.Everything())
 		if err != nil {
-			return task.Fail().With("cannot list members: %w", err)
+			return task.Fail().With("cannot list members: %v", err)
 		}
 
 		for _, m := range ms {

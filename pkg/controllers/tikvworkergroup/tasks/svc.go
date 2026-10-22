@@ -37,12 +37,12 @@ func TaskService(state State, c client.Client) task.Task {
 
 		headless := newHeadlessService(wg)
 		if err := c.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of tikv worker: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of tikv worker: %v", err))
 		}
 
 		internal := newInternalService(wg)
 		if err := c.Apply(ctx, internal); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create internal service of tikv worker: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create internal service of tikv worker: %v", err))
 		}
 
 		return task.Complete().With("services of tikv worker have been applied")

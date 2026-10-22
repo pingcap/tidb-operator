@@ -34,20 +34,20 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		cfg := tikvcfg.Config{}
 		decoder, encoder := toml.Codec[tikvcfg.Config]()
 		if err := decoder.Decode([]byte(state.TiKV().Spec.Config), &cfg); err != nil {
-			return task.Fail().With("tikv config cannot be decoded: %w", err)
+			return task.Fail().With("tikv config cannot be decoded: %v", err)
 		}
 		if err := cfg.Overlay(state.Cluster(), state.TiKV(), state.FeatureGates()); err != nil {
-			return task.Fail().With("cannot generate tikv config: %w", err)
+			return task.Fail().With("cannot generate tikv config: %v", err)
 		}
 
 		data, err := encoder.Encode(&cfg)
 		if err != nil {
-			return task.Fail().With("tikv config cannot be encoded: %w", err)
+			return task.Fail().With("tikv config cannot be encoded: %v", err)
 		}
 
 		expected := newConfigMap(state.TiKV(), data)
 		if e := c.Apply(ctx, expected); e != nil {
-			return task.Fail().With("can't create/update cm of tikv: %w", e)
+			return task.Fail().With("can't create/update cm of tikv: %v", e)
 		}
 		return task.Complete().With("cm is synced")
 	})

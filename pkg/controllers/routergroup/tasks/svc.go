@@ -38,7 +38,7 @@ func TaskService(state common.ObjectState[*v1alpha1.RouterGroup], c client.Clien
 
 		svc := newHeadlessService(rg)
 		if err := c.Apply(ctx, svc); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of router: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of router: %v", err))
 		}
 
 		return task.Complete().With("headless service of router has been applied")

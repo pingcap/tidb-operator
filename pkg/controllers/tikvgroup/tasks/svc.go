@@ -38,7 +38,7 @@ func TaskService(state common.TiKVGroupState, c client.Client) task.Task {
 
 		svc := newHeadlessService(kvg)
 		if err := c.Apply(ctx, svc); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of tikv: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of tikv: %v", err))
 		}
 
 		return task.Complete().With("headless service of tikv has been applied")

@@ -65,13 +65,13 @@ func TaskModeSwitch(state *ReconcileContext, tsocm tsoClientGetter) task.Task {
 
 		if blocked, reason, msg := unsupportedTopology(state.PDGroups()); blocked {
 			blockModeSwitch(state, reason, msg)
-			return task.Retry(defaultUpdateWaitTime).With(msg)
+			return task.Retry(defaultUpdateWaitTime).With("%s", msg)
 		}
 
 		if target == v1alpha1.PDModeMS {
 			if blocked, reason, msg := checkTSODependency(ctx, state.TSOGroups(), tsocm); blocked {
 				blockModeSwitch(state, reason, msg)
-				return task.Retry(defaultUpdateWaitTime).With(msg)
+				return task.Retry(defaultUpdateWaitTime).With("%s", msg)
 			}
 		}
 
@@ -80,7 +80,7 @@ func TaskModeSwitch(state *ReconcileContext, tsocm tsoClientGetter) task.Task {
 		if changed {
 			state.SetStatusChanged()
 		}
-		return task.Complete().With(msg)
+		return task.Complete().With("%s", msg)
 	})
 }
 

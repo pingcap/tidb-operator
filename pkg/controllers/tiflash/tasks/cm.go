@@ -34,32 +34,32 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		cfg := tiflashcfg.Config{}
 		decoder, encoder := toml.Codec[tiflashcfg.Config]()
 		if err := decoder.Decode([]byte(state.TiFlash().Spec.Config), &cfg); err != nil {
-			return task.Fail().With("tiflash config cannot be decoded: %w", err)
+			return task.Fail().With("tiflash config cannot be decoded: %v", err)
 		}
 		if err := cfg.Overlay(state.Cluster(), state.TiFlash()); err != nil {
-			return task.Fail().With("cannot generate tiflash config: %w", err)
+			return task.Fail().With("cannot generate tiflash config: %v", err)
 		}
 		flashData, err := encoder.Encode(&cfg)
 		if err != nil {
-			return task.Fail().With("tiflash config cannot be encoded: %w", err)
+			return task.Fail().With("tiflash config cannot be encoded: %v", err)
 		}
 
 		proxyConfig := tiflashcfg.ProxyConfig{}
 		decoderProxy, encoderProxy := toml.Codec[tiflashcfg.ProxyConfig]()
 		if err = decoderProxy.Decode([]byte(state.TiFlash().Spec.ProxyConfig), &proxyConfig); err != nil {
-			return task.Fail().With("tiflash proxy config cannot be decoded: %w", err)
+			return task.Fail().With("tiflash proxy config cannot be decoded: %v", err)
 		}
 		if err = proxyConfig.Overlay(state.Cluster(), state.TiFlash()); err != nil {
-			return task.Fail().With("cannot generate tiflash proxy config: %w", err)
+			return task.Fail().With("cannot generate tiflash proxy config: %v", err)
 		}
 		proxyData, err := encoderProxy.Encode(&proxyConfig)
 		if err != nil {
-			return task.Fail().With("tiflash proxy config cannot be encoded: %w", err)
+			return task.Fail().With("tiflash proxy config cannot be encoded: %v", err)
 		}
 
 		expected := newConfigMap(state.TiFlash(), flashData, proxyData)
 		if e := c.Apply(ctx, expected); e != nil {
-			return task.Fail().With("can't create/update cm of tiflash: %w", e)
+			return task.Fail().With("can't create/update cm of tiflash: %v", e)
 		}
 		return task.Complete().With("cm is synced")
 	})

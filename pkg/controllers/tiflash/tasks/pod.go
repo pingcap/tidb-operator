@@ -54,7 +54,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				k8s.RecordFailedCreatePod(recorder, state.Object(), err)
-				return task.Fail().With("can't apply pod of tiflash: %w", err)
+				return task.Fail().With("can't apply pod of tiflash: %v", err)
 			}
 
 			state.SetPod(expected)
@@ -64,7 +64,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 		if !reloadable.CheckTiFlashPod(state.TiFlash(), pod) {
 			logger.Info("will recreate the pod")
 			if err := c.Delete(ctx, pod); err != nil {
-				return task.Fail().With("can't delete pod of tiflash: %w", err)
+				return task.Fail().With("can't delete pod of tiflash: %v", err)
 			}
 
 			state.DeletePod(pod)
@@ -73,7 +73,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 
 		logger.Info("will update the pod in place")
 		if err := c.Apply(ctx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tiflash: %w", err)
+			return task.Fail().With("can't apply pod of tiflash: %v", err)
 		}
 		state.SetPod(expected)
 

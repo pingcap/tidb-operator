@@ -36,7 +36,7 @@ func TaskService(state common.TiCDCGroupState, c client.Client) task.Task {
 
 		headless := newHeadlessService(cdcg)
 		if err := c.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service: %v", err))
 		}
 
 		return task.Complete().With("services have been applied")

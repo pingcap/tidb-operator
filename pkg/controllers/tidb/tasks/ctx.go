@@ -48,7 +48,7 @@ func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm p
 			var err error
 			tlsConfig, err = apicall.GetClientTLSConfig(ctx, c, ck)
 			if err != nil {
-				return task.Fail().With("cannot get tls config from secret: %w", err)
+				return task.Fail().With("cannot get tls config from secret: %v", err)
 			}
 		}
 		tidb := state.Object()
@@ -60,7 +60,7 @@ func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm p
 		)
 		health, err := state.TiDBClient.GetHealth(ctx)
 		if err != nil {
-			return task.Complete().With(
+			return task.Complete().With("%s",
 				fmt.Sprintf("context without health info is completed, tidb can't be reached: %v", err))
 		}
 		if health {

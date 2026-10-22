@@ -53,7 +53,7 @@ func TaskStatus(state State, c client.Client) task.Task {
 
 		if needUpdate {
 			if err := c.Status().Update(ctx, obj); err != nil {
-				return task.Fail().With("cannot update status: %w", err)
+				return task.Fail().With("cannot update status: %v", err)
 			}
 		}
 

@@ -49,7 +49,7 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 
 	if rtx.Cluster.GetDeletionTimestamp().IsZero() {
 		if err := apicall.EnsureFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
-			return task.Fail().With("can't ensure finalizer: %w", err)
+			return task.Fail().With("can't ensure finalizer: %v", err)
 		}
 		return task.Complete().With("ensured finalizer")
 	}
@@ -69,7 +69,7 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		len(rtx.DMGroups) == 0 &&
 		len(rtx.DMWorkerGroups) == 0 {
 		if err := apicall.RemoveFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
-			return task.Fail().With("can't remove finalizer: %w", err)
+			return task.Fail().With("can't remove finalizer: %v", err)
 		}
 		return task.Complete().Break().With("removed finalizer")
 	}

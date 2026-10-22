@@ -84,7 +84,7 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 
 	if needUpdate {
 		if err := t.Client.Status().Update(ctx, rtx.Cluster); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't update cluster status: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't update cluster status: %v", err))
 		}
 	}
 

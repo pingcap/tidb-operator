@@ -59,7 +59,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 
 		if needUpdate {
 			if err := c.Status().Update(ctx, tiflash); err != nil {
-				return task.Fail().With("cannot update status: %w", err)
+				return task.Fail().With("cannot update status: %v", err)
 			}
 		}
 
