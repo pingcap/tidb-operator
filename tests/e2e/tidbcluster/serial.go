@@ -92,7 +92,9 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
-		mapper, err := apiutil.NewDynamicRESTMapper(config, apiutil.WithLazyDiscovery)
+		httpClient, err := restclient.HTTPClientFor(config)
+		framework.ExpectNoError(err, "failed to create HTTP client")
+		mapper, err := apiutil.NewDynamicRESTMapper(config, httpClient)
 		framework.ExpectNoError(err, "failed to create dynamic RESTMapper")
 		genericCli, err = client.New(config, client.Options{
 			Scheme: scheme.Scheme,

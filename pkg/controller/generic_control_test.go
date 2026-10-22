@@ -45,7 +45,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -193,7 +193,7 @@ func TestCreateOrUpdatePVC(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -276,7 +276,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -352,7 +352,7 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -428,7 +428,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -501,7 +501,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -655,7 +655,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
