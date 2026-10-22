@@ -131,10 +131,15 @@ func TestOverlayRemoteWorkers(t *testing.T) {
 		compactorURL         = "http://compactor-a-tikv-worker.ns1:19000/compact"
 	)
 
+	var (
+		enabled  = true
+		disabled = false
+	)
+
 	cases := []struct {
 		name                      string
 		independentKVEngineWorker bool
-		disableRemoteCoprocessor  bool
+		coprocessorEnabled        *bool
 		omitKVEngineSection       bool
 		omitExistingCoprocessor   bool
 		coprocessor               string
@@ -150,7 +155,7 @@ func TestOverlayRemoteWorkers(t *testing.T) {
 			wantRemoteCompactorAddr:   workerCompactorURL,
 		},
 		{
-			name:                      "coprocessor ref with independent worker disabled",
+			name:                      "coprocessor ref defaults to enabled",
 			coprocessor:               "copr-a",
 			compactor:                 "compactor-a",
 			wantRemoteCoprocessorAddr: coprocessorURL,
@@ -158,44 +163,48 @@ func TestOverlayRemoteWorkers(t *testing.T) {
 			wantRemoteCompactorAddr:   compactorURL,
 		},
 		{
-			name:                     "disable coprocessor with independent worker disabled",
-			disableRemoteCoprocessor: true,
-			compactor:                "compactor-a",
-			wantRemoteWorkerAddr:     workerCoprocessorURL,
-			wantRemoteCompactorAddr:  compactorURL,
-		},
-		{
-			name:                      "coprocessor ref with independent worker enabled",
-			independentKVEngineWorker: true,
+			name:                      "coprocessor ref explicitly enabled",
 			coprocessor:               "copr-a",
+			coprocessorEnabled:        &enabled,
 			compactor:                 "compactor-a",
 			wantRemoteCoprocessorAddr: coprocessorURL,
-			wantRemoteWorkerAddr:      workerCoprocessorURL,
+			wantRemoteWorkerAddr:      coprocessorURL,
 			wantRemoteCompactorAddr:   compactorURL,
 		},
 		{
-			name:                      "disable coprocessor with independent worker enabled",
+			name:                    "disabled coprocessor clears the address with independent worker disabled",
+			coprocessor:             "copr-a",
+			coprocessorEnabled:      &disabled,
+			compactor:               "compactor-a",
+			wantRemoteWorkerAddr:    coprocessorURL,
+			wantRemoteCompactorAddr: compactorURL,
+		},
+		{
+			name:                      "disabled coprocessor clears the address with independent worker enabled",
 			independentKVEngineWorker: true,
-			disableRemoteCoprocessor:  true,
+			coprocessor:               "copr-a",
+			coprocessorEnabled:        &disabled,
 			compactor:                 "compactor-a",
 			wantRemoteWorkerAddr:      workerCoprocessorURL,
 			wantRemoteCompactorAddr:   compactorURL,
 		},
 		{
-			name:                     "disable coprocessor when original address is absent",
-			disableRemoteCoprocessor: true,
-			omitExistingCoprocessor:  true,
-			compactor:                "compactor-a",
-			wantRemoteWorkerAddr:     workerCoprocessorURL,
-			wantRemoteCompactorAddr:  compactorURL,
+			name:                    "disabled coprocessor overrides original address",
+			coprocessor:             "copr-a",
+			coprocessorEnabled:      &disabled,
+			omitExistingCoprocessor: true,
+			compactor:               "compactor-a",
+			wantRemoteWorkerAddr:    coprocessorURL,
+			wantRemoteCompactorAddr: compactorURL,
 		},
 		{
-			name:                     "disable coprocessor when original kvengine section is absent",
-			disableRemoteCoprocessor: true,
-			omitKVEngineSection:      true,
-			compactor:                "compactor-a",
-			wantRemoteWorkerAddr:     workerCoprocessorURL,
-			wantRemoteCompactorAddr:  compactorURL,
+			name:                    "disabled coprocessor when original kvengine section is absent",
+			coprocessor:             "copr-a",
+			coprocessorEnabled:      &disabled,
+			omitKVEngineSection:     true,
+			compactor:               "compactor-a",
+			wantRemoteWorkerAddr:    coprocessorURL,
+			wantRemoteCompactorAddr: compactorURL,
 		},
 	}
 
@@ -203,11 +212,10 @@ func TestOverlayRemoteWorkers(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			remoteWorkers := &v1alpha1.TiKVRemoteWorkers{
-				Worker:                   v1alpha1.WorkerReference{Name: "worker-a"},
-				DisableRemoteCoprocessor: tc.disableRemoteCoprocessor,
+				Worker: v1alpha1.WorkerReference{Name: "worker-a"},
 			}
 			if tc.coprocessor != "" {
-				remoteWorkers.Coprocessor = &v1alpha1.CoprocessorReference{Name: tc.coprocessor}
+				remoteWorkers.Coprocessor = &v1alpha1.CoprocessorReference{Name: tc.coprocessor, Enabled: tc.coprocessorEnabled}
 			}
 			if tc.compactor != "" {
 				remoteWorkers.Compactor = &v1alpha1.CompactorReference{Name: tc.compactor}
@@ -249,13 +257,13 @@ func TestOverlayRemoteWorkers(t *testing.T) {
 			assert.Equal(t, tc.wantRemoteWorkerAddr, cfg.KVEngine.RemoteWorkerAddr)
 			assert.Equal(t, tc.wantRemoteCompactorAddr, cfg.DFS.RemoteCompactorAddr)
 
-			if tc.disableRemoteCoprocessor {
-				data, err := encoder.Encode(cfg)
-				require.NoError(t, err)
-				assert.Contains(t, string(data), "remote-coprocessor-addr = ''")
-				assert.Contains(t, string(data), "remote-worker-addr = '"+tc.wantRemoteWorkerAddr+"'")
-				assert.Contains(t, string(data), "remote-compactor-addr = '"+tc.wantRemoteCompactorAddr+"'")
-			}
+			// The coprocessor address is always rendered explicitly so that disabling
+			// it clears any address coming from the original config.
+			data, err := encoder.Encode(cfg)
+			require.NoError(t, err)
+			assert.Contains(t, string(data), "remote-coprocessor-addr = '"+tc.wantRemoteCoprocessorAddr+"'")
+			assert.Contains(t, string(data), "remote-worker-addr = '"+tc.wantRemoteWorkerAddr+"'")
+			assert.Contains(t, string(data), "remote-compactor-addr = '"+tc.wantRemoteCompactorAddr+"'")
 		})
 	}
 }

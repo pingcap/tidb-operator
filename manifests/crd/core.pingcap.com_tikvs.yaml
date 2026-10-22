@@ -8391,21 +8391,20 @@ spec:
                     description: Coprocessor worker reference, if it's not set, use
                       worker ref by default
                     properties:
-                      name:
-                        default: ""
+                      enabled:
+                        default: true
                         description: |-
-                          Name of the referent.
-                          This field is effectively required, but due to backwards compatibility is
-                          allowed to be empty. Instances of this type with an empty value here are
-                          almost certainly wrong.
-                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          Enabled indicates whether TiKV routes coprocessor requests to the referenced
+                          remote worker. When false, the operator clears remote-coprocessor-addr from
+                          TiKV configuration and coprocessor requests are served by TiKV locally.
+                          Defaults to true.
+                        type: boolean
+                      name:
+                        description: Name of the referenced TiKVWorker.
                         type: string
+                    required:
+                    - name
                     type: object
-                    x-kubernetes-map-type: atomic
-                  disableRemoteCoprocessor:
-                    description: DisableRemoteCoprocessor clears the remote coprocessor
-                      address from TiKV configuration.
-                    type: boolean
                   worker:
                     description: Default worker reference, if remote workers are enabled,
                       this default worker ref must be set
@@ -8424,11 +8423,6 @@ spec:
                 required:
                 - worker
                 type: object
-                x-kubernetes-validations:
-                - message: coprocessor cannot be set when disableRemoteCoprocessor
-                    is true
-                  rule: '!has(self.disableRemoteCoprocessor) || !self.disableRemoteCoprocessor
-                    || !has(self.coprocessor)'
               replicas:
                 default: 1
                 description: Replicas is used for compatibility with PodDisruptionBudgets

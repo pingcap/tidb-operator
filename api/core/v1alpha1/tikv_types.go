@@ -240,12 +240,23 @@ type TiKVPreStop struct {
 }
 
 type (
-	CoprocessorReference corev1.LocalObjectReference
-	CompactorReference   corev1.LocalObjectReference
-	WorkerReference      corev1.LocalObjectReference
+	// CoprocessorReference references the TiKVWorker serving remote coprocessor requests.
+	CoprocessorReference struct {
+		// Name of the referenced TiKVWorker.
+		Name string `json:"name"`
+
+		// Enabled indicates whether TiKV routes coprocessor requests to the referenced
+		// remote worker. When false, the operator clears remote-coprocessor-addr from
+		// TiKV configuration and coprocessor requests are served by TiKV locally.
+		// Defaults to true.
+		// +optional
+		// +kubebuilder:default=true
+		Enabled *bool `json:"enabled,omitempty"`
+	}
+	CompactorReference corev1.LocalObjectReference
+	WorkerReference    corev1.LocalObjectReference
 )
 
-// +kubebuilder:validation:XValidation:rule="!has(self.disableRemoteCoprocessor) || !self.disableRemoteCoprocessor || !has(self.coprocessor)",message="coprocessor cannot be set when disableRemoteCoprocessor is true"
 type TiKVRemoteWorkers struct {
 	// Default worker reference, if remote workers are enabled, this default worker ref must be set
 	Worker WorkerReference `json:"worker"`
@@ -253,11 +264,14 @@ type TiKVRemoteWorkers struct {
 	// Coprocessor worker reference, if it's not set, use worker ref by default
 	Coprocessor *CoprocessorReference `json:"coprocessor,omitempty"`
 
-	// DisableRemoteCoprocessor clears the remote coprocessor address from TiKV configuration.
-	DisableRemoteCoprocessor bool `json:"disableRemoteCoprocessor,omitempty"`
-
 	// Compactor worker reference, if it's not set, use worker ref by default
 	Compactor *CompactorReference `json:"compactor,omitempty"`
+}
+
+// RemoteCoprocessorEnabled returns whether remote coprocessor routing is enabled.
+// It defaults to true when the coprocessor reference is absent or Enabled is unset.
+func (rw *TiKVRemoteWorkers) RemoteCoprocessorEnabled() bool {
+	return rw.Coprocessor == nil || rw.Coprocessor.Enabled == nil || *rw.Coprocessor.Enabled
 }
 
 type TiKVServer struct {
