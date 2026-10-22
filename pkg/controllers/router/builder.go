@@ -36,6 +36,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		common.TaskContextCluster[scope.Router](state, r.Client),
+		common.TaskInstanceSuspendReady[scope.Router](state, r.Client),
 		common.TaskObserveInstance[scope.Router](state),
 		task.IfBreak(common.CondClusterIsPaused(state)),
 		task.IfBreak(common.CondClusterIsDeleting(state),

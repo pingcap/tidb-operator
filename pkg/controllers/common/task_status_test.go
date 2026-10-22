@@ -1715,10 +1715,18 @@ func TestTaskInstanceConditionReadySuspend(t *testing.T) {
 			reason := v1alpha1.ReasonPodNotCreated
 			if tc.terminating {
 				state.EXPECT().Pod().Return(&corev1.Pod{})
-				state.EXPECT().IsPodTerminating().Return(true)
+				if !tc.suspend {
+					state.EXPECT().IsPodTerminating().Return(true)
+				}
 				reason = v1alpha1.ReasonPodTerminating
 			} else {
 				state.EXPECT().Pod().Return(nil)
+			}
+			if tc.suspend {
+				reason = v1alpha1.ReasonSuspended
+				if tc.terminating {
+					reason = v1alpha1.ReasonSuspending
+				}
 			}
 			state.EXPECT().SetStatusChanged()
 			res, _ := task.RunTask(context.Background(), TaskInstanceConditionReady[scope.PD](state))

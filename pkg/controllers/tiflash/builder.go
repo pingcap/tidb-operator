@@ -36,6 +36,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiFlash](state, r.Client),
+		common.TaskInstanceSuspendReady[scope.TiFlash](state, r.Client),
 		common.TaskObserveInstance[scope.TiFlash](state),
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),

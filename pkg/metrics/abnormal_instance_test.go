@@ -138,11 +138,14 @@ func TestObserveConditionSuspend(t *testing.T) {
 		suspend  bool
 		want     float64
 	}{
-		{"suspended pod absent", v1alpha1.CondReady, v1alpha1.ReasonPodNotCreated, true, 0},
-		{"suspending pod terminating", v1alpha1.CondReady, v1alpha1.ReasonPodTerminating, true, 0},
+		{"suspended pod absent", v1alpha1.CondReady, v1alpha1.ReasonSuspended, true, 0},
+		{"suspending pod terminating", v1alpha1.CondReady, v1alpha1.ReasonSuspending, true, 0},
 		{"suspended pod not ready", v1alpha1.CondReady, v1alpha1.ReasonPodNotReady, true, 1},
 		{"suspended instance unhealthy", v1alpha1.CondReady, v1alpha1.ReasonInstanceNotHealthy, true, 1},
 		{"suspend deletion stuck", v1alpha1.CondSynced, v1alpha1.ReasonPodNotDeleted, true, 1},
+		{"suspend reason after resume", v1alpha1.CondReady, v1alpha1.ReasonSuspended, false, 1},
+		{"suspending reason after resume", v1alpha1.CondReady, v1alpha1.ReasonSuspending, false, 1},
+		{"ordinary missing pod", v1alpha1.CondReady, v1alpha1.ReasonPodNotCreated, true, 1},
 		{"resume pod absent", v1alpha1.CondReady, v1alpha1.ReasonPodNotCreated, false, 1},
 		{"resume pod terminating", v1alpha1.CondReady, v1alpha1.ReasonPodTerminating, false, 1},
 	}
@@ -173,7 +176,7 @@ func TestObserveConditionsSuspendResume(t *testing.T) {
 	cluster := &v1alpha1.Cluster{}
 	cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
 	conds := []metav1.Condition{
-		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonPodNotCreated},
+		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonSuspended},
 		{Type: v1alpha1.CondSynced, Status: metav1.ConditionTrue},
 		{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue},
 	}

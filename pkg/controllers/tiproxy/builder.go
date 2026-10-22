@@ -33,6 +33,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiProxy](state, r.Client),
+		common.TaskInstanceSuspendReady[scope.TiProxy](state, r.Client),
 		common.TaskObserveInstance[scope.TiProxy](state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),

@@ -31,6 +31,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster info
 		common.TaskContextCluster[scope.DMWorker](state, r.Client),
+		common.TaskInstanceSuspendReady[scope.DMWorker](state, r.Client),
 		common.TaskObserveInstance[scope.DMWorker](state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),

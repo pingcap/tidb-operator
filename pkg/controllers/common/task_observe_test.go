@@ -122,7 +122,7 @@ func TestTaskObserveInstanceSuspendResume(t *testing.T) {
 	const ns, name = "ns-suspend", "pd-suspend"
 	obj := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name}}
 	obj.Status.Conditions = []metav1.Condition{
-		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonPodNotCreated},
+		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonSuspended},
 		{Type: v1alpha1.CondSynced, Status: metav1.ConditionTrue},
 		{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue},
 	}
@@ -201,7 +201,7 @@ func TestTaskContextClusterObservationRecovers(t *testing.T) {
 	obj := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Namespace: "cluster-read-error", Name: "recovery"}}
 	obj.Spec.Cluster.Name = "c"
 	obj.Status.Conditions = []metav1.Condition{
-		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonPodNotCreated},
+		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonSuspended},
 		{Type: v1alpha1.CondSynced, Status: metav1.ConditionTrue},
 		{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue},
 	}

@@ -96,6 +96,10 @@ func Ready() *metav1.Condition {
 func Unready(reason string) *metav1.Condition {
 	var msg string
 	switch reason {
+	case v1alpha1.ReasonSuspended:
+		msg = "instance is intentionally suspended"
+	case v1alpha1.ReasonSuspending:
+		msg = "instance is suspending"
 	case v1alpha1.ReasonNotAllInstancesReady:
 		msg = "not all instances are ready"
 	case v1alpha1.ReasonPodNotCreated:

@@ -45,9 +45,9 @@ func instanceMetricBaseLabels(obj client.Object) []string {
 
 // ObserveCondition writes 1 to the abnormal-instance gauge when the named
 // condition is False; 0 otherwise (True or absent are treated as healthy).
-// Expected Pod absence or termination during suspend does not count as a
-// Ready abnormality. The current Cluster spec, rather than a potentially stale
-// Suspended condition, determines whether this exception applies.
+// Ready=False with a Suspended/Suspending reason is expected during suspend.
+// Check the current Cluster spec as well so stale reasons cannot hide resume
+// failures when reconciliation is paused or Cluster reads fail.
 // The series stays present so PromQL `for:` alerts can fire reliably without
 // gaps, and so dashboards never see missing samples for managed instances.
 //
@@ -59,7 +59,7 @@ func ObserveCondition(obj client.Object, conds []metav1.Condition, condType stri
 	if cond := meta.FindStatusCondition(conds, condType); cond != nil && cond.Status == metav1.ConditionFalse {
 		value = 1
 		if condType == v1alpha1.CondReady && cluster != nil && coreutil.ShouldSuspendCompute(cluster) &&
-			(cond.Reason == v1alpha1.ReasonPodNotCreated || cond.Reason == v1alpha1.ReasonPodTerminating) {
+			(cond.Reason == v1alpha1.ReasonSuspended || cond.Reason == v1alpha1.ReasonSuspending) {
 			value = 0
 		}
 	}

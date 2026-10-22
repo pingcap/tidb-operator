@@ -28,8 +28,8 @@ import (
 // instance after its Cluster is loaded, and clears it when the instance CR
 // has been removed from the API server (state.Object() == nil).
 //
-// Run after TaskContextCluster for live instances so suspend filtering uses the
-// current desired state. Also run in the CondObjectHasBeenDeleted branch to
+// Run after TaskContextCluster and TaskInstanceSuspendReady for live instances
+// so metrics reflect persisted transitions and the current desired state. Also run in the CondObjectHasBeenDeleted branch to
 // clear metrics on DELETE events, including force-deletion without finalizers.
 func TaskObserveInstance[
 	S scope.Instance[F, T],
