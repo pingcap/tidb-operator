@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 )
 
 // trackedConditions are the condition types observed by ObserveInstance* and
@@ -45,20 +44,19 @@ func instanceMetricBaseLabels(obj client.Object) []string {
 
 // ObserveCondition writes 1 to the abnormal-instance gauge when the named
 // condition is False; 0 otherwise (True or absent are treated as healthy).
-// Ready=False with a Suspended/Suspending reason is expected during suspend.
-// Check the current Cluster spec as well so stale reasons cannot hide resume
-// failures when reconciliation is paused or Cluster reads fail.
+// Ready=False with a Suspended/Suspending reason is expected. Observation only
+// reflects conditions; controllers are responsible for refreshing stale reasons.
 // The series stays present so PromQL `for:` alerts can fire reliably without
 // gaps, and so dashboards never see missing samples for managed instances.
 //
 // condType must be one of trackedConditions so the finalize-time cleanup in
 // ClearInstanceConditionMetrics covers the same set of series this writes.
-func ObserveCondition(obj client.Object, conds []metav1.Condition, condType string, cluster *v1alpha1.Cluster) {
+func ObserveCondition(obj client.Object, conds []metav1.Condition, condType string) {
 	labels := append(instanceMetricBaseLabels(obj), condType)
 	value := 0.0
 	if cond := meta.FindStatusCondition(conds, condType); cond != nil && cond.Status == metav1.ConditionFalse {
 		value = 1
-		if condType == v1alpha1.CondReady && cluster != nil && coreutil.ShouldSuspendCompute(cluster) &&
+		if condType == v1alpha1.CondReady &&
 			(cond.Reason == v1alpha1.ReasonSuspended || cond.Reason == v1alpha1.ReasonSuspending) {
 			value = 0
 		}
@@ -69,9 +67,9 @@ func ObserveCondition(obj client.Object, conds []metav1.Condition, condType stri
 // ObserveConditions records the gauge for every condition type tracked by this
 // package. This is the convenience entry point from reconcile tasks that want
 // to refresh the full picture in one call.
-func ObserveConditions(obj client.Object, conds []metav1.Condition, cluster *v1alpha1.Cluster) {
+func ObserveConditions(obj client.Object, conds []metav1.Condition) {
 	for _, condType := range trackedConditions {
-		ObserveCondition(obj, conds, condType, cluster)
+		ObserveCondition(obj, conds, condType)
 	}
 }
 

@@ -18,11 +18,9 @@ package common
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
@@ -169,55 +167,6 @@ func TaskInstanceConditionRunning[
 	})
 }
 
-// TaskInstanceSuspendReady persists only suspend/resume transitions before any
-// recovery work can fail. Normal readiness still comes from the later health check.
-func TaskInstanceSuspendReady[
-	S scope.Instance[F, T],
-	F client.Object,
-	T runtime.Instance,
-](state interface {
-	ObjectState[F]
-	ClusterState
-}, c client.Client) task.Task {
-	return task.NameTaskFunc("SuspendReady", func(ctx context.Context) task.Result {
-		instance := state.Object()
-		cluster := state.Cluster()
-		if coreutil.ShouldPauseReconcile(cluster) || !cluster.DeletionTimestamp.IsZero() || !instance.GetDeletionTimestamp().IsZero() {
-			return task.Complete().With("skip readiness transition for paused or deleting objects")
-		}
-		suspend := coreutil.ShouldSuspendCompute(cluster)
-		ready := coreutil.FindStatusCondition[S](instance, v1alpha1.CondReady)
-		if !suspend && (ready == nil || (ready.Reason != v1alpha1.ReasonSuspended && ready.Reason != v1alpha1.ReasonSuspending)) {
-			return task.Complete().With("no suspend readiness transition")
-		}
-		pod, err := apicall.GetPod[S](ctx, c, instance)
-		if err != nil && !errors.IsNotFound(err) {
-			metrics.ObserveConditions(instance, coreutil.StatusConditions[S](instance), cluster)
-			return task.Fail().With("cannot get pod for readiness transition: %v", err)
-		}
-		reason := v1alpha1.ReasonPodNotReady
-		switch {
-		case suspend && pod == nil:
-			reason = v1alpha1.ReasonSuspended
-		case suspend:
-			reason = v1alpha1.ReasonSuspending
-		case pod == nil:
-			reason = v1alpha1.ReasonPodNotCreated
-		case !pod.DeletionTimestamp.IsZero():
-			reason = v1alpha1.ReasonPodTerminating
-		}
-		if !coreutil.SetStatusCondition[S](instance, *coreutil.Unready(reason)) {
-			return task.Complete().With("suspend readiness is unchanged")
-		}
-		// Do not advance observed generations for work that has not run yet.
-		if err := c.Status().Update(ctx, instance); err != nil {
-			metrics.ObserveConditions(instance, coreutil.StatusConditions[S](instance), cluster)
-			return task.Fail().With("cannot persist readiness transition: %v", err)
-		}
-		return task.Complete().With("suspend readiness transition persisted")
-	})
-}
-
 type InstanceCondReadyUpdater[T client.Object] interface {
 	ClusterState
 	StatusUpdater
@@ -284,7 +233,7 @@ func TaskInstanceConditionReady[
 		// Refresh the abnormal-instance gauge so a long-running Ready=False
 		// (e.g. pod up but cannot serve) becomes alertable without any
 		// per-component glue.
-		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondReady, cluster)
+		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondReady)
 
 		if !isReady {
 			return task.Wait().With("instance is unready: %s", coreutil.SprintCondition(cond))
@@ -349,7 +298,7 @@ func TaskInstanceConditionSynced[
 		// Refresh the abnormal-instance gauge so a long-running Synced=False
 		// (rolling restart stuck, scale-in stuck, ...) becomes alertable
 		// without any per-component glue.
-		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondSynced, cluster)
+		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondSynced)
 
 		if !isSynced {
 			return task.Wait().With("instance is unsynced: %s", coreutil.SprintCondition(cond))

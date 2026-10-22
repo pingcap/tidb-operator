@@ -70,10 +70,9 @@ func TestDeletingInstanceObservesMetricsBeforeFinalizerFailure(t *testing.T) {
 					APIVersion: "core.pingcap.com/v1alpha1", Kind: groupKind, Name: "g", Controller: &controller,
 				}})
 				instance.SetCluster("c")
-				// A Cluster cannot be read on this deletion path. Even stale suspend
-				// reasons must be published conservatively instead of being suppressed.
+				// Observation of existing failures must not require reading the Cluster.
 				instance.SetConditions([]metav1.Condition{
-					{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonSuspended},
+					{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonPodNotReady},
 					{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonPodNotDeleted},
 				})
 				metrics.ClearInstanceConditionMetrics(obj) // Model an empty registry after restart.

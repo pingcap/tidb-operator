@@ -24,24 +24,16 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-// TaskObserveInstance refreshes the AbnormalInstance gauge for the reconciled
-// instance after its Cluster is loaded, and clears it when the instance CR
-// has been removed from the API server (state.Object() == nil).
-//
-// Run after TaskContextCluster and TaskInstanceSuspendReady for live instances
-// so metrics reflect persisted transitions and the current desired state. Also run in the CondObjectHasBeenDeleted branch to
-// clear metrics on DELETE events, including force-deletion without finalizers.
-// On deletion paths that do not load the Cluster, also run before finalizer
-// cleanup; a nil Cluster conservatively publishes existing False conditions.
+// TaskObserveInstance publishes the instance's recorded conditions without
+// interpreting desired state. Run after loading the instance, before Cluster
+// reads or finalizer cleanup can fail, and on DELETE events to clear metrics
+// when the instance CR no longer exists.
 func TaskObserveInstance[
 	S scope.Instance[F, T],
 	F Object[P],
 	T runtime.Instance,
 	P any,
-](state interface {
-	TrackState[F]
-	ClusterState
-}) task.Task {
+](state TrackState[F]) task.Task {
 	return task.NameTaskFunc("ObserveInstance", func(context.Context) task.Result {
 		obj := state.Object()
 		if obj == nil {
@@ -53,7 +45,7 @@ func TaskObserveInstance[
 			return task.Complete().With("cleared metrics for deleted %s", key)
 		}
 		conds := coreutil.StatusConditions[S](obj)
-		metrics.ObserveConditions(obj, conds, state.Cluster())
+		metrics.ObserveConditions(obj, conds)
 		return task.Complete().With("observed metrics for %s/%s", obj.GetNamespace(), obj.GetName())
 	})
 }

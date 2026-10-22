@@ -38,7 +38,7 @@ var (
 
 	// AbnormalInstance is 1 when the named condition on the instance is False
 	// (abnormal), 0 otherwise, excluding Ready failures with a
-	// Suspended/Suspending reason during suspend. The series stays present while the
+	// Suspended/Suspending reason. The series stays present while the
 	// operator manages the instance and is removed when the instance is finalized
 	// or deleted.
 	//
@@ -50,7 +50,7 @@ var (
 			Namespace: "tidb_operator",
 			Name:      "abnormal_instance",
 			Help: "1 when the named condition on the instance is False, 0 otherwise. " +
-				"Ready failures with Suspended/Suspending reasons during suspend are excluded. " +
+				"Ready failures with Suspended/Suspending reasons are excluded. " +
 				"Use `metric == 1` with PromQL `for: <duration>` to alert on stuck state.",
 		}, InstanceAbnormalMetricLabels,
 	)

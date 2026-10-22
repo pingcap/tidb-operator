@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -1736,5 +1737,65 @@ func TestTaskInstanceConditionReadySuspend(t *testing.T) {
 			assert.Equal(t, reason, obj.Status.Conditions[0].Reason)
 			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
 		})
+	}
+}
+
+func TestTaskInstanceConditionReadyHealthyPodSuspendResume(t *testing.T) {
+	for _, suspend := range []bool{true, false} {
+		t.Run(fmt.Sprint(suspend), func(t *testing.T) {
+			obj := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Namespace: "ready-healthy", Name: fmt.Sprint(suspend)}}
+			initial := coreutil.Ready()
+			if !suspend {
+				initial = coreutil.Unready(v1alpha1.ReasonSuspended)
+			}
+			obj.Status.Conditions = []metav1.Condition{*initial}
+			defer metrics.ClearInstanceConditionMetrics(obj)
+			cluster := &v1alpha1.Cluster{}
+			cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: suspend}
+			pod := &corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}}}
+			state := NewMockInstanceCondReadyUpdater[*v1alpha1.PD](gomock.NewController(t))
+			state.EXPECT().Object().Return(obj)
+			state.EXPECT().Cluster().Return(cluster)
+			state.EXPECT().Pod().Return(pod)
+			state.EXPECT().SetStatusChanged()
+			if !suspend {
+				state.EXPECT().IsPodTerminating().Return(false)
+				state.EXPECT().IsHealthy().Return(true)
+			}
+			res, _ := task.RunTask(context.Background(), TaskInstanceConditionReady[scope.PD](state))
+			ready := coreutil.FindStatusCondition[scope.PD](obj, v1alpha1.CondReady)
+			if suspend {
+				assert.Equal(t, task.SWait, res.Status())
+				assert.Equal(t, metav1.ConditionFalse, ready.Status)
+				assert.Equal(t, v1alpha1.ReasonSuspending, ready.Reason)
+			} else {
+				assert.Equal(t, task.SComplete, res.Status())
+				assert.Equal(t, metav1.ConditionTrue, ready.Status)
+				assert.Equal(t, v1alpha1.ReasonReady, ready.Reason)
+			}
+		})
+	}
+}
+
+func TestTaskInstanceConditionReadyDoesNotFlap(t *testing.T) {
+	obj := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Namespace: "ready-stable", Name: "pd", Generation: 3}}
+	ready := *coreutil.Ready()
+	ready.ObservedGeneration = obj.Generation
+	ready.LastTransitionTime = metav1.NewTime(time.Unix(1700000000, 0))
+	obj.Status.Conditions = []metav1.Condition{ready}
+	defer metrics.ClearInstanceConditionMetrics(obj)
+	pod := &corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{
+		{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: ready.LastTransitionTime},
+	}}}
+	state := NewMockInstanceCondReadyUpdater[*v1alpha1.PD](gomock.NewController(t))
+	state.EXPECT().Object().Return(obj).AnyTimes()
+	state.EXPECT().Cluster().Return(&v1alpha1.Cluster{}).AnyTimes()
+	state.EXPECT().Pod().Return(pod).AnyTimes()
+	state.EXPECT().IsPodTerminating().Return(false).AnyTimes()
+	state.EXPECT().IsHealthy().Return(true).AnyTimes()
+	for range 3 {
+		res, _ := task.RunTask(context.Background(), TaskInstanceConditionReady[scope.PD](state))
+		require.Equal(t, task.SComplete, res.Status())
+		assert.Equal(t, ready, *coreutil.FindStatusCondition[scope.PD](obj, v1alpha1.CondReady))
 	}
 }
