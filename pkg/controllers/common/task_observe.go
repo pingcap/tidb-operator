@@ -31,6 +31,8 @@ import (
 // Run after TaskContextCluster and TaskInstanceSuspendReady for live instances
 // so metrics reflect persisted transitions and the current desired state. Also run in the CondObjectHasBeenDeleted branch to
 // clear metrics on DELETE events, including force-deletion without finalizers.
+// On deletion paths that do not load the Cluster, also run before finalizer
+// cleanup; a nil Cluster conservatively publishes existing False conditions.
 func TaskObserveInstance[
 	S scope.Instance[F, T],
 	F Object[P],

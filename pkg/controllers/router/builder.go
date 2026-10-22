@@ -28,6 +28,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.Router](state), common.TaskObserveInstance[scope.Router](state)),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.Router](state),
+			common.TaskObserveInstance[scope.Router](state),
 			common.TaskInstanceFinalizerDel[scope.Router](state, r.Client, common.DefaultInstanceSubresourceLister),
 			common.TaskInstanceConditionSynced[scope.Router](state),
 			common.TaskInstanceConditionReady[scope.Router](state),
