@@ -15,8 +15,6 @@
 package metrics
 
 import (
-	"strconv"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,27 +44,24 @@ func instanceMetricBaseLabels(obj client.Object) []string {
 
 // ObserveCondition writes 1 to the abnormal-instance gauge when the named
 // condition is False; 0 otherwise (True or absent are treated as healthy).
+// Ready=False is also treated as healthy when Suspended=True.
 // The series stays present so PromQL `for:` alerts can fire reliably without
 // gaps, and so dashboards never see missing samples for managed instances.
-//
-// The 'suspended' label value is derived from the Suspended condition in
-// conds: "true" when Suspended=True, "false" otherwise. This allows alert
-// rules to use {suspended!="true"} to suppress noise on paused clusters.
 //
 // condType must be one of trackedConditions so the finalize-time cleanup in
 // ClearInstanceConditionMetrics covers the same set of series this writes.
 func ObserveCondition(obj client.Object, conds []metav1.Condition, condType string) {
-	suspended := meta.IsStatusConditionTrue(conds, v1alpha1.CondSuspended)
 	labels := append(instanceMetricBaseLabels(obj), condType)
-
-	// Remove the previous state so paused instances cannot keep stale alerts alive.
-	AbnormalInstance.DeleteLabelValues(append(labels, strconv.FormatBool(!suspended))...)
-	labels = append(labels, strconv.FormatBool(suspended))
-
 	value := 0.0
 	if cond := meta.FindStatusCondition(conds, condType); cond != nil && cond.Status == metav1.ConditionFalse {
 		value = 1
 	}
+
+	// Paused compute is expected to be unready; sync failures remain abnormal.
+	if condType == v1alpha1.CondReady && meta.IsStatusConditionTrue(conds, v1alpha1.CondSuspended) {
+		value = 0
+	}
+
 	AbnormalInstance.WithLabelValues(labels...).Set(value)
 }
 
@@ -92,27 +87,10 @@ func ObserveConditions(obj client.Object, conds []metav1.Condition) {
 // value forever, triggering false-positive `metric == 1 for: <duration>`
 // alerts on a non-existent instance and growing label cardinality across
 // each cluster lifecycle.
-//
-// DeletePartialMatch is used (rather than DeleteLabelValues) because the
-// 'suspended' label value may have changed over the instance lifetime; a
-// partial match on the five stable dimensions sweeps all series regardless
-// of the current suspended value.
 func ClearInstanceConditionMetrics(obj client.Object) {
 	base := instanceMetricBaseLabels(obj)
-	baseLabels := prometheus.Labels{
-		labelNamespace: base[0],
-		"cluster":      base[1],
-		labelComponent: base[2],
-		"group":        base[3],
-		labelInstance:  base[4],
-	}
 	for _, condType := range trackedConditions {
-		m := make(prometheus.Labels, len(baseLabels)+1)
-		for k, v := range baseLabels {
-			m[k] = v
-		}
-		m["condition"] = condType
-		AbnormalInstance.DeletePartialMatch(m)
+		AbnormalInstance.DeleteLabelValues(append(base, condType)...)
 	}
 }
 
@@ -127,8 +105,8 @@ func ClearInstanceConditionMetrics(obj client.Object) {
 // value if those labels ever shifted.
 func ClearInstanceConditionMetricsByKey(namespace, component, instance string) {
 	AbnormalInstance.DeletePartialMatch(prometheus.Labels{
-		labelNamespace: namespace,
-		labelComponent: component,
-		labelInstance:  instance,
+		"namespace": namespace,
+		"component": component,
+		"instance":  instance,
 	})
 }

@@ -19,26 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
-const (
-	labelNamespace = "namespace"
-	labelComponent = "component"
-	labelInstance  = "instance"
-)
-
 // InstanceAbnormalMetricLabels is the canonical label order for the
 // per-instance abnormal-condition gauge. Keep in sync with WithLabelValues /
 // DeleteLabelValues callers.
-//
-// The 'suspended' label carries the Suspended-condition state at the time the
-// gauge is written ("true" / "false"). Alert rules can use {suspended!="true"}
-// to suppress noise on intentionally paused clusters without needing a
-// separate metric or a PromQL join.
-//
-// NOTE: adding 'suspended' changes the series identity. Existing time-series
-// (without this label) disappear on operator upgrade; alert for: windows reset.
-// This is acceptable because the window is short (30 m) and instances that
-// were in a legitimate abnormal state will re-fire within one window.
-var InstanceAbnormalMetricLabels = []string{labelNamespace, "cluster", labelComponent, "group", labelInstance, "condition", "suspended"}
+var InstanceAbnormalMetricLabels = []string{"namespace", "cluster", "component", "group", "instance", "condition"}
 
 var (
 
@@ -55,6 +39,7 @@ var (
 	// AbnormalInstance is 1 when the named condition on the instance is False
 	// (abnormal), 0 otherwise. The series stays present while the operator
 	// manages the instance and is removed only when the instance is finalized.
+	// Ready=False is not abnormal when Suspended=True; Synced is unaffected.
 	//
 	// Use `metric == 1` together with PromQL `for: <duration>` to alert on
 	// instances stuck in an abnormal state, e.g. a rolling restart that cannot
@@ -64,6 +49,7 @@ var (
 			Namespace: "tidb_operator",
 			Name:      "abnormal_instance",
 			Help: "1 when the named condition on the instance is False, 0 otherwise. " +
+				"Ready=False is not abnormal when Suspended=True. " +
 				"Use `metric == 1` with PromQL `for: <duration>` to alert on stuck state.",
 		}, InstanceAbnormalMetricLabels,
 	)
