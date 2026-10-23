@@ -147,6 +147,61 @@ func TestCheckTiKVPodMinReadyForLeaderSecondsIsReloadable(t *testing.T) {
 	assert.True(t, CheckTiKVPod(currentInstance, pod))
 }
 
+func TestCheckTiKVRemoteCoprocessorToggleIsNotReloadable(t *testing.T) {
+	var (
+		enabled  = true
+		disabled = false
+	)
+
+	newRemoteWorkers := func(enabled *bool) *v1alpha1.TiKVRemoteWorkers {
+		return &v1alpha1.TiKVRemoteWorkers{
+			Worker: v1alpha1.WorkerReference{Name: "worker"},
+			Coprocessor: &v1alpha1.CoprocessorReference{
+				Name:    "coprocessor",
+				Enabled: enabled,
+			},
+		}
+	}
+
+	for name, tc := range map[string]struct {
+		oldEnabled *bool
+		newEnabled *bool
+	}{
+		"enabled to disabled": {&enabled, &disabled},
+		"disabled to enabled": {&disabled, &enabled},
+		"unset to disabled":   {nil, &disabled},
+		"disabled to unset":   {&disabled, nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			lastInstance := &v1alpha1.TiKV{
+				Spec: v1alpha1.TiKVSpec{
+					TiKVTemplateSpec: v1alpha1.TiKVTemplateSpec{
+						Version:       "v1.2.3",
+						RemoteWorkers: newRemoteWorkers(tc.oldEnabled),
+					},
+				},
+			}
+			group := &v1alpha1.TiKVGroup{
+				Spec: v1alpha1.TiKVGroupSpec{
+					Template: v1alpha1.TiKVTemplate{
+						Spec: v1alpha1.TiKVTemplateSpec{
+							Version:       "v1.2.3",
+							RemoteWorkers: newRemoteWorkers(tc.newEnabled),
+						},
+					},
+				},
+			}
+			assert.False(t, CheckTiKV(group, lastInstance))
+
+			pod := &corev1.Pod{}
+			require.NoError(t, EncodeLastTiKVTemplate(lastInstance, pod))
+			currentInstance := lastInstance.DeepCopy()
+			currentInstance.Spec.RemoteWorkers.Coprocessor.Enabled = tc.newEnabled
+			assert.False(t, CheckTiKVPod(currentInstance, pod))
+		})
+	}
+}
+
 func TestCheckTiKVPodVersionChangeIsNotReloadable(t *testing.T) {
 	pod := &corev1.Pod{}
 	lastInstance := &v1alpha1.TiKV{

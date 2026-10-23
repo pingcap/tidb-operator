@@ -240,9 +240,22 @@ type TiKVPreStop struct {
 }
 
 type (
-	CoprocessorReference corev1.LocalObjectReference
-	CompactorReference   corev1.LocalObjectReference
-	WorkerReference      corev1.LocalObjectReference
+	// CoprocessorReference references the TiKVWorker serving remote coprocessor requests.
+	CoprocessorReference struct {
+		// Name of the referenced TiKVWorker.
+		// +kubebuilder:validation:MinLength=1
+		Name string `json:"name"`
+
+		// Enabled indicates whether TiKV routes coprocessor requests to the referenced
+		// remote worker. When false, the operator clears remote-coprocessor-addr from
+		// TiKV configuration and coprocessor requests are served by TiKV locally.
+		// Defaults to true.
+		// +optional
+		// +kubebuilder:default=true
+		Enabled *bool `json:"enabled,omitempty"`
+	}
+	CompactorReference corev1.LocalObjectReference
+	WorkerReference    corev1.LocalObjectReference
 )
 
 type TiKVRemoteWorkers struct {
@@ -254,6 +267,12 @@ type TiKVRemoteWorkers struct {
 
 	// Compactor worker reference, if it's not set, use worker ref by default
 	Compactor *CompactorReference `json:"compactor,omitempty"`
+}
+
+// RemoteCoprocessorEnabled returns whether remote coprocessor routing is enabled.
+// It defaults to true when the coprocessor reference is absent or Enabled is unset.
+func (rw *TiKVRemoteWorkers) RemoteCoprocessorEnabled() bool {
+	return rw.Coprocessor == nil || rw.Coprocessor.Enabled == nil || *rw.Coprocessor.Enabled
 }
 
 type TiKVServer struct {

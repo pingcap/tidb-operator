@@ -34,6 +34,7 @@ func TestTiKV(t *testing.T) {
 	cases = append(cases, transferTiKVCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiKVCases(t, cacheTTLSeconds("spec.cacheTTLSeconds"), "spec", "cacheTTLSeconds")...)
 	cases = append(cases, transferTiKVCases(t, minReadyForLeaderSeconds("spec.minReadyForLeaderSeconds"), "spec", "minReadyForLeaderSeconds")...)
+	cases = append(cases, transferTiKVCases(t, remoteCoprocessorEnabledValidation("spec.remoteWorkers"), "spec", "remoteWorkers")...)
 	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
 }
 
@@ -45,7 +46,59 @@ func TestTiKVGroup(t *testing.T) {
 	cases = append(cases, transferTiKVGroupCases(t, cacheTTLSeconds("spec.template.spec.cacheTTLSeconds"), "spec", "template", "spec", "cacheTTLSeconds")...)
 	cases = append(cases, transferTiKVGroupCases(t, minReadyForLeaderSeconds("spec.template.spec.minReadyForLeaderSeconds"), "spec", "template", "spec", "minReadyForLeaderSeconds")...)
 	cases = append(cases, transferTiKVGroupCases(t, PlacementServerLabels("spec", "template", "spec", "server", "labels"), "spec", "template", "spec", "server", "labels")...)
+	cases = append(cases, transferTiKVGroupCases(t, remoteCoprocessorEnabledValidation("spec.template.spec.remoteWorkers"), "spec", "template", "spec", "remoteWorkers")...)
 	Validate(t, "crd/core.pingcap.com_tikvgroups.yaml", cases)
+}
+
+func remoteCoprocessorEnabledValidation(fieldPath string) []Case {
+	return []Case{
+		{
+			desc:     "coprocessor ref without enabled is allowed",
+			isCreate: true,
+			current: map[string]any{
+				"worker":      map[string]any{"name": "worker"},
+				"coprocessor": map[string]any{"name": "coprocessor"},
+			},
+		},
+		{
+			desc:     "coprocessor ref with enabled false is allowed",
+			isCreate: true,
+			current: map[string]any{
+				"worker":      map[string]any{"name": "worker"},
+				"coprocessor": map[string]any{"name": "coprocessor", "enabled": false},
+			},
+		},
+		{
+			desc:     "coprocessor ref with enabled true is allowed",
+			isCreate: true,
+			current: map[string]any{
+				"worker":      map[string]any{"name": "worker"},
+				"coprocessor": map[string]any{"name": "coprocessor", "enabled": true},
+			},
+		},
+		{
+			desc:     "coprocessor ref requires a name",
+			isCreate: true,
+			current: map[string]any{
+				"worker":      map[string]any{"name": "worker"},
+				"coprocessor": map[string]any{"enabled": false},
+			},
+			wantErrs: []string{
+				fmt.Sprintf(`%s.coprocessor.name: Required value`, fieldPath),
+			},
+		},
+		{
+			desc:     "coprocessor ref name must not be empty",
+			isCreate: true,
+			current: map[string]any{
+				"worker":      map[string]any{"name": "worker"},
+				"coprocessor": map[string]any{"name": ""},
+			},
+			wantErrs: []string{
+				fmt.Sprintf(`%s.coprocessor.name: Invalid value: "": %s.coprocessor.name in body should be at least 1 chars long`, fieldPath, fieldPath),
+			},
+		},
+	}
 }
 
 func cacheTTLSeconds(fieldPath string) []Case {

@@ -8674,17 +8674,21 @@ spec:
                             description: Coprocessor worker reference, if it's not
                               set, use worker ref by default
                             properties:
-                              name:
-                                default: ""
+                              enabled:
+                                default: true
                                 description: |-
-                                  Name of the referent.
-                                  This field is effectively required, but due to backwards compatibility is
-                                  allowed to be empty. Instances of this type with an empty value here are
-                                  almost certainly wrong.
-                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  Enabled indicates whether TiKV routes coprocessor requests to the referenced
+                                  remote worker. When false, the operator clears remote-coprocessor-addr from
+                                  TiKV configuration and coprocessor requests are served by TiKV locally.
+                                  Defaults to true.
+                                type: boolean
+                              name:
+                                description: Name of the referenced TiKVWorker.
+                                minLength: 1
                                 type: string
+                            required:
+                            - name
                             type: object
-                            x-kubernetes-map-type: atomic
                           worker:
                             description: Default worker reference, if remote workers
                               are enabled, this default worker ref must be set
