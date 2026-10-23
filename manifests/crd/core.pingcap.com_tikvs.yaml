@@ -8401,6 +8401,7 @@ spec:
                         type: boolean
                       name:
                         description: Name of the referenced TiKVWorker.
+                        minLength: 1
                         type: string
                     required:
                     - name

@@ -243,6 +243,7 @@ type (
 	// CoprocessorReference references the TiKVWorker serving remote coprocessor requests.
 	CoprocessorReference struct {
 		// Name of the referenced TiKVWorker.
+		// +kubebuilder:validation:MinLength=1
 		Name string `json:"name"`
 
 		// Enabled indicates whether TiKV routes coprocessor requests to the referenced

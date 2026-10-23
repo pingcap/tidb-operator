@@ -87,6 +87,17 @@ func remoteCoprocessorEnabledValidation(fieldPath string) []Case {
 				fmt.Sprintf(`%s.coprocessor.name: Required value`, fieldPath),
 			},
 		},
+		{
+			desc:     "coprocessor ref name must not be empty",
+			isCreate: true,
+			current: map[string]any{
+				"worker":      map[string]any{"name": "worker"},
+				"coprocessor": map[string]any{"name": ""},
+			},
+			wantErrs: []string{
+				fmt.Sprintf(`%s.coprocessor.name: Invalid value: "": %s.coprocessor.name in body should be at least 1 chars long`, fieldPath, fieldPath),
+			},
+		},
 	}
 }
 
