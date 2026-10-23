@@ -595,7 +595,7 @@ type FakeGenericControl struct {
 
 // NewFakeGenericControl returns a FakeGenericControl
 func NewFakeGenericControl(initObjects ...runtime.Object) *FakeGenericControl {
-	fakeCli := fake.NewFakeClientWithScheme(scheme.Scheme, initObjects...)
+	fakeCli := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(initObjects...).Build()
 	control := NewRealGenericControl(fakeCli, record.NewFakeRecorder(10))
 	return &FakeGenericControl{
 		fakeCli,

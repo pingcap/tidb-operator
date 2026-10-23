@@ -121,7 +121,7 @@ func NewSimpleFedClientDependencies() *BrFedDependencies {
 func NewFakeBrFedDependencies() *BrFedDependencies {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	genCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
+	genCli := controllerfake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 	cliCfg := DefaultBrFedCLIConfig()
 	informerFactory := informers.NewSharedInformerFactory(cli, 0)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)

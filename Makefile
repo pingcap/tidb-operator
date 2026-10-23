@@ -197,6 +197,8 @@ fault-trigger:
 # GO_COVER: Whether to run tests with code coverage. Set to 'y' to enable coverage collection.
 #
 test: TEST_PACKAGES = ./cmd/backup-manager/app ./pkg ./cmd/ebs-warmup/internal/tests
+# client-go 0.35 enables WatchListClient by default, which the generated fake clientsets don't support (informers hang).
+test: export KUBE_FEATURE_WatchListClient = false
 test: ## Run unit tests
 	@echo "Run unit tests"
 ifeq ($(GO_COVER),y)

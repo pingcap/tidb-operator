@@ -479,7 +479,7 @@ func NewSimpleClientDependencies() *Dependencies {
 func NewFakeDependencies() *Dependencies {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	genCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
+	genCli := controllerfake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 	cliCfg := DefaultCLIConfig()
 	informerFactory := informers.NewSharedInformerFactory(cli, 0)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)

@@ -47,6 +47,7 @@ spec:
                 items:
                   properties:
                     name:
+                      default: ""
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
@@ -65,6 +66,15 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  appArmorProfile:
+                    properties:
+                      localhostProfile:
+                        type: string
+                      type:
+                        type: string
+                    required:
+                    - type
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -78,6 +88,8 @@ spec:
                   runAsUser:
                     format: int64
                     type: integer
+                  seLinuxChangePolicy:
+                    type: string
                   seLinuxOptions:
                     properties:
                       level:
@@ -103,6 +115,9 @@ spec:
                       format: int64
                       type: integer
                     type: array
+                    x-kubernetes-list-type: atomic
+                  supplementalGroupsPolicy:
+                    type: string
                   sysctls:
                     items:
                       properties:
@@ -115,6 +130,7 @@ spec:
                       - value
                       type: object
                     type: array
+                    x-kubernetes-list-type: atomic
                   windowsOptions:
                     properties:
                       gmsaCredentialSpec:
@@ -133,6 +149,8 @@ spec:
                     items:
                       properties:
                         name:
+                          type: string
+                        request:
                           type: string
                       required:
                       - name

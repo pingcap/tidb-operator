@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 
 	e2elog "github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
@@ -227,7 +228,7 @@ func toleratesTaintsWithNoScheduleNoExecuteEffects(taints []v1.Taint, toleration
 
 	toleratesTaint := func(taint v1.Taint) bool {
 		for _, toleration := range tolerations {
-			if toleration.ToleratesTaint(&taint) {
+			if toleration.ToleratesTaint(klog.Background(), &taint, false) {
 				return true
 			}
 		}
