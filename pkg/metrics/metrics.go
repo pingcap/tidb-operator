@@ -19,6 +19,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+const (
+	labelNamespace = "namespace"
+	labelComponent = "component"
+	labelInstance  = "instance"
+)
+
 // InstanceAbnormalMetricLabels is the canonical label order for the
 // per-instance abnormal-condition gauge. Keep in sync with WithLabelValues /
 // DeleteLabelValues callers.
@@ -32,7 +38,7 @@ import (
 // (without this label) disappear on operator upgrade; alert for: windows reset.
 // This is acceptable because the window is short (30 m) and instances that
 // were in a legitimate abnormal state will re-fire within one window.
-var InstanceAbnormalMetricLabels = []string{"namespace", "cluster", "component", "group", "instance", "condition", "suspended"}
+var InstanceAbnormalMetricLabels = []string{labelNamespace, "cluster", labelComponent, "group", labelInstance, "condition", "suspended"}
 
 var (
 

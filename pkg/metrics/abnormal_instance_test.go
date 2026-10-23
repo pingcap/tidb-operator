@@ -139,6 +139,36 @@ func TestObserveCondition(t *testing.T) {
 	}
 }
 
+func TestObserveConditionSuspendedTransitions(t *testing.T) {
+	for _, condType := range trackedConditions {
+		t.Run(condType, func(t *testing.T) {
+			obj := newTiKVForMetricTest("tikv-transition")
+			defer ClearInstanceConditionMetrics(obj)
+			conds := []metav1.Condition{
+				{Type: condType, Status: metav1.ConditionFalse},
+				{Type: v1alpha1.CondSuspended, Status: metav1.ConditionFalse},
+			}
+			ObserveCondition(obj, conds, condType)
+
+			for _, step := range []struct {
+				status            metav1.ConditionStatus
+				current, previous string
+			}{
+				{metav1.ConditionTrue, "true", "false"},
+				{metav1.ConditionFalse, "false", "true"},
+			} {
+				conds[1].Status = step.status
+				ObserveCondition(obj, conds, condType)
+				assert.False(t, gaugeSeriesExists(t, obj.Name, condType, step.previous),
+					"stale suspended=%s series must be removed", step.previous)
+				require.True(t, gaugeSeriesExists(t, obj.Name, condType, step.current))
+				value, _ := abnormalGaugeValue(t, obj.Name, condType, step.current)
+				assert.InDelta(t, 1.0, value, 1e-9)
+			}
+		})
+	}
+}
+
 func TestClearInstanceConditionMetrics(t *testing.T) {
 	name := "tikv-clear"
 	obj := newTiKVForMetricTest(name)
@@ -146,11 +176,10 @@ func TestClearInstanceConditionMetrics(t *testing.T) {
 	// Pre-populate both tracked conditions (not suspended).
 	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced)
 	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
-	// Also a suspended=true variant for Ready to verify multi-suspended-value cleanup.
-	ObserveCondition(obj, []metav1.Condition{
-		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse},
-		{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue},
-	}, v1alpha1.CondReady)
+	// Seed a stale variant directly to verify cleanup also sweeps old series.
+	AbnormalInstance.WithLabelValues(
+		"test-ns", "test-cluster", "tikv", "test-group", name, v1alpha1.CondReady, "true",
+	).Set(1)
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced, "false"))
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "false"))
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "true"))

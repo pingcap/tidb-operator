@@ -15,6 +15,8 @@
 package metrics
 
 import (
+	"strconv"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,11 +56,13 @@ func instanceMetricBaseLabels(obj client.Object) []string {
 // condType must be one of trackedConditions so the finalize-time cleanup in
 // ClearInstanceConditionMetrics covers the same set of series this writes.
 func ObserveCondition(obj client.Object, conds []metav1.Condition, condType string) {
-	suspended := "false"
-	if sc := meta.FindStatusCondition(conds, v1alpha1.CondSuspended); sc != nil && sc.Status == metav1.ConditionTrue {
-		suspended = "true"
-	}
-	labels := append(instanceMetricBaseLabels(obj), condType, suspended)
+	suspended := meta.IsStatusConditionTrue(conds, v1alpha1.CondSuspended)
+	labels := append(instanceMetricBaseLabels(obj), condType)
+
+	// Remove the previous state so paused instances cannot keep stale alerts alive.
+	AbnormalInstance.DeleteLabelValues(append(labels, strconv.FormatBool(!suspended))...)
+	labels = append(labels, strconv.FormatBool(suspended))
+
 	value := 0.0
 	if cond := meta.FindStatusCondition(conds, condType); cond != nil && cond.Status == metav1.ConditionFalse {
 		value = 1
@@ -96,11 +100,11 @@ func ObserveConditions(obj client.Object, conds []metav1.Condition) {
 func ClearInstanceConditionMetrics(obj client.Object) {
 	base := instanceMetricBaseLabels(obj)
 	baseLabels := prometheus.Labels{
-		"namespace": base[0],
-		"cluster":   base[1],
-		"component": base[2],
-		"group":     base[3],
-		"instance":  base[4],
+		labelNamespace: base[0],
+		"cluster":      base[1],
+		labelComponent: base[2],
+		"group":        base[3],
+		labelInstance:  base[4],
 	}
 	for _, condType := range trackedConditions {
 		m := make(prometheus.Labels, len(baseLabels)+1)
@@ -123,8 +127,8 @@ func ClearInstanceConditionMetrics(obj client.Object) {
 // value if those labels ever shifted.
 func ClearInstanceConditionMetricsByKey(namespace, component, instance string) {
 	AbnormalInstance.DeletePartialMatch(prometheus.Labels{
-		"namespace": namespace,
-		"component": component,
-		"instance":  instance,
+		labelNamespace: namespace,
+		labelComponent: component,
+		labelInstance:  instance,
 	})
 }
