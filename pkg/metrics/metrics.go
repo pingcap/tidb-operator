@@ -39,6 +39,7 @@ var (
 	// AbnormalInstance is 1 when the named condition on the instance is False
 	// (abnormal), 0 otherwise. The series stays present while the operator
 	// manages the instance and is removed only when the instance is finalized.
+	// Ready=False is not abnormal when Suspended=True; Synced is unaffected.
 	//
 	// Use `metric == 1` together with PromQL `for: <duration>` to alert on
 	// instances stuck in an abnormal state, e.g. a rolling restart that cannot
@@ -48,6 +49,7 @@ var (
 			Namespace: "tidb_operator",
 			Name:      "abnormal_instance",
 			Help: "1 when the named condition on the instance is False, 0 otherwise. " +
+				"Ready=False is not abnormal when Suspended=True. " +
 				"Use `metric == 1` with PromQL `for: <duration>` to alert on stuck state.",
 		}, InstanceAbnormalMetricLabels,
 	)

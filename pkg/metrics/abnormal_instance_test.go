@@ -98,6 +98,7 @@ func TestObserveCondition(t *testing.T) {
 		condType  string
 		status    metav1.ConditionStatus
 		omitCond  bool
+		suspended metav1.ConditionStatus
 		wantValue float64
 	}{
 		{name: "Synced=False sets 1", condType: v1alpha1.CondSynced, status: metav1.ConditionFalse, wantValue: 1},
@@ -105,6 +106,12 @@ func TestObserveCondition(t *testing.T) {
 		{name: "Synced absent treated as healthy", condType: v1alpha1.CondSynced, omitCond: true, wantValue: 0},
 		{name: "Ready=False sets 1", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, wantValue: 1},
 		{name: "Ready=True sets 0", condType: v1alpha1.CondReady, status: metav1.ConditionTrue, wantValue: 0},
+		{name: "suspended Ready=False sets 0", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, suspended: metav1.ConditionTrue, wantValue: 0},
+		{name: "unsuspended Ready=False sets 1", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, suspended: metav1.ConditionFalse, wantValue: 1},
+		{name: "unknown suspension Ready=False sets 1", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, suspended: metav1.ConditionUnknown, wantValue: 1},
+		{name: "suspended Synced=False sets 1", condType: v1alpha1.CondSynced, status: metav1.ConditionFalse, suspended: metav1.ConditionTrue, wantValue: 1},
+		{name: "suspended Synced=True sets 0", condType: v1alpha1.CondSynced, status: metav1.ConditionTrue, suspended: metav1.ConditionTrue, wantValue: 0},
+		{name: "suspended Synced absent sets 0", condType: v1alpha1.CondSynced, omitCond: true, suspended: metav1.ConditionTrue, wantValue: 0},
 	}
 
 	for _, tc := range cases {
@@ -119,6 +126,9 @@ func TestObserveCondition(t *testing.T) {
 			if !tc.omitCond {
 				conds = []metav1.Condition{{Type: tc.condType, Status: tc.status}}
 			}
+			if tc.suspended != "" {
+				conds = append(conds, metav1.Condition{Type: v1alpha1.CondSuspended, Status: tc.suspended})
+			}
 			ObserveCondition(obj, conds, tc.condType)
 
 			val, present := abnormalGaugeValue(t, instanceName, tc.condType)
@@ -127,6 +137,37 @@ func TestObserveCondition(t *testing.T) {
 			assert.True(t, gaugeSeriesExists(t, instanceName, tc.condType),
 				"series must remain present so PromQL `for:` alerts have continuous samples")
 		})
+	}
+}
+
+func TestObserveConditionsSuspendedTransitions(t *testing.T) {
+	obj := newTiKVForMetricTest("tikv-transition")
+	defer ClearInstanceConditionMetrics(obj)
+	conds := []metav1.Condition{
+		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse},
+		{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse},
+		{Type: v1alpha1.CondSuspended, Status: metav1.ConditionFalse},
+	}
+
+	for _, step := range []struct {
+		suspended metav1.ConditionStatus
+		wantReady float64
+	}{
+		{metav1.ConditionFalse, 1},
+		{metav1.ConditionTrue, 0},
+		{metav1.ConditionFalse, 1},
+	} {
+		conds[2].Status = step.suspended
+		ObserveConditions(obj, conds)
+
+		// Both series retain their six-label identity throughout suspension.
+		for _, condType := range trackedConditions {
+			require.True(t, gaugeSeriesExists(t, obj.Name, condType))
+		}
+		ready, _ := abnormalGaugeValue(t, obj.Name, v1alpha1.CondReady)
+		synced, _ := abnormalGaugeValue(t, obj.Name, v1alpha1.CondSynced)
+		assert.InDelta(t, step.wantReady, ready, 1e-9)
+		assert.InDelta(t, 1.0, synced, 1e-9)
 	}
 }
 

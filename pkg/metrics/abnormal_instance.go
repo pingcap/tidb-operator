@@ -44,6 +44,7 @@ func instanceMetricBaseLabels(obj client.Object) []string {
 
 // ObserveCondition writes 1 to the abnormal-instance gauge when the named
 // condition is False; 0 otherwise (True or absent are treated as healthy).
+// Ready=False is also treated as healthy when Suspended=True.
 // The series stays present so PromQL `for:` alerts can fire reliably without
 // gaps, and so dashboards never see missing samples for managed instances.
 //
@@ -55,6 +56,12 @@ func ObserveCondition(obj client.Object, conds []metav1.Condition, condType stri
 	if cond := meta.FindStatusCondition(conds, condType); cond != nil && cond.Status == metav1.ConditionFalse {
 		value = 1
 	}
+
+	// Paused compute is expected to be unready; sync failures remain abnormal.
+	if condType == v1alpha1.CondReady && meta.IsStatusConditionTrue(conds, v1alpha1.CondSuspended) {
+		value = 0
+	}
+
 	AbnormalInstance.WithLabelValues(labels...).Set(value)
 }
 
