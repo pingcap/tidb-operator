@@ -22,7 +22,17 @@ import (
 // InstanceAbnormalMetricLabels is the canonical label order for the
 // per-instance abnormal-condition gauge. Keep in sync with WithLabelValues /
 // DeleteLabelValues callers.
-var InstanceAbnormalMetricLabels = []string{"namespace", "cluster", "component", "group", "instance", "condition"}
+//
+// The 'suspended' label carries the Suspended-condition state at the time the
+// gauge is written ("true" / "false"). Alert rules can use {suspended!="true"}
+// to suppress noise on intentionally paused clusters without needing a
+// separate metric or a PromQL join.
+//
+// NOTE: adding 'suspended' changes the series identity. Existing time-series
+// (without this label) disappear on operator upgrade; alert for: windows reset.
+// This is acceptable because the window is short (30 m) and instances that
+// were in a legitimate abnormal state will re-fire within one window.
+var InstanceAbnormalMetricLabels = []string{"namespace", "cluster", "component", "group", "instance", "condition", "suspended"}
 
 var (
 

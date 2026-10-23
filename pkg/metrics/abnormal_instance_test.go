@@ -40,14 +40,13 @@ func newTiKVForMetricTest(name string) *v1alpha1.TiKV {
 	}
 }
 
-// abnormalGaugeValue reads the AbnormalInstance gauge for the given instance
-// + condition. Returns (value, present). present is false when the series has
-// not been touched (collector returns the default zero metric without a Gauge
-// payload set).
-func abnormalGaugeValue(t *testing.T, instance, condition string) (float64, bool) {
+// abnormalGaugeValue reads the AbnormalInstance gauge for the given instance,
+// condition, and suspended value. Returns (value, present). present is false
+// when the series has not been touched.
+func abnormalGaugeValue(t *testing.T, instance, condition, suspended string) (float64, bool) {
 	t.Helper()
 	g, err := AbnormalInstance.GetMetricWithLabelValues(
-		"test-ns", "test-cluster", "tikv", "test-group", instance, condition,
+		"test-ns", "test-cluster", "tikv", "test-group", instance, condition, suspended,
 	)
 	require.NoError(t, err)
 	m := &dto.Metric{}
@@ -58,12 +57,12 @@ func abnormalGaugeValue(t *testing.T, instance, condition string) (float64, bool
 	return m.Gauge.GetValue(), true
 }
 
-func gaugeSeriesExists(t *testing.T, instance, condition string) bool {
+func gaugeSeriesExists(t *testing.T, instance, condition, suspended string) bool {
 	t.Helper()
 	ch := make(chan prometheus.Metric, 16)
 	AbnormalInstance.Collect(ch)
 	close(ch)
-	want := []string{"test-ns", "test-cluster", "tikv", "test-group", instance, condition}
+	want := []string{"test-ns", "test-cluster", "tikv", "test-group", instance, condition, suspended}
 	for m := range ch {
 		dm := &dto.Metric{}
 		if err := m.Write(dm); err != nil {
@@ -94,37 +93,47 @@ func labelsEqual(got []*dto.LabelPair, wantValues []string) bool {
 
 func TestObserveCondition(t *testing.T) {
 	cases := []struct {
-		name      string
-		condType  string
-		status    metav1.ConditionStatus
-		omitCond  bool
-		wantValue float64
+		name        string
+		condType    string
+		status      metav1.ConditionStatus
+		omitCond    bool
+		suspended   bool // whether to also include Suspended=True in conds
+		wantValue   float64
+		wantSuspLbl string // expected 'suspended' label value
 	}{
-		{name: "Synced=False sets 1", condType: v1alpha1.CondSynced, status: metav1.ConditionFalse, wantValue: 1},
-		{name: "Synced=True sets 0", condType: v1alpha1.CondSynced, status: metav1.ConditionTrue, wantValue: 0},
-		{name: "Synced absent treated as healthy", condType: v1alpha1.CondSynced, omitCond: true, wantValue: 0},
-		{name: "Ready=False sets 1", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, wantValue: 1},
-		{name: "Ready=True sets 0", condType: v1alpha1.CondReady, status: metav1.ConditionTrue, wantValue: 0},
+		{name: "Synced=False sets 1", condType: v1alpha1.CondSynced, status: metav1.ConditionFalse, wantValue: 1, wantSuspLbl: "false"},
+		{name: "Synced=True sets 0", condType: v1alpha1.CondSynced, status: metav1.ConditionTrue, wantValue: 0, wantSuspLbl: "false"},
+		{name: "Synced absent treated as healthy", condType: v1alpha1.CondSynced, omitCond: true, wantValue: 0, wantSuspLbl: "false"},
+		{name: "Ready=False sets 1", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, wantValue: 1, wantSuspLbl: "false"},
+		{name: "Ready=True sets 0", condType: v1alpha1.CondReady, status: metav1.ConditionTrue, wantValue: 0, wantSuspLbl: "false"},
+		// When Suspended=True, Ready=False is still recorded but suspended="true".
+		{name: "Ready=False with Suspended=True", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, suspended: true, wantValue: 1, wantSuspLbl: "true"},
+		{name: "Ready=False with Suspended=False", condType: v1alpha1.CondReady, status: metav1.ConditionFalse, wantValue: 1, wantSuspLbl: "false"},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			instanceName := "tikv-" + tc.name
-			defer AbnormalInstance.DeleteLabelValues(
-				"test-ns", "test-cluster", "tikv", "test-group", instanceName, tc.condType,
-			)
+			instanceName := "tikv-oc-" + tc.name
+			defer AbnormalInstance.DeletePartialMatch(prometheus.Labels{
+				"namespace": "test-ns",
+				"component": "tikv",
+				"instance":  instanceName,
+			})
 
 			obj := newTiKVForMetricTest(instanceName)
 			var conds []metav1.Condition
 			if !tc.omitCond {
-				conds = []metav1.Condition{{Type: tc.condType, Status: tc.status}}
+				conds = append(conds, metav1.Condition{Type: tc.condType, Status: tc.status})
+			}
+			if tc.suspended {
+				conds = append(conds, metav1.Condition{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue})
 			}
 			ObserveCondition(obj, conds, tc.condType)
 
-			val, present := abnormalGaugeValue(t, instanceName, tc.condType)
+			val, present := abnormalGaugeValue(t, instanceName, tc.condType, tc.wantSuspLbl)
 			require.True(t, present)
 			assert.InDelta(t, tc.wantValue, val, 1e-9)
-			assert.True(t, gaugeSeriesExists(t, instanceName, tc.condType),
+			assert.True(t, gaugeSeriesExists(t, instanceName, tc.condType, tc.wantSuspLbl),
 				"series must remain present so PromQL `for:` alerts have continuous samples")
 		})
 	}
@@ -134,34 +143,42 @@ func TestClearInstanceConditionMetrics(t *testing.T) {
 	name := "tikv-clear"
 	obj := newTiKVForMetricTest(name)
 
-	// Pre-populate both tracked conditions.
+	// Pre-populate both tracked conditions (not suspended).
 	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced)
 	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
-	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced))
-	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady))
+	// Also a suspended=true variant for Ready to verify multi-suspended-value cleanup.
+	ObserveCondition(obj, []metav1.Condition{
+		{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse},
+		{Type: v1alpha1.CondSuspended, Status: metav1.ConditionTrue},
+	}, v1alpha1.CondReady)
+	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced, "false"))
+	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "false"))
+	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "true"))
 
 	ClearInstanceConditionMetrics(obj)
 
-	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced),
+	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced, "false"),
 		"Synced series must be removed on clear")
-	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady),
-		"Ready series must be removed on clear")
+	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "false"),
+		"Ready(suspended=false) series must be removed on clear")
+	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "true"),
+		"Ready(suspended=true) series must be removed on clear")
 }
 
 func TestClearInstanceConditionMetricsByKey(t *testing.T) {
 	const name = "tikv-byKey"
 	obj := newTiKVForMetricTest(name)
 
-	// Seed two series under the normal labels.
+	// Seed two series under the normal labels (not suspended).
 	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced)
 	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
-	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced))
-	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady))
+	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced, "false"))
+	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "false"))
 
 	// Also seed a series with the same (namespace, component, instance) but
 	// a drifted cluster / group label, simulating a rename during the
 	// instance lifetime.
-	driftedLabels := []string{"test-ns", "drifted-cluster", "tikv", "drifted-group", name, v1alpha1.CondReady}
+	driftedLabels := []string{"test-ns", "drifted-cluster", "tikv", "drifted-group", name, v1alpha1.CondReady, "false"}
 	AbnormalInstance.WithLabelValues(driftedLabels...).Set(1)
 
 	// Seed a sibling instance (same namespace + same component) that must
@@ -173,15 +190,19 @@ func TestClearInstanceConditionMetricsByKey(t *testing.T) {
 	// Seed another component that happens to share namespace + instance name
 	// with the target. It must NOT be swept because the clear qualifies by
 	// component.
-	collisionLabels := []string{"test-ns", "test-cluster", "tidb", "test-group", name, v1alpha1.CondReady}
+	collisionLabels := []string{"test-ns", "test-cluster", "tidb", "test-group", name, v1alpha1.CondReady, "false"}
 	AbnormalInstance.WithLabelValues(collisionLabels...).Set(1)
-	defer AbnormalInstance.DeleteLabelValues(collisionLabels...)
+	defer AbnormalInstance.DeletePartialMatch(prometheus.Labels{
+		"namespace": "test-ns",
+		"component": "tidb",
+		"instance":  name,
+	})
 
 	ClearInstanceConditionMetricsByKey("test-ns", "tikv", name)
 
-	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced),
+	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced, "false"),
 		"primary Synced series must be removed")
-	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady),
+	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady, "false"),
 		"primary Ready series must be removed")
 
 	// Drifted-label series must also be swept since namespace+component+instance match.
@@ -189,7 +210,7 @@ func TestClearInstanceConditionMetricsByKey(t *testing.T) {
 		"series with drifted cluster / group labels must be swept by partial match")
 
 	// Sibling instance under the same namespace and component must be untouched.
-	assert.True(t, gaugeSeriesExists(t, "tikv-sibling", v1alpha1.CondReady),
+	assert.True(t, gaugeSeriesExists(t, "tikv-sibling", v1alpha1.CondReady, "false"),
 		"unrelated instance must not be swept")
 
 	// Same namespace + same name but different component must NOT be swept.
