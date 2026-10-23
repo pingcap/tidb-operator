@@ -725,13 +725,28 @@ func makeS3Config(s3Provider *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Co
 	// Refer to: https://rclone.org/s3/#s3-force-path-style
 	// if UseAccelerateEndpoint is supported for AWS s3 in future,
 	// need to set forcePathStyle = false too.
-	if conf.provider == "alibaba" || conf.provider == "netease" {
+	// COS rejects path-style access, including the metadata HEAD performed
+	// after BR finishes. Existing S3-compatible Restore objects may declare
+	// provider=aws, so recognize the regional COS endpoint as well.
+	if conf.provider == "alibaba" || conf.provider == "netease" || isCOSEndpoint(conf.endpoint) {
 		conf.forcePathStyle = false
 	}
 	if fakeRegion && conf.region == "" {
 		conf.region = defaultS3Region
 	}
 	return &conf
+}
+
+// isCOSEndpoint identifies regional COS HTTP(S) endpoints that require
+// virtual-hosted addressing, without matching URL paths or domain suffix lookalikes.
+func isCOSEndpoint(endpoint string) bool {
+	u, err := url.Parse(endpoint)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	parts := strings.Split(host, ".")
+	return len(parts) == 4 && parts[0] == "cos" && parts[1] != "" && parts[2] == "myqcloud" && parts[3] == "com"
 }
 
 // makeGcsConfig constructs gcsConfig parameters
