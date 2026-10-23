@@ -24,10 +24,17 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-// TaskObserveInstance publishes the instance's recorded conditions without
-// interpreting desired state. Run after loading the instance, before Cluster
-// reads or finalizer cleanup can fail, and on DELETE events to clear metrics
-// when the instance CR no longer exists.
+// TaskObserveInstance refreshes the AbnormalInstance gauge for the reconciled
+// instance every time the pipeline runs, and clears it when the instance CR
+// has been removed from the API server (state.Object() == nil).
+//
+// It mirrors the shape of TaskTrack so observe and clear live in one place:
+// the same branch that decides whether the object still exists also decides
+// whether to publish or retract the gauge. Placing this after TaskTrack and
+// before the `CondObjectHasBeenDeleted` IfBreak means it always runs once
+// per reconcile, including the reconcile triggered by the informer's DELETE
+// event - covering graceful delete, force-delete that strips finalizers, and
+// any other path that lands in the watch stream.
 func TaskObserveInstance[
 	S scope.Instance[F, T],
 	F Object[P],
