@@ -61,7 +61,9 @@ function image::build() {
     fi
 
     # Check if current builder's driver is 'docker-container'
-    if docker buildx ls | grep "*" | grep -q "docker-container"; then
+    if [[ -n "${BUILDX_BUILDER:-}" ]]; then
+      echo "using configured builder: ${BUILDX_BUILDER}"
+    elif docker buildx ls | grep "*" | grep -q "docker-container"; then
       echo "'docker-container' exists, no need to execute the 'docker buildx create --use' command."
     else
       echo "'docker-container' does not exist, executing 'docker buildx create --use'..."

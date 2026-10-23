@@ -41,6 +41,7 @@ func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task 
 			state.Object(),
 			state.GetStoreID(),
 			state.GetStoreState(),
+			true,
 		); err != nil {
 			// refresh store state
 			pc.Stores().Refresh()

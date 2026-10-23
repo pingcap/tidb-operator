@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -93,6 +94,33 @@ func TestFeatureGatesHashBeforeClusterChanges(t *testing.T) {
 				assert.NotEmpty(t, stored.Finalizers)
 				assert.Len(t, services.Items, 1)
 			}
+		})
+	}
+}
+
+func TestTiKVSelectionPredicate(t *testing.T) {
+	p := tiKVSelectionPredicate()
+	old := &v1alpha1.TiKV{ObjectMeta: metav1.ObjectMeta{Generation: 1}}
+	require.True(t, p.Create(event.CreateEvent{Object: old}))
+	require.True(t, p.Delete(event.DeleteEvent{Object: old}))
+	require.False(t, p.Generic(event.GenericEvent{Object: old}))
+	for _, tc := range []struct {
+		name   string
+		change func(*v1alpha1.TiKV)
+		want   bool
+	}{
+		{"status", func(kv *v1alpha1.TiKV) { kv.Status.State = v1alpha1.StoreStateRemoving }, false},
+		{"spec", func(kv *v1alpha1.TiKV) { kv.Generation++ }, true},
+		{"unrelated annotation", func(kv *v1alpha1.TiKV) { kv.Annotations = map[string]string{"other": "value"} }, false},
+		{"selection", func(kv *v1alpha1.TiKV) {
+			kv.Annotations = map[string]string{v1alpha1.AnnoKeySelectedToDelete: v1alpha1.AnnoValTrue}
+		}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			updated := old.DeepCopy()
+			tc.change(updated)
+			require.Equal(t, tc.want, p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: updated}))
+			require.Equal(t, tc.want, p.Update(event.UpdateEvent{ObjectOld: updated, ObjectNew: old}))
 		})
 	}
 }

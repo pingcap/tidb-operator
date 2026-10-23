@@ -18,8 +18,14 @@ import (
 	"context"
 	"time"
 
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -30,7 +36,7 @@ const (
 	jitter                    = 10 * time.Second
 )
 
-func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task {
+func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager, c client.Client) task.Task {
 	return task.NameTaskFunc("OfflineStore", func(ctx context.Context) task.Result {
 		if !state.PDSynced {
 			return task.Wait().With("pd is not synced")
@@ -41,7 +47,7 @@ func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task 
 
 		// If the store is nil, it means the store has been deleted or not created yet.
 		// No need to check if leaders are evicted.
-		if state.Store != nil && isOffline {
+		if state.Store != nil && isOffline && !features.NewFromCluster(state.Cluster().Spec.FeatureGates).Enabled(meta.TiKVSequentialScaleIn) {
 			state.ShouldEvictLeader = true
 
 			if err := CheckTiKVLeadersEvictedOrTimeout(tikv, defaultLeaderEvictTimeout); err != nil {
@@ -55,12 +61,16 @@ func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task 
 			return task.Wait().With("pd client is not registered")
 		}
 
+		isSelected := !features.NewFromCluster(state.Cluster().Spec.FeatureGates).Enabled(meta.TiKVSequentialScaleIn) ||
+			tikv.Annotations[v1alpha1.AnnoKeySelectedToDelete] == v1alpha1.AnnoValTrue
+
 		if err := common.TaskOfflineStore[scope.TiKV](
 			ctx,
 			pc.Underlay(),
 			tikv,
 			state.GetStoreID(),
 			state.GetStoreState(),
+			isSelected,
 		); err != nil {
 			// refresh store state
 			pc.Stores().Refresh()
@@ -70,6 +80,18 @@ func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task 
 			}
 
 			return task.Fail().With("%v", err)
+		}
+
+		// Release the persisted selection only after the PD-backed offline task
+		// confirms cancellation (or that the store has already been removed).
+		if !isOffline && tikv.Annotations[v1alpha1.AnnoKeySelectedToDelete] == v1alpha1.AnnoValTrue {
+			updated := tikv.DeepCopy()
+			delete(updated.Annotations, v1alpha1.AnnoKeySelectedToDelete)
+			patch := ctrlclient.MergeFromWithOptions(tikv, ctrlclient.MergeFromWithOptimisticLock{})
+			if err := c.Patch(ctx, updated, patch); err != nil {
+				return task.Fail().With("cannot clear selected-to-delete annotation: %v", err)
+			}
+			*tikv = *updated
 		}
 
 		return task.Complete().With("offline is completed or no need, spec.offline: %v", isOffline)

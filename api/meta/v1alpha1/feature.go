@@ -125,4 +125,9 @@ const (
 	// +feature:unreloadable=tikv
 	// +feature:log=rev=0,stage=ALPHA,default=false
 	_IndependentKVEngineWorker
+	// TiKVSequentialScaleIn limits incoming peers and leaders and removes stores sequentially.
+	//
+	// +feature:unreloadable=
+	// +feature:log=rev=1,stage=ALPHA,default=false
+	_TiKVSequentialScaleIn
 )

@@ -54,6 +54,7 @@ func TestTaskOfflineStore(t *testing.T) {
 		state         pdv1.NodeState
 		hasErr        bool
 		isWaitErr     bool
+		notSelected   bool
 	}{
 		{
 			desc:   "spec.offline == false, empty store id",
@@ -90,6 +91,15 @@ func TestTaskOfflineStore(t *testing.T) {
 			isWaitErr: true,
 		},
 		{
+			desc:        "spec.offline == true, state == Serving, not selected",
+			obj:         newFakeStore(true, nil),
+			storeID:     "aaa",
+			state:       pdv1.NodeStateServing,
+			notSelected: true,
+			hasErr:      true,
+			isWaitErr:   true,
+		},
+		{
 			desc: "spec.offline == true, state == Serving, fail to delete store",
 			obj:  newFakeStore(true, nil),
 			setupPDClient: func(pc *pdapi.MockPDClient) {
@@ -100,8 +110,9 @@ func TestTaskOfflineStore(t *testing.T) {
 			hasErr:  true,
 		},
 		{
-			desc: "spec.offline == false, state == Removing",
-			obj:  newFakeStore(false, nil),
+			desc:        "spec.offline == false, state == Removing, not selected",
+			notSelected: true,
+			obj:         newFakeStore(false, nil),
 			setupPDClient: func(pc *pdapi.MockPDClient) {
 				pc.EXPECT().CancelDeleteStore(context.Background(), "aaa").Return(nil)
 			},
@@ -153,7 +164,7 @@ func TestTaskOfflineStore(t *testing.T) {
 			if c.setupPDClient != nil {
 				c.setupPDClient(pc)
 			}
-			err := TaskOfflineStore[scope.TiKV](ctx, pc, c.obj, c.storeID, c.state)
+			err := TaskOfflineStore[scope.TiKV](ctx, pc, c.obj, c.storeID, c.state, !c.notSelected)
 			if c.hasErr {
 				require.Error(tt, err)
 				assert.Equal(tt, c.isWaitErr, task.IsWaitError(err))

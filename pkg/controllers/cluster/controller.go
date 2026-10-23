@@ -20,10 +20,14 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -34,10 +38,12 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/order"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
 
 type Reconciler struct {
+	Order           order.Order[types.NamespacedName, string, *v1alpha1.TiKV]
 	Logger          logr.Logger
 	Client          client.Client
 	PDClientManager pdm.PDClientManager
@@ -45,6 +51,7 @@ type Reconciler struct {
 
 func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error {
 	r := &Reconciler{
+		Order:           order.New[types.NamespacedName](tasks.CompareScaleIn, func(kv *v1alpha1.TiKV) string { return kv.Name }),
 		Logger:          mgr.GetLogger().WithName("Cluster"),
 		Client:          c,
 		PDClientManager: pdcm,
@@ -56,6 +63,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		Watches(&v1alpha1.ResourceManagerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.ResourceManagerGroup]())).
 		Watches(&v1alpha1.RouterGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.RouterGroup]())).
 		Watches(&v1alpha1.SchedulerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.SchedulerGroup]())).
+		Watches(&v1alpha1.TiKV{}, handler.EnqueueRequestsFromMapFunc(enqueueForTiKV), builder.WithPredicates(tiKVSelectionPredicate())).
 		Watches(&v1alpha1.TiKVGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiKVGroup]())).
 		Watches(&v1alpha1.TiDBGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiDBGroup]())).
 		Watches(&v1alpha1.TiFlashGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiFlashGroup]())).
@@ -66,6 +74,23 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		Watches(&v1alpha1.DMWorkerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.DMWorkerGroup]())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
+}
+
+// tiKVSelectionPredicate ignores status churn but observes selection completion.
+func tiKVSelectionPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() ||
+				e.ObjectOld.GetAnnotations()[v1alpha1.AnnoKeySelectedToDelete] !=
+					e.ObjectNew.GetAnnotations()[v1alpha1.AnnoKeySelectedToDelete]
+		},
+		GenericFunc: func(event.GenericEvent) bool { return false },
+	}
+}
+
+func enqueueForTiKV(_ context.Context, obj client.Object) []reconcile.Request {
+	kv := obj.(*v1alpha1.TiKV)
+	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: kv.Namespace, Name: kv.Spec.Cluster.Name}}}
 }
 
 func enqueueForGroupFunc[
@@ -112,6 +137,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		tasks.NewTaskFinalizer(logger, r.Client, r.PDClientManager),
 		tasks.NewTaskFeatureGates(logger, r.Client),
 		tasks.NewTaskService(logger, r.Client),
+		tasks.NewTaskSelectTiKV(r.Client, r.Order),
 		tasks.NewTaskStatus(logger, r.Client, r.PDClientManager),
 	)
 

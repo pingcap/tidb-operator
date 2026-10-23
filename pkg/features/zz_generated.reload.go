@@ -40,4 +40,5 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	meta.MultiPDGroup:                   {},
 	meta.TiCDCDynamicSecretSyncer:       {meta.ComponentTiCDC},
 	meta.IndependentKVEngineWorker:      {meta.ComponentTiKV},
+	meta.TiKVSequentialScaleIn:          {},
 }

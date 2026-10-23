@@ -114,6 +114,17 @@ func (c *tidbClient) SetServerLabels(ctx context.Context, labels map[string]stri
 	if _, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, buffer); err != nil {
 		return err
 	}
+	// TiDB can return HTTP 200 even when persisting labels to etcd fails.
+	// Verify the server info so reconciliation retries an unsuccessful update.
+	info, err := c.GetInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("verify server labels: %w", err)
+	}
+	for key, value := range labels {
+		if actual, ok := info.Labels[key]; !ok || actual != value {
+			return fmt.Errorf("server label %q was not updated: expected %q, got %q", key, value, actual)
+		}
+	}
 	return nil
 }
 
