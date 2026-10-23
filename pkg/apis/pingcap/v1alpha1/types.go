@@ -1775,7 +1775,7 @@ type TiDBServiceSpec struct {
 	// ExternalTrafficPolicy of the service
 	// Optional: Defaults to omitted
 	// +optional
-	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"`
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicy `json:"externalTrafficPolicy,omitempty"`
 
 	// Whether expose the status port
 	// Optional: Defaults to true
@@ -3651,7 +3651,7 @@ type MasterServiceSpec struct {
 	// ExternalTrafficPolicy of the service
 	// Optional: Defaults to omitted
 	// +optional
-	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"` // Expose the tidb cluster mysql port to MySQLNodePort
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicy `json:"externalTrafficPolicy,omitempty"` // Expose the tidb cluster mysql port to MySQLNodePort
 
 	// Optional: Defaults to 0
 	// +optional
