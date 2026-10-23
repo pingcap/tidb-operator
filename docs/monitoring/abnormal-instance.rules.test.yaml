@@ -1,0 +1,80 @@
+# Copyright 2024 PingCAP, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http:#www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+rule_files:
+  - abnormal-instance.rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: suspend reasons suppress only Ready alerts
+    interval: 1m
+    input_series:
+      - series: 'tidb_operator_abnormal_instance{namespace="test",cluster="cluster",component="tidb",group="group",instance="suspended",condition="Ready",reason="Suspended"}'
+        values: '1+0x11'
+      - series: 'tidb_operator_abnormal_instance{namespace="test",cluster="cluster",component="tidb",group="group",instance="suspending",condition="Ready",reason="Suspending"}'
+        values: '1+0x11'
+      - series: 'tidb_operator_abnormal_instance{namespace="test",cluster="cluster",component="tidb",group="group",instance="suspended",condition="Synced",reason="SyncError"}'
+        values: '1+0x11'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: TiDBOperatorInstanceNotReady
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: TiDBOperatorInstanceNotSynced
+        exp_alerts:
+          - exp_labels:
+              namespace: test
+              cluster: cluster
+              component: tidb
+              group: group
+              instance: suspended
+              condition: Synced
+              severity: warning
+            exp_annotations:
+              summary: Instance test/suspended is not synced
+              description: Component tidb in cluster cluster has failed to reconcile for 10 minutes.
+  - name: abnormal reason changes preserve the pending alert timer
+    interval: 1m
+    input_series:
+      - series: 'tidb_operator_abnormal_instance{namespace="test",cluster="cluster",component="tidb",group="group",instance="resuming",condition="Ready",reason="PodNotCreated"}'
+        values: '1+0x5 stale'
+      - series: 'tidb_operator_abnormal_instance{namespace="test",cluster="cluster",component="tidb",group="group",instance="resuming",condition="Ready",reason="PodNotReady"}'
+        values: '_ _ _ _ _ _ 1+0x5'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: TiDBOperatorInstanceNotReady
+        exp_alerts:
+          - exp_labels:
+              namespace: test
+              cluster: cluster
+              component: tidb
+              group: group
+              instance: resuming
+              condition: Ready
+              severity: warning
+            exp_annotations:
+              summary: Instance test/resuming is not ready
+              description: Component tidb in cluster cluster has remained not ready for 10 minutes.
+  - name: healthy and removed instances do not alert
+    interval: 1m
+    input_series:
+      - series: 'tidb_operator_abnormal_instance{instance="healthy",condition="Ready",reason="Ready"}'
+        values: '0+0x11'
+      - series: 'tidb_operator_abnormal_instance{instance="deleted",condition="Ready",reason="PodNotReady"}'
+        values: '1+0x5 stale'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: TiDBOperatorInstanceNotReady
+        exp_alerts: []

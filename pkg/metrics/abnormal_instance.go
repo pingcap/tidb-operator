@@ -15,6 +15,9 @@
 package metrics
 
 import (
+	"slices"
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,9 +31,23 @@ import (
 // the AbnormalInstance gauge to additional condition signals.
 var trackedConditions = []string{v1alpha1.CondSynced, v1alpha1.CondReady}
 
+// Keep one active label set per instance condition, so changing reason does
+// not leave a stale abnormal series behind. Cleanup shares the same lock.
+type instanceConditionMetricKey struct {
+	namespace string
+	component string
+	instance  string
+	condition string
+}
+
+var (
+	instanceConditionMetricsMu sync.Mutex
+	instanceConditionLabels    = make(map[instanceConditionMetricKey][]string)
+)
+
 // instanceMetricBaseLabels reads the standard well-known labels carried by
 // every managed instance (LabelKeyCluster / LabelKeyComponent / LabelKeyGroup)
-// plus its namespace and name. The caller appends the per-condition label.
+// plus its namespace and name. The caller appends condition and reason labels.
 func instanceMetricBaseLabels(obj client.Object) []string {
 	ls := obj.GetLabels()
 	return []string{
@@ -43,25 +60,34 @@ func instanceMetricBaseLabels(obj client.Object) []string {
 }
 
 // ObserveCondition writes 1 to the abnormal-instance gauge when the named
-// condition is False; 0 otherwise (True or absent are treated as healthy).
-// Ready=False with a Suspended/Suspending reason is expected. Observation only
-// reflects conditions; controllers are responsible for refreshing stale reasons.
-// The series stays present so PromQL `for:` alerts can fire reliably without
-// gaps, and so dashboards never see missing samples for managed instances.
+// condition is False; 0 otherwise (including Unknown and absent conditions).
+// The reason label reflects the condition verbatim, or is empty when absent.
+// The current series stays present; a changed label set replaces its old series.
+// Alert rules should aggregate away reason to preserve their `for:` timer.
 //
 // condType must be one of trackedConditions so the finalize-time cleanup in
 // ClearInstanceConditionMetrics covers the same set of series this writes.
 func ObserveCondition(obj client.Object, conds []metav1.Condition, condType string) {
-	labels := append(instanceMetricBaseLabels(obj), condType)
 	value := 0.0
-	if cond := meta.FindStatusCondition(conds, condType); cond != nil && cond.Status == metav1.ConditionFalse {
-		value = 1
-		if condType == v1alpha1.CondReady &&
-			(cond.Reason == v1alpha1.ReasonSuspended || cond.Reason == v1alpha1.ReasonSuspending) {
-			value = 0
+	reason := ""
+	if cond := meta.FindStatusCondition(conds, condType); cond != nil {
+		reason = cond.Reason
+		if cond.Status == metav1.ConditionFalse {
+			value = 1
 		}
 	}
+	labels := append(instanceMetricBaseLabels(obj), condType, reason)
+	key := instanceConditionMetricKey{
+		namespace: obj.GetNamespace(), component: obj.GetLabels()[v1alpha1.LabelKeyComponent],
+		instance: obj.GetName(), condition: condType,
+	}
+	instanceConditionMetricsMu.Lock()
+	defer instanceConditionMetricsMu.Unlock()
+	if previous, ok := instanceConditionLabels[key]; ok && !slices.Equal(previous, labels) {
+		AbnormalInstance.DeleteLabelValues(previous...)
+	}
 	AbnormalInstance.WithLabelValues(labels...).Set(value)
+	instanceConditionLabels[key] = labels
 }
 
 // ObserveConditions records the gauge for every condition type tracked by this
@@ -87,10 +113,7 @@ func ObserveConditions(obj client.Object, conds []metav1.Condition) {
 // alerts on a non-existent instance and growing label cardinality across
 // each cluster lifecycle.
 func ClearInstanceConditionMetrics(obj client.Object) {
-	base := instanceMetricBaseLabels(obj)
-	for _, condType := range trackedConditions {
-		AbnormalInstance.DeleteLabelValues(append(base, condType)...)
-	}
+	ClearInstanceConditionMetricsByKey(obj.GetNamespace(), obj.GetLabels()[v1alpha1.LabelKeyComponent], obj.GetName())
 }
 
 // ClearInstanceConditionMetricsByKey removes every tracked-condition series
@@ -103,9 +126,16 @@ func ClearInstanceConditionMetrics(obj client.Object) {
 // match still covers series written under an earlier cluster / group label
 // value if those labels ever shifted.
 func ClearInstanceConditionMetricsByKey(namespace, component, instance string) {
+	instanceConditionMetricsMu.Lock()
+	defer instanceConditionMetricsMu.Unlock()
 	AbnormalInstance.DeletePartialMatch(prometheus.Labels{
 		"namespace": namespace,
 		"component": component,
 		"instance":  instance,
 	})
+	for key := range instanceConditionLabels {
+		if key.namespace == namespace && key.component == component && key.instance == instance {
+			delete(instanceConditionLabels, key)
+		}
+	}
 }

@@ -1700,8 +1700,8 @@ func TestTaskInstanceConditionReadySuspend(t *testing.T) {
 		suspend     bool
 		want        float64
 	}{
-		{"suspend absent", false, true, 0},
-		{"suspend terminating", true, true, 0},
+		{"suspend absent", false, true, 1},
+		{"suspend terminating", true, true, 1},
 		{"resume absent", false, false, 1},
 		{"resume terminating", true, false, 1},
 	} {
@@ -1735,7 +1735,7 @@ func TestTaskInstanceConditionReadySuspend(t *testing.T) {
 			require.Len(t, obj.Status.Conditions, 1)
 			assert.Equal(t, metav1.ConditionFalse, obj.Status.Conditions[0].Status)
 			assert.Equal(t, reason, obj.Status.Conditions[0].Reason)
-			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
+			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady, reason)), 1e-9)
 		})
 	}
 }

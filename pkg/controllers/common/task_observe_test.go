@@ -123,13 +123,13 @@ func TestTaskObserveInstanceSuspendResume(t *testing.T) {
 		reason string
 		want   float64
 	}{
-		{v1alpha1.ReasonSuspended, 0}, {v1alpha1.ReasonSuspending, 0}, {v1alpha1.ReasonPodNotCreated, 1},
+		{v1alpha1.ReasonSuspended, 1}, {v1alpha1.ReasonSuspending, 1}, {v1alpha1.ReasonPodNotCreated, 1},
 	} {
 		obj.Status.Conditions[0].Reason = tc.reason
 		res, done := task.RunTask(context.Background(), TaskObserveInstance[scope.PD](state))
 		require.Equal(t, task.SComplete, res.Status())
 		require.False(t, done)
-		assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(ns, "", "", "", name, v1alpha1.CondReady)), 1e-9)
+		assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(ns, "", "", "", name, v1alpha1.CondReady, tc.reason)), 1e-9)
 	}
 }
 
@@ -145,8 +145,8 @@ func TestTaskObserveInstanceBeforeClusterReadError(t *testing.T) {
 		{"not found ready", metav1.ConditionTrue, v1alpha1.ReasonReady, false, 0},
 		{"read error unready", metav1.ConditionFalse, v1alpha1.ReasonPodNotCreated, true, 1},
 		{"read error ready", metav1.ConditionTrue, v1alpha1.ReasonReady, true, 0},
-		{"read error keeps suspended", metav1.ConditionFalse, v1alpha1.ReasonSuspended, true, 0},
-		{"not found keeps suspending", metav1.ConditionFalse, v1alpha1.ReasonSuspending, false, 0},
+		{"read error keeps suspended", metav1.ConditionFalse, v1alpha1.ReasonSuspended, true, 1},
+		{"not found keeps suspending", metav1.ConditionFalse, v1alpha1.ReasonSuspending, false, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			obj := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Namespace: "cluster-read-error", Name: tc.name}}
@@ -169,8 +169,8 @@ func TestTaskObserveInstanceBeforeClusterReadError(t *testing.T) {
 			assert.Equal(t, task.SFail, res.Status())
 			assert.False(t, done)
 			require.True(t, hasGaugeSample(t, obj.Namespace, obj.Name), "fallback must publish metrics before returning the error")
-			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
-			assert.InDelta(t, float64(1), testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondSynced)), 1e-9)
+			assert.InDelta(t, tc.want, testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady, tc.reason)), 1e-9)
+			assert.InDelta(t, float64(1), testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(obj.Namespace, "", "", "", obj.Name, v1alpha1.CondSynced, v1alpha1.ReasonPodNotDeleted)), 1e-9)
 		})
 	}
 }
@@ -204,8 +204,8 @@ func TestTaskObserveInstanceKeepsSuspendConditionUntilReadyRefresh(t *testing.T)
 		))
 		require.Equal(t, task.SFail, res.Status())
 		assert.Equal(t, v1alpha1.ReasonSuspended, obj.Status.Conditions[0].Reason)
-		assert.InDelta(t, float64(0), testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(
-			obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
+		assert.InDelta(t, float64(1), testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(
+			obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady, obj.Status.Conditions[0].Reason)), 1e-9)
 	}
 	// Once the normal Ready task runs, the actual Pod state replaces the old reason.
 	health := NewMockInstanceCondReadyUpdater[*v1alpha1.PD](gomock.NewController(t))
@@ -217,5 +217,5 @@ func TestTaskObserveInstanceKeepsSuspendConditionUntilReadyRefresh(t *testing.T)
 	require.Equal(t, task.SWait, res.Status())
 	assert.Equal(t, v1alpha1.ReasonPodNotCreated, obj.Status.Conditions[0].Reason)
 	assert.InDelta(t, float64(1), testutil.ToFloat64(metrics.AbnormalInstance.WithLabelValues(
-		obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady)), 1e-9)
+		obj.Namespace, "", "", "", obj.Name, v1alpha1.CondReady, obj.Status.Conditions[0].Reason)), 1e-9)
 }
