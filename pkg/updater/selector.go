@@ -15,13 +15,18 @@
 package updater
 
 import (
+	"context"
 	"slices"
 	"strconv"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
@@ -188,6 +193,63 @@ func PreferPriority[R runtime.Instance]() PreferPolicy[R] {
 
 		return chosen
 	})
+}
+
+// PreferPodDeletionCost lets applications express which managed Pods are cheaper
+// to remove using the standard controller.kubernetes.io/pod-deletion-cost annotation.
+// Group controllers manage instances directly, so they must honor this hint themselves
+// instead of relying on ReplicaSet downscaling. Read the actual Pod annotation, not
+// instance CR metadata, so applications can use the same convention as Kubernetes.
+// See https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#pod-deletion-cost
+//
+// Lower signed int32 costs are preferred; negative values are allowed and an unset
+// annotation means zero. This is a best-effort preference, not a deletion-order
+// guarantee: higher-priority policies run first.
+func PreferPodDeletionCost[R runtime.Instance](c client.Client) PreferPolicy[R] {
+	// Build creates fresh policies for each executor. Reuse costs across its selections,
+	// to avoid repeatedly listing the same Pods. Failed reads remain retryable.
+	costs := make(map[types.UID]int32)
+	return PreferPolicyFunc[R](func(instances []R) []R {
+		if c == nil || len(instances) < 2 {
+			return instances
+		}
+		var chosen []R
+		var minimum int32
+		for _, in := range instances {
+			cost, ok := costs[in.GetUID()]
+			if !ok {
+				// Prefer has no reconcile context; the manager client reads Pods from cache.
+				pod, err := apicall.GetInstancePod(context.Background(), c, in)
+				if err == nil {
+					cost = podDeletionCost(pod.Annotations)
+					costs[in.GetUID()] = cost
+				}
+			}
+			switch {
+			case len(chosen) == 0 || cost < minimum:
+				minimum = cost
+				chosen = []R{in}
+			case cost == minimum:
+				chosen = append(chosen, in)
+			}
+		}
+		return chosen
+	})
+}
+
+// podDeletionCost follows Kubernetes' signed int32 annotation semantics:
+// absent or invalid values cost zero; a leading '+' or positive leading zeros
+// are invalid. Negative costs are allowed and preferred over zero.
+func podDeletionCost(annotations map[string]string) int32 {
+	value, ok := annotations[corev1.PodDeletionCost]
+	if !ok || value == "" || value[0] == '+' || (value[0] == '0' && value != "0") {
+		return 0
+	}
+	cost, err := strconv.ParseInt(value, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return int32(cost)
 }
 
 // FilterAnnotationAbsent excludes instances that have the given annotation key set.

@@ -78,6 +78,7 @@ func (b *builder[T, O, R]) Build() Executor {
 	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
 	updatePolicies := []PreferPolicy[R]{
+		PreferPodDeletionCost[R](b.c),
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
@@ -87,6 +88,7 @@ func (b *builder[T, O, R]) Build() Executor {
 	scaleInPolicies := []PreferPolicy[R]{
 		// Prefer newer instances when higher-priority policies do not decide.
 		PreferNewer[R](),
+		PreferPodDeletionCost[R](b.c),
 		PreferPriority[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
@@ -95,6 +97,7 @@ func (b *builder[T, O, R]) Build() Executor {
 	scaleInPolicies = append(scaleInPolicies, b.scaleInPreferPolicies...)
 
 	cancelOfflinePolicies := []PreferPolicy[R]{
+		PreferPodDeletionCost[R](b.c),
 		PreferPriority[R](),
 	}
 
