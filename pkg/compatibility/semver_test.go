@@ -21,6 +21,29 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSupportsSmoothUpgrade(t *testing.T) {
+	cases := []struct {
+		version string
+		want    bool
+	}{
+		{"v7.5.0", true},
+		{"v7.5.1", true},
+		{"v8.0.0", true},
+		{"v7.5.0-alpha", false}, // pre-release of 7.5.0 is before 7.5.0
+		{"v7.5.1-alpha", true},  // pre-release of 7.5.1 is after 7.5.0
+		{"v7.4.99", false},
+		{"v7.4.0", false},
+		{"v6.0.0", false},
+		{"invalid", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		t.Run(c.version, func(tt *testing.T) {
+			assert.Equal(tt, c.want, SupportsSmoothUpgrade(c.version))
+		})
+	}
+}
+
 func TestCheck(t *testing.T) {
 	cases := []struct {
 		desc            string

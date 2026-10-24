@@ -158,3 +158,93 @@ func TestTiDBClient_GetPoolStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestTiDBClient_UpgradeStart(t *testing.T) {
+	cases := []struct {
+		desc     string
+		keyspace string
+		wantBody string
+		respCode int
+		wantErr  bool
+	}{
+		{
+			desc:     "dedicated (empty keyspace)",
+			keyspace: "",
+			wantBody: `{}`,
+			respCode: http.StatusOK,
+		},
+		{
+			desc:     "premium tenant keyspace",
+			keyspace: "tenant1",
+			wantBody: `{"keyspace_name":"tenant1"}`,
+			respCode: http.StatusOK,
+		},
+		{
+			desc:     "server error",
+			keyspace: "",
+			respCode: http.StatusInternalServerError,
+			wantErr:  true,
+		},
+	}
+	for i := range cases {
+		c := cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(tt, "/upgrade/start", r.URL.Path)
+				assert.Equal(tt, http.MethodPost, r.Method)
+				if c.wantBody != "" {
+					body, err := io.ReadAll(r.Body)
+					assert.NoError(tt, err)
+					assert.JSONEq(tt, c.wantBody, string(body))
+				}
+				w.WriteHeader(c.respCode)
+			}))
+			defer server.Close()
+
+			client := NewTiDBClient(server.URL, 5*time.Second, nil)
+			err := client.UpgradeStart(context.Background(), c.keyspace)
+			if c.wantErr {
+				assert.Error(tt, err)
+			} else {
+				assert.NoError(tt, err)
+			}
+		})
+	}
+}
+
+func TestTiDBClient_UpgradeFinish(t *testing.T) {
+	cases := []struct {
+		desc     string
+		respCode int
+		wantErr  bool
+	}{
+		{
+			desc:     "success",
+			respCode: http.StatusOK,
+		},
+		{
+			desc:     "server error",
+			respCode: http.StatusInternalServerError,
+			wantErr:  true,
+		},
+	}
+	for i := range cases {
+		c := cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(tt, "/upgrade/finish", r.URL.Path)
+				assert.Equal(tt, http.MethodPost, r.Method)
+				w.WriteHeader(c.respCode)
+			}))
+			defer server.Close()
+
+			client := NewTiDBClient(server.URL, 5*time.Second, nil)
+			err := client.UpgradeFinish(context.Background())
+			if c.wantErr {
+				assert.Error(tt, err)
+			} else {
+				assert.NoError(tt, err)
+			}
+		})
+	}
+}
