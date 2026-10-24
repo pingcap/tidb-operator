@@ -65,7 +65,7 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 			regionCount = state.Store.RegionCount
 		}
 		if err := DeletePodWithGracePeriod(ctx, c, pod, regionCount); err != nil {
-			return task.Fail().With("can't delete pod of tikv: %w", err)
+			return task.Fail().With("can't delete pod of tikv: %v", err)
 		}
 		state.DeletePod(pod)
 
@@ -82,7 +82,7 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager, r
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				k8s.RecordFailedCreatePod(recorder, state.Object(), err)
-				return task.Fail().With("can't apply pod of tikv: %w", err)
+				return task.Fail().With("can't apply pod of tikv: %v", err)
 			}
 
 			state.SetPod(expected)
@@ -123,7 +123,7 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager, r
 				regionCount = state.Store.RegionCount
 			}
 			if err := DeletePodWithGracePeriod(ctx, c, pod, regionCount); err != nil {
-				return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
+				return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %v", err)
 			}
 
 			state.DeletePod(pod)
@@ -132,7 +132,7 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager, r
 
 		logger.Info("will update the pod in place")
 		if err := c.Apply(ctx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tikv: %w", err)
+			return task.Fail().With("can't apply pod of tikv: %v", err)
 		}
 
 		// write apply result back to ctx

@@ -222,12 +222,12 @@ func TaskServerLabels[
 		// TODO: too many API calls to PD?
 		pdCfg, err := getPDConfig(ctx, pdc.Underlay())
 		if err != nil {
-			return task.Fail().With(err.Error())
+			return task.Fail().With("%s", err.Error())
 		}
 
 		nodeLabels, err := getNodeLabels(ctx, c, pod, pdCfg.Replication.LocationLabels)
 		if err != nil {
-			return task.Fail().With(err.Error())
+			return task.Fail().With("%s", err.Error())
 		}
 
 		obj := state.Object()
@@ -235,7 +235,7 @@ func TaskServerLabels[
 		// TODO: is there any way to avoid unnecessary update?
 		if err := setLabelsFunc(ctx, serverLabels); err != nil {
 			if task.IsWaitError(err) {
-				return task.Wait().With(err.Error())
+				return task.Wait().With("%s", err.Error())
 			}
 			return task.Fail().With("failed to set server labels %v: %s", serverLabels, err)
 		}

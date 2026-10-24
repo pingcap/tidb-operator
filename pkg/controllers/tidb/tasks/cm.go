@@ -34,20 +34,20 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		cfg := tidbcfg.Config{}
 		decoder, encoder := toml.Codec[tidbcfg.Config]()
 		if err := decoder.Decode([]byte(state.TiDB().Spec.Config), &cfg); err != nil {
-			return task.Fail().With("tidb config cannot be decoded: %w", err)
+			return task.Fail().With("tidb config cannot be decoded: %v", err)
 		}
 		if err := cfg.Overlay(state.Cluster(), state.TiDB(), state.FeatureGates()); err != nil {
-			return task.Fail().With("cannot generate tidb config: %w", err)
+			return task.Fail().With("cannot generate tidb config: %v", err)
 		}
 
 		data, err := encoder.Encode(&cfg)
 		if err != nil {
-			return task.Fail().With("tidb config cannot be encoded: %w", err)
+			return task.Fail().With("tidb config cannot be encoded: %v", err)
 		}
 
 		expected := newConfigMap(state.TiDB(), data)
 		if e := c.Apply(ctx, expected); e != nil {
-			return task.Fail().With("can't create/update cm of tidb: %w", e)
+			return task.Fail().With("can't create/update cm of tidb: %v", e)
 		}
 		return task.Complete().With("cm is synced")
 	})

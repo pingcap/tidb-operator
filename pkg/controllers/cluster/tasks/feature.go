@@ -56,75 +56,75 @@ func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result 
 
 	for _, pdg := range rtx.PDGroups {
 		if err := patchFeatures[scope.PDGroup](ctx, t.Client, pdg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for pd group %s/%s: %w", pdg.Namespace, pdg.Name, err)
+			return task.Fail().With("can't update feature gates for pd group %s/%s: %v", pdg.Namespace, pdg.Name, err)
 		}
 	}
 	for _, rmg := range rtx.ResourceManagerGroups {
 		if err := patchFeatures[scope.ResourceManagerGroup](ctx, t.Client, rmg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for resource manager group %s/%s: %w", rmg.Namespace, rmg.Name, err)
+			return task.Fail().With("can't update feature gates for resource manager group %s/%s: %v", rmg.Namespace, rmg.Name, err)
 		}
 	}
 	for _, rmg := range rtx.RouterGroups {
 		if err := patchFeatures[scope.RouterGroup](ctx, t.Client, rmg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for router group %s/%s: %w", rmg.Namespace, rmg.Name, err)
+			return task.Fail().With("can't update feature gates for router group %s/%s: %v", rmg.Namespace, rmg.Name, err)
 		}
 	}
 
 	for _, tg := range rtx.TSOGroups {
 		if err := patchFeatures[scope.TSOGroup](ctx, t.Client, tg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for tso group %s/%s: %w", tg.Namespace, tg.Name, err)
+			return task.Fail().With("can't update feature gates for tso group %s/%s: %v", tg.Namespace, tg.Name, err)
 		}
 	}
 	for _, sg := range rtx.SchedulingGroups {
 		if err := patchFeatures[scope.SchedulingGroup](ctx, t.Client, sg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for scheduling group %s/%s: %w", sg.Namespace, sg.Name, err)
+			return task.Fail().With("can't update feature gates for scheduling group %s/%s: %v", sg.Namespace, sg.Name, err)
 		}
 	}
 	for _, sg := range rtx.SchedulerGroups {
 		if err := patchFeatures[scope.SchedulerGroup](ctx, t.Client, sg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for scheduler group %s/%s: %w", sg.Namespace, sg.Name, err)
+			return task.Fail().With("can't update feature gates for scheduler group %s/%s: %v", sg.Namespace, sg.Name, err)
 		}
 	}
 	for _, kvg := range rtx.TiKVGroups {
 		if err := patchFeatures[scope.TiKVGroup](ctx, t.Client, kvg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for tikv group %s/%s: %w", kvg.Namespace, kvg.Name, err)
+			return task.Fail().With("can't update feature gates for tikv group %s/%s: %v", kvg.Namespace, kvg.Name, err)
 		}
 	}
 	for _, fg := range rtx.TiFlashGroups {
 		if err := patchFeatures[scope.TiFlashGroup](ctx, t.Client, fg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for tiflash group %s/%s: %w", fg.Namespace, fg.Name, err)
+			return task.Fail().With("can't update feature gates for tiflash group %s/%s: %v", fg.Namespace, fg.Name, err)
 		}
 	}
 	for _, dbg := range rtx.TiDBGroups {
 		if err := patchFeatures[scope.TiDBGroup](ctx, t.Client, dbg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for tidb group %s/%s: %w", dbg.Namespace, dbg.Name, err)
+			return task.Fail().With("can't update feature gates for tidb group %s/%s: %v", dbg.Namespace, dbg.Name, err)
 		}
 	}
 
 	for _, cg := range rtx.TiCDCGroups {
 		if err := patchFeatures[scope.TiCDCGroup](ctx, t.Client, cg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for ticdc group %s/%s: %w", cg.Namespace, cg.Name, err)
+			return task.Fail().With("can't update feature gates for ticdc group %s/%s: %v", cg.Namespace, cg.Name, err)
 		}
 	}
 
 	for _, pg := range rtx.TiProxyGroups {
 		if err := patchFeatures[scope.TiProxyGroup](ctx, t.Client, pg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for tiproxy group %s/%s: %w", pg.Namespace, pg.Name, err)
+			return task.Fail().With("can't update feature gates for tiproxy group %s/%s: %v", pg.Namespace, pg.Name, err)
 		}
 	}
 	for _, wg := range rtx.TiKVWorkerGroups {
 		if err := patchFeatures[scope.TiKVWorkerGroup](ctx, t.Client, wg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for tikv worker group %s/%s: %w", wg.Namespace, wg.Name, err)
+			return task.Fail().With("can't update feature gates for tikv worker group %s/%s: %v", wg.Namespace, wg.Name, err)
 		}
 	}
 	for _, dmg := range rtx.DMGroups {
 		if err := patchFeatures[scope.DMGroup](ctx, t.Client, dmg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for dm group %s/%s: %w", dmg.Namespace, dmg.Name, err)
+			return task.Fail().With("can't update feature gates for dm group %s/%s: %v", dmg.Namespace, dmg.Name, err)
 		}
 	}
 	for _, dwg := range rtx.DMWorkerGroups {
 		if err := patchFeatures[scope.DMWorkerGroup](ctx, t.Client, dwg, fs); err != nil {
-			return task.Fail().With("can't update feature gates for dm worker group %s/%s: %w", dwg.Namespace, dwg.Name, err)
+			return task.Fail().With("can't update feature gates for dm worker group %s/%s: %v", dwg.Namespace, dwg.Name, err)
 		}
 	}
 

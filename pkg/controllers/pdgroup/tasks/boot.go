@@ -36,7 +36,7 @@ func TaskBoot(state *ReconcileContext, c client.Client) task.Task {
 		if !pdg.Spec.Bootstrapped {
 			pdg.Spec.Bootstrapped = true
 			if err := c.Update(ctx, pdg); err != nil {
-				return task.Fail().With("pd cluster is available but not marked as bootstrapped: %w", err)
+				return task.Fail().With("pd cluster is available but not marked as bootstrapped: %v", err)
 			}
 		}
 

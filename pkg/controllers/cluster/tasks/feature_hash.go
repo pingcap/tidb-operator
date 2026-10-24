@@ -42,7 +42,7 @@ func (t *TaskFeatureGatesHash) Sync(ctx task.Context[ReconcileContext]) task.Res
 	updated := rtx.Cluster.DeepCopy()
 	updated.Status.FeatureGatesHash = hash
 	if err := t.Client.Status().Update(ctx, updated); err != nil {
-		return task.Fail().With("can't record feature gate hash: %w", err)
+		return task.Fail().With("can't record feature gate hash: %v", err)
 	}
 	// An outdated CRD can prune unknown status fields even on successful writes.
 	if updated.Status.FeatureGatesHash != hash {

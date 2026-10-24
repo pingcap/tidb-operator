@@ -58,7 +58,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				k8s.RecordFailedCreatePod(recorder, state.Object(), err)
-				return task.Fail().With("can't create pod of tiproxy: %w", err)
+				return task.Fail().With("can't create pod of tiproxy: %v", err)
 			}
 
 			state.SetPod(expected)
@@ -68,7 +68,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 		if !reloadable.CheckTiProxyPod(state.TiProxy(), pod) {
 			logger.Info("will recreate the pod")
 			if err := c.Delete(ctx, pod); err != nil {
-				return task.Fail().With("can't delete pod of tiproxy: %w", err)
+				return task.Fail().With("can't delete pod of tiproxy: %v", err)
 			}
 
 			state.DeletePod(pod)
@@ -77,7 +77,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 
 		logger.Info("try to update the pod in place")
 		if err := c.Apply(ctx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tiproxy: %w", err)
+			return task.Fail().With("can't apply pod of tiproxy: %v", err)
 		}
 
 		state.SetPod(expected)

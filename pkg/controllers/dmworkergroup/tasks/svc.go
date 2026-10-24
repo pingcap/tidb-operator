@@ -35,7 +35,7 @@ func TaskService(state State, c client.Client) task.Task {
 
 		headless := newHeadlessService(dwg)
 		if err := c.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of dm-worker: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of dm-worker: %v", err))
 		}
 
 		return task.Complete().With("headless service of dm-worker has been applied")

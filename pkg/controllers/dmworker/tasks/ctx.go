@@ -45,7 +45,7 @@ func TaskContextHealthFromDMWorker(state *ReconcileContext, c client.Client) tas
 		if coreutil.IsTLSClusterEnabled(cluster) {
 			tlsConfig, err := apicall.GetClientTLSConfig(ctx, c, cluster)
 			if err != nil {
-				return task.Fail().With("cannot get tls config from secret: %w", err)
+				return task.Fail().With("cannot get tls config from secret: %v", err)
 			}
 			httpClient = &http.Client{
 				Timeout: healthCheckTimeout,

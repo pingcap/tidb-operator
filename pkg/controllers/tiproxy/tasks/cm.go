@@ -34,20 +34,20 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		cfg := tiproxycfg.Config{}
 		decoder, encoder := toml.Codec[tiproxycfg.Config]()
 		if err := decoder.Decode([]byte(state.TiProxy().Spec.Config), &cfg); err != nil {
-			return task.Fail().With("tiproxy config cannot be decoded: %w", err)
+			return task.Fail().With("tiproxy config cannot be decoded: %v", err)
 		}
 		if err := cfg.Overlay(state.Cluster(), state.TiProxy()); err != nil {
-			return task.Fail().With("cannot generate tiproxy config: %w", err)
+			return task.Fail().With("cannot generate tiproxy config: %v", err)
 		}
 
 		data, err := encoder.Encode(&cfg)
 		if err != nil {
-			return task.Fail().With("tiproxy config cannot be encoded: %w", err)
+			return task.Fail().With("tiproxy config cannot be encoded: %v", err)
 		}
 
 		expected := newConfigMap(state.TiProxy(), data)
 		if e := c.Apply(ctx, expected); e != nil {
-			return task.Fail().With("can't create/update cm of tiproxy: %w", e)
+			return task.Fail().With("can't create/update cm of tiproxy: %v", e)
 		}
 		return task.Complete().With("cm is synced")
 	})

@@ -47,7 +47,7 @@ func TaskContextInfoFromTiProxy(state *ReconcileContext, c client.Client) task.T
 			var err error
 			tlsConfig, err = apicall.GetClientTLSConfig(ctx, c, ck)
 			if err != nil {
-				return task.Fail().With("cannot get tls config from secret: %w", err)
+				return task.Fail().With("cannot get tls config from secret: %v", err)
 			}
 		}
 		tiproxy := state.TiProxy()
@@ -55,7 +55,7 @@ func TaskContextInfoFromTiProxy(state *ReconcileContext, c client.Client) task.T
 		state.TiProxyClient = tiproxyapi.NewTiProxyClient(addr, tiproxyRequestTimeout, tlsConfig)
 		healthy, err := state.TiProxyClient.IsHealthy(ctx)
 		if err != nil {
-			return task.Complete().With(
+			return task.Complete().With("%s",
 				fmt.Sprintf("context without health info is completed, tiproxy can't be reached: %v", err))
 		}
 		if healthy {

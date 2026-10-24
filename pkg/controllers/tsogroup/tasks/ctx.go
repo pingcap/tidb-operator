@@ -35,15 +35,15 @@ func TaskContextPDMSProtection(state *ReconcileContext, c client.Client) task.Ta
 
 		pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, ns, cluster)
 		if err != nil {
-			return task.Fail().With("cannot list PDGroups: %w", err)
+			return task.Fail().With("cannot list PDGroups: %v", err)
 		}
 		pds, err := apicall.ListClusterInstances[scope.PD](ctx, c, ns, cluster)
 		if err != nil {
-			return task.Fail().With("cannot list PDs: %w", err)
+			return task.Fail().With("cannot list PDs: %v", err)
 		}
 		tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, c, ns, cluster)
 		if err != nil {
-			return task.Fail().With("cannot list TSOGroups: %w", err)
+			return task.Fail().With("cannot list TSOGroups: %v", err)
 		}
 
 		state.SetPDMSProtectionContext(pdgs, pds, tgs)

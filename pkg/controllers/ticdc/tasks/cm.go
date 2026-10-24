@@ -34,20 +34,20 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		cfg := ticdccfg.Config{}
 		decoder, encoder := toml.Codec[ticdccfg.Config]()
 		if err := decoder.Decode([]byte(state.TiCDC().Spec.Config), &cfg); err != nil {
-			return task.Fail().With("ticdc config cannot be decoded: %w", err)
+			return task.Fail().With("ticdc config cannot be decoded: %v", err)
 		}
 		if err := cfg.Overlay(state.Cluster(), state.TiCDC()); err != nil {
-			return task.Fail().With("cannot generate ticdc config: %w", err)
+			return task.Fail().With("cannot generate ticdc config: %v", err)
 		}
 
 		data, err := encoder.Encode(&cfg)
 		if err != nil {
-			return task.Fail().With("ticdc config cannot be encoded: %w", err)
+			return task.Fail().With("ticdc config cannot be encoded: %v", err)
 		}
 
 		expected := newConfigMap(state.TiCDC(), data)
 		if e := c.Apply(ctx, expected); e != nil {
-			return task.Fail().With("can't create/update cm of ticdc: %w", e)
+			return task.Fail().With("can't create/update cm of ticdc: %v", e)
 		}
 		return task.Complete().With("cm is synced")
 	})

@@ -36,12 +36,12 @@ func TaskService(state common.TiProxyGroupState, c client.Client) task.Task {
 
 		headless := newHeadlessService(proxyg)
 		if err := c.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service: %v", err))
 		}
 
 		svc := newInternalService(proxyg)
 		if err := c.Apply(ctx, svc); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create internal service: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create internal service: %v", err))
 		}
 
 		return task.Complete().With("services have been applied")

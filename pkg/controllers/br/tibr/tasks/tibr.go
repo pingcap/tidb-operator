@@ -83,7 +83,7 @@ func taskWaitAllSubResourcesSynced(rtx *ReconcileContext) t.Task {
 		// set status for later status update task
 		rtx.unSyncedReasons = evaluateSyncedStatus(rtx)
 		if len(rtx.unSyncedReasons) != 0 {
-			return t.Retry(2 * time.Second).With(strings.Join(rtx.unSyncedReasons, "; "))
+			return t.Retry(2*time.Second).With("%s", strings.Join(rtx.unSyncedReasons, "; "))
 		}
 		return t.Complete().With("all sub-resources synced")
 	})

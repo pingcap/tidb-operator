@@ -57,14 +57,14 @@ func TaskFinalizerDel(state State, c client.Client) task.Task {
 
 		wait, err := k8s.DeleteGroupSubresource(ctx, c, runtime.FromDMWorkerGroup(state.DMWorkerGroup()), &corev1.ServiceList{})
 		if err != nil {
-			return task.Fail().With("cannot delete subresources: %w", err)
+			return task.Fail().With("cannot delete subresources: %v", err)
 		}
 		if wait {
 			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 		}
 
 		if err := apicall.RemoveFinalizer(ctx, c, state.DMWorkerGroup()); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
+			return task.Fail().With("failed to ensure finalizer has been removed: %v", err)
 		}
 
 		return task.Complete().With("finalizer has been removed")

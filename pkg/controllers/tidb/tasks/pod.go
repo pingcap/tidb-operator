@@ -68,7 +68,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				k8s.RecordFailedCreatePod(recorder, state.Object(), err)
-				return task.Fail().With("can't create pod of tidb: %w", err)
+				return task.Fail().With("can't create pod of tidb: %v", err)
 			}
 
 			state.SetPod(expected)
@@ -78,7 +78,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 		if !reloadable.CheckTiDBPod(state.TiDB(), pod) {
 			logger.Info("will recreate the pod")
 			if err := c.Delete(ctx, pod); err != nil {
-				return task.Fail().With("can't delete pod of tidb: %w", err)
+				return task.Fail().With("can't delete pod of tidb: %v", err)
 			}
 
 			state.DeletePod(pod)
@@ -87,7 +87,7 @@ func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventR
 
 		logger.Info("try to update the pod in place")
 		if err := c.Apply(ctx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tidb: %w", err)
+			return task.Fail().With("can't apply pod of tidb: %v", err)
 		}
 
 		state.SetPod(expected)
@@ -381,14 +381,14 @@ func buildTiDBProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (command
 
 func defaultSlowLogVolumeAndMount() (*corev1.Volume, *corev1.VolumeMount) {
 	return &corev1.Volume{
-			Name: v1alpha1.VolumeNameTiDBSlowLogDefault,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		}, &corev1.VolumeMount{
-			Name:      v1alpha1.VolumeNameTiDBSlowLogDefault,
-			MountPath: v1alpha1.DirPathTiDBSlowLogDefault,
-		}
+		Name: v1alpha1.VolumeNameTiDBSlowLogDefault,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}, &corev1.VolumeMount{
+		Name:      v1alpha1.VolumeNameTiDBSlowLogDefault,
+		MountPath: v1alpha1.DirPathTiDBSlowLogDefault,
+	}
 }
 
 func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount, fg features.Gates) *corev1.Container {

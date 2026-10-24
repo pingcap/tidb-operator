@@ -36,14 +36,14 @@ func TaskService(state State, c client.Client) task.Task {
 
 		headless := newHeadlessService(pdg)
 		if err := c.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of pd: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of pd: %v", err))
 		}
 
 		fg := state.FeatureGates()
 		if !fg.Enabled(metav1alpha1.MultiPDGroup) {
 			svc := newInternalService(pdg)
 			if err := c.Apply(ctx, svc); err != nil {
-				return task.Fail().With(fmt.Sprintf("can't create internal service of pd: %v", err))
+				return task.Fail().With("%s", fmt.Sprintf("can't create internal service of pd: %v", err))
 			}
 		}
 

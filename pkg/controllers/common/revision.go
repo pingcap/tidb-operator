@@ -123,7 +123,7 @@ func TaskRevision[
 
 		revisions, err := historyCli.ListControllerRevisions(ctx, gt.To(parent), selector)
 		if err != nil {
-			return task.Fail().With("cannot list controller revisions: %w", err)
+			return task.Fail().With("cannot list controller revisions: %v", err)
 		}
 		history.SortControllerRevisions(revisions)
 
@@ -139,7 +139,7 @@ func TaskRevision[
 			w.CollisionCount(),
 		)
 		if err != nil {
-			return task.Fail().With("cannot get revisions: %w", err)
+			return task.Fail().With("cannot get revisions: %v", err)
 		}
 
 		w.Set(updateRevision.Name, currentRevision.Name, collisionCount)

@@ -38,11 +38,11 @@ func TaskService(state common.ObjectState[*v1alpha1.TSOGroup], c client.Client) 
 
 		headless := newHeadlessService(tg)
 		if err := c.Apply(ctx, headless); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of tso: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create headless service of tso: %v", err))
 		}
 		svc := newInternalService(tg)
 		if err := c.Apply(ctx, svc); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create internal service of tso: %v", err))
+			return task.Fail().With("%s", fmt.Sprintf("can't create internal service of tso: %v", err))
 		}
 
 		return task.Complete().With("services of tso have been applied")

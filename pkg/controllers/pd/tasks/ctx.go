@@ -67,7 +67,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			if errors.IsNotFound(err) {
 				return task.Complete().With("context without member info is completed, pd is not initialized")
 			}
-			return task.Fail().With("cannot get member: %w", err)
+			return task.Fail().With("cannot get member: %v", err)
 		}
 
 		state.ClusterID = m.ClusterID
@@ -83,7 +83,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 				var err error
 				ready, err = state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd), pd.Spec.Version)
 				if err != nil || !ready {
-					return task.Retry(task.DefaultRequeueAfter).With("failed to get member ready (err: %w) or pd is not ready", err)
+					return task.Retry(task.DefaultRequeueAfter).With("failed to get member ready (err: %v) or pd is not ready", err)
 				}
 			}
 		}

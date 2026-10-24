@@ -188,9 +188,10 @@ function e2e::install_old_version() {
     local commit_hash
     commit_hash=$(git rev-parse --short HEAD)
 
-    # TODO(liubo02): del it, reuse kind
+    # Use the old checkout's kind and Go toolchain when loading its images.
+    local old_kind="${old_version_dir}/_output/bin/kind"
     make bin/kind
-    make V_KIND=${V_KIND} push/prestop-checker
+    make V_KIND="${old_kind}" push/prestop-checker
 
     local old_image_tag="old-${commit_hash}-${old_version//+/-}"
     local old_operator_image="${V_IMG_PROJECT}/tidb-operator:${old_image_tag}"
@@ -236,7 +237,7 @@ function e2e::install_old_version() {
     popd
 
     echo "Loading old operator image into kind cluster"
-    $V_KIND load image-archive "${image_tar}" --name "${V_KIND_CLUSTER}"
+    "$old_kind" load image-archive "${image_tar}" --name "${V_KIND_CLUSTER}"
 
     # The selected old operator manages CRDs itself and recreates them at startup.
     echo "Removing CRDs before starting the old operator"

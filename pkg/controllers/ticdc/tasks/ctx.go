@@ -44,7 +44,7 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 			var err error
 			tlsConfig, err = apicall.GetClientTLSConfig(ctx, c, ck)
 			if err != nil {
-				return task.Fail().With("cannot get tls config from secret: %w", err)
+				return task.Fail().With("cannot get tls config from secret: %v", err)
 			}
 		}
 		ticdc := state.Object()
@@ -56,7 +56,7 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 		)
 		healthy, err := state.TiCDCClient.IsHealthy(ctx)
 		if err != nil {
-			return task.Complete().With(
+			return task.Complete().With("%s",
 				fmt.Sprintf("context without health info is completed, ticdc can't be reached: %v", err))
 		}
 		if healthy {
@@ -65,7 +65,7 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 
 		status, err := state.TiCDCClient.GetStatus(ctx)
 		if err != nil {
-			return task.Fail().With("failed to get status from TiCDC: %w", err)
+			return task.Fail().With("failed to get status from TiCDC: %v", err)
 		}
 		state.MemberID = status.ID
 		state.IsOwner = status.IsOwner

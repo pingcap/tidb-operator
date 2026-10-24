@@ -90,7 +90,7 @@ func TaskEndEvictLeader(state *ReconcileContext, m pdm.PDClientManager) task.Tas
 		} else {
 			msg = "can not get the store id"
 		}
-		return task.Complete().With(msg)
+		return task.Complete().With("%s", msg)
 	})
 }
 
