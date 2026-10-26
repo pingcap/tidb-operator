@@ -149,6 +149,7 @@ spec:
                   - MultiPDGroup
                   - TiCDCDynamicSecretSyncer
                   - IndependentKVEngineWorker
+                  - TiKVSequentialScaleIn
                   type: string
                 type: array
               image:

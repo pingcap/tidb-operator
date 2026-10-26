@@ -15,10 +15,15 @@
 package tasks
 
 import (
+	"context"
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 const (
@@ -32,3 +37,15 @@ var SubresourceLister = common.NewSubresourceLister(
 	common.NewSubresource[corev1.ConfigMapList](),
 	common.NewSubresource[corev1.PersistentVolumeClaimList](),
 )
+
+// TaskWaitCacheTTLAfterStoreRemoved keeps the Pod alive until TiDB's region cache
+// expires. The Offlined condition must be persisted before running this task.
+func TaskWaitCacheTTLAfterStoreRemoved(state *ReconcileContext) task.Task {
+	var remaining time.Duration
+	return task.IfBreak(task.CondFunc(func() bool {
+		remaining = cacheTTLRemaining(state.TiKV(), time.Now(), v1alpha1.StoreOfflinedConditionType)
+		return remaining > 0
+	}), task.NameTaskFunc("WaitCacheTTLAfterStoreRemoved", func(context.Context) task.Result {
+		return task.Retry(remaining).With("wait for TiDB region cache to refresh after store removal")
+	}))
+}

@@ -27,6 +27,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikv/tasks"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
 )
@@ -60,5 +62,38 @@ func TestSuspendedWithoutPDClient(t *testing.T) {
 		assert.True(t, got.DeletionTimestamp.IsZero(), "missing PD state must not cause Instance deletion")
 		assert.Equal(t, &offline, meta.FindStatusCondition(got.Status.Conditions, v1alpha1.StoreOfflinedConditionType))
 		assert.True(t, meta.IsStatusConditionTrue(got.Status.Conditions, v1alpha1.CondSuspended))
+	}
+}
+
+func TestObjectIsDeletingAndStoreIsOfflined(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		deleting  bool
+		condition metav1.ConditionStatus
+		removed   bool
+		expected  bool
+	}{
+		{name: "not deleting", condition: metav1.ConditionTrue},
+		{name: "removed without condition", deleting: true, removed: true},
+		{name: "removed with false condition", deleting: true, removed: true, condition: metav1.ConditionFalse},
+		{name: "persisted offlined", deleting: true, condition: metav1.ConditionTrue, expected: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			kv := &v1alpha1.TiKV{}
+			if tt.deleting {
+				kv.DeletionTimestamp = ptr.To(metav1.Now())
+			}
+			if tt.condition != "" {
+				kv.Status.Conditions = []metav1.Condition{{Type: v1alpha1.StoreOfflinedConditionType, Status: tt.condition}}
+			}
+			st := tasks.NewState(client.ObjectKeyFromObject(kv))
+			st.SetObject(kv)
+			ctx := &tasks.ReconcileContext{State: st}
+			if tt.removed {
+				st.SetStoreState(pdv1.NodeStateRemoved)
+				ctx.PDSynced = true
+			}
+			assert.Equal(t, tt.expected, ObjectIsDeletingAndStoreIsOfflined(ctx).Satisfy())
+		})
 	}
 }

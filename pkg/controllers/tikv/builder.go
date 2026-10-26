@@ -15,11 +15,13 @@
 package tikv
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikv/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -57,9 +59,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get info from pd
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 
-		// if instance is deleting and store is removed
-		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
+		// if instance is deleting and its Offlined condition is persisted
+		task.IfBreak(ObjectIsDeletingAndStoreIsOfflined(state),
 			tasks.TaskEndEvictLeader(state, r.PDClientManager),
+			tasks.TaskWaitCacheTTLAfterStoreRemoved(state),
 			common.TaskInstanceFinalizerDel[scope.TiKV](state, r.Client, tasks.SubresourceLister),
 		),
 
@@ -86,7 +89,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// normal process
-		tasks.TaskOfflineStore(state, r.PDClientManager),
+		tasks.TaskStoreLimitAdjust(state, r.Client, r.PDClientManager),
+		tasks.TaskOfflineStore(state, r.PDClientManager, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiKV](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client, r.PDClientManager, r.EventRecorder),
@@ -105,10 +109,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	return runner
 }
 
-func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
+func ObjectIsDeletingAndStoreIsOfflined(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
-		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
-			(state.GetStoreState() == pdv1.NodeStateRemoved || state.Store == nil)
+		return !state.Object().GetDeletionTimestamp().IsZero() &&
+			meta.IsStatusConditionTrue(state.Object().Status.Conditions, v1alpha1.StoreOfflinedConditionType)
 	})
 }
 

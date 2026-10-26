@@ -329,6 +329,21 @@ func (mr *MockPDClientMockRecorder) GetStore(ctx, storeID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStore", reflect.TypeOf((*MockPDClient)(nil).GetStore), ctx, storeID)
 }
 
+// GetStoreLimits mocks base method.
+func (m *MockPDClient) GetStoreLimits(ctx context.Context) (map[string]StoreLimits, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStoreLimits", ctx)
+	ret0, _ := ret[0].(map[string]StoreLimits)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStoreLimits indicates an expected call of GetStoreLimits.
+func (mr *MockPDClientMockRecorder) GetStoreLimits(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStoreLimits", reflect.TypeOf((*MockPDClient)(nil).GetStoreLimits), ctx)
+}
+
 // GetStores mocks base method.
 func (m *MockPDClient) GetStores(ctx context.Context) (*StoresInfo, error) {
 	m.ctrl.T.Helper()
@@ -473,6 +488,20 @@ func (m *MockPDClient) SetStoreLabels(ctx context.Context, storeID string, label
 func (mr *MockPDClientMockRecorder) SetStoreLabels(ctx, storeID, labels any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStoreLabels", reflect.TypeOf((*MockPDClient)(nil).SetStoreLabels), ctx, storeID, labels)
+}
+
+// SetStoreLimit mocks base method.
+func (m *MockPDClient) SetStoreLimit(ctx context.Context, storeID string, typ StoreLimitType, rate float64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetStoreLimit", ctx, storeID, typ, rate)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetStoreLimit indicates an expected call of SetStoreLimit.
+func (mr *MockPDClientMockRecorder) SetStoreLimit(ctx, storeID, typ, rate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStoreLimit", reflect.TypeOf((*MockPDClient)(nil).SetStoreLimit), ctx, storeID, typ, rate)
 }
 
 // TransferPDLeader mocks base method.

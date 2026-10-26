@@ -113,7 +113,7 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager, r
 			if err := CheckTiKVLeadersEvicted(state.TiKV()); err != nil {
 				return task.Retry(defaultTaskWaitDuration).With("cannot recreate pod, check leader count: %v", err)
 			}
-			if remaining := cacheTTLRemaining(state.TiKV(), time.Now()); remaining > 0 {
+			if remaining := cacheTTLRemaining(state.TiKV(), time.Now(), v1alpha1.TiKVCondLeadersEvicted); remaining > 0 {
 				return task.Retry(remaining).With("cannot recreate pod, wait for TiDB region cache to refresh")
 			}
 

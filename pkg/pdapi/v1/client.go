@@ -51,6 +51,9 @@ type Namespace string
 // PDWriter defines write api call of pd
 // TODO: move all Get api call to PDClient
 type PDWriter interface {
+	// SetStoreLimit changes one explicitly named per-store incoming limit.
+	SetStoreLimit(ctx context.Context, storeID string, typ StoreLimitType, rate float64) error
+
 	// SetStoreLabels sets the labels for a store.
 	SetStoreLabels(ctx context.Context, storeID string, labels map[string]string) error
 	// DeleteStoreLabel deletes one label key from a store.
@@ -85,6 +88,9 @@ type PDWriter interface {
 
 // PDClient provides PD server's APIs used by TiDB Operator.
 type PDClient interface {
+	// GetStoreLimits returns per-store rates, preserving missing capability fields.
+	GetStoreLimits(ctx context.Context) (map[string]StoreLimits, error)
+
 	// GetMemberReady returns if a PD member is ready to serve.
 	// In order to call this method, the PD member's URL is required.
 	GetMemberReady(ctx context.Context, memberURL, version string) (bool, error)
