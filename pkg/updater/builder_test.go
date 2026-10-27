@@ -597,3 +597,33 @@ func TestBuilderScalesInExcessCapacity(t *testing.T) {
 	require.True(t, errors.IsNotFound(cli.Get(context.Background(), client.ObjectKeyFromObject(large), &v1alpha1.PD{})))
 	require.NoError(t, cli.Get(context.Background(), client.ObjectKeyFromObject(small), &v1alpha1.PD{}))
 }
+
+func TestBuilderPodDeletionCost(t *testing.T) {
+	cases := []struct {
+		name                   string
+		firstCost, secondCost  string
+		priority               bool
+		wantScaleIn, wantOther string
+	}{
+		{name: "cost beats creation time", firstCost: "-1", secondCost: "0", wantScaleIn: "first", wantOther: "first"},
+		{name: "all selectors use cost", firstCost: "10", secondCost: "0", wantScaleIn: "second", wantOther: "second"},
+		{name: "equal costs use existing fallback", firstCost: "1", secondCost: "1", wantScaleIn: "second", wantOther: "first"},
+		{name: "instance priority wins", firstCost: "10", secondCost: "-1", priority: true, wantScaleIn: "first", wantOther: "first"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			first, second := fakePD("first", true, true), fakePD("second", true, true)
+			first.CreationTimestamp = metav1.NewTime(time.Unix(100, 0))
+			second.CreationTimestamp = metav1.NewTime(time.Unix(200, 0))
+			if tc.priority {
+				first.Annotations = map[string]string{v1alpha1.AnnoKeyPriority: "0"}
+			}
+			cli := client.NewFakeClient(podWithDeletionCost(first, tc.firstCost), podWithDeletionCost(second, tc.secondCost))
+			act := New[runtime.PDTuple]().WithClient(cli).Build().(*executor).act.(*actor[runtime.PDTuple, *v1alpha1.PD, *runtime.PD])
+			instances := []*runtime.PD{first, second}
+			assert.Equal(t, tc.wantScaleIn, act.scaleInSelector.Choose(instances))
+			assert.Equal(t, tc.wantOther, act.updateSelector.Choose(instances))
+			assert.Equal(t, tc.wantOther, act.cancelOfflineSelector.Choose(instances))
+		})
+	}
+}

@@ -49,10 +49,16 @@ func GetPod[
 	F client.Object,
 	T runtime.Instance,
 ](ctx context.Context, c client.Client, obj F) (*corev1.Pod, error) {
+	return GetInstancePod(ctx, c, scope.From[S](obj))
+}
+
+// GetInstancePod finds the Pod controlled by an instance, including adopted Pods
+// whose names may differ from the default managed Pod name.
+func GetInstancePod(ctx context.Context, c client.Client, obj runtime.Instance) (*corev1.Pod, error) {
 	pl := corev1.PodList{}
 	if err := c.List(ctx, &pl, client.InNamespace(obj.GetNamespace()), client.MatchingLabels{
 		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-		v1alpha1.LabelKeyComponent: scope.Component[S](),
+		v1alpha1.LabelKeyComponent: obj.Component(),
 		v1alpha1.LabelKeyInstance:  obj.GetName(),
 	}); err != nil {
 		return nil, err
