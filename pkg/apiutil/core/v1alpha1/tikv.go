@@ -18,6 +18,12 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
+// TiKVRemoteCoprocessorEnabled returns whether configured remote workers route coprocessor requests remotely.
+// An absent coprocessor reference or unset Enabled defaults to true. rw must be non-nil.
+func TiKVRemoteCoprocessorEnabled(rw *v1alpha1.TiKVRemoteWorkers) bool {
+	return rw.Coprocessor == nil || rw.Coprocessor.Enabled == nil || *rw.Coprocessor.Enabled
+}
+
 func TiKVGroupClientPort(kvg *v1alpha1.TiKVGroup) int32 {
 	if kvg.Spec.Template.Spec.Server.Ports.Client != nil {
 		return kvg.Spec.Template.Spec.Server.Ports.Client.Port

@@ -127,7 +127,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, fg feat
 		}
 
 		remoteCoprocessorAddr := ""
-		if tikv.Spec.RemoteWorkers.RemoteCoprocessorEnabled() {
+		if coreutil.TiKVRemoteCoprocessorEnabled(tikv.Spec.RemoteWorkers) {
 			remoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, copr)
 		}
 		c.KVEngine.RemoteCoprocessorAddr = &remoteCoprocessorAddr

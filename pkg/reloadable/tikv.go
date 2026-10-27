@@ -22,6 +22,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 )
 
@@ -100,7 +101,7 @@ func convertTiKVTemplate(tmpl *v1alpha1.TiKVTemplate) *v1alpha1.TiKVTemplate {
 	newTmpl.Annotations = convertAnnotations(newTmpl.Annotations)
 
 	// Treat the CRD default as unset so old pod templates do not trigger a restart.
-	if rw := newTmpl.Spec.RemoteWorkers; rw != nil && rw.Coprocessor != nil && rw.RemoteCoprocessorEnabled() {
+	if rw := newTmpl.Spec.RemoteWorkers; rw != nil && rw.Coprocessor != nil && coreutil.TiKVRemoteCoprocessorEnabled(rw) {
 		rw.Coprocessor.Enabled = nil
 	}
 

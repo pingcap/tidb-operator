@@ -269,12 +269,6 @@ type TiKVRemoteWorkers struct {
 	Compactor *CompactorReference `json:"compactor,omitempty"`
 }
 
-// RemoteCoprocessorEnabled returns whether remote coprocessor routing is enabled.
-// It defaults to true when the coprocessor reference is absent or Enabled is unset.
-func (rw *TiKVRemoteWorkers) RemoteCoprocessorEnabled() bool {
-	return rw.Coprocessor == nil || rw.Coprocessor.Enabled == nil || *rw.Coprocessor.Enabled
-}
-
 type TiKVServer struct {
 	// Ports defines all ports listened by tikv
 	Ports TiKVPorts `json:"ports,omitempty"`
