@@ -14,7 +14,13 @@
 package member
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -29,6 +35,161 @@ import (
 	podinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/utils/pointer"
 )
+
+func TestTiCDCRollingMaintenance(t *testing.T) {
+	for _, initialOwner := range []int32{0, 1} {
+		t.Run(fmt.Sprintf("initial owner %d", initialOwner), func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			u, informer := newTiCDCUpgrader()
+			cdc := u.(*ticdcUpgrader).deps.CDCControl.(*controller.FakeTiCDCControl)
+			tc := newTidbClusterForTiCDCUpgrader()
+			version := ticdcCrossUpgradeVersion
+			tc.Spec.TiCDC.Version = &version
+			pods := getTiCDCPods()
+			pods[1].Labels[apps.ControllerRevisionHashLabelKey] = "1"
+			for _, pod := range pods {
+				g.Expect(informer.Informer().GetIndexer().Add(pod)).To(Succeed())
+			}
+			oldSet := newStatefulSetForTiCDCUpgrader()
+			mngerutils.SetUpgradePartition(oldSet, 2)
+			mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			owner := initialOwner
+			var events []string
+			cdc.GetStatusFn = func(_ *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+				return &controller.CaptureStatus{Version: version}, nil
+			}
+			cdc.ResignOwnerFn = func(_ *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+				events = append(events, fmt.Sprintf("resign %d", ordinal))
+				if owner == ordinal {
+					owner = 1 - ordinal
+					return false, nil
+				}
+				return true, nil
+			}
+			cdc.DrainCaptureFn = func(_ *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
+				events = append(events, fmt.Sprintf("drain %d", ordinal))
+				g.Expect(owner).NotTo(Equal(ordinal))
+				return 0, false, nil
+			}
+			run := func(wantPartition int32, wantError bool) {
+				newSet := oldSet.DeepCopy()
+				err := u.Upgrade(tc, oldSet, newSet)
+				g.Expect(err != nil).To(Equal(wantError))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(wantPartition))
+				oldSet = newSet
+			}
+			if initialOwner == 1 {
+				run(2, true)
+			}
+			run(1, false)
+			g.Expect(events).NotTo(ContainElement("resign 0"))
+			g.Expect(events).To(ContainElement("drain 1"))
+			// The replacement Pod is running, but its capture status is not ready yet.
+			pods[1].Labels[apps.ControllerRevisionHashLabelKey] = "2"
+			g.Expect(informer.Informer().GetIndexer().Update(pods[1])).To(Succeed())
+			capture := tc.Status.TiCDC.Captures["upgrader-ticdc-1"]
+			capture.Ready = false
+			tc.Status.TiCDC.Captures["upgrader-ticdc-1"] = capture
+			events = nil
+			run(1, true)
+			g.Expect(events).To(BeEmpty())
+			capture.Ready, capture.ID = true, ""
+			tc.Status.TiCDC.Captures["upgrader-ticdc-1"] = capture
+			run(1, true)
+			g.Expect(events).To(BeEmpty())
+			capture.ID = "new-a"
+			tc.Status.TiCDC.Captures["upgrader-ticdc-1"] = capture
+			run(1, true) // b resigns; wait for the next reconciliation.
+			run(0, false)
+			g.Expect(events).To(Equal([]string{"resign 0", "resign 0", "drain 0"}))
+		})
+	}
+}
+
+type ticdcMaintenanceTransport func(*http.Request) (*http.Response, error)
+
+func (f ticdcMaintenanceTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestTiCDCUpgradeCaptureQueryFailure(t *testing.T) {
+	// Both ResignOwner and DrainCapture query captures before acting.
+	for _, failedQuery := range []int{1, 2} {
+		t.Run(fmt.Sprintf("captures query %d", failedQuery), func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			u, informer := newTiCDCUpgrader()
+			u.(*ticdcUpgrader).deps.CDCControl = controller.NewDefaultTiCDCControl(nil)
+			tc := newTidbClusterForTiCDCUpgrader()
+			version := ticdcCrossUpgradeVersion
+			tc.Spec.TiCDC.Version = &version
+			for _, pod := range getTiCDCPods() {
+				g.Expect(informer.Informer().GetIndexer().Add(pod)).To(Succeed())
+			}
+			oldSet := newStatefulSetForTiCDCUpgrader()
+			mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			owner := "upgrader-ticdc-1.upgrader-ticdc-peer.default"
+			original := http.DefaultTransport
+			t.Cleanup(func() { http.DefaultTransport = original })
+			queries, drains := 0, 0
+			fail := true
+			http.DefaultTransport = ticdcMaintenanceTransport(func(r *http.Request) (*http.Response, error) {
+				code, body := http.StatusOK, ""
+				switch r.URL.Path {
+				case "/status":
+					body = fmt.Sprintf(`{"id":%q,"version":%q,"is_owner":%t}`, r.URL.Hostname(), version, r.URL.Hostname() == owner)
+				case "/api/v1/captures":
+					g.Expect(r.URL.Hostname()).To(Equal(owner))
+					queries++
+					if fail && queries == failedQuery {
+						code, body = http.StatusInternalServerError, `{"error":"owner unavailable"}`
+					} else {
+						body = `[{"id":"a","address":"upgrader-ticdc-1.upgrader-ticdc-peer.default:8301","is_owner":true},{"id":"b","address":"upgrader-ticdc-0.upgrader-ticdc-peer.default:8301","is_owner":false}]`
+					}
+				case "/api/v1/captures/drain":
+					g.Expect(r.URL.Hostname()).To(Equal(owner))
+					var payload struct {
+						CaptureID string `json:"capture_id"`
+					}
+					g.Expect(json.NewDecoder(r.Body).Decode(&payload)).To(Succeed())
+					g.Expect(payload.CaptureID).To(Equal("b"))
+					drains++
+					body = `{"current_table_count":0}`
+				default:
+					t.Fatalf("unexpected maintenance request: %s", r.URL)
+				}
+				return &http.Response{StatusCode: code, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+			})
+			newSet := oldSet.DeepCopy()
+			err := u.Upgrade(tc, oldSet, newSet)
+			g.Expect(err).To(HaveOccurred())
+			g.Expect(err.Error()).To(ContainSubstring("500"))
+			g.Expect(queries).To(Equal(failedQuery))
+			g.Expect(drains).To(BeZero())
+			g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+
+			fail = false
+			g.Expect(u.Upgrade(tc, oldSet, newSet)).To(Succeed())
+			g.Expect(drains).To(Equal(1))
+			g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
+		})
+	}
+}
+
+func TestTiCDCUpgradeMaintenanceTimeout(t *testing.T) {
+	g := NewGomegaWithT(t)
+	u, informer := newTiCDCUpgrader()
+	tc := newTidbClusterForTiCDCUpgrader()
+	pods := getTiCDCPods()
+	pods[0].Annotations = map[string]string{label.AnnTiCDCGracefulShutdownBeginTime: time.Now().Add(-2 * tc.TiCDCGracefulShutdownTimeout()).Format(time.RFC3339)}
+	for _, pod := range pods {
+		g.Expect(informer.Informer().GetIndexer().Add(pod)).To(Succeed())
+	}
+	oldSet := newStatefulSetForTiCDCUpgrader()
+	mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+	newSet := oldSet.DeepCopy()
+	g.Expect(u.Upgrade(tc, oldSet, newSet)).To(Succeed())
+	g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
+}
 
 func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -145,8 +306,8 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			},
 		},
 		{
-			name:        "graceful upgrade retry is healthy",
-			errorExpect: true,
+			name:        "drained pod upgrades without resigning next owner",
+			errorExpect: false,
 			changePods: func(pods []*corev1.Pod) {
 				for i := range pods {
 					// Set all pods to the old revision.
@@ -183,14 +344,10 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				cdcControl.DrainCaptureFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
 					return 0, false, nil
 				}
-				// isHealthy returns false to let graceful shutdown retry.
-				cdcControl.IsHealthyFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
-					return false, nil
-				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 		{
@@ -209,10 +366,6 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				// drainCapture always success.
 				cdcControl.DrainCaptureFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
 					return 0, false, nil
-				}
-				// isHealthy returns false to let graceful shutdown retry.
-				cdcControl.IsHealthyFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
-					return false, nil
 				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -510,9 +663,13 @@ func newTidbClusterForTiCDCUpgrader() *v1alpha1.TidbCluster {
 				Captures: map[string]v1alpha1.TiCDCCapture{
 					"upgrader-ticdc-0": {
 						PodName: "upgrader-ticdc-0",
+						ID:      "b",
+						Ready:   true,
 					},
 					"upgrader-ticdc-1": {
 						PodName: "upgrader-ticdc-1",
+						ID:      "a",
+						Ready:   true,
 					},
 				},
 			},
