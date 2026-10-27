@@ -99,6 +99,11 @@ func convertTiKVTemplate(tmpl *v1alpha1.TiKVTemplate) *v1alpha1.TiKVTemplate {
 	newTmpl.Labels = convertLabels(newTmpl.Labels)
 	newTmpl.Annotations = convertAnnotations(newTmpl.Annotations)
 
+	// Treat the CRD default as unset so old pod templates do not trigger a restart.
+	if rw := newTmpl.Spec.RemoteWorkers; rw != nil && rw.Coprocessor != nil && rw.RemoteCoprocessorEnabled() {
+		rw.Coprocessor.Enabled = nil
+	}
+
 	if newTmpl.Spec.PreStop != nil {
 		newTmpl.Spec.PreStop.Image = nil
 	}
