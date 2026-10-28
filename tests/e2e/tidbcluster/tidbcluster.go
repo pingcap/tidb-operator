@@ -2443,8 +2443,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 					ginkgo.By(fmt.Sprintf("Scale %s TiKV while in %q phase", op, v1alpha1.UpgradePhase))
 					// A scale out finishes in a single sync, so ScalePhase may last only
-					// until the next sync: watch for it before applying the change.
-					waitScalePhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, time.Minute)
+					// until the next sync: watch for it before applying the change. The
+					// timeout also covers the update below.
+					waitScalePhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, 2*time.Minute)
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						tc.Spec.TiKV.Replicas = expectedReplicas
 						return nil
