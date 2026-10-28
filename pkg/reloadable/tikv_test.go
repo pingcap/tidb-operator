@@ -147,7 +147,7 @@ func TestCheckTiKVPodMinReadyForLeaderSecondsIsReloadable(t *testing.T) {
 	assert.True(t, CheckTiKVPod(currentInstance, pod))
 }
 
-func TestCheckTiKVRemoteCoprocessorToggleIsNotReloadable(t *testing.T) {
+func TestCheckTiKVRemoteCoprocessorChanges(t *testing.T) {
 	var (
 		enabled  = true
 		disabled = false
@@ -166,11 +166,14 @@ func TestCheckTiKVRemoteCoprocessorToggleIsNotReloadable(t *testing.T) {
 	for name, tc := range map[string]struct {
 		oldEnabled *bool
 		newEnabled *bool
+		reloadable bool
 	}{
-		"enabled to disabled": {&enabled, &disabled},
-		"disabled to enabled": {&disabled, &enabled},
-		"unset to disabled":   {nil, &disabled},
-		"disabled to unset":   {&disabled, nil},
+		"unset to enabled":    {nil, &enabled, true},
+		"enabled to unset":    {&enabled, nil, true},
+		"enabled to disabled": {&enabled, &disabled, false},
+		"disabled to enabled": {&disabled, &enabled, false},
+		"unset to disabled":   {nil, &disabled, false},
+		"disabled to unset":   {&disabled, nil, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			lastInstance := &v1alpha1.TiKV{
@@ -191,13 +194,13 @@ func TestCheckTiKVRemoteCoprocessorToggleIsNotReloadable(t *testing.T) {
 					},
 				},
 			}
-			assert.False(t, CheckTiKV(group, lastInstance))
+			assert.Equal(t, tc.reloadable, CheckTiKV(group, lastInstance))
 
 			pod := &corev1.Pod{}
 			require.NoError(t, EncodeLastTiKVTemplate(lastInstance, pod))
 			currentInstance := lastInstance.DeepCopy()
 			currentInstance.Spec.RemoteWorkers.Coprocessor.Enabled = tc.newEnabled
-			assert.False(t, CheckTiKVPod(currentInstance, pod))
+			assert.Equal(t, tc.reloadable, CheckTiKVPod(currentInstance, pod))
 		})
 	}
 }
