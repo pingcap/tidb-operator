@@ -2442,6 +2442,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
 
 					ginkgo.By(fmt.Sprintf("Scale %s TiKV while in %q phase", op, v1alpha1.UpgradePhase))
+					// A scale out finishes in a single sync, so ScalePhase may last only
+					// until the next sync: watch for it before applying the change.
+					waitScalePhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, time.Minute)
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						tc.Spec.TiKV.Replicas = expectedReplicas
 						return nil
@@ -2449,7 +2452,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to scale %s TiKV", op)
 
 					ginkgo.By("Wait for TiKV to be in ScalePhase")
-					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScalePhase()
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
