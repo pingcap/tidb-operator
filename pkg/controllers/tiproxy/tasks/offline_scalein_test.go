@@ -551,3 +551,76 @@ func TestTaskDeleteOfflinedTiProxyRetriesOnConflict(t *testing.T) {
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual))
 	assert.True(t, actual.GetDeletionTimestamp().IsZero())
 }
+
+func TestTaskOfflineScaleInDrainIgnoresDelayForAnnotatedHPAScaleIn(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusBadGateway, http.StatusOK)
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(server.port(t))
+	tiproxy.Spec.Offline = ptr.To(true)
+	tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = "60"
+	tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+	pod := fakePod(cluster, tiproxy)
+	pod.Annotations = map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-2 * time.Minute).Format(time.RFC3339Nano),
+	}
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := &ReconcileContext{
+		State: s,
+		TiProxyClient: tiproxyapi.NewTiProxyClient(
+			fmt.Sprintf("127.0.0.1:%d", server.port(t)),
+			tiproxyRequestTimeout,
+			nil,
+		),
+	}
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := task.RunTask(ctx, TaskOfflineScaleInDrain(rc, fc))
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+
+	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
+	assert.NoError(t, err)
+}
+
+func TestTaskClearHPAScaleInAnnotation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cluster := localTestCluster()
+
+	t.Run("clears annotation after the instance is back online", func(t *testing.T) {
+		t.Parallel()
+
+		tiproxy := revivableTiProxyWithAPI(1)
+		tiproxy.Spec.Offline = ptr.To(false)
+		tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+		fc := client.NewFakeClient(tiproxy)
+		res, done := task.RunTask(ctx, TaskClearHPAScaleInAnnotation(&state{cluster: cluster, tiproxy: tiproxy}, fc))
+
+		require.False(t, done)
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.Empty(t, tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn])
+
+		actual := &v1alpha1.TiProxy{}
+		require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(tiproxy), actual))
+		assert.Empty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn])
+	})
+
+	t.Run("keeps annotation while the instance stays offline", func(t *testing.T) {
+		t.Parallel()
+
+		tiproxy := revivableTiProxyWithAPI(1)
+		tiproxy.Spec.Offline = ptr.To(true)
+		tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+		fc := client.NewFakeClient(tiproxy)
+		res, done := task.RunTask(ctx, TaskClearHPAScaleInAnnotation(&state{cluster: cluster, tiproxy: tiproxy}, fc))
+
+		require.False(t, done)
+		assert.Equal(t, task.SComplete.String(), res.Status().String())
+		assert.Equal(t, v1alpha1.AnnoValTrue, tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn])
+	})
+}

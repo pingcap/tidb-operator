@@ -207,6 +207,10 @@ const (
 	// after it has been marked unhealthy during graceful shutdown.
 	AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds = AnnoKeyPrefix + "tiproxy-graceful-shutdown-delete-delay-seconds"
 
+	// AnnoKeyTiProxyHPAScaleIn is set when this TiProxy is taken offline by an HPA scale-in.
+	// Graceful shutdown then waits until connections drain instead of the configured delete delay.
+	AnnoKeyTiProxyHPAScaleIn = AnnoKeyPrefix + "tiproxy-hpa-scale-in"
+
 	// TiProxy revive was abandoned because health override API is unsupported.
 	// Instances carrying this annotation must not be selected by cancelOffline again.
 	AnnoKeyTiProxyReviveAbandoned = AnnoKeyPrefix + "tiproxy-revive-abandoned"

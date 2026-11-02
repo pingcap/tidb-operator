@@ -101,18 +101,24 @@ func drainPodForGracefulShutdown(
 		return task.DefaultRequeueAfter, nil
 	}
 
+	waitForConnections := annotatedHPAScaleIn(tiproxy)
 	seconds, ok, err := gracefulShutdownDeleteDelaySeconds(tiproxy)
 	if err != nil {
 		return 0, err
 	}
-	if !ok || seconds <= 0 {
+	if waitForConnections {
+		logger.Info("HPA scale-in waits for connections instead of the configured graceful shutdown delay",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+		)
+	} else if !ok || seconds <= 0 {
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
 	// Persist begin-time before MarkUnhealthy so a scale-out after the external
 	// side effect (or during MarkUnhealthy retries) can still revive via this signal.
-	startAt, ok := gracefulShutdownBeginTime(pod)
-	if !ok {
+	startAt, hasBegin := gracefulShutdownBeginTime(pod)
+	if !hasBegin {
 		startAt = time.Now()
 		if err := markGracefulShutdownBeginTime(ctx, c, pod, startAt); err != nil {
 			return 0, err
@@ -121,6 +127,13 @@ func drainPodForGracefulShutdown(
 
 	// Keep calling MarkUnhealthy even after begin-time is written.
 	if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, tpClient) {
+		return task.DefaultRequeueAfter, nil
+	}
+
+	if waitForConnections {
+		if tiProxyConnectionsDrained(ctx, state, c, logger, tpClient) {
+			return deleteTiProxyPod(ctx, c, pod)
+		}
 		return task.DefaultRequeueAfter, nil
 	}
 
@@ -138,6 +151,50 @@ func drainPodForGracefulShutdown(
 	}
 
 	return remaining, nil
+}
+
+func annotatedHPAScaleIn(tiproxy *v1alpha1.TiProxy) bool {
+	if tiproxy == nil || !tiproxy.GetDeletionTimestamp().IsZero() {
+		return false
+	}
+	return tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] == v1alpha1.AnnoValTrue
+}
+
+func TaskClearHPAScaleInAnnotation(state State, c client.Client) task.Task {
+	return task.NameTaskFunc("ClearHPAScaleInAnnotation", func(ctx context.Context) task.Result {
+		tiproxy := state.Object()
+		if tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] != v1alpha1.AnnoValTrue {
+			return task.Complete().With("tiproxy is not marked as an HPA scale-in")
+		}
+		if coreutil.IsOffline[scope.TiProxy](tiproxy) && tiproxy.GetDeletionTimestamp().IsZero() {
+			return task.Complete().With("tiproxy HPA scale-in annotation stays until it is back online")
+		}
+
+		if err := clearHPAScaleInAnnotation(ctx, c, tiproxy); err != nil {
+			if apierrors.IsConflict(err) {
+				return task.Retry(task.DefaultRequeueAfter).With("tiproxy changed before clearing HPA scale-in annotation, retry")
+			}
+			return task.Fail().With("cannot clear tiproxy HPA scale-in annotation: %v", err)
+		}
+		delete(tiproxy.Annotations, v1alpha1.AnnoKeyTiProxyHPAScaleIn)
+		return task.Complete().With("cleared tiproxy HPA scale-in annotation")
+	})
+}
+
+func clearHPAScaleInAnnotation(ctx context.Context, c client.Client, tiproxy *v1alpha1.TiProxy) error {
+	p := map[string]any{
+		"metadata": map[string]any{
+			"resourceVersion": tiproxy.ResourceVersion,
+			"annotations": map[string]any{
+				v1alpha1.AnnoKeyTiProxyHPAScaleIn: nil,
+			},
+		},
+	}
+	data, err := json.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("invalid HPA scale-in annotation patch: %w", err)
+	}
+	return c.Patch(ctx, tiproxy, client.RawPatch(types.MergePatchType, data))
 }
 
 func gracefulShutdownDeleteDelaySeconds(tiproxy *v1alpha1.TiProxy) (seconds int32, ok bool, err error) {
