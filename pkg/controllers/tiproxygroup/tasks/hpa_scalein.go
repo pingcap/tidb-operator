@@ -37,7 +37,12 @@ type hpaScaleInAnnotatingClient struct {
 	hpa bool
 }
 
-func (c *hpaScaleInAnnotatingClient) Patch(ctx context.Context, obj ctrlclient.Object, patch ctrlclient.Patch, opts ...ctrlclient.PatchOption) error {
+func (c *hpaScaleInAnnotatingClient) Patch(
+	ctx context.Context,
+	obj ctrlclient.Object,
+	patch ctrlclient.Patch,
+	opts ...ctrlclient.PatchOption,
+) error {
 	next, changed, err := withHPAScaleInAnnotation(ctx, patch, obj, c.hpa)
 	if err != nil {
 		return err
@@ -51,7 +56,12 @@ func (c *hpaScaleInAnnotatingClient) Patch(ctx context.Context, obj ctrlclient.O
 	return c.Client.Patch(ctx, obj, next, opts...)
 }
 
-func withHPAScaleInAnnotation(ctx context.Context, patch ctrlclient.Patch, obj ctrlclient.Object, hpa bool) (ctrlclient.Patch, bool, error) {
+func withHPAScaleInAnnotation(
+	ctx context.Context,
+	patch ctrlclient.Patch,
+	obj ctrlclient.Object,
+	hpa bool,
+) (ctrlclient.Patch, bool, error) {
 	if _, ok := obj.(*v1alpha1.TiProxy); !ok {
 		return patch, false, nil
 	}

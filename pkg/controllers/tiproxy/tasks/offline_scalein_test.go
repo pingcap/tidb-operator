@@ -586,6 +586,37 @@ func TestTaskOfflineScaleInDrainIgnoresDelayForAnnotatedHPAScaleIn(t *testing.T)
 	assert.NoError(t, err)
 }
 
+func TestTaskOfflineScaleInDrainDeletesAnnotatedHPAScaleInWithZeroConnections(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusBadGateway, http.StatusOK)
+	server.setConnectionCount(0)
+	cluster := localTestCluster()
+	tiproxy := revivableTiProxyWithAPI(server.port(t))
+	tiproxy.Spec.Offline = ptr.To(true)
+	tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+	pod := fakePod(cluster, tiproxy)
+
+	s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+	rc := &ReconcileContext{
+		State: s,
+		TiProxyClient: tiproxyapi.NewTiProxyClient(
+			fmt.Sprintf("127.0.0.1:%d", server.port(t)),
+			tiproxyRequestTimeout,
+			nil,
+		),
+	}
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := task.RunTask(ctx, TaskOfflineScaleInDrain(rc, fc))
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+
+	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
+	assert.True(t, apierrors.IsNotFound(err))
+}
+
 func TestTaskClearHPAScaleInAnnotation(t *testing.T) {
 	t.Parallel()
 
