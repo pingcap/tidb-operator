@@ -157,6 +157,24 @@ func drainPodForGracefulShutdown(
 		return task.DefaultRequeueAfter, nil
 	}
 
+	return deleteAfterGracefulDelay(ctx, c, state, logger, tpClient, tiproxy, pod, startAt, seconds, ok)
+}
+
+// deleteAfterGracefulDelay deletes once the configured delay elapses, or earlier
+// when the instance has no SQL connections. A missing or non-positive delay
+// deletes immediately.
+func deleteAfterGracefulDelay(
+	ctx context.Context,
+	c client.Client,
+	state State,
+	logger logr.Logger,
+	tpClient tiproxyapi.TiProxyClient,
+	tiproxy *v1alpha1.TiProxy,
+	pod *corev1.Pod,
+	startAt time.Time,
+	seconds int32,
+	ok bool,
+) (time.Duration, error) {
 	if !ok || seconds <= 0 {
 		return deleteTiProxyPod(ctx, c, pod)
 	}

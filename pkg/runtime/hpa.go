@@ -36,28 +36,27 @@ func TiProxyGroupReplicasManagedByHPA(proxyg *v1alpha1.TiProxyGroup) bool {
 	if proxyg == nil {
 		return false
 	}
-	var latest metav1.ManagedFieldsEntry
-	var found bool
-	for _, entry := range proxyg.ManagedFields {
+	var latest *metav1.ManagedFieldsEntry
+	for i := range proxyg.ManagedFields {
+		entry := &proxyg.ManagedFields[i]
 		if !managedFieldsOwnReplicas(entry) {
 			continue
 		}
-		if !found || managedFieldTime(entry).After(managedFieldTime(latest)) {
+		if latest == nil || managedFieldTime(entry).After(managedFieldTime(latest)) {
 			latest = entry
-			found = true
 		}
 	}
-	return found && latest.Manager == HPAFieldManager && latest.Subresource == "scale"
+	return latest != nil && latest.Manager == HPAFieldManager && latest.Subresource == "scale"
 }
 
-func managedFieldTime(entry metav1.ManagedFieldsEntry) time.Time {
+func managedFieldTime(entry *metav1.ManagedFieldsEntry) time.Time {
 	if entry.Time == nil {
 		return time.Time{}
 	}
 	return entry.Time.Time
 }
 
-func managedFieldsOwnReplicas(entry metav1.ManagedFieldsEntry) bool {
+func managedFieldsOwnReplicas(entry *metav1.ManagedFieldsEntry) bool {
 	if entry.FieldsV1 == nil {
 		return false
 	}
