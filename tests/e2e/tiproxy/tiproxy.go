@@ -283,32 +283,6 @@ func tiproxyPodByOwnerName(pods []corev1.Pod) map[string]*corev1.Pod {
 	return byOwner
 }
 
-// tiproxyGroupReplicasManagedByHPA reports the live managedFields shape written
-// when the in-tree HPA controller scales a TiProxyGroup. The controller's
-// User-Agent is recorded as kube-controller-manager on subresource scale.
-func tiproxyGroupReplicasManagedByHPA(group *v1alpha1.TiProxyGroup) bool {
-	for _, entry := range group.ManagedFields {
-		if entry.Manager != "kube-controller-manager" ||
-			entry.Operation != metav1.ManagedFieldsOperationUpdate ||
-			entry.Subresource != "scale" ||
-			entry.FieldsV1 == nil {
-			continue
-		}
-		var fields map[string]any
-		if err := json.Unmarshal(entry.FieldsV1.Raw, &fields); err != nil {
-			continue
-		}
-		spec, ok := fields["f:spec"].(map[string]any)
-		if !ok {
-			continue
-		}
-		if _, ok := spec["f:replicas"]; ok {
-			return true
-		}
-	}
-	return false
-}
-
 func managedFieldSummary(group *v1alpha1.TiProxyGroup) string {
 	parts := make([]string, 0, len(group.ManagedFields))
 	for _, entry := range group.ManagedFields {
@@ -882,7 +856,7 @@ location-labels = ["region", "zone", "host"]`
 				if group.Spec.Replicas == nil || *group.Spec.Replicas != scaledInReplicas {
 					return fmt.Errorf("spec.replicas = %v, want %d", group.Spec.Replicas, scaledInReplicas)
 				}
-				if !tiproxyGroupReplicasManagedByHPA(group) {
+				if !runtime.TiProxyGroupReplicasManagedByHPA(group) {
 					return fmt.Errorf("scale subresource is not managed by kube-controller-manager: %s", managedFieldSummary(group))
 				}
 

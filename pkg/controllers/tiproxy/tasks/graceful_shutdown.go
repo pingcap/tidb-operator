@@ -40,9 +40,11 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-// hpaScaleInConnectionCheckLimit bounds an HPA scale-in when the connection
-// count cannot be read. A successfully observed non-zero count is not bounded.
-const hpaScaleInConnectionCheckLimit = 24 * time.Hour
+// hpaScaleInLimit is the longest an HPA scale-in waits, measured from the
+// graceful-shutdown begin time. A zero connection count still deletes the pod
+// earlier. When the limit elapses the pod is deleted whether or not the count
+// could be read.
+const hpaScaleInLimit = 365 * 24 * time.Hour
 
 type reviveAbandonPatch struct {
 	Metadata reviveAbandonMetadata `json:"metadata"`
@@ -124,45 +126,35 @@ func drainPodForGracefulShutdown(
 		}
 	}
 
+	// One limit for an HPA scale-in: a drained count deletes earlier, and a
+	// positive count or an unreadable check both wait until this deadline.
+	if waitForConnections && time.Until(startAt.Add(hpaScaleInLimit)) <= 0 {
+		return deleteHPAScaleInAtLimit(ctx, c, logger, pod, tiproxy)
+	}
+
 	// Keep calling MarkUnhealthy even after begin-time is written.
 	proceed, overrideUnsupported := ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, tpClient)
-	if !proceed {
-		return task.DefaultRequeueAfter, nil
-	}
 	// 404/405 leave the instance healthy, so new connections keep arriving and
 	// waiting for the count to reach zero would not finish. Use the delete delay.
 	if overrideUnsupported {
 		waitForConnections = false
 	}
-
 	if waitForConnections {
-		logger.Info("HPA scale-in waits for connections instead of the configured graceful shutdown delay",
+		if !proceed {
+			return hpaScaleInRequeue(startAt), nil
+		}
+		logger.V(1).Info("HPA scale-in waits for connections instead of the configured graceful shutdown delay",
 			"namespace", tiproxy.Namespace,
 			"name", tiproxy.Name,
 		)
-		drained, connErr := tiProxyConnectionsDrained(ctx, state, c, logger, tpClient)
+		drained, _ := tiProxyConnectionsDrained(ctx, state, c, logger, tpClient)
 		if drained {
 			return deleteTiProxyPod(ctx, c, pod)
 		}
-		// A positive count waits without a deadline. Failures to read the count
-		// (metrics, missing series, client) are bounded so a stuck check cannot
-		// leave the pod and the HPA scale-in hanging.
-		if connErr == nil {
-			return task.DefaultRequeueAfter, nil
-		}
-		remaining := time.Until(startAt.Add(hpaScaleInConnectionCheckLimit))
-		if remaining <= 0 {
-			logger.Info("HPA scale-in could not read the connection count within 24h, delete pod",
-				"namespace", tiproxy.Namespace,
-				"name", tiproxy.Name,
-				"error", connErr,
-			)
-			return deleteTiProxyPod(ctx, c, pod)
-		}
-		if remaining > task.DefaultRequeueAfter {
-			remaining = task.DefaultRequeueAfter
-		}
-		return remaining, nil
+		return hpaScaleInRequeue(startAt), nil
+	}
+	if !proceed {
+		return task.DefaultRequeueAfter, nil
 	}
 
 	if !ok || seconds <= 0 {
@@ -187,12 +179,34 @@ func drainPodForGracefulShutdown(
 }
 
 func annotatedHPAScaleIn(tiproxy *v1alpha1.TiProxy) bool {
-	// An explicit delete uses the configured delay. The HPA connection wait has
-	// no deadline, so it must not continue after the object is deleted.
+	// An explicit delete uses the configured delay. The one-year HPA limit must
+	// not replace that delay after the object is deleted.
 	if tiproxy == nil || !tiproxy.GetDeletionTimestamp().IsZero() {
 		return false
 	}
 	return tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] == v1alpha1.AnnoValTrue
+}
+
+func deleteHPAScaleInAtLimit(
+	ctx context.Context,
+	c client.Client,
+	logger logr.Logger,
+	pod *corev1.Pod,
+	tiproxy *v1alpha1.TiProxy,
+) (time.Duration, error) {
+	logger.Info("HPA scale-in reached the 1y limit, delete pod",
+		"namespace", tiproxy.Namespace,
+		"name", tiproxy.Name,
+	)
+	return deleteTiProxyPod(ctx, c, pod)
+}
+
+func hpaScaleInRequeue(startAt time.Time) time.Duration {
+	remaining := time.Until(startAt.Add(hpaScaleInLimit))
+	if remaining <= 0 || remaining > task.DefaultRequeueAfter {
+		return task.DefaultRequeueAfter
+	}
+	return remaining
 }
 
 // hpaDeleteDelayStart is the start of the configured delete delay.
@@ -206,7 +220,9 @@ func hpaDeleteDelayStart(tiproxy *v1alpha1.TiProxy, begin time.Time, delay time.
 		return begin
 	}
 	deletedAt := tiproxy.GetDeletionTimestamp().Time
-	if !begin.Before(deletedAt) || begin.Add(delay).After(deletedAt) {
+	// delay is positive here. A begin time at or after deletion is still inside
+	// the window, so the comparison does not need a separate begin check.
+	if begin.Add(delay).After(deletedAt) {
 		return begin
 	}
 	return deletedAt
@@ -345,9 +361,9 @@ func tiProxyConnectionsDrained(
 }
 
 // ensureTiProxyMarkedUnhealthy reports whether shutdown may proceed.
-// overrideUnsupported is set when MarkUnhealthy returns 404 or 405. The instance
-// is still healthy then, so a caller waiting only for connections must use the
-// delete delay instead.
+// overrideUnsupported is set when GET or PUT /api/debug/health returns 404 or 405.
+// The instance is still healthy then, so a caller waiting only for connections
+// must use the delete delay instead.
 func ensureTiProxyMarkedUnhealthy(
 	ctx context.Context,
 	state State,
@@ -370,6 +386,18 @@ func ensureTiProxyMarkedUnhealthy(
 
 	healthy, err := apiClient.IsHealthy(ctx)
 	if err != nil {
+		// GET 404/405 is the same missing API as PUT 404/405. Treating it as
+		// "already unhealthy" would wait for connections on an instance that
+		// is still accepting them.
+		if isHealthOverrideUnsupported(err) {
+			logger.Info(
+				"health override API unsupported, skip MarkUnhealthy and continue delete delay",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"error", err,
+			)
+			return true, true
+		}
 		logger.Info(
 			"failed to query TiProxy health before graceful delete retry, continue retrying",
 			"namespace", tiproxy.Namespace,

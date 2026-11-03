@@ -17,16 +17,14 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
-
-const hpaFieldManager = "kube-controller-manager"
 
 // hpaScaleInAnnotatingClient writes the HPA scale-in annotation on the same patch
 // that marks a TiProxy offline. A non-HPA offline patch clears it, so a stale
@@ -43,7 +41,7 @@ func (c *hpaScaleInAnnotatingClient) Patch(
 	patch ctrlclient.Patch,
 	opts ...ctrlclient.PatchOption,
 ) error {
-	next, changed, err := withHPAScaleInAnnotation(ctx, patch, obj, c.hpa)
+	next, changed, err := withHPAScaleInAnnotation(patch, obj, c.hpa)
 	if err != nil {
 		return err
 	}
@@ -57,7 +55,6 @@ func (c *hpaScaleInAnnotatingClient) Patch(
 }
 
 func withHPAScaleInAnnotation(
-	ctx context.Context,
 	patch ctrlclient.Patch,
 	obj ctrlclient.Object,
 	hpa bool,
@@ -72,12 +69,7 @@ func withHPAScaleInAnnotation(
 
 	var body map[string]any
 	if err := json.Unmarshal(data, &body); err != nil {
-		logr.FromContextOrDiscard(ctx).Info("skip HPA scale-in annotation because the patch is not a JSON object",
-			"namespace", obj.GetNamespace(),
-			"name", obj.GetName(),
-			"error", err,
-		)
-		return patch, false, nil
+		return nil, false, fmt.Errorf("tiproxy offline patch is not a JSON object: %w", err)
 	}
 	spec, ok := body["spec"].(map[string]any)
 	if !ok || spec["offline"] != true {
@@ -105,32 +97,4 @@ func withHPAScaleInAnnotation(
 		return nil, false, err
 	}
 	return client.RawPatch(patch.Type(), out), true, nil
-}
-
-// replicasFieldManagedByHPA reports whether kube-controller-manager owns
-// spec.replicas on the scale subresource. The in-tree HPA controller is the
-// only writer of this CR's scale subresource, and its User-Agent is recorded
-// as kube-controller-manager.
-func replicasFieldManagedByHPA(proxyg *v1alpha1.TiProxyGroup) bool {
-	for _, entry := range proxyg.ManagedFields {
-		if entry.Manager != hpaFieldManager ||
-			entry.Operation != metav1.ManagedFieldsOperationUpdate ||
-			entry.Subresource != "scale" ||
-			entry.FieldsV1 == nil {
-			continue
-		}
-
-		var fields map[string]any
-		if err := json.Unmarshal(entry.FieldsV1.Raw, &fields); err != nil {
-			continue
-		}
-		spec, ok := fields["f:spec"].(map[string]any)
-		if !ok {
-			continue
-		}
-		if _, ok := spec["f:replicas"]; ok {
-			return true
-		}
-	}
-	return false
 }

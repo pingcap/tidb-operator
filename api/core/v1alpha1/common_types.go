@@ -209,11 +209,11 @@ const (
 
 	// AnnoKeyTiProxyHPAScaleIn is set when this TiProxy is taken offline by an HPA scale-in.
 	// Graceful shutdown then waits until connections drain instead of the configured delete delay.
-	// A positive connection count is not time-bounded. If the count cannot be read, the wait
-	// is bounded by 24h from the graceful shutdown begin time. When the health override API
-	// is unsupported, shutdown uses the delete delay instead: the instance stays healthy and
-	// would keep accepting connections. Deleting the object also uses the delete delay.
-	// If the connection wait has already outlasted that delay, it is measured from the
+	// The wait ends after one year from the graceful-shutdown begin time, whether or not the
+	// connection count could be read and whether or not it is zero.
+	// GET or PUT 404/405 on the health override API uses the delete delay instead: the instance
+	// stays healthy and would keep accepting connections. Deleting the object also uses the delete
+	// delay. If the connection wait has already outlasted that delay, it is measured from the
 	// deletion time so the remaining connections are not dropped immediately.
 	AnnoKeyTiProxyHPAScaleIn = AnnoKeyPrefix + "tiproxy-hpa-scale-in"
 

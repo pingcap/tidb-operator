@@ -27,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	stateutil "github.com/pingcap/tidb-operator/v2/pkg/state"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
@@ -37,11 +38,10 @@ import (
 func TestWithHPAScaleInAnnotation(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
 	tiproxy := &v1alpha1.TiProxy{ObjectMeta: metav1.ObjectMeta{Name: "tiproxy-a", Namespace: "ns"}}
 	original := client.RawPatch(types.MergePatchType, []byte(`{"metadata":{"resourceVersion":"1","annotations":{"core.pingcap.com/defer-delete":null}},"spec":{"offline":true}}`))
 
-	next, changed, err := withHPAScaleInAnnotation(ctx, original, tiproxy, true)
+	next, changed, err := withHPAScaleInAnnotation(original, tiproxy, true)
 	require.NoError(t, err)
 	assert.True(t, changed)
 
@@ -57,7 +57,7 @@ func TestWithHPAScaleInAnnotation(t *testing.T) {
 	assert.Equal(t, v1alpha1.AnnoValTrue, annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn])
 	assert.Nil(t, annotations[v1alpha1.AnnoKeyDeferDelete])
 
-	cleared, changed, err := withHPAScaleInAnnotation(ctx, original, tiproxy, false)
+	cleared, changed, err := withHPAScaleInAnnotation(original, tiproxy, false)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	data, err = cleared.Data(tiproxy)
@@ -68,7 +68,6 @@ func TestWithHPAScaleInAnnotation(t *testing.T) {
 	assert.Nil(t, annotations[v1alpha1.AnnoKeyDeferDelete])
 
 	unchanged, changed, err := withHPAScaleInAnnotation(
-		ctx,
 		client.RawPatch(types.MergePatchType, []byte(`{"metadata":{"annotations":{"core.pingcap.com/defer-delete":"true"}}}`)),
 		tiproxy,
 		true,
@@ -80,14 +79,10 @@ func TestWithHPAScaleInAnnotation(t *testing.T) {
 	assert.NotContains(t, string(raw), v1alpha1.AnnoKeyTiProxyHPAScaleIn)
 
 	invalid := client.RawPatch(types.JSONPatchType, []byte(`[]`))
-	skipped, changed, err := withHPAScaleInAnnotation(ctx, invalid, tiproxy, true)
-	require.NoError(t, err)
+	skipped, changed, err := withHPAScaleInAnnotation(invalid, tiproxy, true)
+	require.Error(t, err)
 	assert.False(t, changed)
-	got, err := skipped.Data(tiproxy)
-	require.NoError(t, err)
-	want, err := invalid.Data(tiproxy)
-	require.NoError(t, err)
-	assert.Equal(t, want, got)
+	assert.Nil(t, skipped)
 }
 
 func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
@@ -105,7 +100,7 @@ func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
 	}{
 		{
 			name:        "HPA scale-in marks the offlined instance",
-			manager:     hpaFieldManager,
+			manager:     runtime.HPAFieldManager,
 			subresource: "scale",
 			wantAnno:    true,
 			replicas:    1,
@@ -122,7 +117,7 @@ func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
 		},
 		{
 			name:        "kube-controller-manager update outside scale is not an HPA scale-in",
-			manager:     hpaFieldManager,
+			manager:     runtime.HPAFieldManager,
 			subresource: "status",
 			replicas:    1,
 			revision:    newRevision,
@@ -130,7 +125,7 @@ func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
 		},
 		{
 			name:        "HPA rolling update does not mark instances",
-			manager:     hpaFieldManager,
+			manager:     runtime.HPAFieldManager,
 			subresource: "scale",
 			replicas:    2,
 			revision:    oldRevision,

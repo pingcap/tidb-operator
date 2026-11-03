@@ -102,7 +102,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 
 		updaterClient := &hpaScaleInAnnotatingClient{
 			Client: c,
-			hpa:    replicasFieldManagedByHPA(proxyg),
+			hpa:    runtime.TiProxyGroupReplicasManagedByHPA(proxyg),
 		}
 
 		wait, err := updater.New[runtime.TiProxyTuple]().

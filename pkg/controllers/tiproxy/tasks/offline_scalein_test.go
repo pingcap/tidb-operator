@@ -733,7 +733,7 @@ func TestTaskOfflineScaleInDrainFallsBackToDelayWhenHealthOverrideUnsupported(t 
 	}
 }
 
-func TestTaskOfflineScaleInDrainBoundsHPAWaitWhenConnectionCheckFails(t *testing.T) {
+func TestTaskOfflineScaleInDrainEnforcesHPAScaleInLimit(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -744,28 +744,33 @@ func TestTaskOfflineScaleInDrainBoundsHPAWaitWhenConnectionCheckFails(t *testing
 		wantDeleted bool
 	}{
 		{
-			name:     "positive connection count waits past 24h",
+			name:     "positive connection count waits inside the limit",
 			beginAgo: 25 * time.Hour,
 		},
 		{
-			name:        "metrics failure within 24h keeps the pod",
-			beginAgo:    time.Hour,
+			name:        "positive connection count is deleted at the limit",
+			beginAgo:    hpaScaleInLimit + time.Hour,
+			wantDeleted: true,
+		},
+		{
+			name:        "metrics failure waits inside the limit",
+			beginAgo:    25 * time.Hour,
 			metricsFail: true,
 		},
 		{
-			name:        "metrics failure past 24h deletes the pod",
-			beginAgo:    25 * time.Hour,
+			name:        "metrics failure is deleted at the limit",
+			beginAgo:    hpaScaleInLimit + time.Hour,
 			metricsFail: true,
 			wantDeleted: true,
 		},
 		{
-			name:       "missing connection metric within 24h keeps the pod",
-			beginAgo:   time.Hour,
+			name:       "missing connection metric waits inside the limit",
+			beginAgo:   25 * time.Hour,
 			hideMetric: true,
 		},
 		{
-			name:        "missing connection metric past 24h deletes the pod",
-			beginAgo:    25 * time.Hour,
+			name:        "missing connection metric is deleted at the limit",
+			beginAgo:    hpaScaleInLimit + time.Hour,
 			hideMetric:  true,
 			wantDeleted: true,
 		},
@@ -807,14 +812,161 @@ func TestTaskOfflineScaleInDrainBoundsHPAWaitWhenConnectionCheckFails(t *testing
 
 			assert.Equal(t, task.SRetry.String(), res.Status().String())
 			assert.False(t, done)
-			assert.Equal(t, 1, server.metricsCount())
 
-			err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
+			actual := &corev1.Pod{}
+			err := fc.Get(ctx, client.ObjectKeyFromObject(pod), actual)
+			if tt.wantDeleted {
+				assert.True(t, apierrors.IsNotFound(err))
+				assert.Zero(t, server.metricsCount())
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, 1, server.metricsCount())
+		})
+	}
+}
+
+func TestTaskOfflineScaleInDrainFallsBackToDelayWhenHealthEndpointMissing(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		status      int
+		delay       string
+		beginAgo    time.Duration
+		wantDeleted bool
+	}{
+		{
+			name:   "GET 404 keeps the pod until the delete delay elapses",
+			status: http.StatusNotFound,
+			delay:  "3600",
+		},
+		{
+			name:   "GET 405 keeps the pod until the delete delay elapses",
+			status: http.StatusMethodNotAllowed,
+			delay:  "3600",
+		},
+		{
+			name:        "GET 404 deletes after the delay",
+			status:      http.StatusNotFound,
+			delay:       "60",
+			beginAgo:    2 * time.Minute,
+			wantDeleted: true,
+		},
+		{
+			name:        "GET 404 without a delay deletes immediately",
+			status:      http.StatusNotFound,
+			wantDeleted: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			server := newTestTiProxyHealthServer(t, tt.status, http.StatusOK)
+			server.setConnectionCount(1)
+			cluster := localTestCluster()
+			tiproxy := revivableTiProxyWithAPI(server.port(t))
+			tiproxy.Spec.Offline = ptr.To(true)
+			tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+			if tt.delay == "" {
+				delete(tiproxy.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds)
+			} else {
+				tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = tt.delay
+			}
+			pod := fakePod(cluster, tiproxy)
+			if tt.beginAgo > 0 {
+				pod.Annotations = map[string]string{
+					v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-tt.beginAgo).Format(time.RFC3339Nano),
+				}
+			}
+
+			s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+			rc := &ReconcileContext{
+				State: s,
+				TiProxyClient: tiproxyapi.NewTiProxyClient(
+					fmt.Sprintf("127.0.0.1:%d", server.port(t)),
+					tiproxyRequestTimeout,
+					nil,
+				),
+			}
+			fc := client.NewFakeClient(cluster, tiproxy, pod)
+			res, done := task.RunTask(ctx, TaskOfflineScaleInDrain(rc, fc))
+
+			assert.Equal(t, task.SRetry.String(), res.Status().String())
+			assert.False(t, done)
+			_, markUnhealthyCalls := server.counts()
+			assert.Equal(t, 0, markUnhealthyCalls)
+
+			actual := &corev1.Pod{}
+			err := fc.Get(ctx, client.ObjectKeyFromObject(pod), actual)
 			if tt.wantDeleted {
 				assert.True(t, apierrors.IsNotFound(err))
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestTaskOfflineScaleInDrainEnforcesHPAScaleInLimitWhenHealthCannotBeRead(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		beginAgo    time.Duration
+		wantDeleted bool
+	}{
+		{
+			name:     "unreachable health endpoint does not use an already elapsed delete delay",
+			beginAgo: 2 * time.Hour,
+		},
+		{
+			name:        "unreachable health endpoint is deleted at the limit",
+			beginAgo:    hpaScaleInLimit + time.Hour,
+			wantDeleted: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			addr := listener.Addr().String()
+			require.NoError(t, listener.Close())
+
+			cluster := localTestCluster()
+			tiproxy := revivableTiProxyWithAPI(1)
+			tiproxy.Spec.Offline = ptr.To(true)
+			tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = "60"
+			tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+			pod := fakePod(cluster, tiproxy)
+			pod.Annotations = map[string]string{
+				v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-tt.beginAgo).Format(time.RFC3339Nano),
+			}
+
+			s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+			rc := &ReconcileContext{
+				State:         s,
+				TiProxyClient: tiproxyapi.NewTiProxyClient(addr, tiproxyRequestTimeout, nil),
+			}
+			fc := client.NewFakeClient(cluster, tiproxy, pod)
+			res, done := task.RunTask(ctx, TaskOfflineScaleInDrain(rc, fc))
+
+			assert.Equal(t, task.SRetry.String(), res.Status().String())
+			assert.False(t, done)
+
+			err = fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
+			if tt.wantDeleted {
+				assert.True(t, apierrors.IsNotFound(err))
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }

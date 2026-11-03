@@ -45,7 +45,8 @@ type healthOverrideRequest struct {
 
 // TiProxyClient is the interface that knows how to control tiproxy clusters.
 type TiProxyClient interface {
-	// IsHealthy checks if the TiProxy is healthy.
+	// IsHealthy reports whether the health endpoint returns a successful status.
+	// 404 and 405 mean this build has no health override API.
 	IsHealthy(ctx context.Context) (bool, error)
 	// MarkUnhealthy makes the TiProxy health endpoint report unhealthy.
 	MarkUnhealthy(ctx context.Context) error
@@ -104,6 +105,11 @@ func (c *tiproxyClient) IsHealthy(ctx context.Context) (bool, error) {
 	}
 	defer httputil.DeferClose(resp.Body)
 
+	// 404/405 mean the health override API is absent. Other 4xx/5xx statuses are an
+	// unhealthy instance, not a missing API: the caller still has to drain it.
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
+		return false, httputil.Errorf(resp.StatusCode, "health override API unsupported")
+	}
 	// NOTE: we don't check the response body here.
 	return resp.StatusCode < http.StatusBadRequest, nil
 }
