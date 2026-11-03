@@ -53,14 +53,15 @@ func (c *deleteOptionRecorderClient) Delete(ctx context.Context, obj ctrlclient.
 type testTiProxyHealthServer struct {
 	server *httptest.Server
 
-	mu                  sync.Mutex
-	healthStatus        int
-	markUnhealthyStatus int
-	metricsStatus       int
-	connectionCount     int
-	healthCalls         int
-	markUnhealthyCalls  int
-	metricsCalls        int
+	mu                   sync.Mutex
+	healthStatus         int
+	markUnhealthyStatus  int
+	metricsStatus        int
+	connectionCount      int
+	hideConnectionMetric bool
+	healthCalls          int
+	markUnhealthyCalls   int
+	metricsCalls         int
 }
 
 func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus int) *testTiProxyHealthServer {
@@ -94,6 +95,10 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 		defer s.mu.Unlock()
 		s.metricsCalls++
 		w.WriteHeader(s.metricsStatus)
+		if s.hideConnectionMetric {
+			_, _ = w.Write([]byte("# HELP tiproxy_uptime_seconds Uptime.\n# TYPE tiproxy_uptime_seconds gauge\ntiproxy_uptime_seconds 1\n"))
+			return
+		}
 		_, _ = w.Write([]byte(`# HELP tiproxy_server_connections Number of connections.
 # TYPE tiproxy_server_connections gauge
 tiproxy_server_connections ` + strconv.Itoa(s.connectionCount) + `
@@ -116,6 +121,12 @@ func (s *testTiProxyHealthServer) setMetricsStatus(status int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.metricsStatus = status
+}
+
+func (s *testTiProxyHealthServer) omitConnectionMetric() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.hideConnectionMetric = true
 }
 
 func (s *testTiProxyHealthServer) port(t *testing.T) int32 {

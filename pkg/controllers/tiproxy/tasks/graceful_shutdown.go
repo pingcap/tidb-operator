@@ -40,6 +40,10 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
+// hpaScaleInConnectionCheckLimit bounds an HPA scale-in when the connection
+// count cannot be read. A successfully observed non-zero count is not bounded.
+const hpaScaleInConnectionCheckLimit = 24 * time.Hour
+
 type reviveAbandonPatch struct {
 	Metadata reviveAbandonMetadata `json:"metadata"`
 	Spec     *reviveAbandonSpec    `json:"spec,omitempty"`
@@ -125,9 +129,8 @@ func drainPodForGracefulShutdown(
 	if !proceed {
 		return task.DefaultRequeueAfter, nil
 	}
-	// Connection wait has no upper bound: it reaches zero only after the load
-	// balancer stops sending new connections. 404/405 leave the instance healthy,
-	// so that wait never finishes. Use the delete delay instead.
+	// 404/405 leave the instance healthy, so new connections keep arriving and
+	// waiting for the count to reach zero would not finish. Use the delete delay.
 	if overrideUnsupported {
 		waitForConnections = false
 	}
@@ -137,10 +140,29 @@ func drainPodForGracefulShutdown(
 			"namespace", tiproxy.Namespace,
 			"name", tiproxy.Name,
 		)
-		if tiProxyConnectionsDrained(ctx, state, c, logger, tpClient) {
+		drained, connErr := tiProxyConnectionsDrained(ctx, state, c, logger, tpClient)
+		if drained {
 			return deleteTiProxyPod(ctx, c, pod)
 		}
-		return task.DefaultRequeueAfter, nil
+		// A positive count waits without a deadline. Failures to read the count
+		// (metrics, missing series, client) are bounded so a stuck check cannot
+		// leave the pod and the HPA scale-in hanging.
+		if connErr == nil {
+			return task.DefaultRequeueAfter, nil
+		}
+		remaining := time.Until(startAt.Add(hpaScaleInConnectionCheckLimit))
+		if remaining <= 0 {
+			logger.Info("HPA scale-in could not read the connection count within 24h, delete pod",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"error", connErr,
+			)
+			return deleteTiProxyPod(ctx, c, pod)
+		}
+		if remaining > task.DefaultRequeueAfter {
+			remaining = task.DefaultRequeueAfter
+		}
+		return remaining, nil
 	}
 
 	if !ok || seconds <= 0 {
@@ -152,7 +174,7 @@ func drainPodForGracefulShutdown(
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
-	if tiProxyConnectionsDrained(ctx, state, c, logger, tpClient) {
+	if drained, err := tiProxyConnectionsDrained(ctx, state, c, logger, tpClient); err == nil && drained {
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
@@ -249,35 +271,37 @@ func deleteTiProxyPod(ctx context.Context, c client.Client, pod *corev1.Pod) (ti
 	return task.DefaultRequeueAfter, nil
 }
 
+// tiProxyConnectionsDrained reports whether the instance has no SQL connections.
+// A non-nil error means the count could not be read; callers decide how long to wait.
 func tiProxyConnectionsDrained(
 	ctx context.Context,
 	state State,
 	c client.Client,
 	logger logr.Logger,
 	tpClient tiproxyapi.TiProxyClient,
-) bool {
+) (bool, error) {
 	tiproxy := state.Object()
 
 	apiClient, err := resolveTiProxyAPIClient(ctx, state, c, tpClient)
 	if err != nil {
 		logger.Info(
-			"failed to build TiProxy API client before checking connections, continue waiting",
+			"failed to build TiProxy API client before checking connections",
 			"namespace", tiproxy.Namespace,
 			"name", tiproxy.Name,
 			"error", err,
 		)
-		return false
+		return false, err
 	}
 
 	connectionCount, err := apiClient.ConnectionCount(ctx)
 	if err != nil {
 		logger.Info(
-			"failed to query TiProxy connections before graceful delete, continue waiting",
+			"failed to query TiProxy connections before graceful delete",
 			"namespace", tiproxy.Namespace,
 			"name", tiproxy.Name,
 			"error", err,
 		)
-		return false
+		return false, err
 	}
 	if connectionCount > 0 {
 		logger.Info(
@@ -286,7 +310,7 @@ func tiProxyConnectionsDrained(
 			"name", tiproxy.Name,
 			"connectionCount", connectionCount,
 		)
-		return false
+		return false, nil
 	}
 
 	logger.Info(
@@ -294,7 +318,7 @@ func tiProxyConnectionsDrained(
 		"namespace", tiproxy.Namespace,
 		"name", tiproxy.Name,
 	)
-	return true
+	return true, nil
 }
 
 // ensureTiProxyMarkedUnhealthy reports whether shutdown may proceed.
