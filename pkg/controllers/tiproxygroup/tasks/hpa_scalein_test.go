@@ -96,6 +96,7 @@ func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
 	tests := []struct {
 		name        string
 		manager     string
+		subresource string
 		wantAnno    bool
 		replicas    int32
 		revision    string
@@ -105,6 +106,7 @@ func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
 		{
 			name:        "HPA scale-in marks the offlined instance",
 			manager:     hpaFieldManager,
+			subresource: "scale",
 			wantAnno:    true,
 			replicas:    1,
 			revision:    newRevision,
@@ -113,16 +115,26 @@ func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
 		{
 			name:        "manual scale-in does not mark the offlined instance",
 			manager:     "kubectl-scale",
+			subresource: "scale",
 			replicas:    1,
 			revision:    newRevision,
 			wantOffline: true,
 		},
 		{
-			name:     "HPA rolling update does not mark instances",
-			manager:  hpaFieldManager,
-			replicas: 2,
-			revision: oldRevision,
-			image:    "pingcap/tiproxy:v8.1.1",
+			name:        "kube-controller-manager update outside scale is not an HPA scale-in",
+			manager:     hpaFieldManager,
+			subresource: "status",
+			replicas:    1,
+			revision:    newRevision,
+			wantOffline: true,
+		},
+		{
+			name:        "HPA rolling update does not mark instances",
+			manager:     hpaFieldManager,
+			subresource: "scale",
+			replicas:    2,
+			revision:    oldRevision,
+			image:       "pingcap/tiproxy:v8.1.1",
 		},
 	}
 
@@ -142,7 +154,7 @@ func TestTaskUpdaterAnnotatesOnlyHPAScaleIn(t *testing.T) {
 				obj.ManagedFields = []metav1.ManagedFieldsEntry{{
 					Manager:     tt.manager,
 					Operation:   metav1.ManagedFieldsOperationUpdate,
-					Subresource: "scale",
+					Subresource: tt.subresource,
 					FieldsV1:    &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:replicas":{}}}`)},
 				}}
 				return obj

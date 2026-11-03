@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
-const hpaFieldManager = "horizontal-pod-autoscaler"
+const hpaFieldManager = "kube-controller-manager"
 
 // hpaScaleInAnnotatingClient writes the HPA scale-in annotation on the same patch
 // that marks a TiProxy offline. A non-HPA offline patch clears it, so a stale
@@ -107,6 +107,10 @@ func withHPAScaleInAnnotation(
 	return client.RawPatch(patch.Type(), out), true, nil
 }
 
+// replicasFieldManagedByHPA reports whether kube-controller-manager owns
+// spec.replicas on the scale subresource. The in-tree HPA controller is the
+// only writer of this CR's scale subresource, and its User-Agent is recorded
+// as kube-controller-manager.
 func replicasFieldManagedByHPA(proxyg *v1alpha1.TiProxyGroup) bool {
 	for _, entry := range proxyg.ManagedFields {
 		if entry.Manager != hpaFieldManager ||
