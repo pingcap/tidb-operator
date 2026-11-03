@@ -218,7 +218,8 @@ func TaskClearHPAScaleInAnnotation(state State, c client.Client) task.Task {
 		if tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] != v1alpha1.AnnoValTrue {
 			return task.Complete().With("tiproxy is not marked as an HPA scale-in")
 		}
-		if coreutil.IsOffline[scope.TiProxy](tiproxy) && tiproxy.GetDeletionTimestamp().IsZero() {
+		// This task runs only after CondObjectIsDeleting breaks, so the object is not deleting.
+		if coreutil.IsOffline[scope.TiProxy](tiproxy) {
 			return task.Complete().With("tiproxy HPA scale-in annotation stays until it is back online")
 		}
 
@@ -228,6 +229,8 @@ func TaskClearHPAScaleInAnnotation(state State, c client.Client) task.Task {
 			}
 			return task.Fail().With("cannot clear tiproxy HPA scale-in annotation: %v", err)
 		}
+		// Patch decodes the response onto this object. If the removed key was the
+		// only annotation, the response omits metadata.annotations and the local map stays.
 		delete(tiproxy.Annotations, v1alpha1.AnnoKeyTiProxyHPAScaleIn)
 		return task.Complete().With("cleared tiproxy HPA scale-in annotation")
 	})
