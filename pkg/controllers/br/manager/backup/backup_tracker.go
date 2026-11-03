@@ -257,6 +257,10 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(ctx context.Context, bac
 		logger.Error(nil, "log backup checkpointTS not found", "namespace", ns, "backup", name)
 		return
 	}
+	if kvs[0] == nil || len(kvs[0].Value) != 8 {
+		logger.Error(nil, "invalid log backup checkpointTS encoding", "namespace", ns, "backup", name)
+		return
+	}
 	ckTS := strconv.FormatUint(binary.BigEndian.Uint64(kvs[0].Value), 10)
 
 	logger.Info("update log backup checkpointTS", "namespace", ns, "backup", name, "checkpointTS", ckTS)
