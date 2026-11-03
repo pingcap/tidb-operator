@@ -212,7 +212,9 @@ const (
 	// A positive connection count is not time-bounded. If the count cannot be read, the wait
 	// is bounded by 24h from the graceful shutdown begin time. When the health override API
 	// is unsupported, shutdown uses the delete delay instead: the instance stays healthy and
-	// would keep accepting connections.
+	// would keep accepting connections. Deleting the object also uses the delete delay.
+	// If the connection wait has already outlasted that delay, it is measured from the
+	// deletion time so the remaining connections are not dropped immediately.
 	AnnoKeyTiProxyHPAScaleIn = AnnoKeyPrefix + "tiproxy-hpa-scale-in"
 
 	// TiProxy revive was abandoned because health override API is unsupported.

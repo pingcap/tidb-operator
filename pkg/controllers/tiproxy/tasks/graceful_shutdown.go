@@ -169,7 +169,8 @@ func drainPodForGracefulShutdown(
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
-	remaining := time.Until(startAt.Add(time.Duration(seconds) * time.Second))
+	delay := time.Duration(seconds) * time.Second
+	remaining := time.Until(hpaDeleteDelayStart(tiproxy, startAt, delay).Add(delay))
 	if remaining <= 0 {
 		return deleteTiProxyPod(ctx, c, pod)
 	}
@@ -186,10 +187,29 @@ func drainPodForGracefulShutdown(
 }
 
 func annotatedHPAScaleIn(tiproxy *v1alpha1.TiProxy) bool {
+	// An explicit delete uses the configured delay. The HPA connection wait has
+	// no deadline, so it must not continue after the object is deleted.
 	if tiproxy == nil || !tiproxy.GetDeletionTimestamp().IsZero() {
 		return false
 	}
 	return tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] == v1alpha1.AnnoValTrue
+}
+
+// hpaDeleteDelayStart is the start of the configured delete delay.
+// HPA scale-in writes begin-time when the connection wait starts, and that wait
+// can run longer than the delay. Deleting the object then must not treat the
+// old begin-time as the delay clock: remaining would already be <= 0 and the
+// pod would be deleted at once. A delay that is still running keeps its clock.
+func hpaDeleteDelayStart(tiproxy *v1alpha1.TiProxy, begin time.Time, delay time.Duration) time.Time {
+	if tiproxy == nil || tiproxy.GetDeletionTimestamp().IsZero() ||
+		tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] != v1alpha1.AnnoValTrue {
+		return begin
+	}
+	deletedAt := tiproxy.GetDeletionTimestamp().Time
+	if !begin.Before(deletedAt) || begin.Add(delay).After(deletedAt) {
+		return begin
+	}
+	return deletedAt
 }
 
 func TaskClearHPAScaleInAnnotation(state State, c client.Client) task.Task {

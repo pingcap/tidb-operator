@@ -509,6 +509,32 @@ func TestTaskDrainPodForDeleteKeepsDelayWhenDeletingHPAScaleIn(t *testing.T) {
 	assert.Equal(t, task.SRetry.String(), res.Status().String())
 	assert.False(t, done)
 
+	actual := &corev1.Pod{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
+	assert.True(t, actual.GetDeletionTimestamp().IsZero())
+}
+
+func TestTaskDrainPodForDeleteDeletesHPAScaleInAfterDelayFromDeletion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusBadGateway, http.StatusOK)
+	cluster := localTestCluster()
+	tiproxy := deletingTiProxyWithAPIAddress("60", server.port(t))
+	deletedAt := metav1.NewTime(time.Now().Add(-2 * time.Minute))
+	tiproxy.SetDeletionTimestamp(&deletedAt)
+	tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+	pod := fakePod(cluster, tiproxy)
+	pod.Annotations = map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-time.Hour).Format(time.RFC3339Nano),
+	}
+
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := runDrainPodForDeleteTask(t, ctx, &state{cluster: cluster, tiproxy: tiproxy}, fc)
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+
 	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
 	assert.True(t, apierrors.IsNotFound(err))
 }
