@@ -44,7 +44,7 @@ func taskPatchPVCWithOwnerReferences(rtx *ReconcileContext) t.Task {
 		if err != nil {
 			return t.Fail().With("failed to list PVCs: %s", err.Error())
 		}
-		if len(pvcs.Items) < len(rtx.TiBR().Spec.Overlay.PersistentVolumeClaims) {
+		if len(pvcs.Items) < len(rtx.StatefulSet().Spec.VolumeClaimTemplates) {
 			return t.Retry(2 * time.Second).With("Not all PVCs created yet, retrying...")
 		}
 		// check if owner references existed, patch owner references if not exist
