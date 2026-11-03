@@ -617,6 +617,122 @@ func TestTaskOfflineScaleInDrainDeletesAnnotatedHPAScaleInWithZeroConnections(t 
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
+func TestTaskOfflineScaleInDrainFallsBackToDelayWhenHealthOverrideUnsupported(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		markStatus  int
+		delay       string
+		beginAgo    time.Duration
+		connections int
+		wantDeleted bool
+		wantMetrics bool
+	}{
+		{
+			name:        "404 keeps the pod until the delete delay elapses",
+			markStatus:  http.StatusNotFound,
+			delay:       "3600",
+			connections: 1,
+			wantMetrics: true,
+		},
+		{
+			name:        "405 keeps the pod until the delete delay elapses",
+			markStatus:  http.StatusMethodNotAllowed,
+			delay:       "3600",
+			connections: 1,
+			wantMetrics: true,
+		},
+		{
+			name:        "404 deletes after the delay even while connections remain",
+			markStatus:  http.StatusNotFound,
+			delay:       "60",
+			beginAgo:    2 * time.Minute,
+			connections: 1,
+			wantDeleted: true,
+		},
+		{
+			name:        "405 deletes after the delay even while connections remain",
+			markStatus:  http.StatusMethodNotAllowed,
+			delay:       "60",
+			beginAgo:    2 * time.Minute,
+			connections: 1,
+			wantDeleted: true,
+		},
+		{
+			name:        "404 still deletes early once connections reach zero",
+			markStatus:  http.StatusNotFound,
+			delay:       "3600",
+			connections: 0,
+			wantDeleted: true,
+			wantMetrics: true,
+		},
+		{
+			name:        "404 without a delay deletes immediately",
+			markStatus:  http.StatusNotFound,
+			connections: 1,
+			wantDeleted: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			server := newTestTiProxyHealthServer(t, http.StatusOK, tt.markStatus)
+			server.setConnectionCount(tt.connections)
+			cluster := localTestCluster()
+			tiproxy := revivableTiProxyWithAPI(server.port(t))
+			tiproxy.Spec.Offline = ptr.To(true)
+			tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+			if tt.delay == "" {
+				delete(tiproxy.Annotations, v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds)
+			} else {
+				tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = tt.delay
+			}
+			pod := fakePod(cluster, tiproxy)
+			if tt.beginAgo > 0 {
+				pod.Annotations = map[string]string{
+					v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-tt.beginAgo).Format(time.RFC3339Nano),
+				}
+			}
+
+			s := &state{cluster: cluster, tiproxy: tiproxy, pod: pod}
+			rc := &ReconcileContext{
+				State: s,
+				TiProxyClient: tiproxyapi.NewTiProxyClient(
+					fmt.Sprintf("127.0.0.1:%d", server.port(t)),
+					tiproxyRequestTimeout,
+					nil,
+				),
+			}
+			fc := client.NewFakeClient(cluster, tiproxy, pod)
+			res, done := task.RunTask(ctx, TaskOfflineScaleInDrain(rc, fc))
+
+			assert.Equal(t, task.SRetry.String(), res.Status().String())
+			assert.False(t, done)
+
+			_, markUnhealthyCalls := server.counts()
+			assert.Equal(t, 1, markUnhealthyCalls)
+			if tt.wantMetrics {
+				assert.Equal(t, 1, server.metricsCount())
+			} else {
+				assert.Equal(t, 0, server.metricsCount())
+			}
+
+			actual := &corev1.Pod{}
+			err := fc.Get(ctx, client.ObjectKeyFromObject(pod), actual)
+			if tt.wantDeleted {
+				assert.True(t, apierrors.IsNotFound(err))
+				return
+			}
+			require.NoError(t, err)
+			assert.NotEmpty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
+		})
+	}
+}
+
 func TestTaskClearHPAScaleInAnnotation(t *testing.T) {
 	t.Parallel()
 

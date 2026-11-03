@@ -106,12 +106,7 @@ func drainPodForGracefulShutdown(
 	if err != nil {
 		return 0, err
 	}
-	if waitForConnections {
-		logger.Info("HPA scale-in waits for connections instead of the configured graceful shutdown delay",
-			"namespace", tiproxy.Namespace,
-			"name", tiproxy.Name,
-		)
-	} else if !ok || seconds <= 0 {
+	if !waitForConnections && (!ok || seconds <= 0) {
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
@@ -126,15 +121,30 @@ func drainPodForGracefulShutdown(
 	}
 
 	// Keep calling MarkUnhealthy even after begin-time is written.
-	if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, tpClient) {
+	proceed, overrideUnsupported := ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, tpClient)
+	if !proceed {
 		return task.DefaultRequeueAfter, nil
+	}
+	// Connection wait has no upper bound: it reaches zero only after the load
+	// balancer stops sending new connections. 404/405 leave the instance healthy,
+	// so that wait never finishes. Use the delete delay instead.
+	if overrideUnsupported {
+		waitForConnections = false
 	}
 
 	if waitForConnections {
+		logger.Info("HPA scale-in waits for connections instead of the configured graceful shutdown delay",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+		)
 		if tiProxyConnectionsDrained(ctx, state, c, logger, tpClient) {
 			return deleteTiProxyPod(ctx, c, pod)
 		}
 		return task.DefaultRequeueAfter, nil
+	}
+
+	if !ok || seconds <= 0 {
+		return deleteTiProxyPod(ctx, c, pod)
 	}
 
 	remaining := time.Until(startAt.Add(time.Duration(seconds) * time.Second))
@@ -287,13 +297,17 @@ func tiProxyConnectionsDrained(
 	return true
 }
 
+// ensureTiProxyMarkedUnhealthy reports whether shutdown may proceed.
+// overrideUnsupported is set when MarkUnhealthy returns 404 or 405. The instance
+// is still healthy then, so a caller waiting only for connections must use the
+// delete delay instead.
 func ensureTiProxyMarkedUnhealthy(
 	ctx context.Context,
 	state State,
 	c client.Client,
 	logger logr.Logger,
 	tpClient tiproxyapi.TiProxyClient,
-) bool {
+) (proceed, overrideUnsupported bool) {
 	tiproxy := state.Object()
 
 	apiClient, err := resolveTiProxyAPIClient(ctx, state, c, tpClient)
@@ -304,7 +318,7 @@ func ensureTiProxyMarkedUnhealthy(
 			"name", tiproxy.Name,
 			"error", err,
 		)
-		return false
+		return false, false
 	}
 
 	healthy, err := apiClient.IsHealthy(ctx)
@@ -315,15 +329,16 @@ func ensureTiProxyMarkedUnhealthy(
 			"name", tiproxy.Name,
 			"error", err,
 		)
-		return false
+		return false, false
 	}
 	if !healthy {
-		return true
+		return true, false
 	}
 
 	if err := apiClient.MarkUnhealthy(ctx); err != nil {
 		// When the health override API exists, PUT succeeds. 404/405 mean the API
-		// is absent — proceed with delete-delay instead of retrying forever.
+		// is absent. Proceed so the delete delay can bound the wait; the caller
+		// must not use the unbounded connection wait while the instance stays healthy.
 		if isHealthOverrideUnsupported(err) {
 			logger.Info(
 				"health override API unsupported, skip MarkUnhealthy and continue delete delay",
@@ -331,7 +346,7 @@ func ensureTiProxyMarkedUnhealthy(
 				"name", tiproxy.Name,
 				"error", err,
 			)
-			return true
+			return true, true
 		}
 		logger.Info(
 			"failed to mark TiProxy unhealthy before graceful delete, continue retrying",
@@ -339,7 +354,7 @@ func ensureTiProxyMarkedUnhealthy(
 			"name", tiproxy.Name,
 			"error", err,
 		)
-		return false
+		return false, false
 	}
 
 	healthy, err = apiClient.IsHealthy(ctx)
@@ -350,7 +365,7 @@ func ensureTiProxyMarkedUnhealthy(
 			"name", tiproxy.Name,
 			"error", err,
 		)
-		return false
+		return false, false
 	}
 	if healthy {
 		logger.Info(
@@ -358,9 +373,9 @@ func ensureTiProxyMarkedUnhealthy(
 			"namespace", tiproxy.Namespace,
 			"name", tiproxy.Name,
 		)
-		return false
+		return false, false
 	}
-	return true
+	return true, false
 }
 
 func resolveTiProxyAPIClient(
