@@ -77,8 +77,7 @@ func (t *Tagged) Set(s string) error {
 }
 
 // Image returns the image with the given tag and version
-// Note: img must be validated before calling withVersion
-// TODO(liubo02): validate img and version
+// Call Validate before rendering a Pod from user-supplied image and version fields.
 func (t Untagged) Image(img *string, version string) string {
 	image := string(t)
 	if img != nil {
@@ -90,6 +89,17 @@ func (t Untagged) Image(img *string, version string) string {
 	}
 
 	return s
+}
+
+// Validate checks the same image and version combination used by Image.
+// An explicit tag or digest takes precedence over version.
+func (t Untagged) Validate(img *string, version string) error {
+	name := string(t)
+	if img != nil {
+		name = *img
+	}
+	_, err := withVersion(name, version)
+	return err
 }
 
 func withVersion(img, version string) (string, error) {
