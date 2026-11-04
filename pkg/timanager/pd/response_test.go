@@ -1,4 +1,4 @@
-// Copyright 2026 PingCAP, Inc.
+// Copyright 2024 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +40,9 @@ func (c *responseClient) GetHealth(context.Context) (*pdapi.HealthInfo, error) {
 func TestStoreListerIncompleteResponse(t *testing.T) {
 	for _, body := range []string{
 		`null`,
+		`{"count":1,"stores":null}`,
+		`{"count":1}`,
+		`{"count":1,"stores":[]}`,
 		`{"stores":[null]}`,
 		`{"stores":[{}]}`,
 		`{"stores":[{"store":{},"status":{}}]}`,
@@ -59,6 +62,18 @@ func TestStoreListerIncompleteResponse(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list.Items, 1)
 	require.Equal(t, "1", list.Items[0].ID)
+}
+
+func TestStoreListerEmptyResponse(t *testing.T) {
+	for _, body := range []string{`{"count":0,"stores":null}`, `{"count":0,"stores":[]}`} {
+		t.Run(body, func(t *testing.T) {
+			c := &responseClient{}
+			require.NoError(t, json.Unmarshal([]byte(body), &c.stores))
+			list, err := NewStoreLister("cluster", c).List(context.Background())
+			require.NoError(t, err)
+			require.Empty(t, list.Items)
+		})
+	}
 }
 
 func TestMemberListerIncompleteResponse(t *testing.T) {
