@@ -87,7 +87,7 @@ func (l *memberLister) List(ctx context.Context) (*pdv1.MemberList, error) {
 	if err != nil {
 		return nil, err
 	}
-	if health == nil {
+	if health == nil || health.Healths == nil {
 		return nil, fmt.Errorf("PD returned a nil health response")
 	}
 

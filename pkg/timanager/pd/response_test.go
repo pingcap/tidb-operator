@@ -17,7 +17,10 @@ package pd
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -43,6 +46,8 @@ func TestStoreListerIncompleteResponse(t *testing.T) {
 		`{"count":1,"stores":null}`,
 		`{"count":1}`,
 		`{"count":1,"stores":[]}`,
+		`{"count":2,"stores":[{"store":{"id":1,"address":"store"},"status":{}}]}`,
+		`{"count":1,"stores":[{"store":{"id":1,"address":"one"},"status":{}},{"store":{"id":2,"address":"two"},"status":{}}]}`,
 		`{"stores":[null]}`,
 		`{"stores":[{}]}`,
 		`{"stores":[{"store":{},"status":{}}]}`,
@@ -90,10 +95,59 @@ func TestMemberListerIncompleteResponse(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(`{"header":{"cluster_id":1},"members":[{"member_id":2,"name":"pd"}]}`), &c.members))
 	_, err := NewMemberLister("cluster", c).List(context.Background())
 	require.Error(t, err)
-	c.health = &pdapi.HealthInfo{}
+	c.health = &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{{MemberID: 2, Health: true}}}
 	list, err := NewMemberLister("cluster", c).List(context.Background())
 	require.NoError(t, err)
 	require.Len(t, list.Items, 1)
 	require.False(t, list.Items[0].IsLeader)
 	require.False(t, list.Items[0].IsEtcdLeader)
+}
+
+func TestListerHTTPNullResponses(t *testing.T) {
+	for _, tc := range []struct {
+		name, stores, health string
+		storeErr, healthErr  bool
+	}{
+		{"null stores", "null", "[]", true, false},
+		{"null health", `{"count":0,"stores":[]}`, "null", false, true},
+		{"empty stores and leaderless member", `{"count":0,"stores":[]}`, `[{"member_id":2,"name":"pd","health":true}]`, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/pd/api/v1/stores":
+					_, _ = w.Write([]byte(tc.stores))
+				case "/pd/api/v1/health":
+					_, _ = w.Write([]byte(tc.health))
+				case "/pd/api/v1/members":
+					_, _ = w.Write([]byte(`{"header":{"cluster_id":1},"members":[{"member_id":2,"name":"pd"}]}`))
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+			c := pdapi.NewPDClient(server.URL, time.Second, nil)
+			stores, err := NewStoreLister("cluster", c).List(context.Background())
+			if tc.storeErr {
+				require.Error(t, err)
+				require.Nil(t, stores)
+			} else {
+				require.NoError(t, err)
+				require.Empty(t, stores.Items)
+			}
+			members, err := NewMemberLister("cluster", c).List(context.Background())
+			if tc.healthErr {
+				require.Error(t, err)
+				require.Nil(t, members)
+			} else {
+				require.NoError(t, err)
+			}
+			if !tc.healthErr && tc.name == "empty stores and leaderless member" {
+				require.Len(t, members.Items, 1)
+				require.True(t, members.Items[0].Health)
+				require.False(t, members.Items[0].IsLeader)
+				require.False(t, members.Items[0].IsEtcdLeader)
+			}
+		})
+	}
 }

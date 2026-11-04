@@ -229,6 +229,9 @@ func (c *pdClient) GetHealth(ctx context.Context) (*HealthInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	if healths == nil {
+		return nil, fmt.Errorf("PD returned a null health response")
+	}
 	return &HealthInfo{
 		healths,
 	}, nil
@@ -380,10 +383,13 @@ func (c *pdClient) getStores(ctx context.Context, apiURL string, states ...metap
 	if err != nil {
 		return nil, err
 	}
-	storesInfo := &StoresInfo{}
-	err = json.Unmarshal(body, storesInfo)
+	var storesInfo *StoresInfo
+	err = json.Unmarshal(body, &storesInfo)
 	if err != nil {
 		return nil, err
+	}
+	if storesInfo == nil {
+		return nil, fmt.Errorf("PD returned a null stores response")
 	}
 	return storesInfo, nil
 }

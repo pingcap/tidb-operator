@@ -78,8 +78,8 @@ func (l *storeLister) List(ctx context.Context) (*pdv1.StoreList, error) {
 	if ss == nil {
 		return nil, fmt.Errorf("PD returned a nil stores response")
 	}
-	if ss.Count > 0 && len(ss.Stores) == 0 {
-		return nil, fmt.Errorf("PD returned %d stores without a stores list", ss.Count)
+	if ss.Count > 0 && ss.Count != len(ss.Stores) {
+		return nil, fmt.Errorf("PD returned %d stores but %d store entries", ss.Count, len(ss.Stores))
 	}
 	list := pdv1.StoreList{}
 	for _, s := range ss.Stores {
