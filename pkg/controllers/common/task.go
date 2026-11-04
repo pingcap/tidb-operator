@@ -151,6 +151,11 @@ func TaskContextCluster[
 	T runtime.Object,
 ](state ContextClusterNewer[F], c client.Client) task.Task {
 	return task.NameTaskFunc("ContextCluster", func(ctx context.Context) task.Result {
+		if _, ok := any(scope.From[S](state.Object())).(runtime.Instance); ok {
+			if err := runtime.ValidateInstanceName(state.Object().GetName()); err != nil {
+				return task.Fail().With("invalid instance: %v", err)
+			}
+		}
 		cluster, err := apicall.GetCluster[S](ctx, c, state.Object())
 		if err != nil {
 			return task.Fail().With("cannot get cluster: %v", err)

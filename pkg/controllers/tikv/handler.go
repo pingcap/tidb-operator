@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
@@ -178,6 +179,10 @@ func (r *Reconciler) getRequestOfTiKVStore(ctx context.Context, s *pdv1.Store) (
 
 	for i := range kvl.Items {
 		tikv := &kvl.Items[i]
+		if err := runtime.ValidateInstanceName(tikv.Name); err != nil {
+			r.Logger.Error(err, "skip invalid tikv instance", "namespace", tikv.Namespace, "name", tikv.Name)
+			continue
+		}
 		if s.Name == coreutil.InstanceAdvertiseAddress[scope.TiKV](&c, tikv, coreutil.TiKVClientPort(tikv)) {
 			return reconcile.Request{
 				NamespacedName: types.NamespacedName{

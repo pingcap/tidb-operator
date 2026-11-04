@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
@@ -180,6 +181,10 @@ func (r *Reconciler) getRequestOfTiFlashStore(ctx context.Context, s *pdv1.Store
 
 	for i := range tiflashList.Items {
 		tiflash := &tiflashList.Items[i]
+		if err := runtime.ValidateInstanceName(tiflash.Name); err != nil {
+			r.Logger.Error(err, "skip invalid tiflash instance", "namespace", tiflash.Namespace, "name", tiflash.Name)
+			continue
+		}
 		if s.Name == coreutil.InstanceAdvertiseAddress[scope.TiFlash](&c, tiflash, coreutil.TiFlashFlashPort(tiflash)) {
 			return reconcile.Request{
 				NamespacedName: types.NamespacedName{

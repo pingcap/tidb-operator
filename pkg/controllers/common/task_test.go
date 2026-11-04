@@ -99,7 +99,7 @@ func TestTaskContextObject(t *testing.T) {
 
 func TestTaskContextCluster(t *testing.T) {
 	const ns = "aaa"
-	const name = "bbb"
+	const name = "bbb-abc"
 	cases := []struct {
 		desc          string
 		state         *fakeObjectState[*v1alpha1.PD]
@@ -121,6 +121,12 @@ func TestTaskContextCluster(t *testing.T) {
 			},
 			expectedResult: task.SComplete,
 			expectedObj:    fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
+		},
+		{
+			desc:           "invalid instance name",
+			state:          newFakeObjectState(fake.FakeObj("invalid", func(obj *v1alpha1.PD) *v1alpha1.PD { obj.Namespace = ns; obj.Spec.Cluster.Name = name; return obj })),
+			objs:           []client.Object{fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns))},
+			expectedResult: task.SFail,
 		},
 		{
 			desc: "not found",
@@ -162,6 +168,18 @@ func TestTaskContextCluster(t *testing.T) {
 			assert.Equal(tt, c.expectedObj, c.state.cluster, c.desc)
 		})
 	}
+}
+
+func TestTaskContextClusterAllowsGroupName(t *testing.T) {
+	group := &v1alpha1.PDGroup{}
+	group.Name, group.Namespace = "group", "test"
+	group.Spec.Cluster.Name = "cluster"
+	cluster := &v1alpha1.Cluster{}
+	cluster.Name, cluster.Namespace = "cluster", "test"
+	state := newFakeObjectState(group)
+	result, _ := task.RunTask(context.Background(), TaskContextCluster[scope.PDGroup](state, client.NewFakeClient(cluster)))
+	assert.Equal(t, task.SComplete, result.Status())
+	assert.Equal(t, cluster.Name, state.cluster.Name)
 }
 
 func TestTaskContextPod(t *testing.T) {
