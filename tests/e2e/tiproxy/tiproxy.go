@@ -21,12 +21,15 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -278,6 +281,14 @@ func tiproxyPodByOwnerName(pods []corev1.Pod) map[string]*corev1.Pod {
 		}
 	}
 	return byOwner
+}
+
+func managedFieldSummary(group *v1alpha1.TiProxyGroup) string {
+	parts := make([]string, 0, len(group.ManagedFields))
+	for _, entry := range group.ManagedFields {
+		parts = append(parts, fmt.Sprintf("%s/%s/%s", entry.Manager, entry.Operation, entry.Subresource))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func gracefulShutdownBeginTime(pod *corev1.Pod) string {
@@ -770,6 +781,147 @@ location-labels = ["region", "zone", "host"]`
 			pods, err := apicall.ListPods[scope.TiProxyGroup](ctx, f.Client, proxyg)
 			f.Must(err)
 			gomega.Expect(pods).To(gomega.HaveLen(int(replicas)))
+		})
+
+		ginkgo.It("scale in TiProxy through a real HPA", label.Scale, func(ctx context.Context) {
+			o := desc.DefaultOptions()
+			const initialReplicas int32 = 2
+			const scaledInReplicas int32 = 1
+
+			pdg := action.MustCreatePD(ctx, f, o)
+			kvg := action.MustCreateTiKV(ctx, f, o)
+			dbg := action.MustCreateTiDB(ctx, f, o)
+			proxyg := action.MustCreateTiProxy(ctx, f, o,
+				data.WithReplicas[scope.TiProxyGroup](initialReplicas),
+				withTiProxyGracefulShutdownDelay(gracefulScaleInDeleteDelaySeconds),
+			)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiProxyGroupReady(ctx, proxyg)
+
+			initialPods, err := listTiProxyPods(ctx, f, proxyg)
+			f.Must(err)
+			gomega.Expect(initialPods.Items).To(gomega.HaveLen(int(initialReplicas)))
+
+			ginkgo.By("Hold a SQL connection on every TiProxy so the scaled-in instance stays observable")
+			releases := map[string]func(){}
+			defer func() {
+				for _, release := range releases {
+					release()
+				}
+			}()
+			for i := range initialPods.Items {
+				pod := &initialPods.Items[i]
+				release, err := holdTiProxySQLConnection(ctx, f, pod)
+				f.Must(err)
+				releases[pod.Name] = release
+			}
+
+			ginkgo.By("Create an HPA whose maxReplicas is below the current TiProxyGroup size")
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: proxyg.Namespace,
+					Name:      proxyg.Name,
+				},
+				Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+					ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+						APIVersion: v1alpha1.SchemeGroupVersion.String(),
+						Kind:       "TiProxyGroup",
+						Name:       proxyg.Name,
+					},
+					MinReplicas: ptr.To(scaledInReplicas),
+					MaxReplicas: scaledInReplicas,
+					Metrics: []autoscalingv2.MetricSpec{{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: corev1.ResourceCPU,
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: ptr.To[int32](80),
+							},
+						},
+					}},
+				},
+			}
+			f.Must(f.Client.Create(ctx, hpa))
+
+			var drainingPodName string
+			gomega.Eventually(func() error {
+				group := &v1alpha1.TiProxyGroup{}
+				if err := f.Client.Get(ctx, client.ObjectKeyFromObject(proxyg), group); err != nil {
+					return err
+				}
+				if group.Spec.Replicas == nil || *group.Spec.Replicas != scaledInReplicas {
+					return fmt.Errorf("spec.replicas = %v, want %d", group.Spec.Replicas, scaledInReplicas)
+				}
+				if !runtime.TiProxyGroupReplicasManagedByHPA(group) {
+					return fmt.Errorf("scale subresource is not managed by kube-controller-manager: %s", managedFieldSummary(group))
+				}
+
+				tiproxies, err := listTiProxies(ctx, f, proxyg)
+				if err != nil {
+					return err
+				}
+				annotated := 0
+				var annotatedName string
+				for i := range tiproxies.Items {
+					tp := &tiproxies.Items[i]
+					offline := tp.Spec.Offline != nil && *tp.Spec.Offline
+					if !offline || tp.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] != v1alpha1.AnnoValTrue {
+						continue
+					}
+					annotated++
+					annotatedName = tp.Name
+				}
+				if annotated != 1 {
+					return fmt.Errorf("got %d HPA-annotated offline tiproxy instances, want 1", annotated)
+				}
+
+				pods, err := listTiProxyPods(ctx, f, proxyg)
+				if err != nil {
+					return err
+				}
+				pod := tiproxyPodByOwnerName(pods.Items)[annotatedName]
+				if pod == nil || !pod.DeletionTimestamp.IsZero() {
+					return fmt.Errorf("annotated tiproxy %s pod is already gone", annotatedName)
+				}
+				drainingPodName = pod.Name
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			ginkgo.By("Release the held connection and wait for the HPA scale-in to finish")
+			if release, ok := releases[drainingPodName]; ok {
+				release()
+				delete(releases, drainingPodName)
+			}
+
+			gomega.Eventually(func() error {
+				pods, err := listTiProxyPods(ctx, f, proxyg)
+				if err != nil {
+					return err
+				}
+				if len(pods.Items) != int(scaledInReplicas) {
+					return fmt.Errorf("got %d tiproxy pods after HPA scale-in, want %d", len(pods.Items), scaledInReplicas)
+				}
+				tiproxies, err := listTiProxies(ctx, f, proxyg)
+				if err != nil {
+					return err
+				}
+				if len(tiproxies.Items) != int(scaledInReplicas) {
+					return fmt.Errorf("got %d tiproxy instances after HPA scale-in, want %d", len(tiproxies.Items), scaledInReplicas)
+				}
+				for i := range tiproxies.Items {
+					tp := &tiproxies.Items[i]
+					if tp.Spec.Offline != nil && *tp.Spec.Offline {
+						return fmt.Errorf("tiproxy %s/%s is still offline after HPA scale-in", tp.Namespace, tp.Name)
+					}
+				}
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			f.WaitForTiProxyGroupReady(ctx, proxyg)
 		})
 
 		ginkgo.It("revive draining TiProxy pods on scale-out instead of creating new ones", label.Scale, func(ctx context.Context) {

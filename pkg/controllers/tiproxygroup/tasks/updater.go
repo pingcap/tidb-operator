@@ -100,10 +100,15 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 
 		allocator := af.New(proxyg.Namespace, proxyg.Name, instances...)
 
+		updaterClient := &hpaScaleInAnnotatingClient{
+			Client: c,
+			hpa:    runtime.TiProxyGroupReplicasManagedByHPA(proxyg),
+		}
+
 		wait, err := updater.New[runtime.TiProxyTuple]().
 			WithInstances(proxies...).
 			WithDesired(int(state.Group().Replicas())).
-			WithClient(c).
+			WithClient(updaterClient).
 			WithMaxSurge(maxSurge).
 			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).

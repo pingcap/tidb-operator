@@ -25,14 +25,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 	stringutil "github.com/pingcap/tidb-operator/v2/pkg/utils/string"
 )
 
 func TestTiProxyClient_IsHealthy(t *testing.T) {
 	tests := []struct {
-		name           string
-		statusCode     int
-		expectedHealth bool
+		name              string
+		statusCode        int
+		expectedHealth    bool
+		expectUnsupported bool
 	}{
 		{
 			name:           "healthy on 200",
@@ -43,6 +45,16 @@ func TestTiProxyClient_IsHealthy(t *testing.T) {
 			name:           "unhealthy on 502",
 			statusCode:     http.StatusBadGateway,
 			expectedHealth: false,
+		},
+		{
+			name:              "unsupported on 404",
+			statusCode:        http.StatusNotFound,
+			expectUnsupported: true,
+		},
+		{
+			name:              "unsupported on 405",
+			statusCode:        http.StatusMethodNotAllowed,
+			expectUnsupported: true,
 		},
 	}
 
@@ -61,6 +73,13 @@ func TestTiProxyClient_IsHealthy(t *testing.T) {
 			addr := stringutil.RemoveHTTPPrefix(server.URL)
 			client := NewTiProxyClient(addr, 5*time.Second, nil)
 			health, err := client.IsHealthy(context.Background())
+			if tt.expectUnsupported {
+				require.Error(t, err)
+				var httpErr httputil.Error
+				require.ErrorAs(t, err, &httpErr)
+				assert.Equal(t, tt.statusCode, httpErr.Status)
+				return
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedHealth, health)
 		})

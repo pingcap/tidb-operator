@@ -53,14 +53,15 @@ func (c *deleteOptionRecorderClient) Delete(ctx context.Context, obj ctrlclient.
 type testTiProxyHealthServer struct {
 	server *httptest.Server
 
-	mu                  sync.Mutex
-	healthStatus        int
-	markUnhealthyStatus int
-	metricsStatus       int
-	connectionCount     int
-	healthCalls         int
-	markUnhealthyCalls  int
-	metricsCalls        int
+	mu                   sync.Mutex
+	healthStatus         int
+	markUnhealthyStatus  int
+	metricsStatus        int
+	connectionCount      int
+	hideConnectionMetric bool
+	healthCalls          int
+	markUnhealthyCalls   int
+	metricsCalls         int
 }
 
 func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus int) *testTiProxyHealthServer {
@@ -94,6 +95,10 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 		defer s.mu.Unlock()
 		s.metricsCalls++
 		w.WriteHeader(s.metricsStatus)
+		if s.hideConnectionMetric {
+			_, _ = w.Write([]byte("# HELP tiproxy_uptime_seconds Uptime.\n# TYPE tiproxy_uptime_seconds gauge\ntiproxy_uptime_seconds 1\n"))
+			return
+		}
 		_, _ = w.Write([]byte(`# HELP tiproxy_server_connections Number of connections.
 # TYPE tiproxy_server_connections gauge
 tiproxy_server_connections ` + strconv.Itoa(s.connectionCount) + `
@@ -116,6 +121,12 @@ func (s *testTiProxyHealthServer) setMetricsStatus(status int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.metricsStatus = status
+}
+
+func (s *testTiProxyHealthServer) omitConnectionMetric() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.hideConnectionMetric = true
 }
 
 func (s *testTiProxyHealthServer) port(t *testing.T) int32 {
@@ -477,4 +488,53 @@ func deletingTiProxyWithAPIAddress(deleteDelaySeconds string, apiPort int32) *v1
 	tiproxy := deletingTiProxy(deleteDelaySeconds)
 	tiproxy.Spec.Server.Ports.API = &v1alpha1.Port{Port: apiPort}
 	return tiproxy
+}
+
+func TestTaskDrainPodForDeleteKeepsDelayWhenDeletingHPAScaleIn(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusBadGateway, http.StatusOK)
+	cluster := localTestCluster()
+	tiproxy := deletingTiProxyWithAPIAddress("60", server.port(t))
+	tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+	pod := fakePod(cluster, tiproxy)
+	pod.Annotations = map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-2 * time.Minute).Format(time.RFC3339Nano),
+	}
+
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := runDrainPodForDeleteTask(t, ctx, &state{cluster: cluster, tiproxy: tiproxy}, fc)
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+
+	actual := &corev1.Pod{}
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
+	assert.True(t, actual.GetDeletionTimestamp().IsZero())
+}
+
+func TestTaskDrainPodForDeleteDeletesHPAScaleInAfterDelayFromDeletion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	server := newTestTiProxyHealthServer(t, http.StatusBadGateway, http.StatusOK)
+	cluster := localTestCluster()
+	tiproxy := deletingTiProxyWithAPIAddress("60", server.port(t))
+	deletedAt := metav1.NewTime(time.Now().Add(-2 * time.Minute))
+	tiproxy.SetDeletionTimestamp(&deletedAt)
+	tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyHPAScaleIn] = v1alpha1.AnnoValTrue
+	pod := fakePod(cluster, tiproxy)
+	pod.Annotations = map[string]string{
+		v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime: time.Now().Add(-time.Hour).Format(time.RFC3339Nano),
+	}
+
+	fc := client.NewFakeClient(cluster, tiproxy, pod)
+	res, done := runDrainPodForDeleteTask(t, ctx, &state{cluster: cluster, tiproxy: tiproxy}, fc)
+
+	assert.Equal(t, task.SRetry.String(), res.Status().String())
+	assert.False(t, done)
+
+	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
+	assert.True(t, apierrors.IsNotFound(err))
 }

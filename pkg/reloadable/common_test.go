@@ -337,7 +337,8 @@ func TestConvertAnnotations(t *testing.T) {
 				v1alpha1.AnnoKeyInitialClusterNum:                         "10",
 				v1alpha1.AnnoKeyDeferDelete:                               "xxx",
 				v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "20",
-				"test": "test",
+				v1alpha1.AnnoKeyTiProxyHPAScaleIn:                         v1alpha1.AnnoValTrue,
+				"test":                                                    "test",
 			},
 			out: map[string]string{
 				"test": "test",
