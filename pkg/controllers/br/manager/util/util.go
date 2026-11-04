@@ -205,6 +205,9 @@ func generateAzblobCertEnvVar(
 	if useSasToken {
 		return envVars, "", nil
 	}
+	if secret == nil {
+		return nil, "azblobKeyOrAADMissing", fmt.Errorf("secret must be specified for azblob shared key or AAD authentication")
+	}
 	_, exist := CheckAllKeysExistInSecret(secret, constants.AzblobClientID, constants.AzblobClientScrt, constants.AzblobTenantID)
 	if exist { // using AAD auth
 		envVars = append(envVars, []corev1.EnvVar{
@@ -323,12 +326,11 @@ func GenerateStorageCertEnv(
 			}
 		}
 		if provider.Azblob.StorageAccount == "" { // try to get storageAccount from secret
-			account := string(secret.Data[constants.AzblobAccountName])
-			if account == "" {
-				err := fmt.Errorf("secret %s/%s missing some keys, storage account unspecified: %v", ns, azblobSecretName, secret.Data)
+			if secret == nil || len(secret.Data[constants.AzblobAccountName]) == 0 {
+				err := fmt.Errorf("secret %s/%s missing some keys, storage account unspecified: %s", ns, azblobSecretName, constants.AzblobAccountName)
 				return certEnv, "azblobAccountNotExist", err
 			}
-			provider.Azblob.StorageAccount = account
+			provider.Azblob.StorageAccount = string(secret.Data[constants.AzblobAccountName])
 		}
 		useSasToken := provider.Azblob.SasToken != ""
 		certEnv, reason, err = generateAzblobCertEnvVar(provider.Azblob, secret, useSasToken)
