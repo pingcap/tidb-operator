@@ -35,6 +35,10 @@ func condPVCDeclared(rtx *ReconcileContext) t.Condition {
 
 func taskPatchPVCWithOwnerReferences(rtx *ReconcileContext) t.Task {
 	return t.NameTaskFunc("PatchPVCWithOwnerReferences", func(ctx context.Context) t.Result {
+		sts := rtx.StatefulSet()
+		if sts == nil {
+			return t.Retry(2 * time.Second).With("StatefulSet not found yet, retrying...")
+		}
 		// get all PVC belong to TiBR
 		pvcs := &corev1.PersistentVolumeClaimList{}
 		err := rtx.Client().List(ctx, pvcs, &client.ListOptions{
@@ -44,7 +48,7 @@ func taskPatchPVCWithOwnerReferences(rtx *ReconcileContext) t.Task {
 		if err != nil {
 			return t.Fail().With("failed to list PVCs: %s", err.Error())
 		}
-		if len(pvcs.Items) < len(rtx.StatefulSet().Spec.VolumeClaimTemplates) {
+		if len(pvcs.Items) < len(sts.Spec.VolumeClaimTemplates) {
 			return t.Retry(2 * time.Second).With("Not all PVCs created yet, retrying...")
 		}
 		// check if owner references existed, patch owner references if not exist
@@ -52,7 +56,7 @@ func taskPatchPVCWithOwnerReferences(rtx *ReconcileContext) t.Task {
 			it := &pvcs.Items[i]
 			if it.GetOwnerReferences() == nil || len(it.GetOwnerReferences()) == 0 {
 				it.SetOwnerReferences([]v1.OwnerReference{
-					*v1.NewControllerRef(rtx.StatefulSet(), appsv1.SchemeGroupVersion.WithKind("StatefulSet")),
+					*v1.NewControllerRef(sts, appsv1.SchemeGroupVersion.WithKind("StatefulSet")),
 				})
 				err = rtx.Client().Update(ctx, it)
 				if err != nil {

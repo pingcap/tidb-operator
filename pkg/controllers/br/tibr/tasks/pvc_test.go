@@ -53,3 +53,24 @@ func TestPatchPVCWithoutOverlay(t *testing.T) {
 		})
 	}
 }
+
+func TestPatchPVCWaitsForStatefulSet(t *testing.T) {
+	for _, exists := range []bool{false, true} {
+		t.Run(map[bool]string{false: "no PVC", true: "existing PVC"}[exists], func(t *testing.T) {
+			tibr := &v1alpha1br.TiBR{ObjectMeta: metav1.ObjectMeta{Name: "br", Namespace: "test"}, Spec: v1alpha1br.TiBRSpec{Volumes: []v1alpha1.Volume{{Name: "data"}}}}
+			cli := client.NewFakeClient()
+			pvc := &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "data-br-0", Namespace: "test", Labels: TiBRSubResourceLabels(tibr)}}
+			if exists {
+				require.NoError(t, cli.Create(context.Background(), pvc))
+			}
+			rtx := NewReconcileContext(context.Background(), types.NamespacedName{Namespace: "test", Name: "br"}, cli)
+			rtx.tibr = tibr
+			result, _ := task.RunTask(context.Background(), taskPatchPVCWithOwnerReferences(rtx))
+			require.Equal(t, task.SRetry, result.Status())
+			if exists {
+				require.NoError(t, cli.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: pvc.Name}, pvc))
+				require.Empty(t, pvc.OwnerReferences)
+			}
+		})
+	}
+}
