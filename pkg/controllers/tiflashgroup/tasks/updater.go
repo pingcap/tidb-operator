@@ -28,6 +28,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/updater"
@@ -79,6 +80,15 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			return task.Fail().With("invalid topo policy, it should be validated: %v", err)
 		}
 
+		needUpdate, needRestart := precheckInstances(fg, runtime.ToTiFlashSlice(fs), updateRevision)
+		maxSurge, maxUnavailable := 0, 1
+		noUpdate := false
+		if needUpdate && needRestart && ptr.Deref(fg.Spec.MaxSurge, 0) > 0 {
+			// Keep existing instances available until surge instances are ready.
+			maxSurge, maxUnavailable = int(*fg.Spec.MaxSurge), 0
+			noUpdate = true
+		}
+
 		var instances []string
 		for _, in := range fs {
 			instances = append(instances, in.Name)
@@ -89,8 +99,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithInstances(fs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
-			WithMaxSurge(0).
-			WithMaxUnavailable(1).
+			WithMaxSurge(maxSurge).
+			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
 			WithNewFactory(TiFlashNewer(fg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
@@ -102,6 +112,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithScaleInPreferPolicy(
 				topoPolicy.PolicyScaleIn(),
 			).
+			WithUpdatePreferPolicy(
+				topoPolicy.PolicyUpdate(),
+			).
+			WithNoInPaceUpdate(noUpdate).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiFlashGroup](fg)).
 			Build().
 			Do(ctx)
@@ -117,6 +131,24 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 
 func needVersionUpgrade(fg *v1alpha1.TiFlashGroup) bool {
 	return fg.Spec.Template.Spec.Version != fg.Status.Version && fg.Status.Version != ""
+}
+
+func precheckInstances(fg *v1alpha1.TiFlashGroup, fs []*v1alpha1.TiFlash, updateRevision string) (needUpdate, needRestart bool) {
+	if len(fs) != int(coreutil.Replicas[scope.TiFlashGroup](fg)) {
+		needUpdate = true
+	}
+	for _, f := range fs {
+		if coreutil.UpdateRevision[scope.TiFlash](f) == updateRevision {
+			continue
+		}
+
+		needUpdate = true
+		if !reloadable.CheckTiFlash(fg, f) {
+			needRestart = true
+		}
+	}
+
+	return needUpdate, needRestart
 }
 
 func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string, g features.Gates) updater.NewFactory[*runtime.TiFlash] {

@@ -18,15 +18,20 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	tiflashtasks "github.com/pingcap/tidb-operator/v2/pkg/controllers/tiflash/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -39,6 +44,7 @@ import (
 const (
 	oldRevision = "old"
 	newRevision = "new"
+	newImage    = "pingcap/tiflash:v8.1.1"
 )
 
 func TestTaskUpdater(t *testing.T) {
@@ -302,4 +308,254 @@ func fakeAvailableTiFlash(name string, fg *v1alpha1.TiFlashGroup, rev string) *v
 		tiflash.DeepCopyInto(obj)
 		return obj
 	})
+}
+
+func TestTaskUpdaterSurgeWaitsForAvailable(t *testing.T) {
+	ctx := t.Context()
+	fg := fake.FakeObj[v1alpha1.TiFlashGroup]("flash")
+	fg.Spec.Cluster.Name = "cluster"
+	fg.Spec.Replicas = ptr.To[int32](1)
+	fg.Spec.Template.Spec.Version = "v8.1.0"
+	fg.Spec.Template.Spec.Volumes = []v1alpha1.Volume{{
+		Name: "data", Storage: resource.MustParse("1Gi"),
+		Mounts: []v1alpha1.VolumeMount{{Type: v1alpha1.VolumeMountTypeTiFlashData}},
+	}}
+	fg.Spec.MaxSurge = ptr.To[int32](1)
+	fg.Spec.MinReadySeconds = ptr.To[int64](60)
+	old := fakeAvailableTiFlash("flash-old", fg, oldRevision)
+	fg.Spec.Template.Spec.Image = ptr.To(newImage)
+	cluster := fake.FakeObj[v1alpha1.Cluster]("cluster")
+	fc := client.NewFakeClient(fg, cluster, old)
+	af := tracker.New().AllocateFactory("tiflash")
+
+	reconcile := func() task.Status {
+		var list v1alpha1.TiFlashList
+		require.NoError(t, fc.List(ctx, &list))
+		s := &state{fg: fg, cluster: cluster, updateRevision: newRevision}
+		for i := range list.Items {
+			s.fs = append(s.fs, &list.Items[i])
+		}
+		s.IFeatureGates = stateutil.NewFeatureGates[scope.TiFlashGroup](s)
+		res, _ := task.RunTask(ctx, TaskUpdater(&ReconcileContext{State: s}, fc, af))
+		return res.Status()
+	}
+	assertOldUnchanged := func() {
+		var got v1alpha1.TiFlash
+		require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(old), &got))
+		assert.Equal(t, old.Spec, got.Spec)
+		assert.Equal(t, oldRevision, runtime.FromTiFlash(&got).GetUpdateRevision())
+		assert.Empty(t, got.Annotations[v1alpha1.AnnoKeyDeferDelete])
+		assert.True(t, got.DeletionTimestamp.IsZero())
+	}
+
+	require.Equal(t, task.SWait, reconcile())
+	var list v1alpha1.TiFlashList
+	require.NoError(t, fc.List(ctx, &list))
+	require.Len(t, list.Items, 2, "create a spare before changing the healthy instance")
+	assertOldUnchanged()
+	var replacement *v1alpha1.TiFlash
+	for i := range list.Items {
+		if list.Items[i].Name != old.Name {
+			replacement = &list.Items[i]
+		}
+	}
+	require.NotNil(t, replacement)
+	assert.Equal(t, fg.Spec.Template.Spec.Image, replacement.Spec.Image)
+	oldPVCs := tiflashtasks.PVCNewer().NewPVCs(cluster, old, features.NewFromFeatures(nil))
+	newPVCs := tiflashtasks.PVCNewer().NewPVCs(cluster, replacement, features.NewFromFeatures(nil))
+	require.Len(t, oldPVCs, 1)
+	require.Len(t, newPVCs, 1)
+	assert.NotEqual(t, oldPVCs[0].Name, newPVCs[0].Name)
+	require.NoError(t, fc.Create(ctx, oldPVCs[0]))
+	require.NoError(t, fc.Create(ctx, newPVCs[0]))
+
+	// Pending and unhealthy replacements must not disrupt the old instance.
+	assert.Equal(t, task.SWait, reconcile())
+	assertOldUnchanged()
+	replacement.Status.CurrentRevision = newRevision
+	replacement.Status.ObservedGeneration = replacement.Generation
+	meta.SetStatusCondition(&replacement.Status.Conditions, metav1.Condition{
+		Type: v1alpha1.CondReady, Status: metav1.ConditionFalse,
+		ObservedGeneration: replacement.Generation, LastTransitionTime: metav1.Now(),
+	})
+	require.NoError(t, fc.Status().Update(ctx, replacement))
+	assert.Equal(t, task.SWait, reconcile())
+	assertOldUnchanged()
+
+	meta.SetStatusCondition(&replacement.Status.Conditions, metav1.Condition{
+		Type: v1alpha1.CondReady, Status: metav1.ConditionTrue,
+		ObservedGeneration: replacement.Generation, LastTransitionTime: metav1.Now(),
+	})
+	require.NoError(t, fc.Status().Update(ctx, replacement))
+	assert.Equal(t, task.SRetry, reconcile(), "wait for minReadySeconds")
+	assertOldUnchanged()
+
+	meta.FindStatusCondition(replacement.Status.Conditions, v1alpha1.CondReady).LastTransitionTime = metav1.NewTime(time.Now().Add(-2 * time.Minute))
+	require.NoError(t, fc.Status().Update(ctx, replacement))
+	reconcile()
+	var retiring v1alpha1.TiFlash
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(old), &retiring))
+	require.True(t, ptr.Deref(retiring.Spec.Offline, false), "retire the old store only after the replacement is available")
+	assert.True(t, retiring.DeletionTimestamp.IsZero(), "wait for the store to finish offlining")
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(oldPVCs[0]), oldPVCs[0]), "keep old storage while offlining")
+
+	// The instance controller reports completion of PD store removal.
+	meta.SetStatusCondition(&retiring.Status.Conditions, metav1.Condition{
+		Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue,
+		ObservedGeneration: retiring.Generation,
+	})
+	require.NoError(t, fc.Status().Update(ctx, &retiring))
+	reconcile()
+	assert.True(t, errors.IsNotFound(fc.Get(ctx, client.ObjectKeyFromObject(old), &retiring)))
+	// Exercise subresource cleanup separately: the fake client deletes CRs immediately.
+	instanceState := tiflashtasks.NewState(client.ObjectKeyFromObject(old))
+	instanceState.SetObject(&retiring)
+	cleanup, _ := task.RunTask(ctx, common.TaskInstanceFinalizerDel[scope.TiFlash](instanceState, fc, tiflashtasks.SubresourceLister))
+	assert.Equal(t, task.SRetry, cleanup.Status(), "wait for subresource deletion before removing the finalizer")
+	assert.True(t, errors.IsNotFound(fc.Get(ctx, client.ObjectKeyFromObject(oldPVCs[0]), oldPVCs[0])))
+	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(newPVCs[0]), newPVCs[0]), "keep replacement storage")
+	assert.Equal(t, task.SComplete, reconcile())
+	require.NoError(t, fc.List(ctx, &list))
+	require.Len(t, list.Items, 1)
+	assert.Equal(t, replacement.Name, list.Items[0].Name)
+}
+
+func TestTaskUpdaterSurgePolicy(t *testing.T) {
+	cases := []struct {
+		name       string
+		maxSurge   *int32
+		replicas   int32
+		change     func(*v1alpha1.TiFlashGroup)
+		unready    bool
+		wantCount  int
+		wantStatus task.Status
+	}{
+		{name: "unset uses in-place restart", replicas: 1, change: func(g *v1alpha1.TiFlashGroup) {
+			g.Spec.Template.Spec.Image = ptr.To(newImage)
+		}, wantCount: 1, wantStatus: task.SWait},
+		{name: "zero uses in-place restart", replicas: 1, maxSurge: ptr.To[int32](0), change: func(g *v1alpha1.TiFlashGroup) {
+			g.Spec.Template.Spec.Image = ptr.To(newImage)
+		}, wantCount: 1, wantStatus: task.SWait},
+		{name: "two surge instances", replicas: 3, maxSurge: ptr.To[int32](2), change: func(g *v1alpha1.TiFlashGroup) {
+			g.Spec.Template.Spec.Image = ptr.To(newImage)
+		}, wantCount: 5, wantStatus: task.SWait},
+		{name: "one spare for three replicas", replicas: 3, maxSurge: ptr.To[int32](1), change: func(g *v1alpha1.TiFlashGroup) {
+			g.Spec.Template.Spec.Image = ptr.To(newImage)
+		}, wantCount: 4, wantStatus: task.SWait},
+		{name: "restart config uses surge", replicas: 1, maxSurge: ptr.To[int32](1), change: func(g *v1alpha1.TiFlashGroup) {
+			g.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+			g.Spec.Template.Spec.Config = "log-level = 'debug'"
+		}, wantCount: 2, wantStatus: task.SWait},
+		{name: "reloadable config updates in place", replicas: 1, maxSurge: ptr.To[int32](1), change: func(g *v1alpha1.TiFlashGroup) {
+			g.Spec.Template.Spec.Config = "log-level = 'debug'"
+		}, wantCount: 1, wantStatus: task.SWait},
+		{name: "max surge alone does not restart", replicas: 1, maxSurge: ptr.To[int32](1), wantCount: 1, wantStatus: task.SComplete},
+		{name: "current revision still waits for readiness", replicas: 1, maxSurge: ptr.To[int32](1), unready: true, wantCount: 1, wantStatus: task.SWait},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			fg := fake.FakeObj[v1alpha1.TiFlashGroup]("flash")
+			fg.Spec.Replicas = ptr.To(tt.replicas)
+			fg.Spec.SchedulePolicies = []v1alpha1.SchedulePolicy{{
+				Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+				EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{Topologies: []v1alpha1.ScheduleTopology{
+					{Topology: v1alpha1.Topology{"zone": "a"}},
+					{Topology: v1alpha1.Topology{"zone": "b"}},
+					{Topology: v1alpha1.Topology{"zone": "c"}},
+				}},
+			}}
+			revision := oldRevision
+			if tt.change == nil {
+				revision = newRevision
+			}
+			s := &state{fg: fg, cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"), updateRevision: newRevision}
+			objs := []client.Object{fg, s.cluster}
+			for i := range tt.replicas {
+				instance := fakeAvailableTiFlash(fmt.Sprintf("flash-old-%d", i), fg, revision)
+				instance.Spec.Topology = fg.Spec.SchedulePolicies[0].EvenlySpread.Topologies[i].Topology
+				if tt.unready {
+					instance.Status.Conditions = nil
+				}
+				s.fs = append(s.fs, instance)
+				objs = append(objs, instance)
+			}
+			fg.Spec.MaxSurge = tt.maxSurge
+			if tt.change != nil {
+				tt.change(fg)
+			}
+			fc := client.NewFakeClient(objs...)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiFlashGroup](s)
+			res, _ := task.RunTask(t.Context(), TaskUpdater(&ReconcileContext{State: s}, fc, tracker.New().AllocateFactory("tiflash")))
+			assert.Equal(t, tt.wantStatus, res.Status())
+			var list v1alpha1.TiFlashList
+			require.NoError(t, fc.List(t.Context(), &list))
+			assert.Len(t, list.Items, tt.wantCount)
+			if tt.wantCount > int(tt.replicas) {
+				zones := map[string]int{}
+				for _, instance := range list.Items {
+					zones[instance.Spec.Topology["zone"]]++
+				}
+				for _, count := range zones {
+					assert.LessOrEqual(t, count, 2, "surge instances remain evenly spread")
+				}
+				for _, old := range s.fs {
+					var got v1alpha1.TiFlash
+					require.NoError(t, fc.Get(t.Context(), client.ObjectKeyFromObject(old), &got))
+					assert.Equal(t, old.Spec, got.Spec, "pending surge instances must not disrupt old instances")
+				}
+			}
+			if tt.replicas > 1 {
+				verifyMultiReplicaSurge(t, s, fc)
+			}
+		})
+	}
+}
+
+func verifyMultiReplicaSurge(t *testing.T, s *state, fc client.Client) {
+	t.Helper()
+	replicas := *s.fg.Spec.Replicas
+	var list v1alpha1.TiFlashList
+	require.NoError(t, fc.List(t.Context(), &list))
+	// Drive readiness and store removal through the multi-replica rollout.
+	// Allow a readiness and cleanup pass for each desired instance.
+	for range replicas * 2 {
+		for i := range list.Items {
+			instance := &list.Items[i]
+			instance.Status.CurrentRevision = runtime.FromTiFlash(instance).GetUpdateRevision()
+			instance.Status.ObservedGeneration = instance.Generation
+			meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+				Type: v1alpha1.CondReady, Status: metav1.ConditionTrue,
+				ObservedGeneration: instance.Generation, LastTransitionTime: metav1.Unix(0, 0),
+			})
+			if ptr.Deref(instance.Spec.Offline, false) {
+				meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+					Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue,
+					ObservedGeneration: instance.Generation,
+				})
+			}
+			require.NoError(t, fc.Status().Update(t.Context(), instance))
+		}
+		s.fs = nil
+		for i := range list.Items {
+			s.fs = append(s.fs, &list.Items[i])
+		}
+		res, _ := task.RunTask(t.Context(), TaskUpdater(&ReconcileContext{State: s}, fc, tracker.New().AllocateFactory("tiflash")))
+		require.NotEqual(t, task.SFail, res.Status())
+		require.NoError(t, fc.List(t.Context(), &list))
+		available := 0
+		for i := range list.Items {
+			instance := runtime.FromTiFlash(&list.Items[i])
+			if !instance.IsOffline() && instance.IsReady() && instance.IsUpToDate() {
+				available++
+			}
+		}
+		assert.GreaterOrEqual(t, available, int(replicas))
+		if res.Status() == task.SComplete && len(list.Items) == int(replicas) {
+			break
+		}
+	}
+	require.Len(t, list.Items, int(replicas))
+	for i := range list.Items {
+		assert.Equal(t, newRevision, runtime.FromTiFlash(&list.Items[i]).GetUpdateRevision())
+	}
 }

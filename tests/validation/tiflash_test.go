@@ -43,6 +43,22 @@ func TestTiFlashGroup(t *testing.T) {
 	Validate(t, "crd/core.pingcap.com_tiflashgroups.yaml", cases)
 }
 
+func TestTiFlashGroupMaxSurge(t *testing.T) {
+	cases := []Case{
+		{desc: "unset preserves legacy updates", isCreate: true, current: nil},
+		{desc: "zero disables surge", isCreate: true, current: int64(0)},
+		{desc: "positive enables surge", isCreate: true, current: int64(2)},
+		{
+			desc: "negative is rejected", isCreate: true, current: int64(-1),
+			wantErrs: []string{"spec.maxSurge: Invalid value: -1: spec.maxSurge in body should be greater than or equal to 0"},
+		},
+		{desc: "enable surge", old: nil, current: int64(1)},
+		{desc: "disable surge", old: int64(1), current: int64(0)},
+		{desc: "remove surge", old: int64(1), current: nil},
+	}
+	Validate(t, "crd/core.pingcap.com_tiflashgroups.yaml", transferTiFlashGroupCases(t, cases, "spec", "maxSurge"))
+}
+
 func basicTiFlash() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1

@@ -4724,6 +4724,11 @@ func (in *TiFlashGroupSpec) DeepCopyInto(out *TiFlashGroupSpec) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.MaxSurge != nil {
+		in, out := &in.MaxSurge, &out.MaxSurge
+		*out = new(int32)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
