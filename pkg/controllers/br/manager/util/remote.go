@@ -16,6 +16,7 @@ package util
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -552,7 +553,10 @@ type azblobSharedKeyCred struct {
 
 // newAzblobStorage initialize a new azblob storage
 func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
-	account := os.Getenv("AZURE_STORAGE_ACCOUNT")
+	account := conf.storageAccount
+	if account == "" {
+		account = os.Getenv("AZURE_STORAGE_ACCOUNT")
+	}
 	if account == "" {
 		return nil, errors.New("no AZURE_STORAGE_ACCOUNT")
 	}
@@ -760,6 +764,13 @@ func makeAzblobConfig(azblobProvider *v1alpha1.AzblobStorageProvider) *azblobCon
 		sasToken:       azblobProvider.SasToken,
 	}
 
+	if conf.sasToken == "" && azblobProvider.SecretName != "" {
+		conf.sasToken = os.Getenv(AzblobSecretEnvName(constants.AzblobSasToken, azblobProvider.SecretName))
+		if conf.storageAccount == "" {
+			conf.storageAccount = os.Getenv(AzblobSecretEnvName(constants.AzblobAccountName, azblobProvider.SecretName))
+		}
+	}
+
 	p := strings.Trim(azblobProvider.Container, "/") + "/" + strings.Trim(azblobProvider.Prefix, "/")
 	fields := strings.SplitN(p, "/", 2)
 
@@ -891,4 +902,9 @@ func (d *MockDriver) SetListPaged(objs []*driver.ListObject, rerr error) {
 
 func (d *MockDriver) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driver.ListPage, error) {
 	return d.listPaged(opts)
+}
+
+// AzblobSecretEnvName keeps PiTR log and full-backup credentials independent.
+func AzblobSecretEnvName(key, secret string) string {
+	return fmt.Sprintf("%s_%x", key, sha256.Sum256([]byte(secret)))
 }

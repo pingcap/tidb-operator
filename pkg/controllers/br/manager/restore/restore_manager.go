@@ -205,6 +205,19 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %w", ns, name, err)
 	}
+	if full := restore.Spec.PitrFullBackupStorageProvider; restore.Spec.Mode == v1alpha1.RestoreModePiTR &&
+		full.Azblob != nil && full.Azblob.SecretName != "" && full.Azblob.SasToken == "" {
+		fullEnv, fullReason, fullErr := util.GenerateStorageCertEnv(ctx, ns, restore.Spec.UseKMS, full, rm.cli)
+		if fullErr != nil {
+			return nil, fullReason, fullErr
+		}
+		for _, env := range fullEnv {
+			if env.Name == util.AzblobSecretEnvName(constants.AzblobSasToken, full.Azblob.SecretName) ||
+				env.Name == util.AzblobSecretEnvName(constants.AzblobAccountName, full.Azblob.SecretName) {
+				storageEnv = append(storageEnv, env)
+			}
+		}
+	}
 
 	envVars = append(envVars, storageEnv...)
 	envVars = append(envVars, corev1.EnvVar{

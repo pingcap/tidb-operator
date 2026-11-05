@@ -57,13 +57,12 @@ func generateS3CertEnvVar(s3 *brv1alpha1.S3StorageProvider, useKMS bool) ([]core
 	switch s3.Provider {
 	case brv1alpha1.S3StorageProviderTypeCeph:
 		if !strings.Contains(s3.Endpoint, "://") {
-			// convert xxx.xxx.xxx.xxx:port to http://xxx.xxx.xxx.xxx:port
-			// the endpoint must start with http://
-			s3.Endpoint = fmt.Sprintf("http://%s", s3.Endpoint)
-			break
+			s3.Endpoint = "https://" + s3.Endpoint
 		}
-		if !strings.HasPrefix(s3.Endpoint, "http://") {
-			return envVars, "InvalidS3Endpoint", fmt.Errorf("ceph endpoint URI %s must start with http://", s3.Endpoint)
+		endpoint, err := url.Parse(s3.Endpoint)
+		if err != nil || endpoint.Host == "" || endpoint.User != nil ||
+			(endpoint.Scheme != "http" && endpoint.Scheme != "https") {
+			return envVars, "InvalidS3Endpoint", fmt.Errorf("ceph endpoint must be a valid http or https URL")
 		}
 	case brv1alpha1.S3StorageProviderTypeAWS:
 		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
@@ -201,6 +200,19 @@ func generateAzblobCertEnvVar(
 			Name:  "AZURE_STORAGE_ACCOUNT",
 			Value: azblob.StorageAccount,
 		},
+	}
+	if secret != nil && len(secret.Data[constants.AzblobSasToken]) > 0 {
+		envVars = append(envVars, corev1.EnvVar{
+			Name: AzblobSecretEnvName(constants.AzblobSasToken, azblob.SecretName),
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
+				Key:                  constants.AzblobSasToken,
+			}},
+		}, corev1.EnvVar{
+			Name:  AzblobSecretEnvName(constants.AzblobAccountName, azblob.SecretName),
+			Value: azblob.StorageAccount,
+		})
+		return envVars, "", nil
 	}
 	if useSasToken {
 		return envVars, "", nil

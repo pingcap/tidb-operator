@@ -225,10 +225,10 @@ func (bo *Options) brCommandRunWithLogCallback(
 	logCallback func(line string),
 ) error {
 	if len(fullArgs) == 0 {
-		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
+		return fmt.Errorf("command is invalid: no arguments")
 	}
 	bin := filepath.Join(v1alpha1.DirPathBRBin, "br")
-	klog.Infof("Running br command: %s %v", bin, fullArgs)
+	klog.Infof("Running br command: %s", bin)
 
 	e2eTestSimulate(bo)
 
@@ -243,7 +243,7 @@ func (bo *Options) brCommandRunWithLogCallback(
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", bo, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed: %w", bo, err)
 	}
 
 	var errMsg string
@@ -278,7 +278,7 @@ func (bo *Options) brCommandRunWithLogCallback(
 		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %w", bo, errMsg, err)
 	}
 
-	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
+	klog.Infof("Run br command for cluster %s successfully", bo)
 	return nil
 }
 

@@ -176,7 +176,8 @@ type AzblobStorageProvider struct {
 	// If this field is set, then use this to set backup-manager env
 	// Otherwise retrieve the storage account from secret
 	StorageAccount string `json:"storageAccount,omitempty"`
-	// SasToken is the sas token of the storage account
+	// SasToken is the sas token of the storage account.
+	// Deprecated: store AZURE_STORAGE_SAS_TOKEN in the Secret referenced by secretName.
 	SasToken string `json:"sasToken,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`

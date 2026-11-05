@@ -88,7 +88,9 @@ spec:
                     description: Prefix of the data path.
                     type: string
                   sasToken:
-                    description: SasToken is the sas token of the storage account
+                    description: |-
+                      SasToken is the sas token of the storage account.
+                      Deprecated: store AZURE_STORAGE_SAS_TOKEN in the Secret referenced by secretName.
                     type: string
                   secretName:
                     description: |-
@@ -2924,7 +2926,9 @@ spec:
                         description: Prefix of the data path.
                         type: string
                       sasToken:
-                        description: SasToken is the sas token of the storage account
+                        description: |-
+                          SasToken is the sas token of the storage account.
+                          Deprecated: store AZURE_STORAGE_SAS_TOKEN in the Secret referenced by secretName.
                         type: string
                       secretName:
                         description: |-
@@ -8497,7 +8501,9 @@ spec:
                         description: Prefix of the data path.
                         type: string
                       sasToken:
-                        description: SasToken is the sas token of the storage account
+                        description: |-
+                          SasToken is the sas token of the storage account.
+                          Deprecated: store AZURE_STORAGE_SAS_TOKEN in the Secret referenced by secretName.
                         type: string
                       secretName:
                         description: |-
@@ -15836,7 +15842,9 @@ spec:
                         description: Prefix of the data path.
                         type: string
                       sasToken:
-                        description: SasToken is the sas token of the storage account
+                        description: |-
+                          SasToken is the sas token of the storage account.
+                          Deprecated: store AZURE_STORAGE_SAS_TOKEN in the Secret referenced by secretName.
                         type: string
                       secretName:
                         description: |-

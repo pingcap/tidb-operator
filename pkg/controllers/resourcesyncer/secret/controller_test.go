@@ -15,9 +15,12 @@
 package secret
 
 import (
+	"context"
 	"io/fs"
 	"path/filepath"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -338,4 +341,28 @@ func secretData(key string, val []byte) func(s *corev1.Secret) *corev1.Secret {
 
 		return s
 	}
+}
+
+func TestSecretPermissionsAfterUpgrade(t *testing.T) {
+	base := afero.NewMemMapFs()
+	require.NoError(t, base.Mkdir("storage", 0755))
+	require.NoError(t, afero.WriteFile(base, "storage/key", []byte("credential"), 0644))
+	require.NoError(t, afero.WriteFile(base, "storage/resourceVersion", []byte("1"), 0644))
+	r := &Reconciler{BaseDirFS: base, cache: map[string]string{"storage": "1"}}
+	s := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "storage", ResourceVersion: "1"}, Data: map[string][]byte{"key": []byte("credential")}}
+	require.NoError(t, r.syncSecret(context.Background(), s))
+	for _, tc := range []struct {
+		path string
+		mode fs.FileMode
+	}{{"storage", 0700}, {"storage/key", 0600}, {"storage/resourceVersion", 0600}} {
+		info, err := base.Stat(tc.path)
+		require.NoError(t, err)
+		require.Equal(t, tc.mode, info.Mode().Perm())
+	}
+	s.ResourceVersion = "2"
+	s.Data["new"] = []byte("new")
+	require.NoError(t, r.syncSecret(context.Background(), s))
+	info, err := base.Stat("storage/new")
+	require.NoError(t, err)
+	require.Equal(t, fs.FileMode(0600), info.Mode().Perm())
 }

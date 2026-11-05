@@ -44,8 +44,8 @@ const (
 	maxRetryTimes  = 10
 	defaultTimeout = time.Second * 30
 
-	defaultFilePerm fs.FileMode = 0o644
-	defaultDirPerm  fs.FileMode = 0o755
+	defaultFilePerm fs.FileMode = 0o600
+	defaultDirPerm  fs.FileMode = 0o700
 )
 
 type Reconciler struct {
@@ -180,6 +180,24 @@ func (r *Reconciler) sync(ctx context.Context) error {
 
 func (r *Reconciler) syncSecret(ctx context.Context, s *corev1.Secret) error {
 	logger := logr.FromContextOrDiscard(ctx)
+
+	// Tighten existing files as well, including unchanged Secrets after an upgrade.
+	if info, err := r.BaseDirFS.Stat(s.Name); err == nil && info.IsDir() {
+		if err := r.BaseDirFS.Chmod(s.Name, defaultDirPerm); err != nil {
+			return err
+		}
+		entries, err := afero.ReadDir(r.BaseDirFS, s.Name)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := r.BaseDirFS.Chmod(filepath.Join(s.Name, entry.Name()), defaultFilePerm); err != nil {
+				return err
+			}
+		}
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
 
 	rv, ok := r.cache[s.Name]
 	if ok && rv == s.ResourceVersion {

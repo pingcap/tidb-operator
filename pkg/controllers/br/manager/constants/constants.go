@@ -48,6 +48,9 @@ const (
 	// AzblobAccountKey represents the Azure Storage Access Key using shared key credential in related secret
 	AzblobAccountKey = "AZURE_STORAGE_KEY"
 
+	// AzblobSasToken is the Secret key and environment variable for Azure SAS authentication.
+	AzblobSasToken = "AZURE_STORAGE_SAS_TOKEN"
+
 	// AzblobClientID represents the Azure Application (client) ID using AAD credtentials in related secret
 	AzblobClientID = "AZURE_CLIENT_ID"
 

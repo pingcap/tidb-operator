@@ -639,3 +639,26 @@ func objects(size int) []*blob.ListObject {
 	}
 	return objs
 }
+
+func TestSASTokenFromEnvironment(t *testing.T) {
+	t.Setenv(AzblobSecretEnvName("AZURE_STORAGE_SAS_TOKEN", "logs"), "log-token")
+	t.Setenv(AzblobSecretEnvName("AZURE_STORAGE_SAS_TOKEN", "full"), "full-token")
+	t.Setenv(AzblobSecretEnvName("AZURE_STORAGE_ACCOUNT", "full"), "full-account")
+	for _, tc := range []struct{ name, secret, legacy, want string }{
+		{"logs", "logs", "", "log-token"}, {"full", "full", "", "full-token"},
+		{"legacy wins", "full", "legacy-token", "legacy-token"},
+		{"other secret", "other", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			provider := v1alpha1.StorageProvider{Azblob: &v1alpha1.AzblobStorageProvider{Container: "backups", Prefix: "data", SecretName: tc.secret, SasToken: tc.legacy}}
+			args, err := GenStorageArgsForFlag(provider, "storage")
+			g := gomega.NewGomegaWithT(t)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			if tc.want != "" {
+				g.Expect(strings.Join(args, " ")).To(gomega.ContainSubstring("sas-token=" + tc.want))
+			} else {
+				g.Expect(strings.Join(args, " ")).NotTo(gomega.ContainSubstring("sas-token="))
+			}
+		})
+	}
+}

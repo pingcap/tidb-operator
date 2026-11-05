@@ -50,6 +50,7 @@ func TestGenerateStorageCertEnvAzblob(t *testing.T) {
 		{name: "named secret does not exist", account: "test-account", wantReason: "GetAzblobSecretFailed"},
 		{name: "explicit account with SAS and no secret", account: "test-account", sasToken: "test-sas", omitSecretName: true},
 		{name: "account from secret with SAS", sasToken: "test-sas", secretData: map[string][]byte{constants.AzblobAccountName: []byte("test-account")}},
+		{name: "SAS from secret", account: "test-account", secretData: map[string][]byte{constants.AzblobSasToken: sensitiveValue}, wantEnvKey: constants.AzblobSasToken},
 		{name: "shared key with account from secret", secretData: map[string][]byte{constants.AzblobAccountName: []byte("test-account"), constants.AzblobAccountKey: sensitiveValue}, wantEnvKey: constants.AzblobAccountKey},
 		{name: "shared key with explicit account", account: "test-account", secretData: map[string][]byte{constants.AzblobAccountKey: sensitiveValue}, wantEnvKey: constants.AzblobAccountKey},
 		{name: "AAD with account from secret", secretData: map[string][]byte{constants.AzblobAccountName: []byte("test-account"), constants.AzblobClientID: []byte("test-client"), constants.AzblobClientScrt: sensitiveValue, constants.AzblobTenantID: []byte("test-tenant")}, wantEnvKey: constants.AzblobClientScrt},
@@ -79,7 +80,12 @@ func TestGenerateStorageCertEnvAzblob(t *testing.T) {
 			g.Expect(envs).To(ContainElement(corev1.EnvVar{Name: constants.AzblobAccountName, Value: "test-account"}))
 			if tt.wantEnvKey != "" {
 				g.Expect(envs).To(ContainElement(corev1.EnvVar{
-					Name: tt.wantEnvKey,
+					Name: func() string {
+						if tt.wantEnvKey == constants.AzblobSasToken {
+							return AzblobSecretEnvName(tt.wantEnvKey, secretName)
+						}
+						return tt.wantEnvKey
+					}(),
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
@@ -90,6 +96,32 @@ func TestGenerateStorageCertEnvAzblob(t *testing.T) {
 			}
 			for _, env := range envs {
 				g.Expect(env.Value).NotTo(Equal(string(sensitiveValue)))
+			}
+		})
+	}
+}
+
+func TestCephEndpointTLS(t *testing.T) {
+	for _, tc := range []struct {
+		endpoint, want string
+		bad            bool
+	}{
+		{"storage.example:443", "https://storage.example:443", false},
+		{"https://storage.example", "https://storage.example", false},
+		{"http://storage.example", "http://storage.example", false},
+		{"ftp://storage.example", "", true},
+		{"https://", "", true},
+		{"https://user:password@storage.example", "", true},
+	} {
+		t.Run(tc.endpoint, func(t *testing.T) {
+			s3 := &v1alpha1.S3StorageProvider{Provider: v1alpha1.S3StorageProviderTypeCeph, Endpoint: tc.endpoint}
+			_, _, err := generateS3CertEnvVar(s3, false)
+			g := NewGomegaWithT(t)
+			if tc.bad {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(s3.Endpoint).To(Equal(tc.want))
 			}
 		})
 	}
