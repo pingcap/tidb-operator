@@ -3152,8 +3152,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
-default to current tidb cluster version, for example: v3.0.15</p>
+<p>alertManagerRulesVersion explicitly selects the alert rules persistence version.
+When unset, the operator preserves the recorded version across initializer image updates.
+A new monitor initially uses spec.initializer.version.</p>
 </td>
 </tr>
 <tr>
@@ -28133,8 +28134,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
-default to current tidb cluster version, for example: v3.0.15</p>
+<p>alertManagerRulesVersion explicitly selects the alert rules persistence version.
+When unset, the operator preserves the recorded version across initializer image updates.
+A new monitor initially uses spec.initializer.version.</p>
 </td>
 </tr>
 <tr>

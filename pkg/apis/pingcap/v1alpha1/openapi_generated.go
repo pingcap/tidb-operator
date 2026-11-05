@@ -17354,7 +17354,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"alertManagerRulesVersion": {
 						SchemaProps: spec.SchemaProps{
-							Description: "alertManagerRulesVersion is the version of the tidb cluster that used for alert rules. default to current tidb cluster version, for example: v3.0.15",
+							Description: "alertManagerRulesVersion explicitly selects the alert rules persistence version. When unset, the operator preserves the recorded version across initializer image updates. A new monitor initially uses spec.initializer.version.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

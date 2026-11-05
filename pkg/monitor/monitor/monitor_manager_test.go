@@ -19,6 +19,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
@@ -422,6 +423,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		{
 			name: "tidbmonitor use deployment running , tidbmonitor can smooth migrate to statefulset",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				// This reconciliation resumes after the legacy Deployment was deleted.
+				monitor.Annotations = map[string]string{label.AnnMonitorRulesVersion: "tidb:v3.0.15"}
 				monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 					PvName: "test-pv",
 				}

@@ -131,6 +131,8 @@ const (
 	// It's useful for scenario where you need to know whether the STS is already updated with the latest TC.spec.{component}.
 	// Though the number of owner of object may more than one, but in our scenario, it's only one.
 	AnnoOwnerGeneration = "tidb.pingcap.com/owner-generation"
+	// AnnMonitorRulesVersion records the effective rules version independently of initializer image tags.
+	AnnMonitorRulesVersion = "tidb.pingcap.com/monitor-rules-version"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = AnnoScaleInTime

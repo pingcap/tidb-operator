@@ -74,8 +74,9 @@ spec:
   ## Ref: https://prometheus.io/docs/alerting/alertmanager/
   # alertmanagerURL: ""
 
-  ## AlertManagerRulesVersion is the version of the TidbCluster that used for alert rules.
-  ## Defaults to current TidbCluster version, for example: v3.0.15.
+  ## AlertManagerRulesVersion explicitly selects the alert rules persistence version.
+  ## When unset, the first initializer version is retained across image upgrades.
+  ## Existing workloads retain their recorded version. Set this field to switch it.
   # alertManagerRulesVersion: v5.2.0
 
   ## AdditionalContainers is custom sidecar containers injected into the TidbMonitor pod,

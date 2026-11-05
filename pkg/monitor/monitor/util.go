@@ -140,11 +140,13 @@ func getGrafanaEnvs() []core.EnvVar {
 }
 
 func getAlertManagerRulesVersion(monitor *v1alpha1.TidbMonitor) string {
-	alertManagerRulesVersion := fmt.Sprintf("tidb:%s", monitor.Spec.Initializer.Version)
 	if monitor.Spec.AlertManagerRulesVersion != nil {
-		alertManagerRulesVersion = fmt.Sprintf("tidb:%s", *monitor.Spec.AlertManagerRulesVersion)
+		return fmt.Sprintf("tidb:%s", *monitor.Spec.AlertManagerRulesVersion)
 	}
-	return alertManagerRulesVersion
+	if version := monitor.Annotations[label.AnnMonitorRulesVersion]; version != "" {
+		return version
+	}
+	return fmt.Sprintf("tidb:%s", monitor.Spec.Initializer.Version)
 }
 
 // getPromConfigMap generate the Prometheus config for TidbMonitor,

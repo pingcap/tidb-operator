@@ -153,6 +153,10 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 
 	// Sync Statefulset
+	// Persist the directory choice before changing or migrating any workload.
+	if err := m.syncMonitorRulesVersion(monitor); err != nil {
+		return err
+	}
 	if err := m.syncTidbMonitorStatefulset(firstTc, firstDc, monitor, assetStore); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Statefulset failed, err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
@@ -195,10 +199,11 @@ func (m *MonitorManager) addProtectionFinalizerIfNeed(tm *v1alpha1.TidbMonitor) 
 	}
 	if !controllerutil.ContainsFinalizer(tm, label.TiDBMonitorProtectionFinalizer) {
 		controllerutil.AddFinalizer(tm, label.TiDBMonitorProtectionFinalizer)
-		_, err := m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Update(context.TODO(), tm, metav1.UpdateOptions{})
+		updated, err := m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Update(context.TODO(), tm, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
+		tm.ResourceVersion = updated.ResourceVersion
 	}
 	return nil
 }
