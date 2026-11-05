@@ -79,14 +79,24 @@ func (l *memberLister) List(ctx context.Context) (*pdv1.MemberList, error) {
 		return nil, err
 	}
 
+	if info == nil || info.Header == nil {
+		return nil, fmt.Errorf("PD returned incomplete members information")
+	}
+
 	health, err := l.c.GetHealth(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if health == nil || health.Healths == nil {
+		return nil, fmt.Errorf("PD returned a nil health response")
 	}
 
 	mm := map[uint64]*pdv1.Member{}
 
 	for _, m := range info.Members {
+		if m == nil {
+			return nil, fmt.Errorf("PD returned a nil member")
+		}
 		mm[m.MemberId] = &pdv1.Member{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            m.Name,
@@ -99,8 +109,8 @@ func (l *memberLister) List(ctx context.Context) (*pdv1.MemberList, error) {
 			ClientUrls:     m.ClientUrls,
 			LeaderPriority: m.LeaderPriority,
 
-			IsLeader:     m.MemberId == info.Leader.MemberId,
-			IsEtcdLeader: m.MemberId == info.EtcdLeader.MemberId,
+			IsLeader:     info.Leader != nil && m.MemberId == info.Leader.MemberId,
+			IsEtcdLeader: info.EtcdLeader != nil && m.MemberId == info.EtcdLeader.MemberId,
 		}
 	}
 
