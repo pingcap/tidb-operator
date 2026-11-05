@@ -1,0 +1,31 @@
+{{- if .Values.webhook.create }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ .Release.Name }}.workload-authority.pingcap.com
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: ["core.pingcap.com", "br.pingcap.com"]
+      apiVersions: ["v1alpha1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["*"]
+  {{- if .Values.watchNamespaces }}
+  matchConditions:
+  - name: managed-namespace
+    expression: {{ printf "request.namespace in %s" (toJson .Values.watchNamespaces) | quote }}
+  {{- end }}
+  validations:
+  - expression: "authorizer.group('').resource('pods').namespace(request.namespace).check('create').allowed()"
+    message: "TiDB Operator CR writers must also be authorized to create Pods in this namespace; CRs can select images, ServiceAccounts and Secrets."
+    reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ .Release.Name }}.workload-authority.pingcap.com
+spec:
+  policyName: {{ .Release.Name }}.workload-authority.pingcap.com
+  validationActions: [Deny]
+{{- end }}

@@ -47,6 +47,9 @@ spec:
         - --backup-manager-image={{ template "image" (tuple .Values.backupManager.image $.Chart.AppVersion) }}
         - --default-prestop-checker-image={{ template "image" (tuple .Values.prestopChecker.image $.Chart.AppVersion) }}
         - --default-resource-syncer-image={{ template "image" (tuple .Values.resourceSyncer.image $.Chart.AppVersion) }}
+        {{- if .Values.watchNamespaces }}
+        - --watch-namespaces={{ join "," .Values.watchNamespaces }}
+        {{- end }}
         {{- if eq .Values.skipCRDsManagement true }}
         - --skip-crds-management
         {{- end }}

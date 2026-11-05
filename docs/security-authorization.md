@@ -1,0 +1,11 @@
+# CR authorization and namespace scope
+
+TiDB Operator CRs are workload-management APIs. Their writers can choose images, ServiceAccounts, Secret references, volume mounts and Pod overlays. Granting CR write access is a privileged operation; a Backup-only Role does not provide a sandbox for an untrusted user. Configure namespace Pod Security Admission and image/ServiceAccount admission rules for the Pods the Operator creates. Those Pod policies must also apply to the Operator identity; identity exemptions weaken them.
+
+With the chart default `webhook.create: true`, a ValidatingAdmissionPolicy requires CR creators and updaters to also have `create pods` in the CR namespace. CR-only users are denied. This preserves administrator configuration and prevents using only CR write permission to obtain a stronger workload/Secret capability. Review existing limited CR writer Roles before upgrade; do not add Pod creation rights automatically to untrusted users. Status subresource updates do not match this policy. Direct manifest installations must install the policy too; disabling `webhook.create` disables this guardrail.
+
+Set `watchNamespaces: [tenant-a, tenant-b]` in Helm values to restrict this release's informer scope and namespaced permissions to existing namespaces. The chart creates a RoleBinding in each selected namespace and a separate lease Role/RoleBinding in the release namespace when needed. Namespace-scoped mode still needs read access to nodes, PersistentVolumes and storage classes; CRD management can be separately disabled with `skipCRDsManagement: true`. An empty namespace list retains cluster-wide operation and its corresponding namespaced authority. Use one Operator release per intended administrative trust boundary.
+
+Secret reads bypass the informer cache; TLS and backup Secrets need no Operator label and remain visible through direct API reads within the ServiceAccount's RBAC scope. The main Operator no longer starts a Secret informer just to resolve these references. The TiCDC resource-syncer is a separate namespace-scoped process with its own watch requirements.
+
+The cluster-wide defaults are for cluster administrators, not a hostile multi-tenant sandbox. Namespace scope and admission settings must be deployed to obtain the corresponding restrictions; merging this change alone does not change a running installation.

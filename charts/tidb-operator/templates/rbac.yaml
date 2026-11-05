@@ -22,8 +22,6 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: tidb-operator
 rules:
-  - nonResourceURLs: ["/metrics"]
-    verbs: ["get"]
   - apiGroups: [""]
     resources: ["configmaps", "persistentvolumeclaims", "pods", "services"]
     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
@@ -34,7 +32,7 @@ rules:
     resources: ["events"]
     verbs: ["create"]
   - apiGroups: [""]
-    resources: ["nodes", "persistentvolumes", "secrets"]
+    resources: ["secrets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["controllerrevisions", "statefulsets"]
@@ -42,43 +40,107 @@ rules:
   - apiGroups: ["batch"]
     resources: ["jobs", "cronjobs"]
     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["storageclasses", "volumeattributesclasses"]
-    verbs: ["get", "list", "watch"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
-  - apiGroups: ["core.pingcap.com"]
-    resources: ["*"]
-    verbs: ["*"]
-  - apiGroups: ["br.pingcap.com"]
-    resources: ["*"]
-    verbs: ["*"]
-  {{- if eq .Values.skipCRDsManagement false }}
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["get", "create", "update", "patch"]
-    resourceNames: {{ toYaml .Values.crds | nindent 4 }}
+  {{- range $group := list "core.pingcap.com" "br.pingcap.com" }}
+  - apiGroups: [{{ $group | quote }}]
+    resources:
+      {{- range $.Values.crds }}
+      {{- if hasSuffix (printf ".%s" $group) . }}
+      {{- $resource := trimSuffix (printf ".%s" $group) . }}
+      - {{ $resource | quote }}
+      - {{ printf "%s/status" $resource | quote }}
+      - {{ printf "%s/finalizers" $resource | quote }}
+      {{- end }}
+      {{- end }}
+    verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
   {{- end }}
+{{- $namespaces := list "" }}
+{{- if .Values.watchNamespaces }}
+{{- $namespaces = .Values.watchNamespaces | uniq }}
+{{- end }}
+{{- range $namespaces }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: {{ if $.Values.watchNamespaces }}RoleBinding{{ else }}ClusterRoleBinding{{ end }}
 metadata:
-  name: {{ .Release.Name }}:tidb-operator
+  {{- if $.Values.watchNamespaces }}
+  namespace: {{ . | quote }}
+  {{- end }}
+  name: {{ $.Release.Name }}:tidb-operator
   labels:
-    app.kubernetes.io/name: {{ template "chart.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ template "chart.name" $ }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
     app.kubernetes.io/component: tidb-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Release.Name }}:tidb-operator
+  name: {{ $.Release.Name }}:tidb-operator
 subjects:
   - kind: ServiceAccount
-    {{- if eq .Values.appendReleaseSuffix true}}
-    name: {{ .Values.operator.serviceAccount }}-{{ .Release.Name }}
+    {{- if eq $.Values.appendReleaseSuffix true}}
+    name: {{ $.Values.operator.serviceAccount }}-{{ $.Release.Name }}
     {{- else }}
-    name: {{ .Values.operator.serviceAccount }}
+    name: {{ $.Values.operator.serviceAccount }}
     {{- end }}
-    namespace: {{ .Release.Namespace }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- if and .Values.watchNamespaces (not (has .Release.Namespace .Values.watchNamespaces)) }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}:tidb-operator-leader-election
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}:tidb-operator-leader-election
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}:tidb-operator-leader-election
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.operator.serviceAccount }}{{ if .Values.appendReleaseSuffix }}-{{ .Release.Name }}{{ end }}
+  namespace: {{ .Release.Namespace }}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}:tidb-operator-cluster
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "persistentvolumes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses", "volumeattributesclasses"]
+  verbs: ["get", "list", "watch"]
+{{- if not .Values.skipCRDsManagement }}
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "create", "update", "patch"]
+  resourceNames: {{ toYaml .Values.crds | nindent 2 }}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}:tidb-operator-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}:tidb-operator-cluster
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.operator.serviceAccount }}{{ if .Values.appendReleaseSuffix }}-{{ .Release.Name }}{{ end }}
+  namespace: {{ .Release.Namespace }}
 {{- end }}

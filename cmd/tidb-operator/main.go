@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -32,6 +33,7 @@ import (
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -113,7 +115,9 @@ func main() {
 	var watchDelayDuration time.Duration
 	var allowEmptyOldVersion bool
 	var skipCRDsManagement bool
+	var watchNamespaces string
 
+	flag.StringVar(&watchNamespaces, "watch-namespaces", "", "Comma-separated namespaces to manage; empty watches all namespaces.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&brConf.backupManagerImage, "backup-manager-image", "", "The image of backup-manager.")
@@ -206,6 +210,13 @@ func main() {
 		}),
 	}
 
+	namespaces, err := parseWatchNamespaces(watchNamespaces)
+	if err != nil {
+		setupLog.Error(err, "invalid watch namespaces")
+		os.Exit(1)
+	}
+	cacheOpt.DefaultNamespaces = namespaces
+
 	if watchDelayDuration != 0 {
 		cacheOpt.NewInformer = informertest.NewDelayedInformerFunc(watchDelayDuration)
 	}
@@ -217,13 +228,8 @@ func main() {
 		Controller: runtimeConfig.Controller{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		},
-		Cache: cacheOpt,
-		NewClient: func(cfg *rest.Config, opts ctrlcli.Options) (ctrlcli.Client, error) {
-			return client.New(cfg,
-				client.FromRawOptions(&opts),
-				client.GroupVersions(scheme.DynamicGroupVersions()...),
-			)
-		},
+		Cache:            cacheOpt,
+		NewClient:        newOperatorClient,
 		LeaderElection:   enableLeaderElection,
 		LeaderElectionID: "c6a50700.pingcap.com",
 	})
@@ -767,10 +773,6 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 		&v1alpha1.DMWorker{}: {
 			Label: labels.Everything(),
 		},
-		&corev1.Secret{}: {
-			// TLS secrets managed by cert-manager or user
-			Label: labels.Everything(),
-		},
 		&corev1.Node{}: {
 			// need to sync some labels from nodes to TiKV, TiDB, ...
 			Label: labels.Everything(),
@@ -831,4 +833,26 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 	}
 
 	return byObj
+}
+
+func parseWatchNamespaces(value string) (map[string]cache.Config, error) {
+	if value == "" {
+		return nil, nil
+	}
+	result := make(map[string]cache.Config)
+	for _, part := range strings.Split(value, ",") {
+		namespace := strings.TrimSpace(part)
+		if errs := validation.IsDNS1123Label(namespace); len(errs) > 0 {
+			return nil, fmt.Errorf("invalid namespace %q: %s", namespace, strings.Join(errs, ", "))
+		}
+		result[namespace] = cache.Config{}
+	}
+	return result, nil
+}
+
+func newOperatorClient(cfg *rest.Config, opts ctrlcli.Options) (ctrlcli.Client, error) {
+	if opts.Cache != nil {
+		opts.Cache.DisableFor = append(opts.Cache.DisableFor, &corev1.Secret{})
+	}
+	return client.New(cfg, client.FromRawOptions(&opts), client.GroupVersions(scheme.DynamicGroupVersions()...))
 }

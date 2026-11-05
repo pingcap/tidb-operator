@@ -83,6 +83,10 @@ resourceSyncer:
     # tag: vX.Y.Z
     # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 
+# Namespaces managed by this release. Empty preserves cluster-wide management.
+# Set this list to restrict both informer scope and namespaced RBAC.
+watchNamespaces: []
+
 # RBAC configuration
 rbac:
   create: true
