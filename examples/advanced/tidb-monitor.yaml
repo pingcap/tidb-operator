@@ -201,6 +201,10 @@ spec:
       #   - --web.read-timeout=5m
       #   - --web.max-connections=512
       #   - --storage.remote.read-concurrent-limit=10
+      ## The TSDB admin API is disabled by default. Enable only for trusted
+      ## administrative access, such as exporting a TSDB snapshot. See
+      ## ../../docs/prometheus-admin-api.md for upgrade and access guidance.
+      #   - --web.enable-admin-api
 
       ## RuleConfigRef defines Prometheus custom rules config with external configMap.
       ## The external configMap must use the key with suffix `.rules.yml`.
