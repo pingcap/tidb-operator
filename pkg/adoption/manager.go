@@ -199,7 +199,7 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 
 	key := client.ObjectKeyFromObject(dbg).String()
 	adopting := m.adopting.list(key)
-	if index < len(adopting) {
+	if index >= 0 && index < len(adopting) {
 		inKey := adopting[index]
 		// should always exist
 		item := m.keyToInstance[inKey]
@@ -210,7 +210,9 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 			"index", index,
 			"rv", item.instance.GetResourceVersion())
 
-		return item.instance.DeepCopy(), DoNothing
+		if item.owner.UID == dbg.UID && sameScope(dbg, item.instance) {
+			return item.instance.DeepCopy(), DoNothing
+		}
 	}
 
 	hash := hashTiDBGroup(dbg)
@@ -220,7 +222,7 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 
 	for _, k := range standby {
 		item, ok := m.keyToInstance[k]
-		if !ok {
+		if !ok || !sameScope(dbg, item.instance) {
 			continue
 		}
 		m.lock(dbg, item)
@@ -238,4 +240,9 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 
 	// no suitable standby tidb can be adopted
 	return nil, DoNothing
+}
+
+// A matching template does not authorize moving an instance across clusters.
+func sameScope(group *v1alpha1.TiDBGroup, db *v1alpha1.TiDB) bool {
+	return group.Namespace == db.Namespace && group.Spec.Cluster == db.Spec.Cluster
 }
