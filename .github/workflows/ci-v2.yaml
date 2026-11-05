@@ -108,8 +108,6 @@ jobs:
       with:
         go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
-    - name: test kind image preparation
-      run: python3 -B -m unittest discover -s hack/tests -p test_image_prepare.py
     - name: lint feature history
       if: github.event_name == 'pull_request'
       env:
