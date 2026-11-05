@@ -1,0 +1,85 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package clean
+
+import (
+	"context"
+	"os"
+	"path"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+)
+
+func TestValidateBRBackupPath(t *testing.T) {
+	for _, tc := range []struct {
+		name, bucket, prefix, recorded string
+		valid                          bool
+	}{
+		{"valid", "bucket", "backup/one", "s3://bucket/backup/one", true},
+		{"bucket with prefix", "bucket/backup", "one", "s3://bucket/backup/one", true},
+		{"changed bucket", "other", "backup/one", "s3://bucket/backup/one", false},
+		{"changed prefix", "bucket", "backup/two", "s3://bucket/backup/one", false},
+		{"missing record", "bucket", "backup/one", "", false},
+		{"bucket root", "bucket", "", "s3://bucket", false},
+		{"slash root", "bucket", "/", "s3://bucket", false},
+		{"double slash", "bucket", "backup//one", "s3://bucket/backup/one", false},
+		{"dot segments", "bucket", "backup/../one", "s3://bucket/one", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			backup := &v1alpha1.Backup{}
+			backup.Spec.S3 = &v1alpha1.S3StorageProvider{Bucket: tc.bucket, Prefix: tc.prefix}
+			backup.Status.BackupPath = tc.recorded
+			err := validateBRBackupPath(backup)
+			if tc.valid {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				// The public operation must reject before credentials or storage are accessed.
+				require.Error(t, (&Options{}).CleanBRRemoteBackupData(context.Background(), backup))
+			}
+		})
+	}
+	for _, backup := range []*v1alpha1.Backup{
+		{Spec: v1alpha1.BackupSpec{StorageProvider: v1alpha1.StorageProvider{Gcs: &v1alpha1.GcsStorageProvider{Bucket: "bucket", Prefix: "backup"}}}, Status: v1alpha1.BackupStatus{BackupPath: "gcs://bucket/backup/"}},
+		{Spec: v1alpha1.BackupSpec{StorageProvider: v1alpha1.StorageProvider{Azblob: &v1alpha1.AzblobStorageProvider{Container: "bucket", Prefix: "backup"}}}, Status: v1alpha1.BackupStatus{BackupPath: "azure://bucket/backup/"}},
+	} {
+		require.NoError(t, validateBRBackupPath(backup))
+	}
+}
+
+func TestCleanLocalBackup(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(root, "backup"), 0700))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "backup", "data"), []byte("backup"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "keep"), []byte("keep"), 0600))
+	backup := &v1alpha1.Backup{}
+	backup.Spec.Local = &v1alpha1.LocalStorageProvider{Prefix: "backup"}
+	backup.Spec.Local.VolumeMount.MountPath = root
+	backup.Status.BackupPath = "local://" + filepath.Join(root, "backup")
+	require.NoError(t, (&Options{}).CleanBRRemoteBackupData(context.Background(), backup))
+	_, err := os.Stat(filepath.Join(root, "backup", "data"))
+	require.True(t, os.IsNotExist(err))
+	_, err = os.Stat(filepath.Join(root, "keep"))
+	require.NoError(t, err)
+	for _, prefix := range []string{"", ".", "..", "../outside", "/", "/outside", "a/../b"} {
+		backup.Spec.Local.Prefix = prefix
+		backup.Status.BackupPath = "local://" + path.Join(root, prefix)
+		require.Error(t, validateBRBackupPath(backup))
+	}
+}

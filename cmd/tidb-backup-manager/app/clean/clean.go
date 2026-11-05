@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -56,6 +58,9 @@ func (bo *Options) String() string {
 
 // CleanBRRemoteBackupData clean the backup data from remote
 func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
+	if err := validateBRBackupPath(backup); err != nil {
+		return err
+	}
 	opt := backup.GetCleanOption()
 
 	backend, err := bkutil.NewStorageBackend(backup.Spec.StorageProvider, &bkutil.StorageCredential{})
@@ -168,5 +173,49 @@ func (bo *Options) cleanRemoteBackupData(ctx context.Context, bucket string, opt
 	}
 
 	klog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)
+	return nil
+}
+
+// Validate before opening storage: the live spec must still identify the recorded backup.
+func validateBRBackupPath(backup *v1alpha1.Backup) error {
+	target, err := util.GetStoragePath(&backup.Spec.StorageProvider)
+	if err != nil {
+		return err
+	}
+	if backup.Status.BackupPath == "" || target != backup.Status.BackupPath {
+		return fmt.Errorf("refusing cleanup: storage target does not match status.backupPath")
+	}
+	var bucket, prefix, scheme, suffix string
+	switch bkutil.GetStorageType(backup.Spec.StorageProvider) {
+	case v1alpha1.BackupStorageTypeS3:
+		bucket, prefix, scheme = backup.Spec.S3.Bucket, backup.Spec.S3.Prefix, "s3"
+	case v1alpha1.BackupStorageTypeGcs:
+		bucket, prefix, scheme, suffix = backup.Spec.Gcs.Bucket, backup.Spec.Gcs.Prefix, "gcs", "/"
+	case v1alpha1.BackupStorageTypeAzblob:
+		bucket, prefix, scheme, suffix = backup.Spec.Azblob.Container, backup.Spec.Azblob.Prefix, "azure", "/"
+	case v1alpha1.BackupStorageTypeLocal:
+		prefix = backup.Spec.Local.Prefix
+		if strings.Trim(prefix, "/") == "" || prefix == "." || prefix == ".." ||
+			path.Clean(prefix) != prefix || strings.HasPrefix(prefix, "/") || strings.HasPrefix(prefix, "../") {
+			return fmt.Errorf("refusing cleanup: local backup requires a relative non-root prefix")
+		}
+		return nil
+	default:
+		return fmt.Errorf("refusing cleanup: unsupported storage type")
+	}
+	// Match the literal prefix used by the backend, not only path.Join's normalized URL.
+	literal := strings.Trim(strings.Trim(bucket, "/")+"/"+strings.Trim(prefix, "/"), "/")
+	parts := strings.Split(literal, "/")
+	if len(parts) < 2 {
+		return fmt.Errorf("refusing cleanup: backup must have a non-empty storage prefix")
+	}
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." {
+			return fmt.Errorf("refusing cleanup: storage path is not canonical")
+		}
+	}
+	if target != scheme+"://"+literal+suffix {
+		return fmt.Errorf("refusing cleanup: backend target differs from recorded path")
+	}
 	return nil
 }

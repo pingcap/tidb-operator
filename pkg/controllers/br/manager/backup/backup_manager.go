@@ -24,7 +24,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	rtClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -228,15 +227,9 @@ func (bm *backupManager) validateBackup(ctx context.Context, backup *v1alpha1.Ba
 		return err
 	}
 
-	backupNamespace := backup.GetNamespace()
-	if backup.Spec.BR.ClusterNamespace != "" {
-		backupNamespace = backup.Spec.BR.ClusterNamespace
-	}
-
-	cluster := &corev1alpha1.Cluster{}
-	err = bm.cli.Get(ctx, types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+	cluster, err := util.GetBackupCluster(ctx, bm.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
-		reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
+		reason := fmt.Sprintf("failed to access cluster for backup %s/%s", backup.Namespace, backup.Name)
 		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
@@ -248,7 +241,7 @@ func (bm *backupManager) validateBackup(ctx context.Context, backup *v1alpha1.Ba
 		}, nil)
 		return err
 	}
-	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, backupNamespace, backup.Spec.BR.Cluster)
+	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return err
 	}
@@ -384,21 +377,15 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetBackupJobName()
-	backupNamespace := ns
-	if backup.Spec.BR.ClusterNamespace != "" {
-		backupNamespace = backup.Spec.BR.ClusterNamespace
-	}
-
-	cluster := &corev1alpha1.Cluster{}
-	err := bm.cli.Get(ctx, client.ObjectKey{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+	cluster, err := util.GetBackupCluster(ctx, bm.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
+		return nil, fmt.Sprintf("failed to access cluster for backup %s/%s", backup.Namespace, backup.Name), err
 	}
-	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, ns, backup.Spec.BR.Cluster)
+	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get tikv group %s/%s", ns, backup.Spec.BR.Cluster), err
 	}
-	pdGroup, err := util.FirstPDGroup(ctx, bm.cli, ns, cluster.Name)
+	pdGroup, err := util.FirstPDGroup(ctx, bm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
 	}

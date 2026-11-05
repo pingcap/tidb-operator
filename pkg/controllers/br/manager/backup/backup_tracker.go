@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 )
@@ -157,6 +158,9 @@ func (bt *backupTracker) removeLogBackup(ns, name string) {
 
 // getLogBackupTC gets log backup's tidb cluster info.
 func (bt *backupTracker) getLogBackupTC(ctx context.Context, backup *v1alpha1.Backup) (*corev1alpha1.Cluster, error) {
+	if backup.Spec.BR == nil || backup.Spec.BR.Cluster == "" {
+		return nil, fmt.Errorf("log backup %s/%s requires spec.br.cluster", backup.Namespace, backup.Name)
+	}
 	logger := log.FromContext(ctx)
 	var (
 		ns               = backup.Namespace
@@ -169,8 +173,8 @@ func (bt *backupTracker) getLogBackupTC(ctx context.Context, backup *v1alpha1.Ba
 		clusterNamespace = ns
 	}
 
-	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		err = bt.cli.Get(ctx, types.NamespacedName{Namespace: clusterNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return !apierrors.IsForbidden(e) && !apierrors.IsNotFound(e) }, func() error {
+		cluster, err = util.GetBackupCluster(ctx, bt.cli, ns, backup.Spec.BR)
 		if err != nil {
 			logger.Error(err,
 				"get log backup tidbcluster failed and will retry",
@@ -200,7 +204,10 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 
 	for range ticker.C {
 		logkey := genLogBackupKey(ns, name)
-		if _, exist := bt.logBackups[logkey]; !exist {
+		bt.operateLock.Lock()
+		_, exist := bt.logBackups[logkey]
+		bt.operateLock.Unlock()
+		if !exist {
 			return
 		}
 		backup := &v1alpha1.Backup{}
@@ -232,7 +239,16 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(ctx context.Context, bac
 	logger := log.FromContext(ctx)
 	ns := backup.Namespace
 	name := backup.Name
-	pc, ok := bt.pdcm.Get(timanager.PrimaryKey(backup.Namespace, backup.Spec.BR.Cluster))
+	if backup.Spec.BR == nil || backup.Spec.BR.Cluster == "" {
+		logger.Error(nil, "log backup requires spec.br.cluster", "namespace", ns, "backup", name)
+		return
+	}
+	cluster, err := bt.getLogBackupTC(ctx, backup)
+	if err != nil {
+		logger.Error(err, "cannot access log backup cluster")
+		return
+	}
+	pc, ok := bt.pdcm.Get(timanager.PrimaryKey(cluster.Namespace, cluster.Name))
 	if !ok {
 		logger.Error(nil, "get log backup pd client error", "namespace", ns, "backup", name)
 		return

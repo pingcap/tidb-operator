@@ -345,21 +345,15 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetStopLogBackupJobName()
-	backupNamespace := ns
-	if backup.Spec.BR.ClusterNamespace != "" {
-		backupNamespace = backup.Spec.BR.ClusterNamespace
-	}
-
-	cluster := &corev1alpha1.Cluster{}
-	err := bc.cli.Get(ctx, types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+	cluster, err := util.GetBackupCluster(ctx, bc.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
+		return nil, fmt.Sprintf("failed to access cluster for backup %s/%s", backup.Namespace, backup.Name), err
 	}
-	tikvGroup, err := util.FirstTikvGroup(ctx, bc.cli, ns, cluster.Name)
+	tikvGroup, err := util.FirstTikvGroup(ctx, bc.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
 	}
-	pdGroup, err := util.FirstPDGroup(ctx, bc.cli, ns, cluster.Name)
+	pdGroup, err := util.FirstPDGroup(ctx, bc.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
 	}

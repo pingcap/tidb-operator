@@ -78,20 +78,13 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 	name := restore.GetName()
 
 	var (
-		err              error
-		cluster          *corev1alpha1.Cluster
-		restoreNamespace string
+		err     error
+		cluster *corev1alpha1.Cluster
 	)
 
-	restoreNamespace = restore.GetNamespace()
-	if restore.Spec.BR.ClusterNamespace != "" {
-		restoreNamespace = restore.Spec.BR.ClusterNamespace
-	}
-
-	cluster = &corev1alpha1.Cluster{}
-	err = rm.cli.Get(ctx, client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
+	cluster, err = util.GetBackupCluster(ctx, rm.cli, restore.Namespace, restore.Spec.BR)
 	if err != nil {
-		reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
+		reason := fmt.Sprintf("failed to access cluster for restore %s/%s", restore.Namespace, restore.Name)
 		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
 			Status:  metav1.ConditionTrue,
@@ -178,20 +171,15 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
-	restoreNamespace := ns
-	if restore.Spec.BR.ClusterNamespace != "" {
-		restoreNamespace = restore.Spec.BR.ClusterNamespace
-	}
-	cluster := &corev1alpha1.Cluster{}
-	err := rm.cli.Get(ctx, client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
+	cluster, err := util.GetBackupCluster(ctx, rm.cli, restore.Namespace, restore.Spec.BR)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster), err
+		return nil, fmt.Sprintf("failed to access cluster for restore %s/%s", restore.Namespace, restore.Name), err
 	}
-	tikvGroup, err := util.FirstTikvGroup(ctx, rm.cli, ns, cluster.Name)
+	tikvGroup, err := util.FirstTikvGroup(ctx, rm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
 	}
-	pdGroup, err := util.FirstPDGroup(ctx, rm.cli, ns, cluster.Name)
+	pdGroup, err := util.FirstPDGroup(ctx, rm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
 	}

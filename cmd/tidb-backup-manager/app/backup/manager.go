@@ -139,6 +139,10 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 		return errorutils.NewAggregate(errs)
 	}
 
+	if backup.Status.BackupPath != "" && backup.Status.BackupPath != backupFullPath {
+		return fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
+	}
+
 	updatePathStatus := &backupMgr.BackupUpdateStatus{
 		BackupPath: &backupFullPath,
 	}
@@ -302,6 +306,10 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 		return nil, "GetBackupRemotePathFailed", err
 	}
 	klog.Infof("Get backup full path %s of cluster %s success", backupFullPath, bm)
+
+	if backup.Status.BackupPath != "" && backup.Status.BackupPath != backupFullPath {
+		return nil, "BackupStorageTargetChanged", fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
+	}
 
 	updatePathStatus := &backupMgr.BackupUpdateStatus{
 		BackupPath: &backupFullPath,

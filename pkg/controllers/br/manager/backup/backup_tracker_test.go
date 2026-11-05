@@ -22,6 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	core "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 )
@@ -80,6 +82,7 @@ func TestRefreshLogBackupCheckpointEncoding(t *testing.T) {
 			etcd := &checkpointEtcd{kvs: tc.kvs}
 			updater := &checkpointUpdater{}
 			tracker := &backupTracker{
+				cli:           client.NewFakeClient(&core.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "cluster"}}),
 				pdcm:          &checkpointManager{client: &checkpointPD{client: &checkpointUnderlay{client: etcd}}},
 				statusUpdater: updater,
 			}
@@ -93,5 +96,17 @@ func TestRefreshLogBackupCheckpointEncoding(t *testing.T) {
 				require.Equal(t, tc.want, *updater.value)
 			}
 		})
+	}
+}
+
+func TestTrackerRejectsMissingBR(t *testing.T) {
+	for _, br := range []*v1alpha1.BRConfig{nil, {}} {
+		backup := &v1alpha1.Backup{ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "invalid"}, Spec: v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog, BR: br}}
+		tracker := &backupTracker{cli: client.NewFakeClient(backup), logBackups: make(map[string]bool)}
+		require.ErrorContains(t, tracker.StartTrackLogBackupProgress(context.Background(), backup), "requires spec.br.cluster")
+		require.Empty(t, tracker.logBackups)
+		// Exercise the startup list path as well as a later checkpoint refresh.
+		require.NotPanics(t, func() { tracker.initTrackLogBackupsProgress() })
+		require.NotPanics(t, func() { tracker.doRefreshLogBackupCheckpointTs(context.Background(), backup) })
 	}
 }
