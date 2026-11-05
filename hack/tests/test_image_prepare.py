@@ -30,9 +30,7 @@ with open(os.environ['CALLS'], 'a') as f:
 if os.environ.get('FAIL') == name + ':' + args[0]:
     sys.exit(2)
 if name == 'kind':
-    if args[:2] == ['get', 'nodes']:
-        print('\n'.join(json.loads(os.environ['NODES'])))
-    elif args[:2] == ['get', 'kubeconfig']:
+    if args[:2] == ['get', 'kubeconfig']:
         if os.environ.get('FAIL') == 'kind:kubeconfig': sys.exit(2)
         print('test kubeconfig')
     elif args[:2] == ['load', 'docker-image']:
@@ -42,8 +40,7 @@ if name == 'kind':
     else:
         sys.exit('unexpected kind call')
 elif name == 'kubectl':
-    node = args[args.index('node') + 1]
-    print(json.loads(os.environ['NODES'])[node], end='')
+    print('\n'.join(json.loads(os.environ['NODES']).values()))
 elif name == 'docker':
     if args[:3] == ['image', 'save', '--help']:
         if os.environ['SAVE_FLAG'] == '1': print('--platform string')
@@ -97,21 +94,17 @@ class ImagePreparationTest(unittest.TestCase):
             return result, calls
 
     def test_containerd_archive_is_platform_scoped(self):
-        result, calls = self.run_prepare()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        saves = [args for tool, args in calls if tool == 'docker' and args[:2] == ['image', 'save'] and '--help' not in args]
-        self.assertEqual(len(saves), 8)
-        self.assertTrue(all('--platform=linux/amd64' in args for args in saves))
-        self.assertFalse(any(args[:2] == ['load', 'docker-image'] for tool, args in calls))
-
-    def test_target_platforms_are_grouped(self):
-        result, calls = self.run_prepare({'amd': 'linux/amd64', 'arm-one': 'linux/arm64', 'arm-two': 'linux/arm64'})
-        self.assertEqual(result.returncode, 0, result.stderr)
-        loads = [args for tool, args in calls if tool == 'kind' and args[:2] == ['load', 'image-archive']]
-        self.assertEqual(len(loads), 16)
-        groups = [args[args.index('--nodes') + 1] for args in loads]
-        self.assertEqual(groups.count('amd'), 8)
-        self.assertEqual(groups.count('arm-one,arm-two'), 8)
+        for platform in ['linux/amd64', 'linux/arm64']:
+            with self.subTest(platform=platform):
+                result, calls = self.run_prepare({'control': platform, 'worker': platform})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                saves = [args for tool, args in calls if tool == 'docker' and args[:2] == ['image', 'save'] and '--help' not in args]
+                self.assertEqual(len(saves), 8)
+                self.assertTrue(all('--platform=' + platform in args for args in saves))
+                loads = [args for tool, args in calls if tool == 'kind' and args[:2] == ['load', 'image-archive']]
+                self.assertEqual(len(loads), 8)
+                self.assertTrue(all('--nodes' not in args for args in loads))
+                self.assertFalse(any(args[:2] == ['load', 'docker-image'] for tool, args in calls))
 
     def test_legacy_classic_store(self):
         result, calls = self.run_prepare({'arm': 'linux/arm64'}, api='1.47', containerd=False)
@@ -131,13 +124,13 @@ class ImagePreparationTest(unittest.TestCase):
                 self.assertFalse(any(tool == 'docker' and args[0] == 'pull' for tool, args in calls))
 
     def test_failures_propagate_and_clean_up(self):
-        for fail in ['kind:get', 'kind:kubeconfig', 'kubectl:--kubeconfig', 'docker:info', 'docker:version', 'docker:pull', 'save', 'kind:load']:
+        for fail in ['kind:kubeconfig', 'kubectl:--kubeconfig', 'docker:info', 'docker:version', 'docker:pull', 'save', 'kind:load']:
             with self.subTest(fail=fail):
                 result, _ = self.run_prepare(fail=fail)
                 self.assertNotEqual(result.returncode, 0)
 
     def test_invalid_node_platforms(self):
-        for nodes in [{}, {'node': '/'}, {'node': 'windows/amd64'}]:
+        for nodes in [{}, {'node': '/'}, {'node': 'windows/amd64'}, {'control': 'linux/amd64', 'worker': 'linux/arm64'}]:
             with self.subTest(nodes=nodes):
                 result, calls = self.run_prepare(nodes)
                 self.assertNotEqual(result.returncode, 0)

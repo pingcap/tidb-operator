@@ -118,24 +118,15 @@ function image:prepare() (
     tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/tidb-kind-images.XXXXXX") || return 1
     trap 'rm -rf -- "$tmp_dir"' EXIT
 
-    local nodes node platform
-    nodes=$("$V_KIND" get nodes --name "$V_KIND_CLUSTER") || return 1
-    if [[ -z "$nodes" ]]; then
-        echo "No nodes found in kind cluster $V_KIND_CLUSTER" >&2
-        return 1
-    fi
+    local platform
     "$V_KIND" get kubeconfig --name "$V_KIND_CLUSTER" > "$tmp_dir/kubeconfig" || return 1
-    local -A platform_nodes=()
-    for node in $nodes; do
-        # NodeInfo follows the target node, including cross-architecture clusters.
-        platform=$("$V_KUBECTL" --kubeconfig "$tmp_dir/kubeconfig" get node "$node" \
-            -o 'jsonpath={.status.nodeInfo.operatingSystem}/{.status.nodeInfo.architecture}') || return 1
-        case "$platform" in
-            linux/amd64|linux/arm64) ;;
-            *) echo "Unsupported kind node platform '$platform' on $node" >&2; return 1 ;;
-        esac
-        platform_nodes[$platform]="${platform_nodes[$platform]:-}${node},"
-    done
+    # E2E uses a same-architecture cluster; read its platform rather than the host's.
+    platform=$("$V_KUBECTL" --kubeconfig "$tmp_dir/kubeconfig" get nodes \
+        -o 'jsonpath={range .items[*]}{.status.nodeInfo.operatingSystem}/{.status.nodeInfo.architecture}{"\n"}{end}' | sort -u) || return 1
+    case "$platform" in
+        linux/amd64|linux/arm64) ;;
+        *) echo "Expected a nonempty, same-architecture Linux amd64/arm64 kind cluster; got '$platform'" >&2; return 1 ;;
+    esac
 
     local api_versions driver_status save_platform=0
     api_versions=$(docker version --format '{{.Server.APIVersion}}') || return 1
@@ -157,17 +148,14 @@ function image:prepare() (
     for component in pd tikv tidb tiflash; do
         for version in "$V_TIDB_CLUSTER_VERSION" "$V_TIDB_CLUSTER_VERSION_PREV"; do
             image="gcr.io/pingcap-public/dbaas/$component:$version"
-            for platform in "${!platform_nodes[@]}"; do
-                docker pull --platform "$platform" "$image" -q || return 1
-                save_args=(--output "$tmp_dir/image.tar")
-                if [[ "$save_platform" -eq 1 ]]; then
-                    save_args+=("--platform=$platform")
-                fi
-                # Classic stores keep one platform per tag; older APIs need no flag.
-                docker image save "${save_args[@]}" "$image" || return 1
-                "$V_KIND" load image-archive "$tmp_dir/image.tar" --name "$V_KIND_CLUSTER" \
-                    --nodes "${platform_nodes[$platform]%,}" || return 1
-            done
+            docker pull --platform "$platform" "$image" -q || return 1
+            save_args=(--output "$tmp_dir/image.tar")
+            if [[ "$save_platform" -eq 1 ]]; then
+                save_args+=("--platform=$platform")
+            fi
+            # Classic stores keep one platform per tag; older APIs need no flag.
+            docker image save "${save_args[@]}" "$image" || return 1
+            "$V_KIND" load image-archive "$tmp_dir/image.tar" --name "$V_KIND_CLUSTER" || return 1
         done
     done
 )
