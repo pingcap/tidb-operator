@@ -79,9 +79,14 @@ func doUpdateConditions(conditions *[]metav1.Condition, notReadyReasons, unSynce
 	return readyStatusNeedUpdate || syncedStatusNeedUpdate
 }
 
-// TODO: currently, we haven't support update TiBR yet, so just take the ready status as synced status
 func evaluateSyncedStatus(rtx *ReconcileContext) (unSyncedReasons []string) {
-	return evaluateReadyStatus(rtx)
+	unSyncedReasons = evaluateReadyStatus(rtx)
+	if sts := rtx.StatefulSet(); sts != nil && sts.Generation > 0 &&
+		(sts.Status.ObservedGeneration < sts.Generation ||
+			sts.Status.CurrentRevision != sts.Status.UpdateRevision || sts.Status.UpdatedReplicas != StatefulSetReplica) {
+		unSyncedReasons = append(unSyncedReasons, "statefulset rollout is not complete")
+	}
+	return unSyncedReasons
 }
 
 func evaluateReadyStatus(rtx *ReconcileContext) (notReadyReasons []string) {

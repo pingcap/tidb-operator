@@ -30,6 +30,7 @@ func TaskEnsureSubResources(rtx *ReconcileContext) t.Task {
 		t.IfNot(condTiBROwnerReferencesExist(rtx), taskPatchTiBRWithOwnerReferences(rtx), TaskContextRefreshTiBR(rtx)),
 		t.IfNot(condConfigMapExist(rtx), taskCreateConfigMap(rtx), TaskContextRefreshConfigMap(rtx)),
 		t.IfNot(condStatefulSetExist(rtx), taskCreateStatefulSet(rtx), TaskContextRefreshStatefulSet(rtx)),
+		taskRestrictAPIListener(rtx),
 		t.IfNot(condHeadlessSvcExist(rtx), taskCreateHeadlessSvc(rtx), TaskContextRefreshHeadlessSvc(rtx)),
 		t.If(condPVCDeclared(rtx), taskPatchPVCWithOwnerReferences(rtx)),
 		// TODO: not support update at first version, just recreate it as workaround

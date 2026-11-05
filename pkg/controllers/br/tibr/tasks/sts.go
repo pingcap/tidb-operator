@@ -17,6 +17,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -164,7 +165,7 @@ func assembleServerContainer(rtx *ReconcileContext) corev1.Container {
 		"--config",
 		ConfigMountPath + "/" + ConfigFileName,
 		"--addr",
-		fmt.Sprintf("0.0.0.0:%d", APIServerPort),
+		fmt.Sprintf("127.0.0.1:%d", APIServerPort),
 		"--pd-endpoints",
 		pdAddr,
 		"--data-dir",
@@ -305,5 +306,51 @@ func taskDeleteStatefulSet(rtx *ReconcileContext) t.Task {
 			return t.Fail().With("failed to delete statefulset: %s", err.Error())
 		}
 		return t.Complete().With("statefulset deleted")
+	})
+}
+
+// Existing default listeners must be secured too; retain explicit administrator overlays.
+func taskRestrictAPIListener(rtx *ReconcileContext) t.Task {
+	return t.NameTaskFunc("RestrictAPIListener", func(ctx context.Context) t.Result {
+		sts := rtx.StatefulSet()
+		if sts == nil {
+			return t.Complete().With("API listener checked")
+		}
+		if !v1.IsControlledBy(sts, rtx.TiBR()) {
+			return t.Fail().With("TiBR StatefulSet is not owned by this TiBR")
+		}
+		expected := assembleSts(rtx)
+		for i := range expected.Spec.Template.Spec.Containers {
+			desired := &expected.Spec.Template.Spec.Containers[i]
+			if desired.Name != v1alphabr.ContainerAPIServer {
+				continue
+			}
+			// An overlay that changes the generated command is an explicit administrator choice.
+			generated := assembleServerContainer(rtx).Command
+			if !reflect.DeepEqual(desired.Command, generated) {
+				return t.Complete().With("API listener checked")
+			}
+			updated := sts.DeepCopy()
+			changed := false
+			for i := range updated.Spec.Template.Spec.Containers {
+				c := &updated.Spec.Template.Spec.Containers[i]
+				if c.Name != v1alphabr.ContainerAPIServer {
+					continue
+				}
+				for j := 0; j+1 < len(c.Command); j++ {
+					if c.Command[j] == "--addr" && c.Command[j+1] == fmt.Sprintf("0.0.0.0:%d", APIServerPort) {
+						c.Command[j+1] = fmt.Sprintf("127.0.0.1:%d", APIServerPort)
+						changed = true
+					}
+				}
+			}
+			if changed {
+				if err := rtx.Client().Update(ctx, updated); err != nil {
+					return t.Fail().With("failed to restrict TiBR listener: %v", err)
+				}
+				rtx.sts = updated
+			}
+		}
+		return t.Complete().With("API listener checked")
 	})
 }

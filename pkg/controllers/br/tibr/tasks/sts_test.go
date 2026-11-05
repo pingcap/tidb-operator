@@ -407,7 +407,7 @@ func TestAssembleServerContainer(t *testing.T) {
 			expectedCmdParts: []string{
 				"/tikv-worker",
 				"--config", ConfigMountPath + "/" + ConfigFileName,
-				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
+				"--addr", fmt.Sprintf("127.0.0.1:%d", APIServerPort),
 				"--pd-endpoints", "pd.default.svc:2379",
 				"--data-dir", v1alpha1br.VolumeTiBRDataDefaultMountPath,
 			},
@@ -421,7 +421,7 @@ func TestAssembleServerContainer(t *testing.T) {
 			expectedCmdParts: append([]string{
 				"/tikv-worker",
 				"--config", ConfigMountPath + "/" + ConfigFileName,
-				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
+				"--addr", fmt.Sprintf("127.0.0.1:%d", APIServerPort),
 				"--pd-endpoints", "pd.secure.svc:2379",
 				"--data-dir", v1alpha1br.VolumeTiBRDataDefaultMountPath,
 			}, TLSCmdArgs...),
@@ -440,7 +440,7 @@ func TestAssembleServerContainer(t *testing.T) {
 			expectedCmdParts: []string{
 				"/tikv-worker",
 				"--config", ConfigMountPath + "/" + ConfigFileName,
-				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
+				"--addr", fmt.Sprintf("127.0.0.1:%d", APIServerPort),
 				"--pd-endpoints", "pd.secure.svc:2379",
 				"--data-dir", "dummyPath",
 			},
@@ -456,7 +456,7 @@ func TestAssembleServerContainer(t *testing.T) {
 			expectedCmdParts: append([]string{
 				"/tikv-worker",
 				"--config", ConfigMountPath + "/" + ConfigFileName,
-				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
+				"--addr", fmt.Sprintf("127.0.0.1:%d", APIServerPort),
 				"--pd-endpoints", "pd.secure.svc:2379",
 				"--data-dir", v1alpha1br.VolumeTiBRDataDefaultMountPath,
 			}, TLSCmdArgs...),
