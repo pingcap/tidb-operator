@@ -220,6 +220,9 @@ func OwnerGroup[
 	T runtime.Instance,
 ](f F) *metav1.OwnerReference {
 	owner := metav1.GetControllerOfNoCopy(f)
+	if owner == nil {
+		return nil
+	}
 	gvk := scope.GVK[S]()
 	if owner.APIVersion != gvk.GroupVersion().String() || owner.Kind != gvk.Kind+"Group" {
 		return nil
