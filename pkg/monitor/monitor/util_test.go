@@ -1462,7 +1462,8 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
-						MountPath: "/data",
+						MountPath: "/data/prometheus",
+						SubPath:   "prometheus",
 					},
 					{
 						Name:      "prometheus-rules",
@@ -1587,7 +1588,8 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
-						MountPath: "/data",
+						MountPath: "/data/grafana",
+						SubPath:   "grafana",
 					},
 					{
 						Name:      "datasource",
@@ -1750,7 +1752,8 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
-						MountPath: "/data",
+						MountPath: "/data/prometheus",
+						SubPath:   "prometheus",
 					},
 				},
 			},

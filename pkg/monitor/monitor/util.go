@@ -95,23 +95,6 @@ func buildTidbMonitorGrafanaLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Grafana().Labels()
 }
 
-func getInitCommand(monitor *v1alpha1.TidbMonitor) []string {
-	c := `mkdir -p /data/prometheus
-chmod 777 /data/prometheus
-/usr/bin/init.sh`
-	if monitor.Spec.Grafana != nil {
-		c = `mkdir -p /data/prometheus /data/grafana
-chmod 777 /data/prometheus /data/grafana
-/usr/bin/init.sh`
-	}
-	command := []string{
-		"/bin/sh",
-		"-c",
-		c,
-	}
-	return command
-}
-
 func getGrafanaVolumeMounts() []core.VolumeMount {
 	return []core.VolumeMount{
 		{
@@ -398,6 +381,7 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 		})
 	}
 	container.Env = util.AppendOverwriteEnv(container.Env, envOverrides)
+	container.Env = initializerReloaderUID(monitor, container.Env)
 	return container
 }
 
@@ -470,6 +454,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 		})
 	}
 	container.Env = util.AppendOverwriteEnv(container.Env, envOverrides)
+	container.Env = initializerReloaderUID(monitor, container.Env)
 	return container
 }
 
@@ -531,10 +516,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, shard int32) c
 				MountPath: "/etc/prometheus/config",
 				ReadOnly:  true,
 			},
-			{
-				Name:      v1alpha1.TidbMonitorMemberType.String(),
-				MountPath: "/data",
-			},
+			monitorDataMount("/data/prometheus"),
 			{
 				Name:      "prometheus-rules",
 				MountPath: "/prometheus-rules",
@@ -661,10 +643,6 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
-				Name:      v1alpha1.TidbMonitorMemberType.String(),
-				MountPath: "/data",
-			},
-			{
 				Name:      "datasource",
 				MountPath: "/etc/grafana/provisioning/datasources",
 				ReadOnly:  false,
@@ -725,6 +703,17 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	c.Env = util.AppendOverwriteEnv(c.Env, envOverrides)
 	sort.Sort(util.SortEnvByName(c.Env))
 
+	var dataMounts []core.VolumeMount
+	for _, dir := range grafanaDataPaths(monitor) {
+		covered := false
+		for _, mount := range monitor.Spec.Grafana.AdditionalVolumeMounts {
+			covered = covered || dir == mount.MountPath || strings.HasPrefix(dir, strings.TrimSuffix(mount.MountPath, "/")+"/")
+		}
+		if !covered {
+			dataMounts = append(dataMounts, monitorDataMount(dir))
+		}
+	}
+	c.VolumeMounts = append(dataMounts, c.VolumeMounts...)
 	if monitor.Spec.Grafana.AdditionalVolumeMounts != nil {
 		c.VolumeMounts = append(c.VolumeMounts, monitor.Spec.Grafana.AdditionalVolumeMounts...)
 	}
@@ -820,10 +809,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 				MountPath: "/prometheus-rules",
 				ReadOnly:  false,
 			},
-			{
-				Name:      v1alpha1.TidbMonitorMemberType.String(),
-				MountPath: "/data",
-			},
+			monitorDataMount("/data/latest-rules"),
 		},
 		Resources:       controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
 		SecurityContext: monitor.Spec.Reloader.SecurityContext,
@@ -1228,6 +1214,9 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 }
 
 func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, shard int32) (*apps.StatefulSet, error) {
+	if err := validateMonitorDataPaths(monitor); err != nil {
+		return nil, err
+	}
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor, shard)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
@@ -1303,6 +1292,19 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 	podLabels := util.CombineStringMap(stsLabels, monitor.Spec.Labels)
 	stsAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
 	podAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
+	securityContext := monitor.Spec.PodSecurityContext.DeepCopy()
+	if securityContext == nil {
+		securityContext = &core.PodSecurityContext{}
+	}
+	if securityContext.FSGroup == nil {
+		found := false
+		for _, group := range securityContext.SupplementalGroups {
+			found = found || group == defaultMonitorDataGroup
+		}
+		if !found {
+			securityContext.SupplementalGroups = append(securityContext.SupplementalGroups, defaultMonitorDataGroup)
+		}
+	}
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
@@ -1327,7 +1329,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 				},
 
 				Spec: core.PodSpec{
-					SecurityContext:    monitor.Spec.PodSecurityContext,
+					SecurityContext:    securityContext,
 					ServiceAccountName: sa.Name,
 					InitContainers:     []core.Container{},
 					Containers:         []core.Container{},
@@ -1444,10 +1446,7 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 		container.Args = append(container.Args, fmt.Sprintf("--tsdb.path=%s", storageDir))
 		container.VolumeMounts = append(
 			container.VolumeMounts,
-			core.VolumeMount{
-				Name:      v1alpha1.TidbMonitorMemberType.String(),
-				MountPath: "/data",
-			},
+			monitorDataMount("/data/prometheus"),
 		)
 	}
 
