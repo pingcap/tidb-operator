@@ -11,8 +11,11 @@ spec:
       apiVersions: ["v1alpha1"]
       operations: ["CREATE", "UPDATE"]
       resources: ["*"]
-  {{- if .Values.watchNamespaces }}
   matchConditions:
+  - name: allow-garbage-collection
+    expression: >-
+      !(request.operation == 'UPDATE' && (request.userInfo.username in ['system:serviceaccount:kube-system:generic-garbage-collector', 'system:kube-controller-manager']) && object.spec == oldObject.spec && has(object.metadata.annotations) == has(oldObject.metadata.annotations) && (!has(object.metadata.annotations) || object.metadata.annotations == oldObject.metadata.annotations) && has(object.metadata.labels) == has(oldObject.metadata.labels) && (!has(object.metadata.labels) || object.metadata.labels == oldObject.metadata.labels) && (!has(object.metadata.ownerReferences) || (has(oldObject.metadata.ownerReferences) && object.metadata.ownerReferences.all(r, oldObject.metadata.ownerReferences.exists(o, r.apiVersion == o.apiVersion && r.kind == o.kind && r.name == o.name && r.uid == o.uid && has(r.controller) == has(o.controller) && (!has(r.controller) || r.controller == o.controller) && (!has(r.blockOwnerDeletion) || !r.blockOwnerDeletion || (has(o.blockOwnerDeletion) && o.blockOwnerDeletion)))))) && (!has(object.metadata.finalizers) || (has(oldObject.metadata.finalizers) && object.metadata.finalizers.all(f, f in oldObject.metadata.finalizers))) && (!has(oldObject.metadata.finalizers) || oldObject.metadata.finalizers.all(f, (has(object.metadata.finalizers) && f in object.metadata.finalizers) || f in ['orphan', 'foregroundDeletion'])))
+  {{- if .Values.watchNamespaces }}
   - name: managed-namespace
     expression: {{ printf "request.namespace in %s" (toJson .Values.watchNamespaces) | quote }}
   {{- end }}

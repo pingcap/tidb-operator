@@ -20,6 +20,7 @@ import (
 	"errors"
 	"io"
 	"os/exec"
+	"slices"
 	"testing"
 
 	celgo "github.com/google/cel-go/cel"
@@ -70,6 +71,28 @@ func TestSecurityChartNamespaceGrants(t *testing.T) {
 	objects := renderSecurityChart(t, "--set", "watchNamespaces={tenant-a,tenant-b}", "--set", "appendReleaseSuffix=true", "--set", "skipCRDsManagement=true")
 	bindings := map[string]bool{}
 	for _, object := range objects {
+		if object.GetKind() == "Deployment" {
+			containers, _, err := unstructured.NestedSlice(object.Object, "spec", "template", "spec", "containers")
+			require.NoError(t, err)
+			args, _, err := unstructured.NestedStringSlice(containers[0].(map[string]any), "args")
+			require.NoError(t, err)
+			require.Contains(t, args, "--watch-namespaces=tenant-a,tenant-b")
+		}
+		if object.GetKind() == "Role" && object.GetName() == "security-test:tidb-operator-leader-election" {
+			rules, _, _ := unstructured.NestedSlice(object.Object, "rules")
+			found := false
+			for _, r := range rules {
+				rule := r.(map[string]any)
+				resources, _, _ := unstructured.NestedStringSlice(rule, "resources")
+				if slices.Contains(resources, "events") {
+					verbs, _, _ := unstructured.NestedStringSlice(rule, "verbs")
+					require.Contains(t, verbs, "create")
+					require.Contains(t, verbs, "patch")
+					found = true
+				}
+			}
+			require.True(t, found)
+		}
 		if object.GetKind() == "ClusterRole" {
 			rules, _, err := unstructured.NestedSlice(object.Object, "rules")
 			require.NoError(t, err)
@@ -102,7 +125,14 @@ func TestSecurityChartNamespaceGrants(t *testing.T) {
 }
 func TestWorkloadAuthorityPolicy(t *testing.T) {
 	var expression string
+	var actions []string
 	for _, object := range renderSecurityChart(t) {
+		if object.GetKind() == "ValidatingAdmissionPolicyBinding" {
+			name, _, _ := unstructured.NestedString(object.Object, "spec", "policyName")
+			if name == "security-test.workload-authority.pingcap.com" {
+				actions, _, _ = unstructured.NestedStringSlice(object.Object, "spec", "validationActions")
+			}
+		}
 		if object.GetKind() == "ValidatingAdmissionPolicy" && object.GetName() == "security-test.workload-authority.pingcap.com" {
 			validations, _, err := unstructured.NestedSlice(object.Object, "spec", "validations")
 			require.NoError(t, err)
@@ -110,6 +140,7 @@ func TestWorkloadAuthorityPolicy(t *testing.T) {
 		}
 	}
 	require.NotEmpty(t, expression)
+	require.Equal(t, []string{"Deny"}, actions)
 	filter := admissioncel.NewFilterCompiler(environment.MustBaseEnvSet(environment.DefaultCompatibilityVersion(), true)).Compile([]admissioncel.ExpressionAccessor{securityExpression(expression)}, admissioncel.OptionalVariableDeclarations{HasAuthorizer: true, StrictCost: true}, environment.NewExpressions)
 	require.Empty(t, filter.CompilationErrors())
 	for _, allow := range []bool{false, true} {
@@ -139,5 +170,77 @@ func TestWorkloadAuthorityPolicy(t *testing.T) {
 			require.Equal(t, celtypes.Bool(allow), results[0].EvalResult)
 			require.Equal(t, 1, calls)
 		})
+	}
+}
+
+func TestClusterMetricsGrant(t *testing.T) {
+	for _, args := range [][]string{nil, {"--set", "watchNamespaces={tenant-a}"}} {
+		found := false
+		for _, obj := range renderSecurityChart(t, args...) {
+			if obj.GetKind() == "ClusterRole" && obj.GetName() == "security-test:tidb-operator-cluster" {
+				rules, _, _ := unstructured.NestedSlice(obj.Object, "rules")
+				for _, r := range rules {
+					urls, _, _ := unstructured.NestedStringSlice(r.(map[string]any), "nonResourceURLs")
+					if slices.Contains(urls, "/metrics") {
+						verbs, _, _ := unstructured.NestedStringSlice(r.(map[string]any), "verbs")
+						require.Contains(t, verbs, "get")
+						found = true
+					}
+				}
+			}
+		}
+		require.True(t, found, "both install modes must authorize startup metrics discovery")
+	}
+}
+
+// TestGarbageCollectorMatch checks the narrow control-plane update exception.
+func TestGarbageCollectorMatch(t *testing.T) {
+	var expression string
+	for _, obj := range renderSecurityChart(t) {
+		if obj.GetKind() == "ValidatingAdmissionPolicy" && obj.GetName() == "security-test.workload-authority.pingcap.com" {
+			conditions, _, _ := unstructured.NestedSlice(obj.Object, "spec", "matchConditions")
+			expression = conditions[0].(map[string]any)["expression"].(string)
+		}
+	}
+	require.NotEmpty(t, expression)
+	filter := admissioncel.NewFilterCompiler(environment.MustBaseEnvSet(environment.DefaultCompatibilityVersion(), true)).Compile([]admissioncel.ExpressionAccessor{securityExpression(expression)}, admissioncel.OptionalVariableDeclarations{StrictCost: true}, environment.NewExpressions)
+	require.Empty(t, filter.CompilationErrors())
+	for _, principal := range []string{"system:serviceaccount:kube-system:generic-garbage-collector", "system:kube-controller-manager", "writer"} {
+		for _, change := range []string{"orphan", "unblock", "gc finalizer", "annotation", "spec", "owner uid", "custom finalizer", "create"} {
+			t.Run(principal+"/"+change, func(t *testing.T) {
+				old := &unstructured.Unstructured{Object: map[string]any{"apiVersion": "core.pingcap.com/v1alpha1", "kind": "TiDB", "metadata": map[string]any{"name": "db", "namespace": "tenant", "ownerReferences": []any{map[string]any{"apiVersion": "core.pingcap.com/v1alpha1", "kind": "TiDBGroup", "name": "group", "uid": "group-uid", "controller": true, "blockOwnerDeletion": true}}, "finalizers": []any{"orphan", "foregroundDeletion", "custom"}}, "spec": map[string]any{"version": "v8.5.0"}}}
+				obj := old.DeepCopy()
+				operation := admission.Update
+				switch change {
+				case "orphan":
+					delete(obj.Object["metadata"].(map[string]any), "ownerReferences")
+				case "unblock":
+					obj.Object["metadata"].(map[string]any)["ownerReferences"].([]any)[0].(map[string]any)["blockOwnerDeletion"] = false
+				case "gc finalizer":
+					obj.Object["metadata"].(map[string]any)["finalizers"] = []any{"custom"}
+				case "custom finalizer":
+					obj.Object["metadata"].(map[string]any)["finalizers"] = []any{"orphan", "foregroundDeletion"}
+				case "annotation":
+					obj.SetAnnotations(map[string]string{"br.pingcap.com/allowed-backup-namespaces": "other"})
+				case "spec":
+					obj.Object["spec"].(map[string]any)["version"] = "v9.0.0"
+				case "owner uid":
+					obj.Object["metadata"].(map[string]any)["ownerReferences"].([]any)[0].(map[string]any)["uid"] = "replacement"
+				case "create":
+					operation = admission.Create
+				}
+				gvk := schema.GroupVersionKind{Group: "core.pingcap.com", Version: "v1alpha1", Kind: "TiDB"}
+				gvr := schema.GroupVersionResource{Group: "core.pingcap.com", Version: "v1alpha1", Resource: "tidbs"}
+				attrs := admission.NewAttributesRecord(obj, old, gvk, "tenant", "db", gvr, "", operation, &metav1.UpdateOptions{}, false, &user.DefaultInfo{Name: principal})
+				versioned := &admission.VersionedAttributes{Attributes: attrs, VersionedKind: gvk, VersionedObject: obj, VersionedOldObject: old}
+				request := admissioncel.CreateAdmissionRequest(attrs, metav1.GroupVersionResource(gvr), metav1.GroupVersionKind(gvk))
+				results, _, err := filter.ForInput(context.Background(), versioned, request, admissioncel.OptionalVariableBindings{}, nil, celconfig.RuntimeCELCostBudget)
+				require.NoError(t, err)
+				require.Len(t, results, 1)
+				require.NoError(t, results[0].Error)
+				exempt := principal != "writer" && (change == "orphan" || change == "unblock" || change == "gc finalizer")
+				require.Equal(t, celtypes.Bool(!exempt), results[0].EvalResult)
+			})
+		}
 	}
 }
