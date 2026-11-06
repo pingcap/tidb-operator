@@ -118,7 +118,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if v1alpha1.IsBackupInvalid(backup) {
+	if backup.DeletionTimestamp == nil && v1alpha1.IsBackupInvalid(backup) {
 		logger.Info("backup is invalid, skip reconcile", "namespace", backup.Namespace, "backup", backup.Name)
 		return ctrl.Result{}, nil
 	}

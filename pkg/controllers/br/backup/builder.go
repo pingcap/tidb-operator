@@ -23,6 +23,10 @@ import (
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
+		task.IfBreak(
+			task.CondFunc(func() bool { return state.Backup().DeletionTimestamp != nil }),
+			tasks.TaskBackupCleaner(state, r.Client, r.EventRecorder),
+		),
 		// get cluster
 		common.TaskContextCluster[scope.Backup](state, r.Client),
 		// if it's paused just return
