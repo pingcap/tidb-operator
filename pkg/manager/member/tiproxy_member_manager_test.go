@@ -25,6 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 func TestTiProxyMemberManagerSetLabels(t *testing.T) {
@@ -263,4 +265,165 @@ func newFakeTiProxyMemberManager() (*tiproxyMemberManager, *fakeIndexers) {
 		node:   fakeDeps.KubeInformerFactory.Core().V1().Nodes().Informer().GetIndexer(),
 	}
 	return tmm, indexers
+}
+
+func TestBuildTiProxyReadinessProbeHandler(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       *v1alpha1.TidbCluster
+		expected *corev1.ProbeHandler
+	}{
+		{
+			name: "nil readiness probe",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "nil probe type",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{},
+						},
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "command probe type",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								Type: ptr.To(string(v1alpha1.CommandProbeType)),
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: []string{
+						"curl",
+						"http://127.0.0.1:3080/api/debug/health",
+						"--fail",
+						"--location",
+					},
+				},
+			},
+		},
+		{
+			name: "TCP probe type",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								Type: ptr.To(string(v1alpha1.TCPProbeType)),
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(int(v1alpha1.DefaultTiProxyServerPort)),
+				},
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			result := buildTiProxyReadinessProbeHandler(tests[i].tc)
+			g.Expect(result).To(Equal(tests[i].expected))
+		})
+	}
+}
+
+func TestBuildTiProxyProbeCommand(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       *v1alpha1.TidbCluster
+		expected []string
+	}{
+		{
+			name: "non-TLS cluster",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{},
+				},
+			},
+			expected: []string{
+				"curl",
+				"http://127.0.0.1:3080/api/debug/health",
+				"--fail",
+				"--location",
+			},
+		},
+		{
+			name: "TLS cluster enabled",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{},
+					TLSCluster: &v1alpha1.TLSCluster{
+						Enabled: true,
+					},
+				},
+			},
+			expected: []string{
+				"curl",
+				"https://127.0.0.1:3080/api/debug/health",
+				"--fail",
+				"--location",
+				"--cacert",
+				"/var/lib/cluster-client-tls/ca.crt",
+				"--cert",
+				"/var/lib/cluster-client-tls/tls.crt",
+				"--key",
+				"/var/lib/cluster-client-tls/tls.key",
+			},
+		},
+		{
+			name: "TLS cluster enabled with tiproxy cert layout 'v1', is same as ''",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						CertLayout: "v1",
+					},
+					TLSCluster: &v1alpha1.TLSCluster{
+						Enabled: true,
+					},
+				},
+			},
+			expected: []string{
+				"curl",
+				"https://127.0.0.1:3080/api/debug/health",
+				"--fail",
+				"--location",
+				"--cacert",
+				"/var/lib/cluster-client-tls/ca.crt",
+				"--cert",
+				"/var/lib/cluster-client-tls/tls.crt",
+				"--key",
+				"/var/lib/cluster-client-tls/tls.key",
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			result := buildTiProxyProbeCommand(tests[i].tc)
+			g.Expect(result).To(Equal(tests[i].expected))
+		})
+	}
 }
