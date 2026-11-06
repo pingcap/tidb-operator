@@ -148,6 +148,46 @@ func TestGrafanaDataPathOverrides(t *testing.T) {
 	}
 }
 
+func TestGrafanaExplicitMountPreparation(t *testing.T) {
+	for _, tc := range []struct {
+		name, key, value, mountPath string
+		wantPaths                   []string
+	}{
+		{"logs on external root", "GF_PATHS_LOGS", "/data", "/data", nil},
+		{"external plugins", "GF_PATHS_PLUGINS", "/data/plugins", "/data/plugins", []string{"/data/grafana"}},
+		{"external plugin parent", "GF_PATHS_PLUGINS", "/data/external/plugins", "/data/external", []string{"/data/grafana"}},
+		{"external data", "GF_PATHS_DATA", "/data/custom", "/data/custom", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			explicit := core.VolumeMount{Name: "external", MountPath: tc.mountPath}
+			monitor := &v1alpha1.TidbMonitor{ObjectMeta: metav1.ObjectMeta{Name: "probe", Namespace: "test"}, Spec: v1alpha1.TidbMonitorSpec{
+				Grafana: &v1alpha1.GrafanaSpec{Envs: map[string]string{tc.key: tc.value}, AdditionalVolumeMounts: []core.VolumeMount{explicit}},
+			}}
+			sts, err := getMonitorStatefulSet(getMonitorServiceAccount(monitor), getMonitorSecret(monitor), monitor, &v1alpha1.TidbCluster{}, nil, 0)
+			if err != nil {
+				t.Fatal("explicit storage rejected", err)
+			}
+			if got := grafanaDataPaths(monitor); !reflect.DeepEqual(got, tc.wantPaths) {
+				t.Fatal("prepared unused PVC paths", got, tc.wantPaths)
+			}
+			wantDirs := append([]string{"/data/prometheus", "/data/latest-rules"}, tc.wantPaths...)
+			if got := sts.Spec.Template.Spec.InitContainers[0].Command[6:]; !reflect.DeepEqual(got, wantDirs) {
+				t.Fatal("incorrect permission preparation", got, wantDirs)
+			}
+			c := getMonitorGrafanaContainer(&core.Secret{}, monitor)
+			found := false
+			for _, mount := range c.VolumeMounts {
+				if mount.Name == "external" {
+					found = reflect.DeepEqual(mount, explicit)
+				}
+			}
+			if !found {
+				t.Fatal("explicit mount lost", c.VolumeMounts)
+			}
+		})
+	}
+}
+
 func TestMonitorDataMountOverrides(t *testing.T) {
 	for _, component := range []string{"prometheus", "thanos", "grafana"} {
 		dataPath := "/data/prometheus"
@@ -221,6 +261,31 @@ func TestPrepareMonitorData(t *testing.T) {
 		args := append([]string{"-ec", script, "prepare-monitor-data", root, strconv.Itoa(os.Getgid())}, dirs...)
 		return exec.Command("/bin/sh", args...).CombinedOutput()
 	}
+	t.Run("unused externally mounted plugins may be a symlink on the PVC", func(t *testing.T) {
+		root, outside := t.TempDir(), t.TempDir()
+		plugins := filepath.Join(root, "plugins")
+		if err := os.Symlink(outside, plugins); err != nil {
+			t.Fatal(err)
+		}
+		monitor := &v1alpha1.TidbMonitor{Spec: v1alpha1.TidbMonitorSpec{Grafana: &v1alpha1.GrafanaSpec{
+			Envs: map[string]string{"GF_PATHS_PLUGINS": "/data/plugins"}, AdditionalVolumeMounts: []core.VolumeMount{{Name: "external", MountPath: "/data/plugins"}},
+		}}}
+		var dirs []string
+		for _, dir := range getInitCommand(monitor)[6:] {
+			dirs = append(dirs, root+strings.TrimPrefix(dir, "/data"))
+		}
+		before, _ := os.Stat(outside)
+		if out, err := run(root, dirs...); err != nil {
+			t.Fatalf("unused symlink blocked initialization: %v: %s", err, out)
+		}
+		after, _ := os.Stat(outside)
+		if before.Mode() != after.Mode() {
+			t.Fatal("modified unused symlink target")
+		}
+		if target, err := os.Readlink(plugins); err != nil || target != outside {
+			t.Fatal("modified unused symlink", target, err)
+		}
+	})
 	t.Run("prepare and repeat without touching files", func(t *testing.T) {
 		root := t.TempDir()
 		dir := filepath.Join(root, "a' b;$literal")

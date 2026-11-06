@@ -35,7 +35,10 @@ privileged container or an explicitly configured additional full-volume mount.
 
 Literal absolute `GF_PATHS_DATA`, `GF_PATHS_PLUGINS` and `GF_PATHS_LOGS` paths
 below `/data/` get corresponding subPath mounts. Additional volume mounts take
-precedence. Paths outside `/data/` keep their explicitly configured storage;
+precedence during path validation, permission preparation and mounting; covered
+paths are not prepared on the main PVC. For example, `GF_PATHS_LOGS=/data` is
+allowed when `/data` is explicitly mounted from another volume. Paths outside
+`/data/` keep their explicitly configured storage;
 the Operator does not allocate new storage for them. Relative paths, environment
 expansions, parent traversal, and using `/data` itself as a Grafana
 data directory must be replaced with a literal dedicated path or an appropriate

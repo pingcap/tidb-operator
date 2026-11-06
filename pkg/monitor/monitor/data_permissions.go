@@ -84,6 +84,9 @@ func grafanaDataPaths(monitor *v1alpha1.TidbMonitor) []string {
 	var paths []string
 	for _, value := range []string{data, envs["GF_PATHS_PLUGINS"], envs["GF_PATHS_LOGS"]} {
 		clean := path.Clean(value)
+		if monitorDataPathCovered(clean, monitor.Spec.Grafana.AdditionalVolumeMounts) {
+			continue
+		}
 		if clean == "/data" || strings.HasPrefix(clean, "/data/") {
 			if !slices.Contains(paths, clean) {
 				paths = append(paths, clean)
@@ -99,6 +102,9 @@ func validateMonitorDataPaths(monitor *v1alpha1.TidbMonitor) error {
 			value := monitor.Spec.Grafana.Envs[key]
 			if value != "" && (!path.IsAbs(value) || (strings.Contains(value, "$(") || strings.Contains(value, "$$"))) {
 				return fmt.Errorf("grafana %s must be a literal absolute path, got %q; configure the resolved path explicitly", key, value)
+			}
+			if monitorDataPathCovered(value, monitor.Spec.Grafana.AdditionalVolumeMounts) {
+				continue
 			}
 			if strings.Contains(value+"/", "/../") {
 				return fmt.Errorf("grafana %s must not contain parent traversal: %q", key, value)
@@ -123,16 +129,21 @@ func monitorDataMount(dir string) core.VolumeMount {
 
 // Explicit data mounts also cover descendants; do not hide their storage with
 // a default PVC subPath mount.
+func monitorDataPathCovered(dir string, additional []core.VolumeMount) bool {
+	dir = path.Clean(dir)
+	for _, explicit := range additional {
+		parent := path.Clean(explicit.MountPath)
+		if dir == parent || strings.HasPrefix(dir, strings.TrimSuffix(parent, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 func appendMonitorDataMounts(defaults, additional []core.VolumeMount) []core.VolumeMount {
 	var mounts []core.VolumeMount
 	for _, mount := range defaults {
-		covered := false
-		if mount.Name == v1alpha1.TidbMonitorMemberType.String() && mount.SubPath != "" {
-			for _, explicit := range additional {
-				dir, parent := path.Clean(mount.MountPath), path.Clean(explicit.MountPath)
-				covered = covered || dir == parent || strings.HasPrefix(dir, strings.TrimSuffix(parent, "/")+"/")
-			}
-		}
+		covered := mount.Name == v1alpha1.TidbMonitorMemberType.String() && mount.SubPath != "" && monitorDataPathCovered(mount.MountPath, additional)
 		if !covered {
 			mounts = append(mounts, mount)
 		}
