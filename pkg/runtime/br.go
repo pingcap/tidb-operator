@@ -96,8 +96,7 @@ func (b *Backup) NeedAddFinalizer() bool {
 
 func (b *Backup) NeedRemoveFinalizer() bool {
 	bk := ToBackup(b)
-	if brv1alpha1.IsLogBackupAlreadyStart(bk) && !brv1alpha1.IsLogBackupAlreadyStop(bk) &&
-		bk.Status.LogSubCommandStatuses[brv1alpha1.LogStopCommand].Phase != brv1alpha1.BackupComplete {
+	if brv1alpha1.IsLogBackupAlreadyStart(bk) && !brv1alpha1.IsLogBackupStopComplete(bk) {
 		return false
 	}
 	return brv1alpha1.IsCleanCandidate(bk) && isBackupDeletionCandidate(bk) && brv1alpha1.IsBackupClean(bk)

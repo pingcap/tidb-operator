@@ -94,7 +94,7 @@ func (bc *backupCleaner) StopLogBackup(ctx context.Context, backup *v1alpha1.Bac
 			},
 		}, nil)
 	}
-	if v1alpha1.IsLogBackupAlreadyStop(backup) {
+	if v1alpha1.IsLogBackupStopComplete(backup) {
 		return nil
 	}
 
@@ -588,7 +588,7 @@ func (bc *backupCleaner) isLogStopJobFinished(ctx context.Context, backup *v1alp
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return true, nil
 	}
-	if v1alpha1.IsLogBackupAlreadyStop(backup) {
+	if v1alpha1.IsLogBackupStopComplete(backup) {
 		return true, nil
 	}
 

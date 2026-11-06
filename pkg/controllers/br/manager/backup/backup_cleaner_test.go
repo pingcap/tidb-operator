@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 
 	br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	core "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -75,4 +76,53 @@ func TestStopLogBackupJobMustSucceedBeforeCleanup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecordedLogStopAllowsCleanupWithoutJob(t *testing.T) {
+	for _, jobExists := range []bool{false, true} {
+		name := "already missing"
+		if jobExists {
+			name = "removed between checks"
+		}
+		t.Run(name, func(t *testing.T) {
+			now := metav1.Now()
+			backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "test", DeletionTimestamp: &now}, Spec: br.BackupSpec{Mode: br.BackupModeLog, CleanPolicy: br.CleanPolicyTypeDelete, BR: &br.BRConfig{Cluster: "db"}}, Status: br.BackupStatus{Phase: br.BackupRunning, CommitTs: "1", BackupPath: "s3://bucket/backup"}}
+			backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+			stopJob := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: backup.GetStopLogBackupJobName(), Namespace: backup.Namespace}, Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}}}}
+			objects := []client.Object{backup}
+			if jobExists {
+				objects = append(objects, stopJob)
+			}
+			cli := client.NewFakeClient(objects...)
+			updater := NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))
+			require.NoError(t, updater.Update(t.Context(), backup, &br.BackupCondition{Command: br.LogStopCommand, Condition: metav1.Condition{Type: string(br.BackupComplete), Status: metav1.ConditionTrue, Reason: "StopCompleted"}}, nil))
+			require.Equal(t, br.BackupComplete, backup.Status.Phase)
+			require.Equal(t, br.BackupComplete, backup.Status.LogSubCommandStatuses[br.LogStopCommand].Phase)
+			cleaner := &backupCleaner{cli: cli, statusUpdater: updater}
+			require.NoError(t, cleaner.StopLogBackup(t.Context(), backup))
+			if jobExists {
+				require.NoError(t, cli.Delete(t.Context(), stopJob))
+			}
+			require.NoError(t, cleaner.CleanData(t.Context(), backup))
+			jobs := &batchv1.JobList{}
+			require.NoError(t, cli.List(t.Context(), jobs))
+			require.Len(t, jobs.Items, 1)
+			require.Equal(t, backup.GetCleanJobName(), jobs.Items[0].Name)
+		})
+	}
+}
+
+func TestNotStartedStopRecordDoesNotCoverLaterStartup(t *testing.T) {
+	now := metav1.Now()
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "test", DeletionTimestamp: &now}, Spec: br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "db"}}}
+	cli := client.NewFakeClient(backup)
+	updater := NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))
+	require.NoError(t, updater.Update(t.Context(), backup, &br.BackupCondition{Command: br.LogStopCommand, Condition: metav1.Condition{Type: string(br.BackupComplete), Status: metav1.ConditionTrue, Reason: "LogBackupNotStarted"}}, nil))
+	commitTs := "1"
+	require.NoError(t, updater.Update(t.Context(), backup, &br.BackupCondition{Command: br.LogStartCommand, Condition: metav1.Condition{Type: string(br.BackupComplete), Status: metav1.ConditionTrue, Reason: "StartCompleted"}}, &BackupUpdateStatus{CommitTs: &commitTs}))
+	require.True(t, br.IsLogBackupAlreadyStart(backup))
+	cleaner := &backupCleaner{cli: cli, statusUpdater: updater}
+	finished, err := cleaner.isLogStopJobFinished(t.Context(), backup)
+	require.NoError(t, err)
+	require.False(t, finished, "an earlier not-started observation does not prove the new task stopped")
 }

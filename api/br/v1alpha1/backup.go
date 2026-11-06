@@ -430,6 +430,26 @@ func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
 }
 
+// IsLogBackupStopComplete also recognizes the stop record after deletion cleanup changes the overall phase.
+func IsLogBackupStopComplete(backup *Backup) bool {
+	if IsLogBackupAlreadyStop(backup) {
+		return true
+	}
+	status := backup.Status.LogSubCommandStatuses[LogStopCommand]
+	if backup.Spec.Mode != BackupModeLog || status.Phase != BackupComplete {
+		return false
+	}
+	if IsLogBackupAlreadyStart(backup) {
+		for _, condition := range status.Conditions {
+			if condition.Type == string(BackupComplete) && condition.Status == metav1.ConditionTrue &&
+				condition.Reason == "LogBackupNotStarted" {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // IsLogBackupOnTrack returns whether log backup is on track.
 func IsLogBackupOnTrack(backup *Backup) bool {
 	if backup.Spec.Mode != BackupModeLog {
