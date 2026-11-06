@@ -16,9 +16,14 @@ package clean
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -188,4 +193,67 @@ func TestLocalCleanupRejectsAdditionalMountChanges(t *testing.T) {
 	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	require.Equal(t, "keep", string(data))
+}
+
+type storageProbeTransport func(*http.Request) (*http.Response, error)
+
+func (f storageProbeTransport) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestGCSCleanupBindsEffectiveEndpoint(t *testing.T) {
+	for _, endpoint := range []struct{ name, env, original, replacement, host string }{
+		{"emulator", "STORAGE_EMULATOR_HOST", "http://original.test", "http://replacement.test", "original.test"},
+		{"universe", "GOOGLE_CLOUD_UNIVERSE_DOMAIN", "", "replacement.test", "storage.googleapis.com"},
+	} {
+		for _, changed := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/changed=%t", endpoint.name, changed), func(t *testing.T) {
+				adc := filepath.Join(t.TempDir(), "credentials.json")
+				require.NoError(t, os.WriteFile(adc, []byte(`{"type":"authorized_user","client_id":"test","client_secret":"test","refresh_token":"test"}`), 0600))
+				t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", adc)
+				t.Setenv("STORAGE_EMULATOR_HOST", "")
+				t.Setenv("GOOGLE_CLOUD_UNIVERSE_DOMAIN", "")
+				t.Setenv(endpoint.env, endpoint.original)
+				backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{BR: &v1alpha1.BRConfig{Cluster: "cluster"}}}
+				backup.Spec.Gcs = &v1alpha1.GcsStorageProvider{Bucket: "bucket", Prefix: "backup"}
+				backup.Status.BackupPath = "gcs://bucket/backup/"
+				var err error
+				backup.Status.StorageIdentity, err = bkutil.StorageIdentity(backup)
+				require.NoError(t, err)
+				if changed {
+					t.Setenv(endpoint.env, endpoint.replacement)
+				}
+				var requests, deletes atomic.Int64
+				previous := http.DefaultTransport
+				http.DefaultTransport = storageProbeTransport(func(req *http.Request) (*http.Response, error) {
+					requests.Add(1)
+					body := `{}`
+					status := http.StatusOK
+					switch req.Method {
+					case http.MethodPost:
+						body = `{"access_token":"test","token_type":"Bearer","expires_in":3600}`
+					case http.MethodGet:
+						body = `{"items":[]}`
+						if deletes.Load() == 0 {
+							body = `{"items":[{"name":"backup/data"}]}`
+						}
+					case http.MethodDelete:
+						deletes.Add(1)
+						if req.URL.Host != endpoint.host {
+							t.Errorf("DELETE reached replacement endpoint: %s", req.URL)
+						}
+						status = http.StatusNoContent
+					}
+					return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
+				})
+				t.Cleanup(func() { http.DefaultTransport = previous })
+				err = (&Options{}).CleanBRRemoteBackupData(t.Context(), backup)
+				if changed {
+					require.Zero(t, requests.Load(), "changed endpoint must be rejected before opening storage")
+					require.ErrorContains(t, err, "storage identity has changed")
+				} else {
+					require.NoError(t, err)
+					require.EqualValues(t, 1, deletes.Load())
+				}
+			})
+		}
+	}
 }

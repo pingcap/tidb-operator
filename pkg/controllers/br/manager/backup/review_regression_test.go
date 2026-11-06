@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -29,6 +30,7 @@ import (
 	core "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
@@ -134,4 +136,34 @@ func TestCleanJobLocalAdditionalMountsAreBoundToIdentity(t *testing.T) {
 	backup.Spec.AdditionalVolumes[0].PersistentVolumeClaim.ClaimName = "other"
 	_, err = util.ValidateStorageIdentity(backup)
 	require.ErrorContains(t, err, "storage identity has changed")
+}
+
+func TestClusterAccessObservationPreservesLifecycle(t *testing.T) {
+	for _, mode := range []br.BackupMode{br.BackupModeSnapshot, br.BackupModeLog} {
+		for _, phase := range []br.BackupConditionType{
+			"", br.BackupScheduled, br.BackupPrepare, br.BackupRunning, br.BackupComplete,
+			br.BackupFailed, br.BackupClean, br.BackupCleanFailed, br.BackupRetryTheFailed,
+			br.BackupInvalid, br.BackupPaused, br.BackupStopped, br.BackupRepeatable, br.BackupRestart,
+		} {
+			backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"},
+				Spec: br.BackupSpec{Mode: mode}, Status: br.BackupStatus{Phase: phase,
+					LogSubCommandStatuses: map[br.LogSubCommandType]br.LogSubCommandStatus{br.LogStartCommand: {Phase: br.BackupComplete}},
+				}}
+			cli := client.NewFakeClient(backup)
+			updater := NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))
+			original := backup.Status.DeepCopy()
+			for _, accessible := range []metav1.ConditionStatus{metav1.ConditionFalse, metav1.ConditionTrue} {
+				require.NoError(t, updater.Update(t.Context(), backup, &br.BackupCondition{Condition: metav1.Condition{
+					Type: constants.ConditionClusterAccessible, Status: accessible, Reason: "AccessObservation",
+				}}, nil))
+				got := &br.Backup{}
+				require.NoError(t, cli.Get(t.Context(), client.ObjectKeyFromObject(backup), got))
+				require.Equal(t, phase, got.Status.Phase)
+				require.Equal(t, original.LogSubCommandStatuses, got.Status.LogSubCommandStatuses)
+				condition := meta.FindStatusCondition(got.Status.Conditions, constants.ConditionClusterAccessible)
+				require.NotNil(t, condition)
+				require.Equal(t, accessible, condition.Status)
+			}
+		}
+	}
 }

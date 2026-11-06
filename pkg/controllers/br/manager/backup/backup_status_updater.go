@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
@@ -27,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
@@ -95,7 +97,9 @@ func (u *realBackupConditionUpdater) Update(
 		}
 		isUpdate := false
 		// log backup needs update both subcommand status and whole backup status.
-		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+		if condition != nil && condition.Type == constants.ConditionClusterAccessible {
+			isUpdate = meta.SetStatusCondition(&backup.Status.Conditions, condition.Condition)
+		} else if backup.Spec.Mode == v1alpha1.BackupModeLog {
 			isUpdate = updateLogBackupStatus(backup, condition, newStatus)
 		} else {
 			isUpdate = updateSnapshotBackupStatus(backup, condition, newStatus)

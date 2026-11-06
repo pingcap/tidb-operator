@@ -17,10 +17,12 @@ package tasks
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 	task "github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 
@@ -43,18 +45,23 @@ func TaskContextBackupCluster(state *ReconcileContext, cli client.Client) task.T
 	return task.NameTaskFunc("ContextBackupCluster", func(ctx context.Context) task.Result {
 		cluster, err := util.GetBackupCluster(ctx, cli, state.Backup().Namespace, state.Backup().Spec.BR)
 		if err != nil {
-			// Access failures must not rewrite running log tasks or completed work.
-			if br.IsLogBackupAlreadyStart(state.Backup()) || br.IsBackupComplete(state.Backup()) || br.IsBackupFailed(state.Backup()) {
-				return task.Fail().With("cannot access backup cluster: %v", err)
-			}
 			updateErr := state.BackupManager.UpdateStatus(ctx, state.Backup(), &br.BackupCondition{
-				Command: br.ParseLogBackupSubcommand(state.Backup()),
 				Condition: metav1.Condition{
-					Type: string(br.BackupRetryTheFailed), Status: metav1.ConditionTrue,
-					Reason: "ClusterAccessFailed", Message: err.Error(),
+					Type: constants.ConditionClusterAccessible, Status: metav1.ConditionFalse,
+					Reason: constants.ClusterAccessFailed, Message: err.Error(), ObservedGeneration: state.Backup().Generation,
 				},
 			}, nil)
 			return task.Fail().With("cannot access backup cluster: %v (status update: %v)", err, updateErr)
+		}
+		if meta.FindStatusCondition(state.Backup().Status.Conditions, constants.ConditionClusterAccessible) != nil {
+			if err := state.BackupManager.UpdateStatus(ctx, state.Backup(), &br.BackupCondition{
+				Condition: metav1.Condition{
+					Type: constants.ConditionClusterAccessible, Status: metav1.ConditionTrue,
+					Reason: "ClusterAccessGranted", Message: "Target Cluster access restored", ObservedGeneration: state.Backup().Generation,
+				},
+			}, nil); err != nil {
+				return task.Fail().With("cannot update backup cluster access: %v", err)
+			}
 		}
 		state.SetCluster(cluster)
 		return task.Complete().With("authorized backup cluster is set")

@@ -43,7 +43,15 @@ func StorageIdentity(backup *br.Backup) (string, error) {
 		}
 	case br.BackupStorageTypeGcs:
 		g := provider.Gcs
-		identity = struct{ Kind, Bucket, Prefix string }{"gcs", g.Bucket, g.Prefix}
+		universe := os.Getenv("GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+		if universe == "googleapis.com" {
+			universe = ""
+		}
+		identity = struct {
+			Kind, Bucket, Prefix string
+			Endpoint             string `json:",omitempty"`
+			UniverseDomain       string `json:",omitempty"`
+		}{"gcs", g.Bucket, g.Prefix, os.Getenv("STORAGE_EMULATOR_HOST"), universe}
 	case br.BackupStorageTypeAzblob:
 		a := provider.Azblob
 		account := a.StorageAccount

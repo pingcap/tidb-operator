@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 
@@ -106,8 +107,8 @@ func TestRunnerPreservesStartedLogBackupAcrossConsentRevocation(t *testing.T) {
 	}
 }
 
-func TestRunnerPreservesTerminalSnapshotAfterConsentRevocation(t *testing.T) {
-	for _, phase := range []br.BackupConditionType{br.BackupComplete, br.BackupFailed} {
+func TestRunnerPreservesSnapshotPhaseAfterConsentRevocation(t *testing.T) {
+	for _, phase := range []br.BackupConditionType{br.BackupScheduled, br.BackupPrepare, br.BackupRunning, br.BackupComplete, br.BackupFailed} {
 		t.Run(string(phase), func(t *testing.T) {
 			cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "target"}}
 			backup := &br.Backup{
@@ -125,6 +126,19 @@ func TestRunnerPreservesTerminalSnapshotAfterConsentRevocation(t *testing.T) {
 			got := &br.Backup{}
 			require.NoError(t, cli.Get(t.Context(), client.ObjectKeyFromObject(backup), got))
 			require.Equal(t, phase, got.Status.Phase)
+			access := meta.FindStatusCondition(got.Status.Conditions, "ClusterAccessible")
+			require.NotNil(t, access)
+			require.Equal(t, metav1.ConditionFalse, access.Status)
+			cluster.Annotations = map[string]string{util.AllowedBackupNamespaces: "source"}
+			cluster.Spec.Paused = true // Isolate authorization reporting from the lifecycle manager.
+			require.NoError(t, cli.Update(t.Context(), cluster))
+			_, err = r.NewRunner(state, task.NewTableTaskReporter("test")).Run(t.Context())
+			require.NoError(t, err)
+			require.NoError(t, cli.Get(t.Context(), client.ObjectKeyFromObject(backup), got))
+			require.Equal(t, phase, got.Status.Phase)
+			access = meta.FindStatusCondition(got.Status.Conditions, "ClusterAccessible")
+			require.NotNil(t, access)
+			require.Equal(t, metav1.ConditionTrue, access.Status)
 		})
 	}
 }
