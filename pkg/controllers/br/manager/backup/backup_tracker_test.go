@@ -17,6 +17,7 @@ package backup
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,4 +117,32 @@ func TestTrackerHandlesMissingBR(t *testing.T) {
 	t.Run("checkpoint refresh", func(t *testing.T) {
 		require.NotPanics(t, func() { tracker.doRefreshLogBackupCheckpointTs(t.Context(), backup) })
 	})
+}
+
+func TestTrackerRefreshConcurrentRemoval(t *testing.T) {
+	previousPeriod := refreshCheckpointTsPeriod
+	refreshCheckpointTsPeriod = time.Nanosecond
+	defer func() { refreshCheckpointTsPeriod = previousPeriod }()
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "backup"},
+		Status:     v1alpha1.BackupStatus{Phase: v1alpha1.BackupPaused},
+	}
+	tracker := &backupTracker{
+		cli:        client.NewFakeClient(backup),
+		logBackups: map[string]bool{genLogBackupKey(backup.Namespace, backup.Name): true},
+	}
+	done := make(chan struct{})
+	go func() {
+		tracker.refreshLogBackupCheckpointTs(backup.Namespace, backup.Name)
+		close(done)
+	}()
+	for range 100000 {
+		tracker.removeLogBackup("test", "other")
+	}
+	tracker.removeLogBackup(backup.Namespace, backup.Name)
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("checkpoint refresh did not stop after removing the tracked backup")
+	}
 }
