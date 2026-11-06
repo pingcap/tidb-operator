@@ -43,6 +43,9 @@ the Operator does not allocate new storage for them. Relative paths, environment
 expansions, parent traversal, and using `/data` itself as a Grafana
 data directory must be replaced with a literal dedicated path or an appropriate
 additional volume mount before upgrade. Symlinked data directories are rejected.
+Grafana `${VAR}` and `$__provider{argument}` expansions also require literal
+resolved paths. Relative additional `mountPath` values use the same absolute
+container-path interpretation as Linux kubelet when deciding mount precedence.
 
 ## One-time migration for a custom non-root initializer
 

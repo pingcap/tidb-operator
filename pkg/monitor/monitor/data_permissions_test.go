@@ -117,10 +117,17 @@ func TestMonitorDataPermissions(t *testing.T) {
 }
 
 func TestGrafanaDataPathOverrides(t *testing.T) {
-	for _, value := range []string{"/data", "/data/../etc", "/data/x/../grafana", "/tmp/../data/grafana", "/data/$(POD_NAME)", "$(CUSTOM_PATH)", "relative-data", "/data/$$literal"} {
+	for _, value := range []string{"/data", "/data/../etc", "/data/x/../grafana", "/tmp/../data/grafana", "/data/$(POD_NAME)", "$(CUSTOM_PATH)", "relative-data", "/data/$$literal", "/data/${GRAFANA_DIR}", "/data/$__env{GRAFANA_DIR}", "/data/$__file{/etc/path}", "/data/$__vault{path}"} {
 		monitor := &v1alpha1.TidbMonitor{Spec: v1alpha1.TidbMonitorSpec{Grafana: &v1alpha1.GrafanaSpec{Envs: map[string]string{"GF_PATHS_DATA": value}}}}
 		if err := validateMonitorDataPaths(monitor); err == nil {
 			t.Fatal("unsafe or ambiguous data path accepted", value)
+		}
+		for _, key := range []string{"GF_PATHS_DATA", "GF_PATHS_PLUGINS", "GF_PATHS_LOGS"} {
+			monitor.Spec.Grafana.Envs = map[string]string{key: value}
+			monitor.Spec.Grafana.AdditionalVolumeMounts = []core.VolumeMount{{Name: "external", MountPath: "/data"}}
+			if strings.Contains(value, "$") && validateMonitorDataPaths(monitor) == nil {
+				t.Fatal("explicit mount hid an unresolved expansion", key, value)
+			}
 		}
 	}
 	for _, value := range []string{"//data/grafana", "/data/./grafana/"} {
@@ -157,6 +164,7 @@ func TestGrafanaExplicitMountPreparation(t *testing.T) {
 		{"external plugins", "GF_PATHS_PLUGINS", "/data/plugins", "/data/plugins", []string{"/data/grafana"}},
 		{"external plugin parent", "GF_PATHS_PLUGINS", "/data/external/plugins", "/data/external", []string{"/data/grafana"}},
 		{"external data", "GF_PATHS_DATA", "/data/custom", "/data/custom", nil},
+		{"relative external root", "GF_PATHS_LOGS", "/data", "data", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			explicit := core.VolumeMount{Name: "external", MountPath: tc.mountPath}
@@ -202,6 +210,8 @@ func TestMonitorDataMountOverrides(t *testing.T) {
 			{"same path", dataPath, false},
 			{"parent", "/data", false},
 			{"parent trailing slash", "/data/", false},
+			{"relative parent", "data", false},
+			{"relative same path", strings.TrimPrefix(dataPath, "/"), false},
 			{"equivalent path", "/" + dataPath + "/", false},
 			{"sibling", dataPath + "-other", true},
 			{"child", dataPath + "/custom", true},

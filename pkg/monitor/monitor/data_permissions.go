@@ -17,6 +17,7 @@ package monitor
 import (
 	"fmt"
 	"path"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -26,6 +27,9 @@ import (
 )
 
 const defaultMonitorDataGroup int64 = 2000
+
+// Match Grafana's ${VAR} and $__provider{argument} config expansion syntax.
+var grafanaPathExpansion = regexp.MustCompile(`\$(|__\w+){([^}]+)}`)
 
 // Keep ownership preparation in the existing initializer image. Paths and group
 // are positional arguments, not interpolated shell programs.
@@ -100,7 +104,7 @@ func validateMonitorDataPaths(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.Spec.Grafana != nil {
 		for _, key := range []string{"GF_PATHS_DATA", "GF_PATHS_PLUGINS", "GF_PATHS_LOGS"} {
 			value := monitor.Spec.Grafana.Envs[key]
-			if value != "" && (!path.IsAbs(value) || (strings.Contains(value, "$(") || strings.Contains(value, "$$"))) {
+			if value != "" && (!path.IsAbs(value) || strings.Contains(value, "$(") || strings.Contains(value, "$$") || grafanaPathExpansion.MatchString(value)) {
 				return fmt.Errorf("grafana %s must be a literal absolute path, got %q; configure the resolved path explicitly", key, value)
 			}
 			if monitorDataPathCovered(value, monitor.Spec.Grafana.AdditionalVolumeMounts) {
@@ -132,7 +136,11 @@ func monitorDataMount(dir string) core.VolumeMount {
 func monitorDataPathCovered(dir string, additional []core.VolumeMount) bool {
 	dir = path.Clean(dir)
 	for _, explicit := range additional {
-		parent := path.Clean(explicit.MountPath)
+		if explicit.MountPath == "" {
+			continue
+		}
+		// Linux kubelet resolves relative container mount paths from /.
+		parent := path.Clean("/" + explicit.MountPath)
 		if dir == parent || strings.HasPrefix(dir, strings.TrimSuffix(parent, "/")+"/") {
 			return true
 		}
