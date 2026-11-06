@@ -211,3 +211,22 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateMatchesRenderedImage(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		image   *string
+		version string
+		want    string
+	}{
+		{"default", nil, "v8.5.0", "pingcap/pd:v8.5.0"},
+		{"custom", ptr.To("example.com/test/pd"), "v8.5.0", "example.com/test/pd:v8.5.0"},
+		{"explicit tag", ptr.To("example.com/test/pd:custom"), "bad/tag", "example.com/test/pd:custom"},
+		{"explicit digest", ptr.To("example.com/test/pd@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"), "bad/tag", "example.com/test/pd@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, PD.Validate(tc.image, tc.version))
+			require.Equal(t, tc.want, PD.Image(tc.image, tc.version))
+		})
+	}
+}
