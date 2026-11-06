@@ -199,10 +199,17 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 
 	key := client.ObjectKeyFromObject(dbg).String()
 	adopting := m.adopting.list(key)
-	if index >= 0 && index < len(adopting) {
-		inKey := adopting[index]
+	reservedIndex := 0
+	for _, inKey := range adopting {
 		// should always exist
 		item := m.keyToInstance[inKey]
+		if item.owner.UID != dbg.UID || !sameScope(dbg, item.instance) {
+			continue
+		}
+		if reservedIndex != index {
+			reservedIndex++
+			continue
+		}
 
 		m.logger.Info("return adopting standby instance",
 			"group", key,
@@ -210,9 +217,7 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 			"index", index,
 			"rv", item.instance.GetResourceVersion())
 
-		if item.owner.UID == dbg.UID && sameScope(dbg, item.instance) {
-			return item.instance.DeepCopy(), DoNothing
-		}
+		return item.instance.DeepCopy(), DoNothing
 	}
 
 	hash := hashTiDBGroup(dbg)

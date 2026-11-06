@@ -64,3 +64,45 @@ func TestAdoptionScope(t *testing.T) {
 		})
 	}
 }
+
+func TestAdoptionIndexIgnoresStaleReservations(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change func(*v1alpha1.TiDBGroup)
+	}{
+		{"recreated group", func(g *v1alpha1.TiDBGroup) { g.UID = "new-group" }},
+		{"changed scope", func(g *v1alpha1.TiDBGroup) { g.Spec.Cluster.Name = "other" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := New(logr.Discard())
+			group := &v1alpha1.TiDBGroup{ObjectMeta: metav1.ObjectMeta{Namespace: "tenant", Name: "normal", UID: "group"}}
+			group.Spec.Cluster.Name = "cluster"
+			db := &v1alpha1.TiDB{ObjectMeta: metav1.ObjectMeta{Namespace: "tenant", Name: "a", UID: "db"}}
+			db.Spec.Cluster = group.Spec.Cluster
+			db.Spec.Mode = v1alpha1.TiDBModeStandBy
+			m.Register(db)
+			old, unlock := m.Adopt(group, 0)
+			require.NotNil(t, old)
+			defer unlock()
+
+			current := group.DeepCopy()
+			tc.change(current)
+			for index, name := range []string{"b", "c"} {
+				candidate := db.DeepCopy()
+				candidate.Name = name
+				candidate.Spec.Cluster = current.Spec.Cluster
+				m.Register(candidate)
+				adopted, release := m.Adopt(current, index)
+				require.NotNil(t, adopted)
+				require.Equal(t, name, adopted.Name)
+				t.Cleanup(release)
+				again, _ := m.Adopt(current, index)
+				require.Equal(t, adopted, again)
+			}
+			original, _ := m.Adopt(group, 0)
+			require.Equal(t, old, original)
+			missing, _ := m.Adopt(current, 2)
+			require.Nil(t, missing)
+		})
+	}
+}
