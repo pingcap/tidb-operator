@@ -20,7 +20,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -72,6 +74,62 @@ func TestMigrateDefaultAPIListener(t *testing.T) {
 			require.Contains(t, evaluateSyncedStatus(rtx), "statefulset rollout is not complete")
 			sts.Status.UpdatedReplicas = 1
 			require.Empty(t, evaluateSyncedStatus(rtx))
+		})
+	}
+}
+
+func TestRolloutStatusRespectsUpdateStrategy(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		strategy         appsv1.StatefulSetUpdateStrategyType
+		observed         int64
+		updated, ready   int32
+		matching, synced bool
+	}{
+		{"OnDelete restarted", appsv1.OnDeleteStatefulSetStrategyType, 2, 1, 1, false, true},
+		{"OnDelete old pod", appsv1.OnDeleteStatefulSetStrategyType, 2, 0, 1, false, false},
+		{"OnDelete old generation", appsv1.OnDeleteStatefulSetStrategyType, 1, 1, 1, false, false},
+		{"OnDelete pod not ready", appsv1.OnDeleteStatefulSetStrategyType, 2, 1, 0, false, false},
+		{"RollingUpdate mismatched revision", appsv1.RollingUpdateStatefulSetStrategyType, 2, 1, 1, false, false},
+		{"RollingUpdate complete", appsv1.RollingUpdateStatefulSetStrategyType, 2, 1, 1, true, true},
+		{"default strategy mismatched revision", "", 2, 1, 1, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cli := client.NewFakeClient()
+			rtx := NewReconcileContext(t.Context(), types.NamespacedName{Namespace: "test", Name: "br"}, cli)
+			rtx.tibr = &br.TiBR{ObjectMeta: metav1.ObjectMeta{Name: "br", Namespace: "test"}}
+			rtx.cluster = &core.Cluster{}
+			require.NoError(t, cli.Create(t.Context(), rtx.tibr))
+			sts := assembleSts(rtx)
+			sts.Spec.UpdateStrategy.Type = tc.strategy
+			sts.Generation = 2
+			sts.Status.ObservedGeneration = tc.observed
+			sts.Status.UpdatedReplicas, sts.Status.ReadyReplicas = tc.updated, tc.ready
+			sts.Status.CurrentRevision, sts.Status.UpdateRevision = "old", "new"
+			if tc.matching {
+				sts.Status.CurrentRevision = "new"
+			}
+			rtx.sts = sts
+			rtx.configmap, rtx.headlessSvc = &corev1.ConfigMap{}, &corev1.Service{}
+			result, _ := task.RunTask(t.Context(), taskWaitAllSubResourcesSynced(rtx))
+			if tc.synced {
+				require.Equal(t, task.SComplete, result.Status())
+			} else {
+				require.NotEqual(t, task.SComplete, result.Status())
+			}
+			result, _ = task.RunTask(t.Context(), TaskUpdateStatusIfNeeded(rtx))
+			require.Equal(t, task.SComplete, result.Status())
+			got := &br.TiBR{}
+			require.NoError(t, cli.Get(t.Context(), client.ObjectKeyFromObject(rtx.tibr), got))
+			for _, name := range []string{br.TiBRCondReady, br.TiBRCondSynced} {
+				condition := meta.FindStatusCondition(got.Status.Conditions, name)
+				require.NotNil(t, condition)
+				want := metav1.ConditionFalse
+				if tc.synced {
+					want = metav1.ConditionTrue
+				}
+				require.Equal(t, want, condition.Status)
+			}
 		})
 	}
 }

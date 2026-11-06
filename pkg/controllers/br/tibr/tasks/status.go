@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -82,8 +84,9 @@ func doUpdateConditions(conditions *[]metav1.Condition, notReadyReasons, unSynce
 func evaluateSyncedStatus(rtx *ReconcileContext) (unSyncedReasons []string) {
 	unSyncedReasons = evaluateReadyStatus(rtx)
 	if sts := rtx.StatefulSet(); sts != nil && sts.Generation > 0 &&
-		(sts.Status.ObservedGeneration < sts.Generation ||
-			sts.Status.CurrentRevision != sts.Status.UpdateRevision || sts.Status.UpdatedReplicas != StatefulSetReplica) {
+		(sts.Status.ObservedGeneration < sts.Generation || sts.Status.UpdatedReplicas != StatefulSetReplica ||
+			(sts.Spec.UpdateStrategy.Type != appsv1.OnDeleteStatefulSetStrategyType &&
+				sts.Status.CurrentRevision != sts.Status.UpdateRevision)) {
 		unSyncedReasons = append(unSyncedReasons, "statefulset rollout is not complete")
 	}
 	return unSyncedReasons
