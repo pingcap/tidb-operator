@@ -19,6 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -63,6 +65,9 @@ func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	}
 	if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
 		return err
+	}
+	if bkutil.GetStorageType(backup.Spec.StorageProvider) == v1alpha1.BackupStorageTypeLocal {
+		return cleanLocalBackupData(ctx, backup)
 	}
 	opt := backup.GetCleanOption()
 
@@ -221,4 +226,45 @@ func validateBRBackupPath(backup *v1alpha1.Backup) error {
 		return fmt.Errorf("refusing cleanup: backend target differs from recorded path")
 	}
 	return nil
+}
+
+// Keep deletion anchored to opened directories across symlink changes and renames.
+func cleanLocalBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
+	mount, err := os.OpenRoot(backup.Spec.Local.VolumeMount.MountPath)
+	if err != nil {
+		return fmt.Errorf("refusing local cleanup: cannot open mount: %w", err)
+	}
+	defer mount.Close() //nolint:errcheck
+	target, err := mount.OpenRoot(backup.Spec.Local.Prefix)
+	if err != nil {
+		return fmt.Errorf("refusing local cleanup: cannot open backup within mount: %w", err)
+	}
+	defer target.Close() //nolint:errcheck
+	mountInfo, err := mount.Stat(".")
+	if err != nil {
+		return err
+	}
+	targetInfo, err := target.Stat(".")
+	if err != nil {
+		return err
+	}
+	if os.SameFile(mountInfo, targetInfo) {
+		return fmt.Errorf("refusing local cleanup: backup resolves to the mount root")
+	}
+	opt := backup.GetCleanOption()
+	return util.RetryOnError(ctx, opt.RetryCount, 0, util.RetriableOnAnyError, func() error {
+		entries, err := fs.ReadDir(target.FS(), ".")
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := target.RemoveAll(entry.Name()); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

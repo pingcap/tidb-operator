@@ -66,7 +66,9 @@ func TestValidateBRBackupPath(t *testing.T) {
 
 func TestCleanLocalBackup(t *testing.T) {
 	root := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(root, "backup"), 0700))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "backup", "nested"), 0700))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "backup", "nested", "data"), []byte("nested"), 0600))
+	require.NoError(t, os.Symlink("..", filepath.Join(root, "backup", "root-link")))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "backup", "data"), []byte("backup"), 0600))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "keep"), []byte("keep"), 0600))
 	backup := &v1alpha1.Backup{}
@@ -100,4 +102,66 @@ func TestLegacyCleanupCannotRedirectBRBackup(t *testing.T) {
 	backup.Spec.S3.Options = []string{"--s3-endpoint=https://other"}
 	err = (&Manager{}).performCleanBackup(context.Background(), backup)
 	require.ErrorContains(t, err, "storage identity has changed")
+}
+
+func TestLocalCleanupCannotReachMountRootThroughSymlinks(t *testing.T) {
+	for _, tc := range []struct {
+		name, link, prefix string
+	}{
+		{"parent alias", "..", "backup/data"},
+		{"root alias", ".", "backup"},
+		{"nested root alias", "..", "nested/backup"},
+		{"outside alias", "../outside", "backup"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parent := t.TempDir()
+			root := filepath.Join(parent, "data")
+			outside := filepath.Join(parent, "outside")
+			require.NoError(t, os.MkdirAll(filepath.Join(root, "nested"), 0700))
+			require.NoError(t, os.Mkdir(outside, 0700))
+			for _, dir := range []string{root, outside} {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "keep"), []byte("unrelated"), 0600))
+			}
+			link := filepath.Join(root, "backup")
+			if tc.name == "nested root alias" {
+				link = filepath.Join(root, "nested", "backup")
+			}
+			require.NoError(t, os.Symlink(tc.link, link))
+			backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{BR: &v1alpha1.BRConfig{Cluster: "cluster"}}}
+			backup.Spec.Local = &v1alpha1.LocalStorageProvider{Prefix: tc.prefix}
+			backup.Spec.Local.VolumeMount.MountPath = root
+			backup.Status.BackupPath = "local://" + filepath.Join(root, tc.prefix)
+			var err error
+			backup.Status.StorageIdentity, err = bkutil.StorageIdentity(backup)
+			require.NoError(t, err)
+			err = (&Options{}).CleanBRRemoteBackupData(t.Context(), backup)
+			require.Error(t, err)
+			for _, dir := range []string{root, outside} {
+				data, err := os.ReadFile(filepath.Join(dir, "keep"))
+				require.NoError(t, err)
+				require.Equal(t, "unrelated", string(data))
+			}
+		})
+	}
+}
+
+func TestLocalCleanupAllowsContainedNonRootAlias(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "backups", "one"), 0700))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "backups", "one", "data"), []byte("backup"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "keep"), []byte("keep"), 0600))
+	require.NoError(t, os.Symlink("backups/one", filepath.Join(root, "backup")))
+	backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{BR: &v1alpha1.BRConfig{Cluster: "cluster"}}}
+	backup.Spec.Local = &v1alpha1.LocalStorageProvider{Prefix: "backup"}
+	backup.Spec.Local.VolumeMount.MountPath = root
+	backup.Status.BackupPath = "local://" + filepath.Join(root, "backup")
+	var err error
+	backup.Status.StorageIdentity, err = bkutil.StorageIdentity(backup)
+	require.NoError(t, err)
+	require.NoError(t, (&Options{}).CleanBRRemoteBackupData(t.Context(), backup))
+	_, err = os.Stat(filepath.Join(root, "backups", "one", "data"))
+	require.True(t, os.IsNotExist(err))
+	data, err := os.ReadFile(filepath.Join(root, "keep"))
+	require.NoError(t, err)
+	require.Equal(t, "keep", string(data))
 }
