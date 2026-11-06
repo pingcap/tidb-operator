@@ -15,6 +15,7 @@
 package tidb
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/toml"
 )
 
 func TestValidate(t *testing.T) {
@@ -326,4 +328,41 @@ func TestOverlayLabels(t *testing.T) {
 		"zone": "from-server-labels",
 		"env":  "prod",
 	}, got.Labels)
+}
+
+func TestRawSkipCAIsManaged(t *testing.T) {
+	for _, section := range []string{"server-tls", "server-http-tls", "cluster-tls", "sql-tls"} {
+		for _, skipCA := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/%t", section, skipCA), func(t *testing.T) {
+				decoder, encoder := toml.Codec[Config]()
+				cfg := &Config{}
+				require.NoError(t, decoder.Decode([]byte(fmt.Sprintf("[security.%s]\nskip-ca = %t\n", section, skipCA)), cfg))
+				cluster := &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "db", Namespace: "test"}, Spec: v1alpha1.ClusterSpec{TLSCluster: &v1alpha1.TLSCluster{Enabled: true}}}
+				tiproxy := &v1alpha1.TiProxy{ObjectMeta: metav1.ObjectMeta{Name: "db-foo", Namespace: "test"}}
+				err := cfg.Overlay(cluster, tiproxy)
+				if skipCA {
+					require.ErrorIs(t, err, v1alpha1.ErrFieldIsManagedByOperator)
+					require.ErrorContains(t, err, "security."+section+".skip-ca")
+					return
+				}
+				require.NoError(t, err)
+				data, err := encoder.Encode(cfg)
+				require.NoError(t, err)
+				rendered := &Config{}
+				decoder, _ = toml.Codec[Config]()
+				require.NoError(t, decoder.Decode(data, rendered))
+				require.False(t, rendered.Security.ServerSQLTLS.SkipCA)
+				require.False(t, rendered.Security.ServerHTTPTLS.SkipCA)
+				require.False(t, rendered.Security.ClusterTLS.SkipCA)
+				require.False(t, rendered.Security.SQLTLS.SkipCA)
+			})
+		}
+	}
+}
+func TestStructuredBackendSkipCAPreserved(t *testing.T) {
+	cfg := &Config{}
+	tiproxy := &v1alpha1.TiProxy{ObjectMeta: metav1.ObjectMeta{Name: "db-foo", Namespace: "test"}}
+	tiproxy.Spec.Security = &v1alpha1.TiProxySecurity{TLS: &v1alpha1.TiProxyTLSConfig{Backend: &v1alpha1.ClientTLS{Enabled: true, InsecureSkipTLSVerify: true}}}
+	require.NoError(t, cfg.Overlay(&v1alpha1.Cluster{}, tiproxy))
+	require.True(t, cfg.Security.SQLTLS.SkipCA)
 }
