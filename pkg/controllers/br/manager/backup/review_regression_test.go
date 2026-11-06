@@ -44,6 +44,7 @@ func TestStopBackupConsentAndTLS(t *testing.T) {
 	pd.Spec.Cluster.Name = "cluster"
 	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "source", Finalizers: []string{"protect-data"}}, Spec: br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster", ClusterNamespace: "target"}}, Status: br.BackupStatus{TimeStarted: metav1.Now(), CommitTs: "1"}}
 	backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+	backup.Status.LogClusterIdentity = util.LogBackupClusterIdentity(cluster)
 	cli := client.NewFakeClient(cluster, kv, pd, backup)
 	updater := NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))
 	cleaner := &backupCleaner{cli: cli, statusUpdater: updater}
@@ -80,6 +81,7 @@ func TestStopBackupConsentAndTLS(t *testing.T) {
 func TestRunningLogBackupReenrollsAfterConsent(t *testing.T) {
 	cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "target"}}
 	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "source"}, Spec: br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster", ClusterNamespace: "target"}}, Status: br.BackupStatus{CommitTs: "1", Phase: br.BackupRunning, LogSubCommandStatuses: map[br.LogSubCommandType]br.LogSubCommandStatus{br.LogStartCommand: {Phase: br.BackupComplete}}}}
+	backup.Status.LogClusterIdentity = util.LogBackupClusterIdentity(cluster)
 	cli := client.NewFakeClient(cluster, backup)
 	tracker := &backupTracker{cli: cli, logBackups: map[string]bool{}}
 	manager := &backupManager{cli: cli, backupTracker: tracker}
@@ -166,4 +168,108 @@ func TestClusterAccessObservationPreservesLifecycle(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestLogCommandsRejectChangedCluster(t *testing.T) {
+	ctx := t.Context()
+	original := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "original", UID: "original", Annotations: map[string]string{util.AllowedBackupNamespaces: "source"}}}
+	replacement := original.DeepCopy()
+	replacement.Namespace, replacement.UID = "replacement", "replacement"
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "source"},
+		Spec:   br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster", ClusterNamespace: "original"}},
+		Status: br.BackupStatus{CommitTs: "1", LogClusterIdentity: util.LogBackupClusterIdentity(original)},
+	}
+	backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+	cli := client.NewFakeClient(original, replacement)
+	for _, ns := range []string{"original", "replacement"} {
+		kv := &core.TiKVGroup{ObjectMeta: metav1.ObjectMeta{Name: "kv", Namespace: ns}}
+		kv.Spec.Cluster.Name = "cluster"
+		pd := &core.PDGroup{ObjectMeta: metav1.ObjectMeta{Name: "pd", Namespace: ns}}
+		pd.Spec.Cluster.Name = "cluster"
+		require.NoError(t, cli.Create(ctx, kv))
+		require.NoError(t, cli.Create(ctx, pd))
+	}
+	cleaner := &backupCleaner{cli: cli}
+	tracker := &backupTracker{cli: cli}
+	_, reason, err := cleaner.makeStopLogBackupJob(ctx, backup)
+	require.NoError(t, err, reason)
+	backup.Spec.BR.ClusterNamespace = "replacement"
+	_, _, err = cleaner.makeStopLogBackupJob(ctx, backup)
+	require.ErrorContains(t, err, "log backup cluster has changed")
+	_, err = tracker.getLogBackupTC(ctx, backup)
+	require.ErrorContains(t, err, "log backup cluster has changed")
+	backup.Spec.BR.ClusterNamespace = "original"
+	require.NoError(t, cli.Delete(ctx, original))
+	original.ResourceVersion, original.UID = "", "recreated"
+	require.NoError(t, cli.Create(ctx, original))
+	_, _, err = cleaner.makeStopLogBackupJob(ctx, backup)
+	require.ErrorContains(t, err, "log backup cluster has changed")
+}
+
+func TestLogClusterBindingRecordedBeforeJob(t *testing.T) {
+	ctx := t.Context()
+	cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "tenant", UID: "original"}}
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"},
+		Spec: br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster"}},
+	}
+	backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+	kv := &core.TiKVGroup{ObjectMeta: metav1.ObjectMeta{Name: "kv", Namespace: "tenant"}}
+	kv.Spec.Cluster.Name = "cluster"
+	pd := &core.PDGroup{ObjectMeta: metav1.ObjectMeta{Name: "pd", Namespace: "tenant"}}
+	pd.Spec.Cluster.Name = "cluster"
+	cli := client.NewFakeClient(cluster, backup, kv, pd)
+	updater := NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))
+	manager := &backupManager{cli: cli, statusUpdater: updater}
+	job, reason, err := manager.makeBRBackupJob(ctx, backup)
+	require.NoError(t, err, reason)
+	got := &br.Backup{}
+	require.NoError(t, cli.Get(ctx, client.ObjectKeyFromObject(backup), got))
+	require.Equal(t, util.LogBackupClusterIdentity(cluster), got.Status.LogClusterIdentity)
+	require.Contains(t, job.Spec.Template.Spec.Containers[0].Args, "--pd-addr=pd-pd.tenant:2379")
+	changed := "other"
+	require.ErrorContains(t, updater.Update(ctx, got, nil, &BackupUpdateStatus{LogClusterIdentity: &changed}), "cannot change")
+	cluster.UID = "recreated"
+	require.NoError(t, cli.Update(ctx, cluster))
+	unbound := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "unbound", Namespace: "tenant"}, Spec: backup.Spec}
+	require.NoError(t, cli.Create(ctx, unbound))
+	original := backup.Status.LogClusterIdentity
+	require.ErrorContains(t, updater.Update(ctx, unbound, nil, &BackupUpdateStatus{LogClusterIdentity: &original}), "cluster has changed before recording")
+	require.NoError(t, cli.Get(ctx, client.ObjectKeyFromObject(unbound), unbound))
+	require.Empty(t, unbound.Status.LogClusterIdentity)
+}
+
+func TestExistingStopJobDoesNotBypassClusterBinding(t *testing.T) {
+	original := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "original", UID: "original"}}
+	target := original.DeepCopy()
+	target.Namespace, target.UID = "target", "replacement"
+	target.Annotations = map[string]string{util.AllowedBackupNamespaces: "source"}
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "source", Finalizers: []string{"protect"}},
+		Spec:   br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster", ClusterNamespace: "target"}},
+		Status: br.BackupStatus{CommitTs: "1", LogClusterIdentity: util.LogBackupClusterIdentity(original)},
+	}
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: backup.GetStopLogBackupJobName(), Namespace: "source"}}
+	cli := client.NewFakeClient(target, backup, job)
+	cleaner := &backupCleaner{cli: cli, statusUpdater: NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))}
+	require.ErrorContains(t, cleaner.StopLogBackup(t.Context(), backup), "log backup cluster has changed")
+	require.NoError(t, cli.Get(t.Context(), client.ObjectKeyFromObject(backup), backup))
+	require.Equal(t, util.LogBackupClusterIdentity(original), backup.Status.LogClusterIdentity)
+	require.Contains(t, backup.Finalizers, "protect")
+	require.Equal(t, "StopLogBackupBlocked", backup.Status.LogSubCommandStatuses[br.LogStopCommand].Conditions[0].Reason)
+}
+
+func TestLegacyRunningLogWithoutCommitTsCannotBeDeclaredStopped(t *testing.T) {
+	cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "tenant"}}
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant", Finalizers: []string{"protect"}},
+		Spec: br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster"}},
+		Status: br.BackupStatus{Phase: br.BackupRunning, BackupPath: "s3://bucket/backup",
+			LogSubCommandStatuses: map[br.LogSubCommandType]br.LogSubCommandStatus{br.LogStartCommand: {Phase: br.BackupRunning}},
+		},
+	}
+	cli := client.NewFakeClient(cluster, backup)
+	cleaner := &backupCleaner{cli: cli, statusUpdater: NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))}
+	require.ErrorContains(t, cleaner.StopLogBackup(t.Context(), backup), "original log backup cluster identity is unavailable")
+	require.NoError(t, cli.Get(t.Context(), client.ObjectKeyFromObject(backup), backup))
+	require.Contains(t, backup.Finalizers, "protect")
+	require.NotEqual(t, br.BackupComplete, backup.Status.LogSubCommandStatuses[br.LogStopCommand].Phase)
+	require.Equal(t, "StopLogBackupBlocked", backup.Status.LogSubCommandStatuses[br.LogStopCommand].Conditions[0].Reason)
 }

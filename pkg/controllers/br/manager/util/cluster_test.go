@@ -86,3 +86,31 @@ func TestBROptionsPreserveTuningFlags(t *testing.T) {
 		require.NoError(t, ValidateBROptions(&br.BRConfig{Options: options}))
 	}
 }
+
+func TestLogClusterBindingRequiresOriginalHistory(t *testing.T) {
+	cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "tenant", UID: "original"}}
+	cli := client.NewFakeClient(cluster)
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Namespace: "tenant"},
+		Spec: br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster"}},
+	}
+	_, err := GetBackupClusterForBackup(t.Context(), cli, backup)
+	require.NoError(t, err)
+	backup.Status.CommitTs = "1"
+	_, err = GetBackupClusterForBackup(t.Context(), cli, backup)
+	require.ErrorContains(t, err, "original log backup cluster identity is unavailable")
+	backup.Status.CommitTs = ""
+	backup.Status.BackupPath = "s3://bucket/backup"
+	backup.Status.LogSubCommandStatuses = map[br.LogSubCommandType]br.LogSubCommandStatus{br.LogStartCommand: {Phase: br.BackupRunning}}
+	_, err = GetBackupClusterForBackup(t.Context(), cli, backup)
+	require.ErrorContains(t, err, "original log backup cluster identity is unavailable")
+	backup.Spec.Mode = br.BackupModeSnapshot
+	_, err = GetBackupClusterForBackup(t.Context(), cli, backup)
+	require.ErrorContains(t, err, "original log backup cluster identity is unavailable")
+	backup.Spec.Mode = br.BackupModeLog
+	backup.Status.LogClusterIdentity = LogBackupClusterIdentity(cluster)
+	_, err = GetBackupClusterForBackup(t.Context(), cli, backup)
+	require.NoError(t, err)
+	backup.Spec.BR.ClusterNamespace = "tenant"
+	_, err = GetBackupClusterForBackup(t.Context(), cli, backup)
+	require.NoError(t, err)
+}

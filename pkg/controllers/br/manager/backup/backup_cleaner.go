@@ -78,12 +78,15 @@ func (bc *backupCleaner) StopLogBackup(ctx context.Context, backup *v1alpha1.Bac
 	logger := log.FromContext(ctx)
 
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
+		if util.HasLogBackupHistory(backup) {
+			return fmt.Errorf("a bound log backup cannot change mode")
+		}
 		return nil
 	}
 	if backup.Spec.BR == nil {
 		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
 	}
-	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
+	if !util.HasLogBackupHistory(backup) {
 		return bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
 			Condition: metav1.Condition{
@@ -93,6 +96,9 @@ func (bc *backupCleaner) StopLogBackup(ctx context.Context, backup *v1alpha1.Bac
 				Message: "Log backup has not started, so there is no need to stop it",
 			},
 		}, nil)
+	}
+	if _, err := util.GetBackupClusterForBackup(ctx, bc.cli, backup); err != nil {
+		return bc.reportLogStopBlocked(ctx, backup, err)
 	}
 	if v1alpha1.IsLogBackupAlreadyStop(backup) {
 		return nil
@@ -123,18 +129,8 @@ func (bc *backupCleaner) StopLogBackup(ctx context.Context, backup *v1alpha1.Bac
 	// make backup job
 	var reason string
 	if job, reason, err = bc.makeStopLogBackupJob(ctx, backup); err != nil {
-		updateErr := bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
-			Command: v1alpha1.LogStopCommand,
-			Condition: metav1.Condition{
-				Type: string(v1alpha1.BackupRetryTheFailed), Status: metav1.ConditionTrue,
-				Reason: "StopLogBackupBlocked", Message: err.Error(),
-			},
-		}, nil)
-		if updateErr != nil {
-			return fmt.Errorf("stop log backup blocked: %w; updating condition failed: %w", err, updateErr)
-		}
 		logger.Error(err, "failed to make stop log backup job", "namespace", ns, "backup", name, "job", stopLogJobName, "reason", reason)
-		return err
+		return bc.reportLogStopBlocked(ctx, backup, err)
 	}
 
 	// create k8s job
@@ -355,7 +351,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetStopLogBackupJobName()
-	cluster, err := util.GetBackupCluster(ctx, bc.cli, backup.Namespace, backup.Spec.BR)
+	cluster, err := util.GetBackupClusterForBackup(ctx, bc.cli, backup)
 	if err != nil {
 		return nil, constants.ClusterAccessFailed, err
 	}
@@ -641,4 +637,18 @@ func (bc *backupCleaner) isJobFailed(job *batchv1.Job) bool {
 		}
 	}
 	return false
+}
+
+func (bc *backupCleaner) reportLogStopBlocked(ctx context.Context, backup *v1alpha1.Backup, cause error) error {
+	updateErr := bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
+		Command: v1alpha1.LogStopCommand,
+		Condition: metav1.Condition{
+			Type: string(v1alpha1.BackupRetryTheFailed), Status: metav1.ConditionTrue,
+			Reason: "StopLogBackupBlocked", Message: cause.Error(),
+		},
+	}, nil)
+	if updateErr != nil {
+		return fmt.Errorf("stop log backup blocked: %w; updating condition failed: %w", cause, updateErr)
+	}
+	return cause
 }

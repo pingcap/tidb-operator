@@ -5676,6 +5676,10 @@ spec:
               logCheckpointTs:
                 description: LogCheckpointTs is the ts of log backup process.
                 type: string
+              logClusterIdentity:
+                description: LogClusterIdentity binds log commands to the Cluster
+                  namespace, name and UID recorded before Job creation.
+                type: string
               logSubCommandStatuses:
                 additionalProperties:
                   description: LogSubCommandStatus is the log backup subcommand's

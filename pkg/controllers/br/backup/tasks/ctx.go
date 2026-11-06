@@ -43,7 +43,7 @@ type ReconcileContext struct {
 // TaskContextBackupCluster resolves the authorized target before pause/suspend checks.
 func TaskContextBackupCluster(state *ReconcileContext, cli client.Client) task.Task {
 	return task.NameTaskFunc("ContextBackupCluster", func(ctx context.Context) task.Result {
-		cluster, err := util.GetBackupCluster(ctx, cli, state.Backup().Namespace, state.Backup().Spec.BR)
+		cluster, err := util.GetBackupClusterForBackup(ctx, cli, state.Backup())
 		if err != nil {
 			updateErr := state.BackupManager.UpdateStatus(ctx, state.Backup(), &br.BackupCondition{
 				Condition: metav1.Condition{

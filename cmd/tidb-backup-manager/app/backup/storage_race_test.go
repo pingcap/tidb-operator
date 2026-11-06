@@ -24,6 +24,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	core "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	manager "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
@@ -130,4 +131,26 @@ func TestProcessTruncateRejectsChangedStorage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLogClusterChangeDuringStatusRefreshIsRejected(t *testing.T) {
+	cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "tenant", UID: "original"}}
+	replacement := cluster.DeepCopy()
+	replacement.Namespace, replacement.UID = "other", "replacement"
+	replacement.Annotations = map[string]string{util.AllowedBackupNamespaces: "tenant"}
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"},
+		Spec:   br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster"}},
+		Status: br.BackupStatus{CommitTs: "1", BackupPath: "s3://bucket/backup", LogClusterIdentity: util.LogBackupClusterIdentity(cluster)},
+	}
+	backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+	var err error
+	backup.Status.StorageIdentity, err = util.StorageIdentity(backup)
+	require.NoError(t, err)
+	reader := &mutatingBackupReader{Client: client.NewFakeClient(backup, cluster, replacement), changeAt: 3,
+		mutate: func(b *br.Backup) { b.Spec.BR.ClusterNamespace = "other" },
+	}
+	m := NewManager(reader, manager.NewRealBackupConditionUpdater(reader, record.NewFakeRecorder(100)), Options{})
+	m.Namespace, m.ResourceName = "tenant", "backup"
+	m.Mode, m.SubCommand, m.TruncateUntil = string(br.BackupModeLog), string(br.LogTruncateCommand), "0"
+	require.ErrorContains(t, m.ProcessBackup(), "log backup cluster has changed")
 }

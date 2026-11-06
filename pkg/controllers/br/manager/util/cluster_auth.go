@@ -16,6 +16,7 @@ package util
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 
@@ -78,4 +79,43 @@ func ValidateBROptions(config *br.BRConfig) error {
 		}
 	}
 	return nil
+}
+
+// LogBackupClusterIdentity binds the effective reference and Cluster incarnation.
+func LogBackupClusterIdentity(cluster *core.Cluster) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(cluster.Namespace+"/"+cluster.Name+"/"+string(cluster.UID))))
+}
+
+// GetBackupClusterForBackup rejects redirecting an already bound log task.
+func GetBackupClusterForBackup(ctx context.Context, cli client.Reader, backup *br.Backup) (*core.Cluster, error) {
+	cluster, err := GetBackupCluster(ctx, cli, backup.Namespace, backup.Spec.BR)
+	if err != nil {
+		return nil, err
+	}
+	var bindingErr error
+	switch {
+	case backup.Status.LogClusterIdentity != "" && backup.Spec.Mode != br.BackupModeLog:
+		bindingErr = fmt.Errorf("a bound log backup cannot change mode")
+	case backup.Status.LogClusterIdentity != "" && backup.Status.LogClusterIdentity != LogBackupClusterIdentity(cluster):
+		bindingErr = fmt.Errorf("log backup cluster has changed; restore its original reference")
+	case HasLogBackupHistory(backup) && backup.Status.LogClusterIdentity == "":
+		bindingErr = fmt.Errorf("original log backup cluster identity is unavailable; administrator verification is required")
+	}
+	if bindingErr != nil {
+		return nil, apierrors.NewForbidden(schema.GroupResource{Group: "core.pingcap.com", Resource: "clusters"}, cluster.Name, bindingErr)
+	}
+	return cluster, nil
+}
+
+// HasLogBackupHistory includes the interval after BR starts but before CommitTs is recorded.
+func HasLogBackupHistory(backup *br.Backup) bool {
+	if backup.Status.LogClusterIdentity != "" ||
+		(backup.Spec.Mode == br.BackupModeLog && (backup.Status.CommitTs != "" || backup.Status.BackupPath != "")) {
+		return true
+	}
+	switch backup.Status.LogSubCommandStatuses[br.LogStartCommand].Phase {
+	case br.BackupScheduled, br.BackupPrepare, br.BackupRunning, br.BackupComplete, br.BackupFailed:
+		return true
+	}
+	return false
 }

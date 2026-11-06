@@ -81,6 +81,7 @@ func TestRunnerPreservesStartedLogBackupAcrossConsentRevocation(t *testing.T) {
 					br.LogStartCommand: {Phase: br.BackupComplete},
 				}},
 			}
+			backup.Status.LogClusterIdentity = util.LogBackupClusterIdentity(cluster)
 			cli := client.NewFakeClient(cluster, backup)
 			updater := manager.NewRealBackupConditionUpdater(cli, record.NewFakeRecorder(100))
 			m := manager.NewBackupManager(cli, nil, updater, "")

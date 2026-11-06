@@ -141,7 +141,11 @@ func TestLocalCleanupCannotReachMountRootThroughSymlinks(t *testing.T) {
 			backup.Status.StorageIdentity, err = bkutil.StorageIdentity(backup)
 			require.NoError(t, err)
 			err = (&Options{}).CleanBRRemoteBackupData(t.Context(), backup)
-			require.Error(t, err)
+			if tc.name == "root alias" || tc.name == "nested root alias" {
+				require.ErrorContains(t, err, "resolves to the mount root")
+			} else {
+				require.ErrorContains(t, err, "cannot open backup within mount")
+			}
 			for _, dir := range []string{root, outside} {
 				data, err := os.ReadFile(filepath.Join(dir, "keep"))
 				require.NoError(t, err)

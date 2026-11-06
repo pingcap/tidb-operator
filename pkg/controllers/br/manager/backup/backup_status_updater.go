@@ -87,6 +87,9 @@ func (u *realBackupConditionUpdater) Update(
 			return err
 		}
 		if newStatus != nil {
+			if err := u.validateLogClusterUpdate(ctx, backup, newStatus.LogClusterIdentity); err != nil {
+				return err
+			}
 			if newStatus.StorageIdentity != nil && backup.Status.StorageIdentity != "" &&
 				backup.Status.StorageIdentity != *newStatus.StorageIdentity {
 				return fmt.Errorf("original backup storage identity cannot change")
@@ -126,6 +129,10 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		return false
 	}
 	isUpdate := false
+	if newStatus.LogClusterIdentity != nil && status.LogClusterIdentity != *newStatus.LogClusterIdentity {
+		status.LogClusterIdentity = *newStatus.LogClusterIdentity
+		isUpdate = true
+	}
 	if newStatus.StorageIdentity != nil && status.StorageIdentity != *newStatus.StorageIdentity {
 		status.StorageIdentity = *newStatus.StorageIdentity
 		isUpdate = true
@@ -374,7 +381,7 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 	}
 
 	// just update checkpoint ts
-	if status != nil && status.LogCheckpointTs != nil {
+	if status != nil && (status.LogCheckpointTs != nil || status.LogClusterIdentity != nil) {
 		return doUpdateStatusAndCondition(nil, status)
 	}
 
@@ -570,3 +577,20 @@ func (c *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1
 
 var _ BackupConditionUpdaterInterface = &FakeBackupConditionUpdater{}
 */
+
+func (u *realBackupConditionUpdater) validateLogClusterUpdate(ctx context.Context, backup *v1alpha1.Backup, identity *string) error {
+	if identity == nil {
+		return nil
+	}
+	if backup.Status.LogClusterIdentity != "" && backup.Status.LogClusterIdentity != *identity {
+		return fmt.Errorf("original log backup cluster identity cannot change")
+	}
+	cluster, err := util.GetBackupClusterForBackup(ctx, u.cli, backup)
+	if err != nil {
+		return err
+	}
+	if backup.Spec.Mode != v1alpha1.BackupModeLog || util.LogBackupClusterIdentity(cluster) != *identity {
+		return fmt.Errorf("log backup cluster has changed before recording its identity")
+	}
+	return nil
+}

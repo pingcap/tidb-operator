@@ -174,10 +174,10 @@ func (bt *backupTracker) getLogBackupTC(ctx context.Context, backup *v1alpha1.Ba
 	}
 
 	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return !apierrors.IsForbidden(e) && !apierrors.IsNotFound(e) }, func() error {
-		cluster, err = util.GetBackupCluster(ctx, bt.cli, ns, backup.Spec.BR)
+		cluster, err = util.GetBackupClusterForBackup(ctx, bt.cli, backup)
 		if err != nil {
 			logger.Error(err,
-				"get log backup tidbcluster failed and will retry",
+				"cannot resolve authorized log backup cluster",
 				"namespace", ns,
 				"backup", name,
 				"clusterNamespace", clusterNamespace,
