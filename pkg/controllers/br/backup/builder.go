@@ -17,14 +17,17 @@ package backup
 import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/backup/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
+		task.IfBreak(
+			task.CondFunc(func() bool { return state.Backup().DeletionTimestamp != nil }),
+			tasks.TaskBackupCleaner(state, r.Client, r.EventRecorder),
+		),
 		// get cluster
-		common.TaskContextCluster[scope.Backup](state, r.Client),
+		tasks.TaskContextBackupCluster(state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 		task.IfBreak(

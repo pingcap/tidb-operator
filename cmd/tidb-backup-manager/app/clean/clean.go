@@ -61,6 +61,9 @@ func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	if err := validateBRBackupPath(backup); err != nil {
 		return err
 	}
+	if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
+		return err
+	}
 	opt := backup.GetCleanOption()
 
 	backend, err := bkutil.NewStorageBackend(backup.Spec.StorageProvider, &bkutil.StorageCredential{})

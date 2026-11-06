@@ -24,16 +24,19 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	core "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 )
 
 type checkpointManager struct {
 	pdm.PDClientManager
 	client pdm.PDClient
+	key    string
 }
 
-func (m *checkpointManager) Get(string) (pdm.PDClient, bool) { return m.client, true }
+func (m *checkpointManager) Get(key string) (pdm.PDClient, bool) { m.key = key; return m.client, true }
 
 type checkpointPD struct {
 	pdm.PDClient
@@ -82,13 +85,14 @@ func TestRefreshLogBackupCheckpointEncoding(t *testing.T) {
 			etcd := &checkpointEtcd{kvs: tc.kvs}
 			updater := &checkpointUpdater{}
 			tracker := &backupTracker{
-				cli:           client.NewFakeClient(&core.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "cluster"}}),
+				cli:           client.NewFakeClient(&core.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "target", Name: "cluster", Annotations: map[string]string{util.AllowedBackupNamespaces: "test"}}}),
 				pdcm:          &checkpointManager{client: &checkpointPD{client: &checkpointUnderlay{client: etcd}}},
 				statusUpdater: updater,
 			}
-			backup := &v1alpha1.Backup{ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "backup"}, Spec: v1alpha1.BackupSpec{BR: &v1alpha1.BRConfig{Cluster: "cluster"}}}
+			backup := &v1alpha1.Backup{ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "backup"}, Spec: v1alpha1.BackupSpec{BR: &v1alpha1.BRConfig{Cluster: "cluster", ClusterNamespace: "target"}}}
 			tracker.doRefreshLogBackupCheckpointTs(context.Background(), backup)
 			require.True(t, etcd.closed)
+			require.Equal(t, timanager.PrimaryKey("target", "cluster"), tracker.pdcm.(*checkpointManager).key)
 			if tc.want == "" {
 				require.Nil(t, updater.value)
 			} else {

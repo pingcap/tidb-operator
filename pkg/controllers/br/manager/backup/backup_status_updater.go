@@ -84,6 +84,15 @@ func (u *realBackupConditionUpdater) Update(
 			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %w", ns, backupName, err))
 			return err
 		}
+		if newStatus != nil {
+			if newStatus.StorageIdentity != nil && backup.Status.StorageIdentity != "" &&
+				backup.Status.StorageIdentity != *newStatus.StorageIdentity {
+				return fmt.Errorf("original backup storage identity cannot change")
+			}
+			if newStatus.BackupPath != nil && backup.Status.BackupPath != "" && backup.Status.BackupPath != *newStatus.BackupPath {
+				return fmt.Errorf("original backup storage path cannot change")
+			}
+		}
 		isUpdate := false
 		// log backup needs update both subcommand status and whole backup status.
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
@@ -113,6 +122,10 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		return false
 	}
 	isUpdate := false
+	if newStatus.StorageIdentity != nil && status.StorageIdentity != *newStatus.StorageIdentity {
+		status.StorageIdentity = *newStatus.StorageIdentity
+		isUpdate = true
+	}
 	if newStatus.BackupPath != nil && status.BackupPath != *newStatus.BackupPath {
 		status.BackupPath = *newStatus.BackupPath
 		isUpdate = true

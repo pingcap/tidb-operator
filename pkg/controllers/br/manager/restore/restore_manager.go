@@ -77,21 +77,33 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	var (
-		err     error
-		cluster *corev1alpha1.Cluster
-	)
+	restoreJobName := restore.GetRestoreJobName()
+	restoreJob := &batchv1.Job{}
+	err := rm.cli.Get(ctx, client.ObjectKey{Namespace: restore.Namespace, Name: restoreJobName}, restoreJob)
+	if err == nil {
+		if !metav1.IsControlledBy(restoreJob, restore) {
+			return fmt.Errorf("existing restore Job is not controlled by this Restore")
+		}
+		logger.Info("restore job has been created, sync job status", "namespace", ns, "restoreJobName", restoreJobName)
+		return rm.syncK8sJobStatus(ctx, restore, restoreJob)
+	} else if !errors.IsNotFound(err) {
+		return fmt.Errorf("restore %s/%s get job %s failed, err: %w", ns, name, restoreJobName, err)
+	}
+
+	var cluster *corev1alpha1.Cluster
 
 	cluster, err = util.GetBackupCluster(ctx, rm.cli, restore.Namespace, restore.Spec.BR)
 	if err != nil {
-		reason := fmt.Sprintf("failed to access cluster for restore %s/%s", restore.Namespace, restore.Name)
 		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
 			Status:  metav1.ConditionTrue,
-			Reason:  reason,
+			Reason:  "ClusterAccessFailed",
 			Message: err.Error(),
 		}, nil)
 		return err
+	}
+	if coreutil.ShouldPauseReconcile(cluster) || coreutil.ShouldSuspendCompute(cluster) {
+		return nil
 	}
 	tikvGroup, err := util.FirstTikvGroup(ctx, rm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
@@ -112,16 +124,6 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 
 	if v1alpha1.IsRestoreFailed(restore) {
 		return nil
-	}
-
-	restoreJobName := restore.GetRestoreJobName()
-	restoreJob := &batchv1.Job{}
-	err = rm.cli.Get(ctx, client.ObjectKey{Namespace: restore.Namespace, Name: restoreJobName}, restoreJob)
-	if err == nil {
-		logger.Info("restore job has been created, sync job status", "namespace", ns, "restoreJobName", restoreJobName)
-		return rm.syncK8sJobStatus(ctx, restore, restoreJob)
-	} else if !errors.IsNotFound(err) {
-		return fmt.Errorf("restore %s/%s get job %s failed, err: %w", ns, name, restoreJobName, err)
 	}
 
 	var (
@@ -173,15 +175,15 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 	name := restore.GetName()
 	cluster, err := util.GetBackupCluster(ctx, rm.cli, restore.Namespace, restore.Spec.BR)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to access cluster for restore %s/%s", restore.Namespace, restore.Name), err
+		return nil, "ClusterAccessFailed", err
 	}
 	tikvGroup, err := util.FirstTikvGroup(ctx, rm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
+		return nil, "GetTiKVGroupFailed", err
 	}
 	pdGroup, err := util.FirstPDGroup(ctx, rm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
+		return nil, "GetPDGroupFailed", err
 	}
 
 	var (

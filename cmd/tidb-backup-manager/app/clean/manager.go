@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/util"
 	backupMgr "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
+	bkutil "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
 // Manager mainly used to manage backup related work
@@ -83,6 +84,9 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 	if backup.Spec.BR != nil {
 		err = bm.CleanBRRemoteBackupData(ctx, backup)
 	} else {
+		if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
+			return err
+		}
 		opts := util.GetOptions(backup.Spec.StorageProvider)
 		err = bm.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts)
 	}

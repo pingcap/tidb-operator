@@ -532,6 +532,10 @@ type LogSubCommandStatus struct {
 
 // BackupStatus represents the current status of a backup.
 type BackupStatus struct {
+	// StorageIdentity is the credential-free fingerprint of the original backup destination.
+	// It is recorded before writing data and must match before restarting or deleting data.
+	StorageIdentity string `json:"storageIdentity,omitempty"`
+
 	// BackupPath is the location of the backup.
 	BackupPath string `json:"backupPath,omitempty"`
 	// TimeStarted is the time at which the backup was started.

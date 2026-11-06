@@ -15,6 +15,9 @@
 package constants
 
 const (
+	// ClusterAccessFailed is the condition reason for an inaccessible BR target Cluster.
+	ClusterAccessFailed = "ClusterAccessFailed"
+
 	// DefaultServiceAccountName is the default name of the ServiceAccount to use to run backup and restore's job pod.
 	DefaultServiceAccountName = "tidb-backup-manager"
 

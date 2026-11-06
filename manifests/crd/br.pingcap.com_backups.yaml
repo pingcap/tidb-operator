@@ -5796,6 +5796,11 @@ spec:
                   type: object
                 nullable: true
                 type: array
+              storageIdentity:
+                description: |-
+                  StorageIdentity is the credential-free fingerprint of the original backup destination.
+                  It is recorded before writing data and must match before restarting or deleting data.
+                type: string
               timeCompleted:
                 description: TimeCompleted is the time at which the backup was completed.
                 format: date-time

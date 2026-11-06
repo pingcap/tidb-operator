@@ -16,7 +16,11 @@ package backup
 
 import (
 	"context"
+	"errors"
 	"testing"
+
+	backupMgr "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
+	bkutil "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 
 	"github.com/stretchr/testify/require"
 
@@ -33,4 +37,35 @@ func TestBackupCannotReplaceRecordedStoragePath(t *testing.T) {
 	require.ErrorContains(t, err, "cannot change")
 	require.Equal(t, "BackupStorageTargetChanged", reason)
 	require.Equal(t, "s3://bucket/original", backup.Status.BackupPath)
+}
+
+type stoppingStatusUpdater struct {
+	calls int
+	err   error
+}
+
+func (u *stoppingStatusUpdater) Update(context.Context, *v1alpha1.Backup, *v1alpha1.BackupCondition, *backupMgr.BackupUpdateStatus) error {
+	u.calls++
+	return u.err
+}
+func TestBackupStoragePathAllowsOriginalDestination(t *testing.T) {
+	for _, recorded := range []string{"", "s3://bucket/backup"} {
+		backup := &v1alpha1.Backup{}
+		backup.Spec.S3 = &v1alpha1.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+		backup.Status.BackupPath = recorded
+		identity, err := bkutil.StorageIdentity(backup)
+		require.NoError(t, err)
+		backup.Status.StorageIdentity = identity
+		for _, logMode := range []bool{false, true} {
+			updater := &stoppingStatusUpdater{err: errors.New("stop before external backup execution")}
+			manager := &Manager{StatusUpdater: updater}
+			if logMode {
+				_, _, err = manager.startLogBackup(context.Background(), backup)
+			} else {
+				err = manager.performBackup(context.Background(), backup)
+			}
+			require.ErrorIs(t, err, updater.err)
+			require.Equal(t, 1, updater.calls)
+		}
+	}
 }

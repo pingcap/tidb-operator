@@ -16,21 +16,11 @@ package restore
 
 import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/restore/tasks"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
-		// get cluster
-		common.TaskContextCluster[scope.Restore](state, r.Client),
-		// if it's paused just return
-		task.IfBreak(common.CondClusterIsPaused(state)),
-		task.IfBreak(
-			common.CondClusterIsSuspending(state),
-		),
-
 		tasks.TaskRestoreManager(state, r.Client, r.EventRecorder),
 	)
 

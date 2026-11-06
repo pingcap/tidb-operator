@@ -33,10 +33,12 @@ import (
 	"github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/util"
 	backupMgr "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
+	bkutil "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
 const (
-	ReasonUpdateStatusFailed = "UpdateStatusFailed"
+	ReasonUpdateStatusFailed   = "UpdateStatusFailed"
+	reasonStorageTargetChanged = "BackupStorageTargetChanged"
 )
 
 // Manager mainly used to manage backup related work
@@ -143,8 +145,13 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 		return fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
 	}
 
+	identity, err := bkutil.ValidateStorageIdentity(backup)
+	if err != nil {
+		return err
+	}
 	updatePathStatus := &backupMgr.BackupUpdateStatus{
-		BackupPath: &backupFullPath,
+		BackupPath:      &backupFullPath,
+		StorageIdentity: &identity,
 	}
 	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Condition: metav1.Condition{
@@ -174,6 +181,9 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 	}
 
 	// run br binary to do the real job
+	if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
+		return err
+	}
 	backupErr := bm.backupData(ctx, backup)
 	if backupErr != nil {
 		errs = append(errs, backupErr)
@@ -308,11 +318,16 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	klog.Infof("Get backup full path %s of cluster %s success", backupFullPath, bm)
 
 	if backup.Status.BackupPath != "" && backup.Status.BackupPath != backupFullPath {
-		return nil, "BackupStorageTargetChanged", fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
+		return nil, reasonStorageTargetChanged, fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
 	}
 
+	identity, err := bkutil.ValidateStorageIdentity(backup)
+	if err != nil {
+		return nil, reasonStorageTargetChanged, err
+	}
 	updatePathStatus := &backupMgr.BackupUpdateStatus{
-		BackupPath: &backupFullPath,
+		BackupPath:      &backupFullPath,
+		StorageIdentity: &identity,
 	}
 
 	// change Prepare to Running before real backup process start
@@ -327,6 +342,9 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	}
 
 	// run br binary to do the real job
+	if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
+		return nil, reasonStorageTargetChanged, err
+	}
 	backupErr := bm.doStartLogBackup(ctx, backup)
 	if backupErr != nil {
 		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)

@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	bkutil "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
 func TestValidateBRBackupPath(t *testing.T) {
@@ -51,7 +52,7 @@ func TestValidateBRBackupPath(t *testing.T) {
 			} else {
 				require.Error(t, err)
 				// The public operation must reject before credentials or storage are accessed.
-				require.Error(t, (&Options{}).CleanBRRemoteBackupData(context.Background(), backup))
+				require.ErrorContains(t, (&Options{}).CleanBRRemoteBackupData(context.Background(), backup), "refusing cleanup")
 			}
 		})
 	}
@@ -72,8 +73,11 @@ func TestCleanLocalBackup(t *testing.T) {
 	backup.Spec.Local = &v1alpha1.LocalStorageProvider{Prefix: "backup"}
 	backup.Spec.Local.VolumeMount.MountPath = root
 	backup.Status.BackupPath = "local://" + filepath.Join(root, "backup")
+	var err error
+	backup.Status.StorageIdentity, err = bkutil.StorageIdentity(backup)
+	require.NoError(t, err)
 	require.NoError(t, (&Options{}).CleanBRRemoteBackupData(context.Background(), backup))
-	_, err := os.Stat(filepath.Join(root, "backup", "data"))
+	_, err = os.Stat(filepath.Join(root, "backup", "data"))
 	require.True(t, os.IsNotExist(err))
 	_, err = os.Stat(filepath.Join(root, "keep"))
 	require.NoError(t, err)
@@ -82,4 +86,18 @@ func TestCleanLocalBackup(t *testing.T) {
 		backup.Status.BackupPath = "local://" + path.Join(root, prefix)
 		require.Error(t, validateBRBackupPath(backup))
 	}
+}
+
+// TestLegacyCleanupCannotRedirectBRBackup rejects changing cleanup engines and rclone endpoint overrides.
+func TestLegacyCleanupCannotRedirectBRBackup(t *testing.T) {
+	backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{BR: &v1alpha1.BRConfig{Cluster: "cluster"}}}
+	backup.Spec.S3 = &v1alpha1.S3StorageProvider{Bucket: "bucket", Prefix: "backup", Endpoint: "https://original"}
+	identity, err := bkutil.StorageIdentity(backup)
+	require.NoError(t, err)
+	backup.Status.BackupPath = "s3://bucket/backup"
+	backup.Status.StorageIdentity = identity
+	backup.Spec.BR = nil
+	backup.Spec.S3.Options = []string{"--s3-endpoint=https://other"}
+	err = (&Manager{}).performCleanBackup(context.Background(), backup)
+	require.ErrorContains(t, err, "storage identity has changed")
 }

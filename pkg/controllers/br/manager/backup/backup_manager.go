@@ -48,6 +48,9 @@ const brBinVolumeName = "br-bin"
 // This structure should keep synced with the fields in `BackupStatus`
 // except for `Phase` and `Conditions`.
 type BackupUpdateStatus struct {
+	// StorageIdentity binds the recorded backup path to its effective storage destination.
+	StorageIdentity *string
+
 	// BackupPath is the location of the backup.
 	BackupPath *string
 	// TimeStarted is the time at which the backup was started.
@@ -145,6 +148,11 @@ func (bm *backupManager) syncBackupJob(ctx context.Context, backup *v1alpha1.Bac
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	var err error
 
+	if v1alpha1.IsLogBackupAlreadyStart(backup) && !v1alpha1.IsLogBackupAlreadyStop(backup) {
+		if err := bm.backupTracker.StartTrackLogBackupProgress(ctx, backup); err != nil {
+			return err
+		}
+	}
 	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) {
 		return nil
 	}
@@ -229,7 +237,7 @@ func (bm *backupManager) validateBackup(ctx context.Context, backup *v1alpha1.Ba
 
 	cluster, err := util.GetBackupCluster(ctx, bm.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
-		reason := fmt.Sprintf("failed to access cluster for backup %s/%s", backup.Namespace, backup.Name)
+		reason := constants.ClusterAccessFailed
 		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
@@ -356,7 +364,7 @@ func (bm *backupManager) makeBackupJob(ctx context.Context, backup *v1alpha1.Bac
 					Condition: metav1.Condition{
 						Type:    string(v1alpha1.BackupRetryTheFailed),
 						Status:  metav1.ConditionTrue,
-						Reason:  "start log backup progress tracker error",
+						Reason:  "StartLogBackupTrackerFailed",
 						Message: err.Error(),
 					},
 				}, nil)
@@ -379,15 +387,15 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 	jobName := backup.GetBackupJobName()
 	cluster, err := util.GetBackupCluster(ctx, bm.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to access cluster for backup %s/%s", backup.Namespace, backup.Name), err
+		return nil, constants.ClusterAccessFailed, err
 	}
 	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to get tikv group %s/%s", ns, backup.Spec.BR.Cluster), err
+		return nil, "GetTiKVGroupFailed", fmt.Errorf("failed to get TiKV group in %s for cluster %s: %w", cluster.Namespace, cluster.Name, err)
 	}
 	pdGroup, err := util.FirstPDGroup(ctx, bm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
+		return nil, "GetPDGroupFailed", err
 	}
 
 	var (

@@ -123,6 +123,16 @@ func (bc *backupCleaner) StopLogBackup(ctx context.Context, backup *v1alpha1.Bac
 	// make backup job
 	var reason string
 	if job, reason, err = bc.makeStopLogBackupJob(ctx, backup); err != nil {
+		updateErr := bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
+			Command: v1alpha1.LogStopCommand,
+			Condition: metav1.Condition{
+				Type: string(v1alpha1.BackupRetryTheFailed), Status: metav1.ConditionTrue,
+				Reason: "StopLogBackupBlocked", Message: err.Error(),
+			},
+		}, nil)
+		if updateErr != nil {
+			return fmt.Errorf("stop log backup blocked: %w; updating condition failed: %w", err, updateErr)
+		}
 		logger.Error(err, "failed to make stop log backup job", "namespace", ns, "backup", name, "job", stopLogJobName, "reason", reason)
 		return err
 	}
@@ -347,15 +357,15 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 	jobName := backup.GetStopLogBackupJobName()
 	cluster, err := util.GetBackupCluster(ctx, bc.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to access cluster for backup %s/%s", backup.Namespace, backup.Name), err
+		return nil, constants.ClusterAccessFailed, err
 	}
 	tikvGroup, err := util.FirstTikvGroup(ctx, bc.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
+		return nil, "GetTiKVGroupFailed", err
 	}
 	pdGroup, err := util.FirstPDGroup(ctx, bc.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
+		return nil, "GetPDGroupFailed", err
 	}
 
 	var (
@@ -402,12 +412,12 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      corev1alpha1.VolumeNameClusterTLS,
+			Name:      corev1alpha1.VolumeNameClusterClientTLS,
 			ReadOnly:  true,
-			MountPath: corev1alpha1.DirPathClusterTLSTiKV,
+			MountPath: corev1alpha1.DirPathClusterClientTLS,
 		})
 		volumes = append(volumes, corev1.Volume{
-			Name: corev1alpha1.VolumeNameClusterTLS,
+			Name: corev1alpha1.VolumeNameClusterClientTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: coreutil.LegacyTLSClusterClientSecretName(backup.Spec.BR.Cluster),
