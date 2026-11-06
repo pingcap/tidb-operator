@@ -18,6 +18,7 @@ import (
 	neturl "net/url"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -188,7 +189,10 @@ func buildTiCIS3ConfigForChangefeed(tc *v1alpha1.TidbCluster) (*tiCIS3ConfigForC
 	if s3.Endpoint == "" || s3.Bucket == "" {
 		return nil, fmt.Errorf("TiCI S3 endpoint and bucket are required for changefeed")
 	}
-	usePathStyle := true
+	// Default to path-style addressing (MinIO and most S3-compatible stores
+	// require it), except for AWS endpoints where virtual-hosted style is the
+	// norm. An explicit spec value always wins.
+	usePathStyle := !isAWSS3Endpoint(s3.Endpoint)
 	if s3.UsePathStyle != nil {
 		usePathStyle = *s3.UsePathStyle
 	}
@@ -212,13 +216,57 @@ func buildTiCIS3ConfigForChangefeed(tc *v1alpha1.TidbCluster) (*tiCIS3ConfigForC
 }
 
 func buildTiCIChangefeedSinkURIFromS3(s3 *tiCIS3ConfigForChangefeed) string {
-	sinkPrefix := fmt.Sprintf("%s/cdc", strings.TrimRight(s3.Prefix, "/"))
+	query := neturl.Values{}
+	query.Set("protocol", "canal-json")
+	query.Set("enable-tidb-extension", "true")
+	query.Set("output-row-key", "true")
+	query.Set("use-table-id-as-path", "true")
+	storagePath := ticiSinkURIStoragePath(s3.Bucket, s3.Prefix)
 	if isGCSStorageEndpoint(s3.Endpoint) {
-		return fmt.Sprintf("gcs://%s/%s?protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
-			s3.Bucket, sinkPrefix)
+		return fmt.Sprintf("gcs://%s?%s", storagePath, query.Encode())
 	}
-	return fmt.Sprintf("s3://%s/%s?endpoint=%s&access-key=%s&secret-access-key=%s&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
-		s3.Bucket, sinkPrefix, s3.Endpoint, s3.AccessKey, s3.SecretKey)
+	// Every value must go through query encoding: S3 secrets commonly contain
+	// '+' (decoded as space in query strings), '&', '#' or '%' which would
+	// otherwise truncate or corrupt the sink uri when TiCDC parses it.
+	query.Set("endpoint", s3.Endpoint)
+	query.Set("access-key", s3.AccessKey)
+	query.Set("secret-access-key", s3.SecretKey)
+	query.Set("provider", ticiSinkS3Provider(s3.Endpoint))
+	query.Set("region", s3.Region)
+	query.Set("force-path-style", strconv.FormatBool(s3.UsePathStyle))
+	return fmt.Sprintf("s3://%s?%s", storagePath, query.Encode())
+}
+
+// ticiSinkURIStoragePath builds the "<bucket>/<prefix>/cdc" path of a TiCI
+// sink uri. The bucket is used verbatim because consumers (BR storage/ticdc)
+// read it from the URL host position without decoding; each prefix segment is
+// path-escaped and rejoined with "/" so slashes stay path separators.
+func ticiSinkURIStoragePath(bucket, prefix string) string {
+	segments := strings.Split(strings.TrimRight(prefix, "/"), "/")
+	segments = append(segments, "cdc")
+	for i, segment := range segments {
+		segments[i] = neturl.PathEscape(segment)
+	}
+	return bucket + "/" + strings.Join(segments, "/")
+}
+
+// isAWSS3Endpoint returns whether the endpoint points to AWS S3, mirroring the
+// endpoint check BR uses to pick virtual-hosted-style addressing and AWS
+// bucket-region detection.
+func isAWSS3Endpoint(endpoint string) bool {
+	return strings.Contains(endpoint, "amazonaws.com")
+}
+
+// ticiSinkS3Provider infers the S3 provider for the sink uri from the
+// endpoint: "aws" for AWS endpoints, "minio" (BR's generic S3-compatible
+// provider) for everything else. The provider decides whether BR runs AWS
+// bucket-region detection and validation ("aws") or trusts the configured
+// region as-is ("minio").
+func ticiSinkS3Provider(endpoint string) string {
+	if isAWSS3Endpoint(endpoint) {
+		return "aws"
+	}
+	return "minio"
 }
 
 func isGCSStorageEndpoint(endpoint string) bool {
