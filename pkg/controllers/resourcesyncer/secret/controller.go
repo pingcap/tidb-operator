@@ -328,8 +328,25 @@ func (r *Reconciler) tightenSecretPermissions(name string) error {
 		if err != nil {
 			return err
 		}
+		repaired := false
 		for _, entry := range entries {
-			if err := r.BaseDirFS.Chmod(filepath.Join(name, entry.Name()), defaultFilePerm); err != nil {
+			path := filepath.Join(name, entry.Name())
+			if repaired && entry.Name() == resourceVersionFile {
+				continue
+			}
+			// Secret data is flat: never follow symlinks or chmod unexpected directories.
+			if !entry.Mode().IsRegular() {
+				delete(r.cache, name)
+				if err := r.BaseDirFS.RemoveAll(filepath.Join(name, resourceVersionFile)); err != nil {
+					return err
+				}
+				if err := r.BaseDirFS.RemoveAll(path); err != nil {
+					return err
+				}
+				repaired = true
+				continue
+			}
+			if err := r.BaseDirFS.Chmod(path, defaultFilePerm); err != nil {
 				return err
 			}
 		}

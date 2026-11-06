@@ -16,7 +16,9 @@ package secret
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -365,4 +367,52 @@ func TestSecretPermissionsAfterUpgrade(t *testing.T) {
 	info, err := base.Stat("storage/new")
 	require.NoError(t, err)
 	require.Equal(t, fs.FileMode(0600), info.Mode().Perm())
+}
+
+func TestSecretRepairsNonRegularEntries(t *testing.T) {
+	for _, tc := range []struct{ cached, markerDirectory bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
+		t.Run(fmt.Sprintf("cached=%t/markerDirectory=%t", tc.cached, tc.markerDirectory), func(t *testing.T) {
+			root := t.TempDir()
+			base := afero.NewBasePathFs(afero.NewOsFs(), root)
+			require.NoError(t, base.Mkdir("storage", 0755))
+			if tc.markerDirectory {
+				require.NoError(t, base.MkdirAll("storage/resourceVersion/nested", 0755))
+			} else {
+				require.NoError(t, afero.WriteFile(base, "storage/resourceVersion", []byte("1"), 0644))
+			}
+			require.NoError(t, os.Symlink(filepath.Join(root, "missing"), filepath.Join(root, "storage", "stale")))
+			outside := filepath.Join(t.TempDir(), "outside")
+			//nolint:gosec // Verify the symlink target retains its original mode.
+			require.NoError(t, os.WriteFile(outside, []byte("outside"), 0644))
+			require.NoError(t, os.Symlink(outside, filepath.Join(root, "storage", "key")))
+			require.NoError(t, base.MkdirAll("storage/old/nested", 0755))
+			r := &Reconciler{BaseDirFS: base, cache: map[string]string{}}
+			if tc.cached {
+				r.cache["storage"] = "1"
+			}
+			s := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "storage", ResourceVersion: "1"},
+				Data:       map[string][]byte{"key": []byte("credential")},
+			}
+			require.NoError(t, r.syncSecret(t.Context(), s))
+			data, err := afero.ReadFile(base, "storage/key")
+			require.NoError(t, err)
+			require.Equal(t, "credential", string(data))
+			info, err := os.Lstat(filepath.Join(root, "storage", "key"))
+			require.NoError(t, err)
+			require.True(t, info.Mode().IsRegular())
+			require.Equal(t, fs.FileMode(0600), info.Mode().Perm())
+			for _, path := range []string{"stale", "old"} {
+				_, err = os.Lstat(filepath.Join(root, "storage", path))
+				require.True(t, os.IsNotExist(err))
+			}
+			data, err = os.ReadFile(outside)
+			require.NoError(t, err)
+			require.Equal(t, "outside", string(data))
+			info, err = os.Stat(outside)
+			require.NoError(t, err)
+			require.Equal(t, fs.FileMode(0644), info.Mode().Perm())
+			require.Equal(t, "1", r.cache["storage"])
+		})
+	}
 }
