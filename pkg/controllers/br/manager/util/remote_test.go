@@ -654,6 +654,12 @@ func TestSASTokenFromEnvironment(t *testing.T) {
 			args, err := GenStorageArgsForFlag(provider, "storage")
 			g := gomega.NewGomegaWithT(t)
 			g.Expect(err).NotTo(gomega.HaveOccurred())
+			if tc.name == "full" {
+				g.Expect(strings.Join(args, " ")).To(gomega.ContainSubstring("account-name=full-account"))
+			}
+			if tc.name == "other secret" {
+				g.Expect(strings.Join(args, " ")).NotTo(gomega.ContainSubstring("account-name="))
+			}
 			if tc.want != "" {
 				g.Expect(strings.Join(args, " ")).To(gomega.ContainSubstring("sas-token=" + tc.want))
 			} else {

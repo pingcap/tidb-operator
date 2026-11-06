@@ -181,21 +181,7 @@ func (r *Reconciler) sync(ctx context.Context) error {
 func (r *Reconciler) syncSecret(ctx context.Context, s *corev1.Secret) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	// Tighten existing files as well, including unchanged Secrets after an upgrade.
-	if info, err := r.BaseDirFS.Stat(s.Name); err == nil && info.IsDir() {
-		if err := r.BaseDirFS.Chmod(s.Name, defaultDirPerm); err != nil {
-			return err
-		}
-		entries, err := afero.ReadDir(r.BaseDirFS, s.Name)
-		if err != nil {
-			return err
-		}
-		for _, entry := range entries {
-			if err := r.BaseDirFS.Chmod(filepath.Join(s.Name, entry.Name()), defaultFilePerm); err != nil {
-				return err
-			}
-		}
-	} else if err != nil && !os.IsNotExist(err) {
+	if err := r.tightenSecretPermissions(s.Name); err != nil {
 		return err
 	}
 
@@ -326,6 +312,29 @@ func EnsureDirExists(base afero.Fs, dir string) error {
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("%s is not dir", dir)
+	}
+
+	return nil
+}
+
+// tightenSecretPermissions also protects unchanged files left by an older syncer.
+func (r *Reconciler) tightenSecretPermissions(name string) error {
+	// Tighten existing files as well, including unchanged Secrets after an upgrade.
+	if info, err := r.BaseDirFS.Stat(name); err == nil && info.IsDir() {
+		if err := r.BaseDirFS.Chmod(name, defaultDirPerm); err != nil {
+			return err
+		}
+		entries, err := afero.ReadDir(r.BaseDirFS, name)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := r.BaseDirFS.Chmod(filepath.Join(name, entry.Name()), defaultFilePerm); err != nil {
+				return err
+			}
+		}
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
 	}
 
 	return nil

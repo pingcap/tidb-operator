@@ -212,9 +212,22 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 			return nil, fullReason, fullErr
 		}
 		for _, env := range fullEnv {
-			if env.Name == util.AzblobSecretEnvName(constants.AzblobSasToken, full.Azblob.SecretName) ||
-				env.Name == util.AzblobSecretEnvName(constants.AzblobAccountName, full.Azblob.SecretName) {
-				storageEnv = append(storageEnv, env)
+			if env.Name == constants.AzblobClientID || env.Name == constants.AzblobClientScrt || env.Name == constants.AzblobTenantID {
+				for _, existing := range storageEnv {
+					if existing.Name == env.Name && existing.ValueFrom != nil && existing.ValueFrom.SecretKeyRef.Name != env.ValueFrom.SecretKeyRef.Name {
+						return nil, "ConflictingAzureAADCredentials",
+							fmt.Errorf("PiTR Azure storage cannot use two distinct AAD identities in one BR process")
+					}
+				}
+				storageEnv = util.AppendOverwriteEnv(storageEnv, []corev1.EnvVar{env})
+			}
+			for _, key := range []string{
+				constants.AzblobAccountName, constants.AzblobSasToken, constants.AzblobAccountKey,
+				constants.AzblobClientID, constants.AzblobClientScrt, constants.AzblobTenantID,
+			} {
+				if env.Name == util.AzblobSecretEnvName(key, full.Azblob.SecretName) {
+					storageEnv = append(storageEnv, env)
+				}
 			}
 		}
 	}

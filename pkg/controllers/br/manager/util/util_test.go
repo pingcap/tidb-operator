@@ -126,3 +126,17 @@ func TestCephEndpointTLS(t *testing.T) {
 		})
 	}
 }
+
+// TestLegacySASDoesNotRequireUnusedSecretToken protects plaintext-SAS compatibility during key removal.
+func TestLegacySASDoesNotRequireUnusedSecretToken(t *testing.T) {
+	provider := &v1alpha1.AzblobStorageProvider{StorageAccount: "account", SasToken: "explicit-token", SecretName: "storage"}
+	for _, data := range []map[string][]byte{{constants.AzblobSasToken: []byte("unused")}, {}} {
+		secret := &corev1.Secret{Data: data}
+		envs, _, err := generateAzblobCertEnvVar(provider, secret, true)
+		g := NewGomegaWithT(t)
+		g.Expect(err).NotTo(HaveOccurred())
+		for _, env := range envs {
+			g.Expect(env.ValueFrom).To(BeNil())
+		}
+	}
+}

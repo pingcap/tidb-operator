@@ -1,5 +1,8 @@
 # Backup storage and credential protection
 
+<!-- toc -->
+<!-- /toc -->
+
 Use HTTPS Ceph endpoints. A scheme-less Ceph endpoint now defaults to HTTPS; add `http://` explicitly only for a trusted legacy endpoint whose plaintext transport is acceptable. This change does not issue a certificate or add a private CA to an image's trust store.
 
 For Azure SAS authentication, put the token in a Kubernetes Secret key named `AZURE_STORAGE_SAS_TOKEN`, and reference that Secret using `spec.azblob.secretName` on Backup/Restore. Set `spec.azblob.storageAccount`, or include `AZURE_STORAGE_ACCOUNT` in the same Secret. Leave the deprecated `spec.azblob.sasToken` empty. The Job references the token using `secretKeyRef`; the token is not copied into the CR or the Job's literal environment. The deprecated explicit token retains precedence for compatibility; leave it empty when migrating to Secret authentication. PiTR full and log backup storage use separate Secret-scoped environment variables, so their SAS credentials can differ. BR receives the credential using its existing storage arguments; pod/process administrators can still inspect the process, so limit pod exec/debug access. Backup and restore managers no longer log entire CRs or command arguments.
@@ -9,3 +12,5 @@ Rotate SAS credentials by issuing a short-lived, least-privilege token, updating
 The Secret syncer writes directories with `0700` and files with `0600`, including existing files when it reconciles unchanged Secrets. The syncer and the consuming TiCDC container must run as the same UID; configure a shared pod `runAsUser` when overriding image defaults. Container-specific UID overrides that depended on world-readable credentials need migration.
 
 Enable `Cluster.spec.tlsCluster.enabled` and provision the documented certificates for component traffic. Use normal peer verification; `insecureSkipVerify` weakens that protection. This patch preserves the existing cluster TLS API and does not migrate live clusters or issue certificates. Treat access to these CR settings as administrator access. Certificate renewal must be coordinated with component reload/restart support; changing a Secret is not a guarantee that every client has reloaded it.
+
+PiTR log and full-backup Azure providers also isolate shared-key credentials. Each provider passes its own account/key or SAS through BR's storage URL, so SAS, shared-key and AAD storage can be combined without replacing each other's identity. BR supports only one process-wide AAD identity: using distinct AAD Secrets for both providers is explicitly rejected. Use a shared AAD identity authorized for both stores, or a separate SAS/shared key for one provider. An explicit legacy SAS token does not add an unused non-optional Secret SAS reference.

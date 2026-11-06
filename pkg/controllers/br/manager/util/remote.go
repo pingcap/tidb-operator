@@ -107,6 +107,9 @@ type gcsConfig struct {
 }
 
 type azblobConfig struct {
+	accountKey, clientID, clientSecret, tenantID string
+	scopedCredentials                            bool
+
 	storageAccount string
 	sasToken       string
 	container      string
@@ -562,12 +565,14 @@ func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 	}
 
 	// Azure AAD Service Principal with access to the storage account.
-	clientID := os.Getenv("AZURE_CLIENT_ID")
-	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
-	tenantID := os.Getenv("AZURE_TENANT_ID")
-
-	// Azure shared key with access to the storage account
-	accountKey := os.Getenv("AZURE_STORAGE_KEY")
+	clientID, clientSecret, tenantID := conf.clientID, conf.clientSecret, conf.tenantID
+	accountKey := conf.accountKey
+	if !conf.scopedCredentials {
+		clientID = os.Getenv(constants.AzblobClientID)
+		clientSecret = os.Getenv(constants.AzblobClientScrt)
+		tenantID = os.Getenv(constants.AzblobTenantID)
+		accountKey = os.Getenv(constants.AzblobAccountKey)
+	}
 
 	// Azure Storage Account Shared Access Signature Token
 	sasToken := conf.sasToken
@@ -693,6 +698,9 @@ func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
 	if conf.sasToken != "" {
 		values.Add("sas-token", conf.sasToken)
 	}
+	if conf.sasToken == "" && conf.accountKey != "" && conf.clientID == "" {
+		values.Add("account-key", conf.accountKey)
+	}
 	if v := values.Encode(); v != "" {
 		p = p + "?" + v
 	}
@@ -764,10 +772,18 @@ func makeAzblobConfig(azblobProvider *v1alpha1.AzblobStorageProvider) *azblobCon
 		sasToken:       azblobProvider.SasToken,
 	}
 
-	if conf.sasToken == "" && azblobProvider.SecretName != "" {
-		conf.sasToken = os.Getenv(AzblobSecretEnvName(constants.AzblobSasToken, azblobProvider.SecretName))
+	if azblobProvider.SecretName != "" {
+		scoped := func(key string) string { return os.Getenv(AzblobSecretEnvName(key, azblobProvider.SecretName)) }
+		conf.accountKey = scoped(constants.AzblobAccountKey)
+		conf.clientID = scoped(constants.AzblobClientID)
+		conf.clientSecret = scoped(constants.AzblobClientScrt)
+		conf.tenantID = scoped(constants.AzblobTenantID)
+		conf.scopedCredentials = scoped(constants.AzblobAccountName) != ""
+		if conf.sasToken == "" {
+			conf.sasToken = os.Getenv(AzblobSecretEnvName(constants.AzblobSasToken, azblobProvider.SecretName))
+		}
 		if conf.storageAccount == "" {
-			conf.storageAccount = os.Getenv(AzblobSecretEnvName(constants.AzblobAccountName, azblobProvider.SecretName))
+			conf.storageAccount = scoped(constants.AzblobAccountName)
 		}
 	}
 

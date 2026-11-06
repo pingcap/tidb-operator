@@ -201,74 +201,36 @@ func generateAzblobCertEnvVar(
 			Value: azblob.StorageAccount,
 		},
 	}
-	if secret != nil && len(secret.Data[constants.AzblobSasToken]) > 0 {
-		envVars = append(envVars, corev1.EnvVar{
-			Name: AzblobSecretEnvName(constants.AzblobSasToken, azblob.SecretName),
-			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-				Key:                  constants.AzblobSasToken,
-			}},
-		}, corev1.EnvVar{
-			Name:  AzblobSecretEnvName(constants.AzblobAccountName, azblob.SecretName),
-			Value: azblob.StorageAccount,
-		})
-		return envVars, "", nil
-	}
 	if useSasToken {
 		return envVars, "", nil
 	}
 	if secret == nil {
-		return nil, "azblobKeyOrAADMissing", fmt.Errorf("secret must be specified for azblob shared key or AAD authentication")
+		return nil, "azblobKeyOrAADMissing", fmt.Errorf("secret must be specified for Azure authentication")
 	}
-	_, exist := CheckAllKeysExistInSecret(secret, constants.AzblobClientID, constants.AzblobClientScrt, constants.AzblobTenantID)
-	if exist { // using AAD auth
-		envVars = append(envVars, []corev1.EnvVar{
-			{
-				Name: "AZURE_CLIENT_ID",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-						Key:                  constants.AzblobClientID,
-					},
-				},
-			},
-			{
-				Name: "AZURE_CLIENT_SECRET",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-						Key:                  constants.AzblobClientScrt,
-					},
-				},
-			},
-			{
-				Name: "AZURE_TENANT_ID",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-						Key:                  constants.AzblobTenantID,
-					},
-				},
-			},
-		}...)
-		return envVars, "", nil
+	var keys []string
+	if len(secret.Data[constants.AzblobSasToken]) > 0 {
+		keys = []string{constants.AzblobSasToken}
+	} else if _, ok := CheckAllKeysExistInSecret(secret, constants.AzblobClientID, constants.AzblobClientScrt, constants.AzblobTenantID); ok {
+		keys = []string{constants.AzblobClientID, constants.AzblobClientScrt, constants.AzblobTenantID}
+	} else if _, ok := CheckAllKeysExistInSecret(secret, constants.AzblobAccountKey); ok {
+		keys = []string{constants.AzblobAccountKey}
+	} else {
+		return nil, "azblobKeyOrAADMissing", fmt.Errorf("secret %s/%s missing authentication keys", secret.Namespace, secret.Name)
 	}
-	_, exist = CheckAllKeysExistInSecret(secret, constants.AzblobAccountKey)
-	if exist { // use access key auth
-		envVars = append(envVars, []corev1.EnvVar{
-			{
-				Name: "AZURE_STORAGE_KEY",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-						Key:                  constants.AzblobAccountKey,
-					},
-				},
-			},
-		}...)
-		return envVars, "", nil
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  AzblobSecretEnvName(constants.AzblobAccountName, azblob.SecretName),
+		Value: azblob.StorageAccount,
+	})
+	for _, key := range keys {
+		ref := &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName}, Key: key,
+		}}
+		envVars = append(envVars, corev1.EnvVar{Name: AzblobSecretEnvName(key, azblob.SecretName), ValueFrom: ref})
+		if key != constants.AzblobSasToken {
+			envVars = append(envVars, corev1.EnvVar{Name: key, ValueFrom: ref})
+		}
 	}
-	return nil, "azblobKeyOrAADMissing", fmt.Errorf("secret %s/%s missing some keys", secret.Namespace, secret.Name)
+	return envVars, "", nil
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
