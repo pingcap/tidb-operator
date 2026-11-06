@@ -25,6 +25,9 @@ import (
 
 // StorageIdentity fingerprints the effective destination without recording credentials.
 func StorageIdentity(backup *br.Backup) (string, error) {
+	if err := ValidateBROptions(backup.Spec.BR); err != nil {
+		return "", err
+	}
 	provider := backup.Spec.StorageProvider
 	var identity any
 	switch GetStorageType(provider) {

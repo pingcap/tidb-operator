@@ -43,6 +43,10 @@ func TaskContextBackupCluster(state *ReconcileContext, cli client.Client) task.T
 	return task.NameTaskFunc("ContextBackupCluster", func(ctx context.Context) task.Result {
 		cluster, err := util.GetBackupCluster(ctx, cli, state.Backup().Namespace, state.Backup().Spec.BR)
 		if err != nil {
+			// Access failures must not rewrite running log tasks or completed work.
+			if br.IsLogBackupAlreadyStart(state.Backup()) || br.IsBackupComplete(state.Backup()) || br.IsBackupFailed(state.Backup()) {
+				return task.Fail().With("cannot access backup cluster: %v", err)
+			}
 			updateErr := state.BackupManager.UpdateStatus(ctx, state.Backup(), &br.BackupCondition{
 				Command: br.ParseLogBackupSubcommand(state.Backup()),
 				Condition: metav1.Condition{

@@ -174,6 +174,9 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 	if spec.BR == nil {
 		return nil, fmt.Errorf("no config for br in Backup %s/%s", backup.Namespace, backup.Name)
 	}
+	if err := util.ValidateBROptions(spec.BR); err != nil {
+		return nil, err
+	}
 	args = append(args, constructBRGlobalOptions(spec.BR)...)
 	storageArgs, err := util.GenStorageArgsForFlag(backup.Spec.StorageProvider, "")
 	if err != nil {
@@ -245,6 +248,9 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 	config := restore.Spec
 	if config.BR == nil {
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
+	}
+	if err := util.ValidateBROptions(config.BR); err != nil {
+		return nil, err
 	}
 	args = append(args, constructBRGlobalOptions(config.BR)...)
 	storageArgs, err := util.GenStorageArgsForFlag(restore.Spec.StorageProvider, "")

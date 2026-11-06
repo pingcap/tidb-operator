@@ -31,6 +31,7 @@ import (
 type mutatingBackupReader struct {
 	ctrlclient.Client
 	reads, changeAt int
+	options         []string
 }
 
 func (c *mutatingBackupReader) Get(ctx context.Context, key ctrlclient.ObjectKey, obj ctrlclient.Object, opts ...ctrlclient.GetOption) error {
@@ -41,7 +42,11 @@ func (c *mutatingBackupReader) Get(ctx context.Context, key ctrlclient.ObjectKey
 			if err := c.Client.Get(ctx, key, current); err != nil {
 				return err
 			}
-			current.Spec.S3.Endpoint = "https://other"
+			if c.options != nil {
+				current.Spec.BR.Options = c.options
+			} else {
+				current.Spec.S3.Endpoint = "https://other"
+			}
 			if err := c.Update(ctx, current); err != nil {
 				return err
 			}
@@ -63,6 +68,25 @@ func TestStorageChangeDuringStatusRefreshIsRejected(t *testing.T) {
 			reader.Client = client.NewFakeClient(backup)
 			_, _, err := m.startLogBackup(context.Background(), backup.DeepCopy())
 			require.ErrorContains(t, err, "storage identity has changed")
+		}
+	}
+}
+
+func TestTargetOverridesDuringStatusRefreshAreRejected(t *testing.T) {
+	for _, option := range []string{"--pd=victim:2379", "--storage=s3://other/backup"} {
+		for _, changeAt := range []int{1, 2} {
+			backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"}, Spec: br.BackupSpec{BR: &br.BRConfig{Cluster: "cluster"}}}
+			backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+			reader := &mutatingBackupReader{Client: client.NewFakeClient(backup), changeAt: changeAt, options: []string{option}}
+			updater := manager.NewRealBackupConditionUpdater(reader, record.NewFakeRecorder(100))
+			m := &Manager{StatusUpdater: updater}
+			require.ErrorContains(t, m.performBackup(t.Context(), backup.DeepCopy()), "spec.br.options")
+			if changeAt == 1 {
+				reader.reads = 0
+				reader.Client = client.NewFakeClient(backup)
+				_, _, err := m.startLogBackup(t.Context(), backup.DeepCopy())
+				require.ErrorContains(t, err, "spec.br.options")
+			}
 		}
 	}
 }

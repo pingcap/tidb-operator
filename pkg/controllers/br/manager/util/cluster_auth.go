@@ -35,6 +35,9 @@ func GetBackupCluster(ctx context.Context, cli client.Reader, namespace string, 
 	if config == nil || config.Cluster == "" {
 		return nil, fmt.Errorf("spec.br.cluster is required")
 	}
+	if err := ValidateBROptions(config); err != nil {
+		return nil, err
+	}
 	target := namespace
 	if config.ClusterNamespace != "" {
 		target = config.ClusterNamespace
@@ -55,4 +58,24 @@ func GetBackupCluster(ctx context.Context, cli client.Reader, namespace string, 
 		schema.GroupResource{Group: "core.pingcap.com", Resource: "clusters"}, config.Cluster,
 		fmt.Errorf("cross-namespace backup/restore from %s requires target Cluster annotation %s", namespace, AllowedBackupNamespaces),
 	)
+}
+
+// ValidateBROptions keeps raw flags from replacing authorized and recorded targets.
+func ValidateBROptions(config *br.BRConfig) error {
+	if config == nil {
+		return nil
+	}
+	for _, option := range config.Options {
+		// Short flags can be bundled (for example -cu=...), so require long names.
+		if strings.HasPrefix(option, "-") && !strings.HasPrefix(option, "--") {
+			return fmt.Errorf("spec.br.options must use long flag names; put negative values after '='")
+		}
+		flag, _, _ := strings.Cut(option, "=")
+		switch flag {
+		case "--pd", "--storage", "--full-backup-storage", "--s3.endpoint", "--s3.region", "--s3.provider",
+			"--gcs.endpoint", "--azblob.endpoint", "--azblob.account-name":
+			return fmt.Errorf("spec.br.options cannot override managed target flag %s; configure the Cluster or storage provider", flag)
+		}
+	}
+	return nil
 }

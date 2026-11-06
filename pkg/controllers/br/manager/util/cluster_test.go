@@ -16,6 +16,7 @@ package util
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -57,4 +58,31 @@ func TestBackupClusterConsent(t *testing.T) {
 	require.Error(t, err)
 	_, err = GetBackupCluster(context.Background(), cli, "tenant", &br.BRConfig{Cluster: "missing"})
 	require.True(t, apierrors.IsNotFound(err))
+}
+
+func TestBackupClusterRejectsTargetOverrides(t *testing.T) {
+	cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "tenant"}}
+	cli := client.NewFakeClient(cluster)
+	for _, options := range [][]string{
+		{"--pd=victim-pd.victim:2379"}, {"--pd", "victim-pd.victim:2379"},
+		{"-u", "victim-pd.victim:2379"}, {"-cu=victim-pd.victim:2379"},
+		{"--storage=s3://other/backup"}, {"--storage", "s3://other/backup"},
+		{"-ss3://other/backup"}, {"--s3.endpoint=https://other"},
+		{"--gcs.endpoint=https://other"}, {"--azblob.endpoint=https://other"},
+		{"--azblob.account-name=other"}, {"--full-backup-storage=s3://other/full"},
+	} {
+		t.Run(strings.Join(options, " "), func(t *testing.T) {
+			_, err := GetBackupCluster(t.Context(), cli, "tenant", &br.BRConfig{Cluster: "cluster", Options: options})
+			require.ErrorContains(t, err, "spec.br.options")
+		})
+	}
+}
+
+func TestBROptionsPreserveTuningFlags(t *testing.T) {
+	for _, options := range [][]string{
+		nil, {"--concurrency=4", "--checksum=false"}, {"--ratelimit", "4"},
+		{"--filter=--pd=literal", "--filter=--storage=literal"}, {"--some-number=-1"},
+	} {
+		require.NoError(t, ValidateBROptions(&br.BRConfig{Options: options}))
+	}
 }
