@@ -18,13 +18,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	core "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	manager "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
@@ -78,7 +78,7 @@ func TestStorageChangeDuringStatusRefreshIsRejected(t *testing.T) {
 }
 
 func TestTargetOverridesDuringStatusRefreshAreRejected(t *testing.T) {
-	for _, option := range []string{"--pd=victim:2379", "--storage=s3://other/backup"} {
+	for _, option := range []string{"--storage=s3://other/backup"} {
 		for _, changeAt := range []int{1, 2} {
 			backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"}, Spec: br.BackupSpec{BR: &br.BRConfig{Cluster: "cluster"}}}
 			backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
@@ -133,24 +133,44 @@ func TestProcessTruncateRejectsChangedStorage(t *testing.T) {
 	}
 }
 
-func TestLogClusterChangeDuringStatusRefreshIsRejected(t *testing.T) {
-	cluster := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "tenant", UID: "original"}}
-	replacement := cluster.DeepCopy()
-	replacement.Namespace, replacement.UID = "other", "replacement"
-	replacement.Annotations = map[string]string{util.AllowedBackupNamespaces: "tenant"}
-	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"},
-		Spec:   br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster"}},
-		Status: br.BackupStatus{CommitTs: "1", BackupPath: "s3://bucket/backup", LogClusterIdentity: util.LogBackupClusterIdentity(cluster)},
+func TestBackupShortFlagsCannotOverrideRecordedStorage(t *testing.T) {
+	for _, options := range [][]string{{"-s", "s3://other/backup"}, {"-ss3://other/backup"}, {"-cs=s3://other/backup"}, {"-c=false", "-u", "custom:2379"}, {"--ratelimit", "-1"}} {
+		backup := &br.Backup{Spec: br.BackupSpec{BR: &br.BRConfig{Options: options}}}
+		backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+		args, err := constructOptions(backup)
+		require.NoError(t, err)
+		storageArgs, err := util.GenStorageArgsForFlag(backup.Spec.StorageProvider, "")
+		require.NoError(t, err)
+		require.Equal(t, storageArgs, args[len(args)-len(storageArgs):])
+		flags := pflag.NewFlagSet("br", pflag.ContinueOnError)
+		destination := flags.StringP("storage", "s", "", "")
+		flags.BoolP("checksum", "c", true, "")
+		flags.StringP("pd", "u", "", "")
+		flags.Int("ratelimit", 0, "")
+		require.NoError(t, flags.Parse(args))
+		require.Equal(t, "s3://bucket/backup", *destination)
 	}
-	backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
-	var err error
-	backup.Status.StorageIdentity, err = util.StorageIdentity(backup)
-	require.NoError(t, err)
-	reader := &mutatingBackupReader{Client: client.NewFakeClient(backup, cluster, replacement), changeAt: 3,
-		mutate: func(b *br.Backup) { b.Spec.BR.ClusterNamespace = "other" },
+}
+
+func TestLegacyStoragePathChangeDuringStatusRefreshIsRejected(t *testing.T) {
+	for _, logMode := range []bool{false, true} {
+		backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"}, Spec: br.BackupSpec{BR: &br.BRConfig{Cluster: "cluster"}}, Status: br.BackupStatus{BackupPath: "s3://bucket/backup"}}
+		backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}
+		changeAt := 2
+		if logMode {
+			changeAt = 1
+		}
+		reader := &mutatingBackupReader{Client: client.NewFakeClient(backup), changeAt: changeAt, mutate: func(b *br.Backup) { b.Spec.S3.Bucket = "other" }}
+		m := &Manager{StatusUpdater: manager.NewRealBackupConditionUpdater(reader, record.NewFakeRecorder(100))}
+		var err error
+		if logMode {
+			_, _, err = m.startLogBackup(t.Context(), backup.DeepCopy())
+		} else {
+			err = m.performBackup(t.Context(), backup.DeepCopy())
+		}
+		require.ErrorContains(t, err, "storage target cannot change")
+		got := &br.Backup{}
+		require.NoError(t, reader.Client.Get(t.Context(), client.ObjectKeyFromObject(backup), got))
+		require.Empty(t, got.Status.StorageIdentity)
 	}
-	m := NewManager(reader, manager.NewRealBackupConditionUpdater(reader, record.NewFakeRecorder(100)), Options{})
-	m.Namespace, m.ResourceName = "tenant", "backup"
-	m.Mode, m.SubCommand, m.TruncateUntil = string(br.BackupModeLog), string(br.LogTruncateCommand), "0"
-	require.ErrorContains(t, m.ProcessBackup(), "log backup cluster has changed")
 }

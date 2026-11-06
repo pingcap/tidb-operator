@@ -15,9 +15,6 @@
 package constants
 
 const (
-	// ConditionClusterAccessible reports authorization without changing backup lifecycle phases.
-	ConditionClusterAccessible = "ClusterAccessible"
-
 	// ClusterAccessFailed is the condition reason for an inaccessible BR target Cluster.
 	ClusterAccessFailed = "ClusterAccessFailed"
 

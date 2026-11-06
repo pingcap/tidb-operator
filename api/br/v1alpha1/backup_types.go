@@ -532,9 +532,6 @@ type LogSubCommandStatus struct {
 
 // BackupStatus represents the current status of a backup.
 type BackupStatus struct {
-	// LogClusterIdentity binds log commands to the Cluster namespace, name and UID recorded before Job creation.
-	LogClusterIdentity string `json:"logClusterIdentity,omitempty"`
-
 	// StorageIdentity is the credential-free fingerprint of the original backup destination.
 	// It is recorded before writing data and must match before restarting or deleting data.
 	StorageIdentity string `json:"storageIdentity,omitempty"`

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
@@ -28,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
@@ -87,9 +85,6 @@ func (u *realBackupConditionUpdater) Update(
 			return err
 		}
 		if newStatus != nil {
-			if err := u.validateLogClusterUpdate(ctx, backup, newStatus.LogClusterIdentity); err != nil {
-				return err
-			}
 			if newStatus.StorageIdentity != nil && backup.Status.StorageIdentity != "" &&
 				backup.Status.StorageIdentity != *newStatus.StorageIdentity {
 				return fmt.Errorf("original backup storage identity cannot change")
@@ -100,9 +95,7 @@ func (u *realBackupConditionUpdater) Update(
 		}
 		isUpdate := false
 		// log backup needs update both subcommand status and whole backup status.
-		if condition != nil && condition.Type == constants.ConditionClusterAccessible {
-			isUpdate = meta.SetStatusCondition(&backup.Status.Conditions, condition.Condition)
-		} else if backup.Spec.Mode == v1alpha1.BackupModeLog {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
 			isUpdate = updateLogBackupStatus(backup, condition, newStatus)
 		} else {
 			isUpdate = updateSnapshotBackupStatus(backup, condition, newStatus)
@@ -129,10 +122,6 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		return false
 	}
 	isUpdate := false
-	if newStatus.LogClusterIdentity != nil && status.LogClusterIdentity != *newStatus.LogClusterIdentity {
-		status.LogClusterIdentity = *newStatus.LogClusterIdentity
-		isUpdate = true
-	}
 	if newStatus.StorageIdentity != nil && status.StorageIdentity != *newStatus.StorageIdentity {
 		status.StorageIdentity = *newStatus.StorageIdentity
 		isUpdate = true
@@ -381,7 +370,7 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 	}
 
 	// just update checkpoint ts
-	if status != nil && (status.LogCheckpointTs != nil || status.LogClusterIdentity != nil) {
+	if status != nil && status.LogCheckpointTs != nil {
 		return doUpdateStatusAndCondition(nil, status)
 	}
 
@@ -577,20 +566,3 @@ func (c *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1
 
 var _ BackupConditionUpdaterInterface = &FakeBackupConditionUpdater{}
 */
-
-func (u *realBackupConditionUpdater) validateLogClusterUpdate(ctx context.Context, backup *v1alpha1.Backup, identity *string) error {
-	if identity == nil {
-		return nil
-	}
-	if backup.Status.LogClusterIdentity != "" && backup.Status.LogClusterIdentity != *identity {
-		return fmt.Errorf("original log backup cluster identity cannot change")
-	}
-	cluster, err := util.GetBackupClusterForBackup(ctx, u.cli, backup)
-	if err != nil {
-		return err
-	}
-	if backup.Spec.Mode != v1alpha1.BackupModeLog || util.LogBackupClusterIdentity(cluster) != *identity {
-		return fmt.Errorf("log backup cluster has changed before recording its identity")
-	}
-	return nil
-}

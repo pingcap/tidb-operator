@@ -91,3 +91,20 @@ func TestLocalStorageIdentityIncludesAdditionalMounts(t *testing.T) {
 		require.ErrorContains(t, err, "storage identity has changed")
 	}
 }
+
+func TestLegacyBackupRetryDoesNotInventStorageHistory(t *testing.T) {
+	backup := &br.Backup{Spec: br.BackupSpec{StorageProvider: br.StorageProvider{S3: &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup"}}}, Status: br.BackupStatus{BackupPath: "s3://bucket/backup"}}
+	identity, err := StorageIdentityForStart(backup)
+	require.NoError(t, err)
+	require.Empty(t, identity)
+	_, err = ValidateStorageIdentity(backup)
+	require.ErrorContains(t, err, "original storage identity is unavailable")
+	backup.Status.BackupPath = ""
+	identity, err = StorageIdentityForStart(backup)
+	require.NoError(t, err)
+	require.NotEmpty(t, identity)
+	backup.Status.StorageIdentity = identity
+	backup.Spec.S3.Endpoint = "https://other"
+	_, err = StorageIdentityForStart(backup)
+	require.ErrorContains(t, err, "storage identity has changed")
+}

@@ -113,3 +113,21 @@ func ValidateStorageIdentity(backup *br.Backup) (string, error) {
 	}
 	return identity, nil
 }
+
+// StorageIdentityForStart preserves legacy retries without inferring an original destination.
+func StorageIdentityForStart(backup *br.Backup) (string, error) {
+	if backup.Status.BackupPath != "" && backup.Status.StorageIdentity == "" {
+		path, err := GetStoragePath(backup.Spec.StorageProvider)
+		if err != nil {
+			return "", err
+		}
+		if path != backup.Status.BackupPath {
+			return "", fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
+		}
+		if err := ValidateBROptions(backup.Spec.BR); err != nil {
+			return "", err
+		}
+		return "", nil
+	}
+	return ValidateStorageIdentity(backup)
+}

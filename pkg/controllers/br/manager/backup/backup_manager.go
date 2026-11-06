@@ -48,9 +48,6 @@ const brBinVolumeName = "br-bin"
 // This structure should keep synced with the fields in `BackupStatus`
 // except for `Phase` and `Conditions`.
 type BackupUpdateStatus struct {
-	// LogClusterIdentity is recorded before creating the first log Job.
-	LogClusterIdentity *string
-
 	// StorageIdentity binds the recorded backup path to its effective storage destination.
 	StorageIdentity *string
 
@@ -151,11 +148,6 @@ func (bm *backupManager) syncBackupJob(ctx context.Context, backup *v1alpha1.Bac
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	var err error
 
-	if v1alpha1.IsLogBackupAlreadyStart(backup) && !v1alpha1.IsLogBackupAlreadyStop(backup) {
-		if err := bm.backupTracker.StartTrackLogBackupProgress(ctx, backup); err != nil {
-			return err
-		}
-	}
 	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) {
 		return nil
 	}
@@ -238,7 +230,7 @@ func (bm *backupManager) validateBackup(ctx context.Context, backup *v1alpha1.Ba
 		return err
 	}
 
-	cluster, err := util.GetBackupClusterForBackup(ctx, bm.cli, backup)
+	cluster, err := util.GetBackupCluster(ctx, bm.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
 		reason := constants.ClusterAccessFailed
 		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
@@ -388,19 +380,9 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetBackupJobName()
-	cluster, err := util.GetBackupClusterForBackup(ctx, bm.cli, backup)
+	cluster, err := util.GetBackupCluster(ctx, bm.cli, backup.Namespace, backup.Spec.BR)
 	if err != nil {
 		return nil, constants.ClusterAccessFailed, err
-	}
-	if backup.Spec.Mode == v1alpha1.BackupModeLog && backup.Status.LogClusterIdentity == "" {
-		identity := util.LogBackupClusterIdentity(cluster)
-		if err := bm.statusUpdater.Update(ctx, backup, nil, &BackupUpdateStatus{LogClusterIdentity: &identity}); err != nil {
-			return nil, "RecordLogClusterFailed", err
-		}
-		cluster, err = util.GetBackupClusterForBackup(ctx, bm.cli, backup)
-		if err != nil {
-			return nil, constants.ClusterAccessFailed, err
-		}
 	}
 	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {

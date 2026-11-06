@@ -21,6 +21,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -54,4 +55,19 @@ func FirstPDGroup(ctx context.Context, cli client.Client, ns, cluster string) (*
 	})
 	pdGroup := pdGroups[0]
 	return pdGroup, nil
+}
+
+// GetBackupCluster resolves the configured target without changing namespace access policy.
+func GetBackupCluster(ctx context.Context, cli client.Reader, namespace string, config *br.BRConfig) (*v1alpha1.Cluster, error) {
+	if config == nil || config.Cluster == "" {
+		return nil, fmt.Errorf("spec.br.cluster is required")
+	}
+	if config.ClusterNamespace != "" {
+		namespace = config.ClusterNamespace
+	}
+	cluster := &v1alpha1.Cluster{}
+	if err := cli.Get(ctx, client.ObjectKey{Namespace: namespace, Name: config.Cluster}, cluster); err != nil {
+		return nil, err
+	}
+	return cluster, nil
 }

@@ -39,7 +39,6 @@ import (
 const (
 	ReasonUpdateStatusFailed   = "UpdateStatusFailed"
 	reasonStorageTargetChanged = "BackupStorageTargetChanged"
-	reasonLogClusterChanged    = "LogBackupClusterChanged"
 )
 
 // Manager mainly used to manage backup related work
@@ -146,7 +145,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 		return fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
 	}
 
-	identity, err := bkutil.ValidateStorageIdentity(backup)
+	identity, err := bkutil.StorageIdentityForStart(backup)
 	if err != nil {
 		return err
 	}
@@ -182,7 +181,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 	}
 
 	// run br binary to do the real job
-	if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
+	if _, err := bkutil.StorageIdentityForStart(backup); err != nil {
 		return err
 	}
 	backupErr := bm.backupData(ctx, backup)
@@ -322,7 +321,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 		return nil, reasonStorageTargetChanged, fmt.Errorf("backup storage target cannot change after status.backupPath is recorded")
 	}
 
-	identity, err := bkutil.ValidateStorageIdentity(backup)
+	identity, err := bkutil.StorageIdentityForStart(backup)
 	if err != nil {
 		return nil, reasonStorageTargetChanged, err
 	}
@@ -343,11 +342,8 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	}
 
 	// run br binary to do the real job
-	if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
+	if _, err := bkutil.StorageIdentityForStart(backup); err != nil {
 		return nil, reasonStorageTargetChanged, err
-	}
-	if err := bm.validateLogBackupCluster(ctx, backup); err != nil {
-		return nil, reasonLogClusterChanged, err
 	}
 	backupErr := bm.doStartLogBackup(ctx, backup)
 	if backupErr != nil {
@@ -392,9 +388,6 @@ func (bm *Manager) resumeLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	}
 
 	// run br binary to do the real job
-	if err := bm.validateLogBackupCluster(ctx, backup); err != nil {
-		return nil, reasonLogClusterChanged, err
-	}
 	backupErr := bm.doResumeLogBackup(ctx, backup)
 
 	if backupErr != nil {
@@ -427,9 +420,6 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	}
 
 	// run br binary to do the real job
-	if err := bm.validateLogBackupCluster(ctx, backup); err != nil {
-		return nil, reasonLogClusterChanged, err
-	}
 	backupErr := bm.doStopLogBackup(ctx, backup)
 
 	if backupErr != nil {
@@ -463,9 +453,6 @@ func (bm *Manager) pauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	}
 
 	// run br binary to do the real job
-	if err := bm.validateLogBackupCluster(ctx, backup); err != nil {
-		return nil, reasonLogClusterChanged, err
-	}
 	backupErr := bm.doPauseLogBackup(ctx, backup)
 
 	if backupErr != nil {
@@ -504,9 +491,6 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	}
 
 	// run br binary to do the real job
-	if err := bm.validateLogBackupCluster(ctx, backup); err != nil {
-		return nil, reasonLogClusterChanged, err
-	}
 	backupErr := bm.doTruncateLogBackup(ctx, backup)
 
 	if backupErr != nil {
@@ -542,12 +526,4 @@ func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
 	}
 	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
 	return !lessThanV651.Check(v)
-}
-
-func (bm *Manager) validateLogBackupCluster(ctx context.Context, backup *v1alpha1.Backup) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Status.LogClusterIdentity == "" {
-		return fmt.Errorf("log backup requires its original cluster identity recorded before Job creation")
-	}
-	_, err := bkutil.GetBackupClusterForBackup(ctx, bm.cli, backup)
-	return err
 }

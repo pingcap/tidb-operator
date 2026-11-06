@@ -24,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	core "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
@@ -85,7 +84,7 @@ func TestRefreshLogBackupCheckpointEncoding(t *testing.T) {
 			etcd := &checkpointEtcd{kvs: tc.kvs}
 			updater := &checkpointUpdater{}
 			tracker := &backupTracker{
-				cli:           client.NewFakeClient(&core.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "target", Name: "cluster", Annotations: map[string]string{util.AllowedBackupNamespaces: "test"}}}),
+				cli:           client.NewFakeClient(&core.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "target", Name: "cluster"}}),
 				pdcm:          &checkpointManager{client: &checkpointPD{client: &checkpointUnderlay{client: etcd}}},
 				statusUpdater: updater,
 			}

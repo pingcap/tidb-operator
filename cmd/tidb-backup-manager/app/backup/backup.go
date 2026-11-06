@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	backupUtil "github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
 const brLogCommand = "log"
@@ -95,6 +96,12 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 		args = append(args, fmt.Sprintf("--check-requirements=%t", *config.CheckRequirements))
 	}
 	args = append(args, config.Options...)
+	// Keep the recorded destination authoritative, including short storage flags in raw options.
+	storageArgs, err := util.GenStorageArgsForFlag(backup.Spec.StorageProvider, "")
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, storageArgs...)
 	return args, nil
 }
 
