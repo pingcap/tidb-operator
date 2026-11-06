@@ -56,15 +56,21 @@ func TestMigrateDefaultAPIListener(t *testing.T) {
 			require.Equal(t, task.SComplete, result.Status())
 			require.NoError(t, cli.Get(context.Background(), client.ObjectKeyFromObject(sts), sts))
 			require.Contains(t, sts.Spec.Template.Spec.Containers[0].Command, fmt.Sprintf("127.0.0.1:%d", APIServerPort))
+			require.NotContains(t, sts.Spec.Template.Spec.Containers[0].Command, fmt.Sprintf("0.0.0.0:%d", APIServerPort))
 			require.Equal(t, "custom", sts.Spec.Template.Spec.Containers[1].Image)
 			rtx.configmap = &corev1.ConfigMap{}
 			rtx.headlessSvc = &corev1.Service{}
 			require.Contains(t, evaluateSyncedStatus(rtx), "statefulset rollout is not complete")
 			sts.Status.ObservedGeneration = sts.Generation
 			sts.Status.UpdatedReplicas = 1
-			sts.Status.CurrentRevision = "new"
+			sts.Status.CurrentRevision = "old"
 			sts.Status.UpdateRevision = "new"
 			rtx.sts = sts
+			require.Contains(t, evaluateSyncedStatus(rtx), "statefulset rollout is not complete")
+			sts.Status.CurrentRevision = "new"
+			sts.Status.UpdatedReplicas = 0
+			require.Contains(t, evaluateSyncedStatus(rtx), "statefulset rollout is not complete")
+			sts.Status.UpdatedReplicas = 1
 			require.Empty(t, evaluateSyncedStatus(rtx))
 		})
 	}
