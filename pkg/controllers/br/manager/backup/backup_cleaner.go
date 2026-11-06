@@ -408,12 +408,12 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      corev1alpha1.VolumeNameClusterTLS,
+			Name:      corev1alpha1.VolumeNameClusterClientTLS,
 			ReadOnly:  true,
-			MountPath: corev1alpha1.DirPathClusterTLSTiKV,
+			MountPath: corev1alpha1.DirPathClusterClientTLS,
 		})
 		volumes = append(volumes, corev1.Volume{
-			Name: corev1alpha1.VolumeNameClusterTLS,
+			Name: corev1alpha1.VolumeNameClusterClientTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: coreutil.LegacyTLSClusterClientSecretName(backup.Spec.BR.Cluster),
@@ -534,6 +534,9 @@ func (bc *backupCleaner) ensureBackupJobFinished(ctx context.Context, backup *v1
 	var errs []error
 
 	for _, jobName := range backupJobNames {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog && jobName == backup.GetStopLogBackupJobName() {
+			continue // The stop Job must finish, not be canceled with the backup Jobs.
+		}
 		job := &batchv1.Job{}
 		err := bc.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: jobName}, job)
 		if err != nil {
@@ -599,10 +602,13 @@ func (bc *backupCleaner) isLogStopJobFinished(ctx context.Context, backup *v1alp
 			logger.Info("log backup is running stop task, cleaner will wait until done", "namespace", ns, "backup", name, "job", stopLogJob)
 			return false, nil
 		} else if bc.isJobFailed(job) {
-			logger.Error(nil, "log backup stopping task failed", "namespace", ns, "backup", name, "job", stopLogJob)
+			return false, fmt.Errorf("stop log backup %s/%s job %s failed; retry the stop job before cleanup", ns, name, stopLogJob)
 		}
 		return true, nil
 	} else if errors.IsNotFound(err) {
+		if v1alpha1.IsLogBackupAlreadyStart(backup) {
+			return false, nil
+		}
 		logger.Info("log backup stopping-task not found, log backup may has failed before cleaning",
 			"namespace", ns, "backup", name, "job", stopLogJob)
 		return true, nil
