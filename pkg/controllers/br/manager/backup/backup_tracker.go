@@ -200,7 +200,10 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 
 	for range ticker.C {
 		logkey := genLogBackupKey(ns, name)
-		if _, exist := bt.logBackups[logkey]; !exist {
+		bt.operateLock.Lock()
+		_, exist := bt.logBackups[logkey]
+		bt.operateLock.Unlock()
+		if !exist {
 			return
 		}
 		backup := &v1alpha1.Backup{}
