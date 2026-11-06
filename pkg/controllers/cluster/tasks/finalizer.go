@@ -57,6 +57,8 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	t.PDClientManager.Deregister(timanager.PrimaryKey(rtx.Cluster.Namespace, rtx.Cluster.Name))
 
 	if len(rtx.PDGroups) == 0 &&
+		len(rtx.ResourceManagerGroups) == 0 &&
+		len(rtx.RouterGroups) == 0 &&
 		len(rtx.TiKVGroups) == 0 &&
 		len(rtx.TiDBGroups) == 0 &&
 		len(rtx.TiFlashGroups) == 0 &&
@@ -75,6 +77,18 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 
 	// trigger the deletion of the components
+	for _, group := range rtx.ResourceManagerGroups {
+		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
+		if err := t.Client.Delete(ctx, group); client.IgnoreNotFound(err) != nil {
+			return task.Fail().With("can't delete resource manager group: %v", err)
+		}
+	}
+	for _, group := range rtx.RouterGroups {
+		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
+		if err := t.Client.Delete(ctx, group); client.IgnoreNotFound(err) != nil {
+			return task.Fail().With("can't delete router group: %v", err)
+		}
+	}
 	for _, pdg := range rtx.PDGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, pdg); client.IgnoreNotFound(err) != nil {
