@@ -98,6 +98,27 @@ func TestRefreshLogBackupCheckpointEncoding(t *testing.T) {
 	}
 }
 
+func TestTrackerHandlesMissingBR(t *testing.T) {
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "invalid"},
+		Spec:       v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog},
+	}
+	tracker := &backupTracker{cli: client.NewFakeClient(backup), logBackups: make(map[string]bool)}
+	t.Run("registration", func(t *testing.T) {
+		require.NotPanics(t, func() {
+			require.ErrorContains(t, tracker.StartTrackLogBackupProgress(t.Context(), backup), "spec.br")
+		})
+		require.Empty(t, tracker.logBackups)
+	})
+	t.Run("startup", func(t *testing.T) {
+		require.NotPanics(t, tracker.initTrackLogBackupsProgress)
+		require.Empty(t, tracker.logBackups)
+	})
+	t.Run("checkpoint refresh", func(t *testing.T) {
+		require.NotPanics(t, func() { tracker.doRefreshLogBackupCheckpointTs(t.Context(), backup) })
+	})
+}
+
 func TestTrackerRefreshConcurrentRemoval(t *testing.T) {
 	previousPeriod := refreshCheckpointTsPeriod
 	refreshCheckpointTsPeriod = time.Nanosecond
