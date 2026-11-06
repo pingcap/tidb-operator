@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	bkutil "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
@@ -162,6 +163,29 @@ func TestLocalCleanupAllowsContainedNonRootAlias(t *testing.T) {
 	_, err = os.Stat(filepath.Join(root, "backups", "one", "data"))
 	require.True(t, os.IsNotExist(err))
 	data, err := os.ReadFile(filepath.Join(root, "keep"))
+	require.NoError(t, err)
+	require.Equal(t, "keep", string(data))
+}
+
+func TestLocalCleanupRejectsAdditionalMountChanges(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(root, "backup"), 0700))
+	file := filepath.Join(root, "backup", "keep")
+	require.NoError(t, os.WriteFile(file, []byte("keep"), 0600))
+	backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{BR: &v1alpha1.BRConfig{Cluster: "cluster"}}}
+	backup.Spec.Local = &v1alpha1.LocalStorageProvider{Prefix: "backup"}
+	backup.Spec.Local.VolumeMount.MountPath = root
+	backup.Status.BackupPath = "local://" + filepath.Join(root, "backup")
+	var err error
+	backup.Status.StorageIdentity, err = bkutil.StorageIdentity(backup)
+	require.NoError(t, err)
+	backup.Spec.AdditionalVolumes = []corev1.Volume{{Name: "overlay", VolumeSource: corev1.VolumeSource{
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "other"},
+	}}}
+	backup.Spec.AdditionalVolumeMounts = []corev1.VolumeMount{{Name: "overlay", MountPath: filepath.Join(root, "backup")}}
+	err = (&Options{}).CleanBRRemoteBackupData(t.Context(), backup)
+	require.ErrorContains(t, err, "storage identity has changed")
+	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	require.Equal(t, "keep", string(data))
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -109,4 +110,28 @@ func TestStaleWorkerCannotReplaceStorageIdentity(t *testing.T) {
 	require.NoError(t, cli.Get(context.Background(), types.NamespacedName{Namespace: "tenant", Name: "backup"}, got))
 	require.Equal(t, "original-identity", got.Status.StorageIdentity)
 	require.Equal(t, "s3://bucket/original", got.Status.BackupPath)
+}
+
+func TestCleanJobLocalAdditionalMountsAreBoundToIdentity(t *testing.T) {
+	backup := &br.Backup{ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"}}
+	backup.Spec.Local = &br.LocalStorageProvider{Prefix: "backup"}
+	backup.Spec.Local.Volume.Name = "original"
+	backup.Spec.Local.VolumeMount = corev1.VolumeMount{Name: "original", MountPath: "/data"}
+	backup.Spec.AdditionalVolumes = []corev1.Volume{{Name: "overlay", VolumeSource: corev1.VolumeSource{
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "original"},
+	}}}
+	backup.Spec.AdditionalVolumeMounts = []corev1.VolumeMount{{Name: "overlay", MountPath: "/data/backup"}}
+	var err error
+	backup.Status.StorageIdentity, err = util.StorageIdentity(backup)
+	require.NoError(t, err)
+	backup.Status.BackupPath = "local:///data/backup"
+	cleaner := &backupCleaner{cli: client.NewFakeClient()}
+	job, reason, err := cleaner.makeCleanJob(t.Context(), backup)
+	require.NoError(t, err, reason)
+	require.Contains(t, job.Spec.Template.Spec.Containers[0].VolumeMounts, backup.Spec.AdditionalVolumeMounts[0])
+	_, err = util.ValidateStorageIdentity(backup)
+	require.NoError(t, err)
+	backup.Spec.AdditionalVolumes[0].PersistentVolumeClaim.ClaimName = "other"
+	_, err = util.ValidateStorageIdentity(backup)
+	require.ErrorContains(t, err, "storage identity has changed")
 }

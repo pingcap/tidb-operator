@@ -26,12 +26,14 @@ import (
 	br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	manager "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
 type mutatingBackupReader struct {
 	ctrlclient.Client
 	reads, changeAt int
 	options         []string
+	mutate          func(*br.Backup)
 }
 
 func (c *mutatingBackupReader) Get(ctx context.Context, key ctrlclient.ObjectKey, obj ctrlclient.Object, opts ...ctrlclient.GetOption) error {
@@ -42,7 +44,9 @@ func (c *mutatingBackupReader) Get(ctx context.Context, key ctrlclient.ObjectKey
 			if err := c.Client.Get(ctx, key, current); err != nil {
 				return err
 			}
-			if c.options != nil {
+			if c.mutate != nil {
+				c.mutate(current)
+			} else if c.options != nil {
 				current.Spec.BR.Options = c.options
 			} else {
 				current.Spec.S3.Endpoint = "https://other"
@@ -88,5 +92,42 @@ func TestTargetOverridesDuringStatusRefreshAreRejected(t *testing.T) {
 				require.ErrorContains(t, err, "spec.br.options")
 			}
 		}
+	}
+}
+
+func TestProcessTruncateRejectsChangedStorage(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*br.Backup)
+	}{
+		{"bucket", func(b *br.Backup) { b.Spec.S3.Bucket = "other" }},
+		{"prefix", func(b *br.Backup) { b.Spec.S3.Prefix = "other" }},
+		{"endpoint", func(b *br.Backup) { b.Spec.S3.Endpoint = "https://other" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, changeAt := range []int{0, 3} {
+				backup := &br.Backup{
+					ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "tenant"},
+					Spec:       br.BackupSpec{Mode: br.BackupModeLog, BR: &br.BRConfig{Cluster: "cluster"}},
+					Status:     br.BackupStatus{CommitTs: "1", BackupPath: "s3://bucket/backup"},
+				}
+				backup.Spec.S3 = &br.S3StorageProvider{Bucket: "bucket", Prefix: "backup", Endpoint: "https://original"}
+				var err error
+				backup.Status.StorageIdentity, err = util.StorageIdentity(backup)
+				require.NoError(t, err)
+				if changeAt == 0 {
+					tc.mutate(backup)
+				}
+				reader := &mutatingBackupReader{Client: client.NewFakeClient(backup), changeAt: changeAt, mutate: tc.mutate}
+				updater := manager.NewRealBackupConditionUpdater(reader, record.NewFakeRecorder(100))
+				// An invalid until value also prevents an external command on the unfixed path.
+				m := NewManager(reader, updater, Options{})
+				m.Namespace, m.ResourceName = "tenant", "backup"
+				m.Mode, m.SubCommand = string(br.BackupModeLog), string(br.LogTruncateCommand)
+				m.TruncateUntil = "0"
+				err = m.ProcessBackup()
+				require.ErrorContains(t, err, "storage identity has changed")
+			}
+		})
 	}
 }

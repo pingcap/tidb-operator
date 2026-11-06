@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 
+	corev1 "k8s.io/api/core/v1"
+
 	br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 )
 
@@ -65,11 +67,16 @@ func StorageIdentity(backup *br.Backup) (string, error) {
 		identity = struct{ Kind, Account, Container, Prefix string }{"azure", account, a.Container, a.Prefix}
 	case br.BackupStorageTypeLocal:
 		identity = struct {
-			Kind   string
-			Volume any
-			Mount  any
-			Prefix string
-		}{"local", provider.Local.Volume, provider.Local.VolumeMount, provider.Local.Prefix}
+			Kind                   string
+			Volume                 any
+			Mount                  any
+			Prefix                 string
+			AdditionalVolumes      []corev1.Volume      `json:",omitempty"`
+			AdditionalVolumeMounts []corev1.VolumeMount `json:",omitempty"`
+		}{
+			"local", provider.Local.Volume, provider.Local.VolumeMount, provider.Local.Prefix,
+			backup.Spec.AdditionalVolumes, backup.Spec.AdditionalVolumeMounts,
+		}
 	default:
 		return "", fmt.Errorf("cannot identify unsupported storage destination")
 	}

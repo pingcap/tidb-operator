@@ -485,6 +485,11 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 		return nil, ReasonUpdateStatusFailed, err
 	}
 
+	// Status updates refresh the execution spec, so verify the original target last.
+	if _, err := bkutil.ValidateStorageIdentity(backup); err != nil {
+		return nil, reasonStorageTargetChanged, err
+	}
+
 	// run br binary to do the real job
 	backupErr := bm.doTruncateLogBackup(ctx, backup)
 

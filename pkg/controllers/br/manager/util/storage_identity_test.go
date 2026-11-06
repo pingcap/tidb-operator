@@ -59,3 +59,35 @@ func TestStorageDestinationIdentity(t *testing.T) {
 	_, err = ValidateStorageIdentity(backup)
 	require.ErrorContains(t, err, "storage identity has changed")
 }
+
+func TestLocalStorageIdentityIncludesAdditionalMounts(t *testing.T) {
+	backup := &br.Backup{Spec: br.BackupSpec{StorageProvider: br.StorageProvider{Local: &br.LocalStorageProvider{Prefix: "backup"}}}}
+	backup.Spec.Local.VolumeMount.MountPath = "/data"
+	identity, err := StorageIdentity(backup)
+	require.NoError(t, err)
+	backup.Status.StorageIdentity = identity
+	backup.Status.BackupPath = "local:///data/backup"
+	backup.Spec.AdditionalVolumes = []corev1.Volume{{Name: "overlay", VolumeSource: corev1.VolumeSource{
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "other"},
+	}}}
+	backup.Spec.AdditionalVolumeMounts = []corev1.VolumeMount{{Name: "overlay", MountPath: "/data/backup"}}
+	_, err = ValidateStorageIdentity(backup)
+	require.ErrorContains(t, err, "storage identity has changed")
+
+	identity, err = StorageIdentity(backup)
+	require.NoError(t, err)
+	backup.Status.StorageIdentity = identity
+	_, err = ValidateStorageIdentity(backup)
+	require.NoError(t, err)
+	for _, mutate := range []func(*br.Backup){
+		func(b *br.Backup) { b.Spec.AdditionalVolumes[0].PersistentVolumeClaim.ClaimName = "third" },
+		func(b *br.Backup) { b.Spec.AdditionalVolumeMounts[0].MountPath = "/data/backup/nested" },
+		func(b *br.Backup) { b.Spec.AdditionalVolumeMounts[0].SubPath = "other" },
+		func(b *br.Backup) { b.Spec.AdditionalVolumeMounts = nil },
+	} {
+		changed := backup.DeepCopy()
+		mutate(changed)
+		_, err = ValidateStorageIdentity(changed)
+		require.ErrorContains(t, err, "storage identity has changed")
+	}
+}
