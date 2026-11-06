@@ -1,5 +1,8 @@
 # TiBR API access
 
+<!-- toc -->
+<!-- /toc -->
+
 The generated `tikv-worker` API binds to `127.0.0.1:19500` by default. A Pod-network client can no longer invoke the default backup/restore listener directly. This is independent of `Cluster.spec.tlsCluster`: the TLS flags for component connections are not evidence that every API operation is authenticated by the external binary.
 
 An administrator can access the API through Kubernetes authenticated and authorized port forwarding:
