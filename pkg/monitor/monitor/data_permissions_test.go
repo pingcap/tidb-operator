@@ -148,6 +148,70 @@ func TestGrafanaDataPathOverrides(t *testing.T) {
 	}
 }
 
+func TestMonitorDataMountOverrides(t *testing.T) {
+	for _, component := range []string{"prometheus", "thanos", "grafana"} {
+		dataPath := "/data/prometheus"
+		if component == "grafana" {
+			dataPath = "/data/grafana"
+		}
+		for _, tc := range []struct {
+			name, mountPath string
+			wantDefault     bool
+		}{
+			{"default", "", true},
+			{"same path", dataPath, false},
+			{"parent", "/data", false},
+			{"parent trailing slash", "/data/", false},
+			{"equivalent path", "/" + dataPath + "/", false},
+			{"sibling", dataPath + "-other", true},
+			{"child", dataPath + "/custom", true},
+		} {
+			t.Run(component+"/"+tc.name, func(t *testing.T) {
+				var additional []core.VolumeMount
+				if tc.mountPath != "" {
+					additional = []core.VolumeMount{{Name: "external-data", MountPath: tc.mountPath, SubPath: "existing-data", ReadOnly: true}}
+				}
+				monitor := &v1alpha1.TidbMonitor{Spec: v1alpha1.TidbMonitorSpec{
+					Grafana: &v1alpha1.GrafanaSpec{},
+					Thanos:  &v1alpha1.ThanosSpec{ObjectStorageConfig: &core.SecretKeySelector{}},
+				}}
+				var c core.Container
+				switch component {
+				case "prometheus":
+					monitor.Spec.Prometheus.AdditionalVolumeMounts = additional
+					c = getMonitorPrometheusContainer(monitor, 0)
+				case "thanos":
+					monitor.Spec.Thanos.AdditionalVolumeMounts = additional
+					c = getThanosSidecarContainer(monitor)
+				case "grafana":
+					monitor.Spec.Grafana.AdditionalVolumeMounts = additional
+					c = getMonitorGrafanaContainer(&core.Secret{}, monitor)
+				}
+				foundDefault, foundExplicit := false, false
+				paths := map[string]bool{}
+				for _, mount := range c.VolumeMounts {
+					if paths[mount.MountPath] {
+						t.Fatal("duplicate mountPath", mount.MountPath)
+					}
+					paths[mount.MountPath] = true
+					if mount.Name == v1alpha1.TidbMonitorMemberType.String() && mount.MountPath == dataPath {
+						foundDefault = true
+					}
+					if mount.Name == "external-data" {
+						foundExplicit = true
+						if !reflect.DeepEqual(mount, additional[0]) {
+							t.Fatal("changed explicit mount", mount)
+						}
+					}
+				}
+				if foundDefault != tc.wantDefault || foundExplicit != (len(additional) > 0) {
+					t.Fatal("incorrect mount precedence", c.VolumeMounts)
+				}
+			})
+		}
+	}
+}
+
 func TestPrepareMonitorData(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("initializer uses Linux stat")

@@ -121,6 +121,25 @@ func monitorDataMount(dir string) core.VolumeMount {
 	}
 }
 
+// Explicit data mounts also cover descendants; do not hide their storage with
+// a default PVC subPath mount.
+func appendMonitorDataMounts(defaults, additional []core.VolumeMount) []core.VolumeMount {
+	var mounts []core.VolumeMount
+	for _, mount := range defaults {
+		covered := false
+		if mount.Name == v1alpha1.TidbMonitorMemberType.String() && mount.SubPath != "" {
+			for _, explicit := range additional {
+				dir, parent := path.Clean(mount.MountPath), path.Clean(explicit.MountPath)
+				covered = covered || dir == parent || strings.HasPrefix(dir, strings.TrimSuffix(parent, "/")+"/")
+			}
+		}
+		if !covered {
+			mounts = append(mounts, mount)
+		}
+	}
+	return append(mounts, additional...)
+}
+
 func getInitCommand(monitor *v1alpha1.TidbMonitor) []string {
 	command := []string{"/bin/sh", "-ec", prepareMonitorData, "prepare-monitor-data", "/data", strconv.FormatInt(monitorDataGroup(monitor), 10), "/data/prometheus", "/data/latest-rules"}
 	return append(command, grafanaDataPaths(monitor)...)

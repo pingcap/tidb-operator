@@ -563,9 +563,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, shard int32) c
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
 	}
-	if monitor.Spec.Prometheus.AdditionalVolumeMounts != nil {
-		c.VolumeMounts = append(c.VolumeMounts, monitor.Spec.Prometheus.AdditionalVolumeMounts...)
-	}
+	c.VolumeMounts = appendMonitorDataMounts(c.VolumeMounts, monitor.Spec.Prometheus.AdditionalVolumeMounts)
 	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      "external-rules",
@@ -705,18 +703,10 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 
 	var dataMounts []core.VolumeMount
 	for _, dir := range grafanaDataPaths(monitor) {
-		covered := false
-		for _, mount := range monitor.Spec.Grafana.AdditionalVolumeMounts {
-			covered = covered || dir == mount.MountPath || strings.HasPrefix(dir, strings.TrimSuffix(mount.MountPath, "/")+"/")
-		}
-		if !covered {
-			dataMounts = append(dataMounts, monitorDataMount(dir))
-		}
+		dataMounts = append(dataMounts, monitorDataMount(dir))
 	}
 	c.VolumeMounts = append(dataMounts, c.VolumeMounts...)
-	if monitor.Spec.Grafana.AdditionalVolumeMounts != nil {
-		c.VolumeMounts = append(c.VolumeMounts, monitor.Spec.Grafana.AdditionalVolumeMounts...)
-	}
+	c.VolumeMounts = appendMonitorDataMounts(c.VolumeMounts, monitor.Spec.Grafana.AdditionalVolumeMounts)
 	return c
 }
 
@@ -1474,9 +1464,7 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	if thanos.MinTime != "" {
 		container.Args = append(container.Args, "--min-time="+thanos.MinTime)
 	}
-	if thanos.AdditionalVolumeMounts != nil {
-		container.VolumeMounts = append(container.VolumeMounts, thanos.AdditionalVolumeMounts...)
-	}
+	container.VolumeMounts = appendMonitorDataMounts(container.VolumeMounts, thanos.AdditionalVolumeMounts)
 	return container
 }
 

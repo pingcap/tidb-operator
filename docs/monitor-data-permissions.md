@@ -13,8 +13,11 @@ Operator adds supplemental group 2000 instead of enabling recursive volume
 ownership changes. Existing files are not recursively chmodded or chowned.
 
 Prometheus and Thanos mount only the Prometheus subdirectory, the reloader mounts
-only persisted rules, and Grafana mounts its data subdirectories. Initializers
-still see the full data volume to support existing initialization scripts. This
+only persisted rules, and Grafana mounts its data subdirectories. Explicit
+additional mounts at a data path or its parent take precedence for Prometheus,
+Thanos and Grafana, preserving their volume, subPath and read-only settings.
+Initializers still see the full data volume to support existing initialization
+scripts. This
 limits filesystem visibility between containers; it is not isolation from a
 privileged container or an explicitly configured additional full-volume mount.
 
