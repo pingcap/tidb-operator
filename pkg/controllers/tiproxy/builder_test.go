@@ -18,12 +18,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
 )
 
@@ -34,10 +38,20 @@ func TestLegacyInvalidInstanceClusterDeletion(t *testing.T) {
 	}}
 	instance := &v1alpha1.TiProxy{ObjectMeta: metav1.ObjectMeta{Name: "invalid", Namespace: "test", Finalizers: []string{metav1alpha1.Finalizer}}}
 	instance.Spec.Cluster.Name = cluster.Name
-	c := client.NewFakeClient(cluster, instance)
+	pod := fake.FakeObj("managed-pod", fake.InstanceOwner[scope.TiProxy, corev1.Pod](instance))
+	pod.Namespace = instance.Namespace
+	pod.Labels[v1alpha1.LabelKeyCluster] = cluster.Name
+	c := client.NewFakeClient(cluster, instance, pod)
 	r := &Reconciler{Client: c, Tracker: tracker.New().Tracker("tiproxy")}
 	key := client.ObjectKeyFromObject(instance)
-	_, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+	result, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+	require.NoError(t, err)
+	require.Positive(t, result.RequeueAfter)
+	var remaining v1alpha1.TiProxy
+	require.NoError(t, c.Get(t.Context(), key, &remaining))
+	require.Contains(t, remaining.Finalizers, metav1alpha1.Finalizer)
+	require.True(t, errors.IsNotFound(c.Get(t.Context(), client.ObjectKeyFromObject(pod), &corev1.Pod{})))
+	_, err = r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
 	require.NoError(t, err)
 	var got v1alpha1.TiProxy
 	require.NoError(t, c.Get(t.Context(), key, &got))
