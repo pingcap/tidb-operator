@@ -133,12 +133,6 @@ func TaskContextPeerSlice[
 			return task.Fail().With("cannot get peer instance slice: %v", err)
 		}
 
-		for _, obj := range objs {
-			if err := runtime.ValidateInstanceName(obj.GetName()); err != nil {
-				return task.Fail().With("invalid peer instance: %v", err)
-			}
-		}
-
 		state.SetInstanceSlice(objs)
 		return task.Complete().With("peer instance slice is set")
 	})
@@ -179,8 +173,8 @@ func TaskContextPod[
 	T runtime.Instance,
 ](state ContextPodNewer[F], c client.Client) task.Task {
 	return task.NameTaskFunc("ContextPod", func(ctx context.Context) task.Result {
-		// Deletion tasks run before pod setup and must remain available to
-		// legacy objects with names that cannot be used to derive pod names.
+		// Cleanup that only needs labels must run before this name check.
+		// Pod/store-dependent cleanup still requires a resolvable identity.
 		if err := runtime.ValidateInstanceName(state.Object().GetName()); err != nil {
 			return task.Fail().With("invalid instance: %v", err)
 		}

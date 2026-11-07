@@ -585,7 +585,7 @@ type peerSliceState struct {
 
 func (s *peerSliceState) SetInstanceSlice(peers []*v1alpha1.PD) { s.peers = peers }
 
-func TestTaskContextPeerSliceValidatesNames(t *testing.T) {
+func TestTaskContextPeerSlicePreservesAllPeers(t *testing.T) {
 	for _, peerName := range []string{"pd-xyz", "invalid", "-suffix", "prefix-"} {
 		t.Run(peerName, func(t *testing.T) {
 			current := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Name: "pd-abc", Namespace: "test"}}
@@ -599,13 +599,9 @@ func TestTaskContextPeerSliceValidatesNames(t *testing.T) {
 			}
 			state := &peerSliceState{fakeObjectState: newFakeObjectState(current)}
 			result, _ := task.RunTask(t.Context(), TaskContextPeerSlice[scope.PD](state, client.NewFakeClient(peer)))
-			if peerName == "pd-xyz" {
-				assert.Equal(t, task.SComplete, result.Status())
-				assert.Len(t, state.peers, 1)
-			} else {
-				assert.Equal(t, task.SFail, result.Status())
-				assert.Nil(t, state.peers, "must not bootstrap with a silently reduced member list")
-			}
+			assert.Equal(t, task.SComplete, result.Status())
+			assert.Len(t, state.peers, 1)
+			assert.Equal(t, peerName, state.peers[0].Name)
 		})
 	}
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	pdapi "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -38,16 +39,24 @@ type readyAPIClientManager struct {
 func (m *readyAPIClientManager) Get(string) (pdm.PDClient, bool) { return m.pdClient, true }
 
 func TestContextInfoValidatesNameBeforeReadyAPI(t *testing.T) {
-	for _, readyAPI := range []bool{false, true} {
-		name := "ready API disabled"
-		if readyAPI {
-			name = "ready API enabled"
-		}
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range []struct {
+		name, instanceName string
+		readyAPI, deleting bool
+		expected           task.Status
+	}{
+		{name: "ready API disabled", instanceName: "invalid", expected: task.SComplete},
+		{name: "ready API enabled", instanceName: "invalid", readyAPI: true, expected: task.SFail},
+		{name: "deleting invalid member", instanceName: "invalid", readyAPI: true, deleting: true, expected: task.SComplete},
+		{name: "valid member still checked", instanceName: "pd-abc", readyAPI: true, expected: task.SComplete},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			cluster := &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "test"}}
-			cluster.Spec.FeatureGates = []metav1alpha1.FeatureGate{{Name: metav1alpha1.UsePDReadyAPI, Enabled: ptr.To(readyAPI)}}
-			pd := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Name: "invalid", Namespace: "test"}}
+			cluster.Spec.FeatureGates = []metav1alpha1.FeatureGate{{Name: metav1alpha1.UsePDReadyAPI, Enabled: ptr.To(tc.readyAPI)}}
+			pd := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Name: tc.instanceName, Namespace: "test"}}
 			pd.Spec.Version = "v8.5.2"
+			if tc.deleting {
+				pd.DeletionTimestamp = ptr.To(metav1.Now())
+			}
 			st := NewState(client.ObjectKeyFromObject(pd))
 			st.SetObject(pd)
 			st.SetCluster(cluster)
@@ -57,14 +66,21 @@ func TestContextInfoValidatesNameBeforeReadyAPI(t *testing.T) {
 			members := pdm.NewMockMemberCache[pdv1.Member](controller)
 			pc.EXPECT().MembersSynced().Return(true)
 			pc.EXPECT().Members().Return(members)
-			members.EXPECT().Get(pd.Name).Return(&pdv1.Member{Health: true}, nil)
-			// An invalid name must never reach Underlay().GetMemberReady.
-			result, _ := task.RunTask(t.Context(), TaskContextInfoFromPD(state, &readyAPIClientManager{pdClient: pc}))
-			expected := task.SComplete
-			if readyAPI {
-				expected = task.SFail
+			members.EXPECT().Get(pd.Name).Return(&pdv1.Member{ID: "123", Health: true}, nil)
+			underlay := pdapi.NewMockPDClient(controller)
+			if tc.instanceName == "pd-abc" {
+				pc.EXPECT().Underlay().Return(underlay)
+				underlay.EXPECT().GetMemberReady(gomock.Any(), getPDURL(cluster, pd), pd.Spec.Version).Return(true, nil)
 			}
-			require.Equal(t, expected, result.Status())
+			result, _ := task.RunTask(t.Context(), TaskContextInfoFromPD(state, &readyAPIClientManager{pdClient: pc}))
+			require.Equal(t, tc.expected, result.Status())
+			if tc.deleting {
+				require.Equal(t, "123", state.MemberID)
+				pc.EXPECT().Underlay().Return(underlay)
+				underlay.EXPECT().DeleteMember(gomock.Any(), pd.Name).Return(nil)
+				result, _ = task.RunTask(t.Context(), TaskDeleteMember(state))
+				require.Equal(t, task.SComplete, result.Status())
+			}
 		})
 	}
 }

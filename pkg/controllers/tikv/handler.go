@@ -180,7 +180,7 @@ func (r *Reconciler) getRequestOfTiKVStore(ctx context.Context, s *pdv1.Store) (
 	for i := range kvl.Items {
 		tikv := &kvl.Items[i]
 		if err := runtime.ValidateInstanceName(tikv.Name); err != nil {
-			r.Logger.Error(err, "skip invalid tikv instance", "namespace", tikv.Namespace, "name", tikv.Name)
+			r.Logger.V(4).Info("skip invalid tikv instance", "error", err, "namespace", tikv.Namespace, "name", tikv.Name)
 			continue
 		}
 		if s.Name == coreutil.InstanceAdvertiseAddress[scope.TiKV](&c, tikv, coreutil.TiKVClientPort(tikv)) {

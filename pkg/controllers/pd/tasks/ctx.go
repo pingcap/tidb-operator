@@ -82,6 +82,9 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			version := semver.MustParse(pd.Spec.Version)
 			if compatibility.Check(version, compatibility.PDReadyAPI) {
 				if err := runtime.ValidateInstanceName(pd.Name); err != nil {
+					if !pd.DeletionTimestamp.IsZero() {
+						return task.Complete().With("skip ready check for deleting instance with invalid name")
+					}
 					return task.Fail().With("invalid instance: %v", err)
 				}
 				var err error
