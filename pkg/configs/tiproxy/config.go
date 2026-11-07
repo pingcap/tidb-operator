@@ -148,6 +148,10 @@ func (c *Config) Validate() error {
 		fields = append(fields, "security.server-sql-tls.ca")
 	}
 
+	if c.Security.ServerSQLTLS.SkipCA {
+		fields = append(fields, "security.server-tls.skip-ca")
+	}
+
 	if c.Security.ServerHTTPTLS.Cert != "" {
 		fields = append(fields, "security.server-http-tls.cert")
 	}
@@ -158,6 +162,10 @@ func (c *Config) Validate() error {
 
 	if c.Security.ServerHTTPTLS.CA != "" {
 		fields = append(fields, "security.server-http-tls.ca")
+	}
+
+	if c.Security.ServerHTTPTLS.SkipCA {
+		fields = append(fields, "security.server-http-tls.skip-ca")
 	}
 
 	if c.Security.ClusterTLS.Cert != "" {
@@ -172,6 +180,10 @@ func (c *Config) Validate() error {
 		fields = append(fields, "security.cluster-tls.ca")
 	}
 
+	if c.Security.ClusterTLS.SkipCA {
+		fields = append(fields, "security.cluster-tls.skip-ca")
+	}
+
 	if c.Security.SQLTLS.Cert != "" {
 		fields = append(fields, "security.sql-tls.cert")
 	}
@@ -182,6 +194,10 @@ func (c *Config) Validate() error {
 
 	if c.Security.SQLTLS.CA != "" {
 		fields = append(fields, "security.sql-tls.ca")
+	}
+
+	if c.Security.SQLTLS.SkipCA {
+		fields = append(fields, "security.sql-tls.skip-ca")
 	}
 
 	if len(fields) == 0 {
