@@ -114,7 +114,9 @@ func (ro *Options) restoreData(
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	klog.Infof("Running br command with args: %v", fullArgs)
+	redactor := backupUtil.SASRedactorForArgs(fullArgs)
+	safeArgs := redactor.Replace(fmt.Sprint(fullArgs))
+	klog.Infof("Running br command with args: %v", safeArgs)
 	bin := path.Join(v1alpha1.DirPathBRBin, "br")
 	cmd := exec.CommandContext(ctx, bin, fullArgs...)
 
@@ -128,7 +130,7 @@ func (ro *Options) restoreData(
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", ro, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", ro, safeArgs, err)
 	}
 
 	var (
@@ -155,14 +157,14 @@ func (ro *Options) restoreData(
 	for {
 		line, err := reader.ReadString('\n')
 		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
+			errMsg += redactor.Replace(line)
 		} else {
 			if !useProgressFile {
 				ro.updateProgressAccordingToBrLog(ctx, line, restore, statusUpdater)
 			}
 			ro.updateResolvedTSForCSB(ctx, line, restore, progressStep, statusUpdater)
 		}
-		klog.Info(strings.ReplaceAll(line, "\n", ""))
+		klog.Info(redactor.Replace(strings.ReplaceAll(line, "\n", "")))
 		if err != nil {
 			if err != io.EOF {
 				klog.Errorf("read stdout error: %s", err.Error())
@@ -172,8 +174,8 @@ func (ro *Options) restoreData(
 	}
 	tmpErr := <-stdErrCh
 	if len(tmpErr) > 0 {
-		klog.Info(string(tmpErr))
-		errMsg += string(tmpErr)
+		klog.Info(redactor.Replace(string(tmpErr)))
+		errMsg += redactor.Replace(string(tmpErr))
 	}
 
 	err = cmd.Wait()
