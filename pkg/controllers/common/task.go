@@ -133,6 +133,12 @@ func TaskContextPeerSlice[
 			return task.Fail().With("cannot get peer instance slice: %v", err)
 		}
 
+		for _, obj := range objs {
+			if err := runtime.ValidateInstanceName(obj.GetName()); err != nil {
+				return task.Fail().With("invalid peer instance: %v", err)
+			}
+		}
+
 		state.SetInstanceSlice(objs)
 		return task.Complete().With("peer instance slice is set")
 	})
@@ -151,11 +157,6 @@ func TaskContextCluster[
 	T runtime.Object,
 ](state ContextClusterNewer[F], c client.Client) task.Task {
 	return task.NameTaskFunc("ContextCluster", func(ctx context.Context) task.Result {
-		if _, ok := any(scope.From[S](state.Object())).(runtime.Instance); ok {
-			if err := runtime.ValidateInstanceName(state.Object().GetName()); err != nil {
-				return task.Fail().With("invalid instance: %v", err)
-			}
-		}
 		cluster, err := apicall.GetCluster[S](ctx, c, state.Object())
 		if err != nil {
 			return task.Fail().With("cannot get cluster: %v", err)
@@ -178,6 +179,11 @@ func TaskContextPod[
 	T runtime.Instance,
 ](state ContextPodNewer[F], c client.Client) task.Task {
 	return task.NameTaskFunc("ContextPod", func(ctx context.Context) task.Result {
+		// Deletion tasks run before pod setup and must remain available to
+		// legacy objects with names that cannot be used to derive pod names.
+		if err := runtime.ValidateInstanceName(state.Object().GetName()); err != nil {
+			return task.Fail().With("invalid instance: %v", err)
+		}
 		pod, err := apicall.GetPod[S](ctx, c, state.Object())
 		if err != nil {
 			if errors.IsNotFound(err) {
