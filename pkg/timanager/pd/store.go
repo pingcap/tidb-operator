@@ -16,6 +16,7 @@ package pd
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/go-logr/logr"
@@ -74,8 +75,17 @@ func (l *storeLister) List(ctx context.Context) (*pdv1.StoreList, error) {
 		return nil, err
 	}
 
+	if ss == nil {
+		return nil, fmt.Errorf("PD returned a nil stores response")
+	}
+	if ss.Count > 0 && ss.Count != len(ss.Stores) {
+		return nil, fmt.Errorf("PD returned %d stores but %d store entries", ss.Count, len(ss.Stores))
+	}
 	list := pdv1.StoreList{}
 	for _, s := range ss.Stores {
+		if s == nil || s.Store == nil || s.Store.Store == nil || s.Status == nil {
+			return nil, fmt.Errorf("PD returned incomplete store information")
+		}
 		obj := l.convert(l.cluster, s)
 		list.Items = append(list.Items, *obj)
 	}

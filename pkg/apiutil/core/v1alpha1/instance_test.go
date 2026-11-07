@@ -571,3 +571,14 @@ func TestPVCs(t *testing.T) {
 		})
 	}
 }
+
+func TestOwnerGroupWithoutController(t *testing.T) {
+	instance := &v1alpha1.TiKV{}
+	assert.Nil(t, OwnerGroup[scope.TiKV](instance))
+	instance.OwnerReferences = []metav1.OwnerReference{{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: "TiKVGroup", Name: "group"}}
+	assert.Nil(t, OwnerGroup[scope.TiKV](instance))
+	instance.OwnerReferences[0].Controller = ptr.To(true)
+	assert.Equal(t, &instance.OwnerReferences[0], OwnerGroup[scope.TiKV](instance))
+	instance.OwnerReferences[0].Kind = "PDGroup"
+	assert.Nil(t, OwnerGroup[scope.TiKV](instance))
+}

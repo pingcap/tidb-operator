@@ -157,6 +157,9 @@ func (bt *backupTracker) removeLogBackup(ns, name string) {
 
 // getLogBackupTC gets log backup's tidb cluster info.
 func (bt *backupTracker) getLogBackupTC(ctx context.Context, backup *v1alpha1.Backup) (*corev1alpha1.Cluster, error) {
+	if backup.Spec.BR == nil {
+		return nil, fmt.Errorf("log backup %s/%s requires spec.br", backup.Namespace, backup.Name)
+	}
 	logger := log.FromContext(ctx)
 	var (
 		ns               = backup.Namespace
@@ -200,7 +203,10 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 
 	for range ticker.C {
 		logkey := genLogBackupKey(ns, name)
-		if _, exist := bt.logBackups[logkey]; !exist {
+		bt.operateLock.Lock()
+		_, exist := bt.logBackups[logkey]
+		bt.operateLock.Unlock()
+		if !exist {
 			return
 		}
 		backup := &v1alpha1.Backup{}
@@ -232,6 +238,10 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(ctx context.Context, bac
 	logger := log.FromContext(ctx)
 	ns := backup.Namespace
 	name := backup.Name
+	if backup.Spec.BR == nil {
+		logger.Error(nil, "log backup requires spec.br", "namespace", ns, "backup", name)
+		return
+	}
 	pc, ok := bt.pdcm.Get(timanager.PrimaryKey(backup.Namespace, backup.Spec.BR.Cluster))
 	if !ok {
 		logger.Error(nil, "get log backup pd client error", "namespace", ns, "backup", name)

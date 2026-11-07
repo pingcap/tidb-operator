@@ -17,11 +17,13 @@ package backup
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 )
@@ -93,5 +95,54 @@ func TestRefreshLogBackupCheckpointEncoding(t *testing.T) {
 				require.Equal(t, tc.want, *updater.value)
 			}
 		})
+	}
+}
+
+func TestTrackerHandlesMissingBR(t *testing.T) {
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "invalid"},
+		Spec:       v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog},
+	}
+	tracker := &backupTracker{cli: client.NewFakeClient(backup), logBackups: make(map[string]bool)}
+	t.Run("registration", func(t *testing.T) {
+		require.NotPanics(t, func() {
+			require.ErrorContains(t, tracker.StartTrackLogBackupProgress(t.Context(), backup), "spec.br")
+		})
+		require.Empty(t, tracker.logBackups)
+	})
+	t.Run("startup", func(t *testing.T) {
+		require.NotPanics(t, tracker.initTrackLogBackupsProgress)
+		require.Empty(t, tracker.logBackups)
+	})
+	t.Run("checkpoint refresh", func(t *testing.T) {
+		require.NotPanics(t, func() { tracker.doRefreshLogBackupCheckpointTs(t.Context(), backup) })
+	})
+}
+
+func TestTrackerRefreshConcurrentRemoval(t *testing.T) {
+	previousPeriod := refreshCheckpointTsPeriod
+	refreshCheckpointTsPeriod = time.Nanosecond
+	defer func() { refreshCheckpointTsPeriod = previousPeriod }()
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "backup"},
+		Status:     v1alpha1.BackupStatus{Phase: v1alpha1.BackupPaused},
+	}
+	tracker := &backupTracker{
+		cli:        client.NewFakeClient(backup),
+		logBackups: map[string]bool{genLogBackupKey(backup.Namespace, backup.Name): true},
+	}
+	done := make(chan struct{})
+	go func() {
+		tracker.refreshLogBackupCheckpointTs(backup.Namespace, backup.Name)
+		close(done)
+	}()
+	for range 100000 {
+		tracker.removeLogBackup("test", "other")
+	}
+	tracker.removeLogBackup(backup.Namespace, backup.Name)
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("checkpoint refresh did not stop after removing the tracked backup")
 	}
 }
