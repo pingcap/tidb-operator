@@ -36,8 +36,18 @@ func SASRedactorForArgs(args []string) *strings.Replacer {
 		if !ok {
 			continue
 		}
-		values, _ := url.ParseQuery(query)
-		tokens = append(tokens, values["sas-token"]...)
+		// Diagnostics must also hide credentials in arguments BR will reject.
+		for _, field := range strings.FieldsFunc(query, func(r rune) bool { return r == '&' || r == ';' }) {
+			key, value, ok := strings.Cut(field, "=")
+			decodedKey, _ := url.QueryUnescape(key)
+			if !ok || strings.ToLower(strings.ReplaceAll(decodedKey, "_", "-")) != "sas-token" {
+				continue
+			}
+			tokens = append(tokens, value)
+			if decoded, err := url.QueryUnescape(value); err == nil {
+				tokens = append(tokens, decoded)
+			}
+		}
 	}
 	return newSASRedactor(tokens...)
 }
@@ -45,6 +55,21 @@ func SASRedactorForArgs(args []string) *strings.Replacer {
 // newSASRedactor removes known SAS credentials and their URL/JSON encodings
 // from command diagnostics.
 func newSASRedactor(credentials ...string) *strings.Replacer {
+	// SDK request URLs can reorder SAS fields and normalize percent escapes.
+	// Redact the signing value independently so those URLs cannot leak it.
+	for _, token := range credentials {
+		for _, field := range strings.Split(strings.TrimPrefix(token, "?"), "&") {
+			key, value, ok := strings.Cut(field, "=")
+			decodedKey, _ := url.QueryUnescape(key)
+			if !ok || !strings.EqualFold(decodedKey, "sig") {
+				continue
+			}
+			credentials = append(credentials, value)
+			if decoded, err := url.QueryUnescape(value); err == nil {
+				credentials = append(credentials, decoded)
+			}
+		}
+	}
 	secrets := make(map[string]struct{})
 	for _, token := range credentials {
 		if token == "" {

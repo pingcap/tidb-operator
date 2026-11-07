@@ -43,6 +43,9 @@ func (s stopBeforeBackup) Update(context.Context, *br.Backup, *br.BackupConditio
 // TestCredentialsNeverReachManagerLogs runs startup and command success/failure with sentinel credentials.
 func TestCredentialsNeverReachManagerLogs(t *testing.T) {
 	const sentinel = "sv=2025-01-01&sig=sentinel%2Bcredential%3D"
+	normalized, err := url.ParseQuery(sentinel)
+	require.NoError(t, err)
+	normalizedURL := "https://account.blob.core.windows.net/data?" + normalized.Encode()
 	var output bytes.Buffer
 	state := klog.CaptureState()
 	t.Cleanup(state.Restore)
@@ -62,7 +65,7 @@ func TestCredentialsNeverReachManagerLogs(t *testing.T) {
 		patches := gomonkey.ApplyFunc(exec.CommandContext, func(_ context.Context, _ string, args ...string) *exec.Cmd {
 			require.Contains(t, strings.Join(args, " "), url.QueryEscape(sentinel))
 			if mode == "child failure" {
-				return exec.Command("/bin/sh", "-c", `printf '[ERROR] %s\n' "$1"; printf '%s\n' "$2" >&2; exit 1`, "br", sentinel, url.QueryEscape(sentinel)) //nolint:noctx
+				return exec.Command("/bin/sh", "-c", `printf '[ERROR] %s\n' "$1"; printf '%s\n' "$2" "$3" >&2; exit 1`, "br", sentinel, url.QueryEscape(sentinel), normalizedURL) //nolint:noctx
 			}
 			binary := "/usr/bin/true"
 			if mode == "start failure" {
@@ -82,6 +85,7 @@ func TestCredentialsNeverReachManagerLogs(t *testing.T) {
 			require.Error(t, err)
 			require.NotContains(t, err.Error(), sentinel)
 			require.NotContains(t, err.Error(), url.QueryEscape(sentinel))
+			require.NotContains(t, err.Error(), "sentinel%2Bcredential")
 		}
 	}
 	klog.Flush()

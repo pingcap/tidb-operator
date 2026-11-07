@@ -50,3 +50,39 @@ func TestSASRedactorForNativeBRFlags(t *testing.T) {
 		require.Equal(t, "[ERROR] [REDACTED]", redactor.Replace("[ERROR] "+token))
 	}
 }
+
+func TestSASRedactorForMalformedQuery(t *testing.T) {
+	const synthetic = "sv=2025&sig=malformed-signature%2B"
+	for _, query := range []string{
+		"account-name=account;sas-token=" + url.QueryEscape(synthetic),
+		"SAS_TOKEN=" + url.QueryEscape(synthetic),
+		"SAS%2dTOKEN=" + url.QueryEscape(synthetic),
+		"sas-token=" + url.QueryEscape(synthetic) + ";account-name=account",
+		"sas-token=invalid%ZZsignature",
+	} {
+		args := []string{"--storage=azure://data/?" + query}
+		original := args[0]
+		redactor := SASRedactorForArgs(args)
+		safe := redactor.Replace(args[0])
+		require.NotContains(t, safe, "signature")
+		require.Contains(t, safe, "[REDACTED]")
+		if !strings.Contains(query, "%ZZ") {
+			require.NotContains(t, redactor.Replace(synthetic), "malformed-signature")
+		}
+		require.Equal(t, original, args[0])
+	}
+}
+
+func TestSASRedactorForNormalizedSignature(t *testing.T) {
+	const synthetic = "sv=2025&sig=MiXeD%2bSignature%2fValue%3d&sp=rl"
+	redactor := SASRedactorForArgs([]string{"--azblob.sas-token=?" + strings.Replace(synthetic, "sig=", "SIG=", 1)})
+	// Azure request URLs may reorder SAS fields and normalize percent escapes.
+	for _, output := range []string{
+		"https://account.blob.core.windows.net/data?sig=MiXeD%2BSignature%2FValue%3D&sp=rl&sv=2025",
+		"[ERROR] sig=MiXeD+Signature/Value=",
+	} {
+		require.NotContains(t, redactor.Replace(output), "MiXeD")
+		require.Contains(t, redactor.Replace(output), "[REDACTED]")
+	}
+	require.Equal(t, "mixed+signature/value=", redactor.Replace("mixed+signature/value="), "literal signature characters are case-sensitive")
+}
