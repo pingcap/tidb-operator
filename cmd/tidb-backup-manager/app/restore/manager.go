@@ -23,7 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -75,12 +74,7 @@ func (rm *Manager) ProcessRestore() error {
 		return fmt.Errorf("no br config in %s", rm)
 	}
 
-	crData, err := json.Marshal(restore)
-	if err != nil {
-		klog.Errorf("failed to marshal restore %v to json, err: %s", restore, err)
-	} else {
-		klog.Infof("start to process restore: %s", string(crData))
-	}
+	klog.Infof("start to process restore %s/%s: type=%s", restore.Namespace, restore.Name, restore.Spec.Type)
 
 	return rm.performRestore(ctx, restore.DeepCopy())
 }
