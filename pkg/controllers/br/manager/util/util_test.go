@@ -94,3 +94,37 @@ func TestGenerateStorageCertEnvAzblob(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateStorageCertEnvCephEndpoint(t *testing.T) {
+	for _, tt := range []struct {
+		name, endpoint, want string
+		invalid              bool
+	}{
+		{name: "https", endpoint: "https://ceph.example:8443", want: "https://ceph.example:8443"},
+		{name: "http", endpoint: "http://ceph.example:8080", want: "http://ceph.example:8080"},
+		{name: "legacy no scheme", endpoint: "ceph.example:8080", want: "http://ceph.example:8080"},
+		{name: "legacy empty", endpoint: "", want: "http://"},
+		{name: "unsupported scheme", endpoint: "ftp://ceph.example", invalid: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Provider: v1alpha1.S3StorageProviderTypeCeph, Endpoint: tt.endpoint}}
+			original := provider.DeepCopy()
+			envs, reason, err := GenerateStorageCertEnv(context.Background(), "test", false, provider, fake.NewClientBuilder().Build())
+			g := NewGomegaWithT(t)
+			g.Expect(provider).To(Equal(*original))
+			if tt.invalid {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(reason).To(Equal("InvalidS3Endpoint"))
+				return
+			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(reason).To(BeEmpty())
+			g.Expect(envs).To(ContainElement(corev1.EnvVar{Name: "S3_ENDPOINT", Value: tt.want}))
+			if tt.endpoint == "https://ceph.example:8443" {
+				args, err := GenStorageArgsForFlag(provider, "storage")
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(args).To(ContainElement("--s3.endpoint=" + tt.endpoint))
+			}
+		})
+	}
+}
