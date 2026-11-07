@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
@@ -496,6 +497,9 @@ func newTiProxyAPIClient(ctx context.Context, state State, c client.Client) (tip
 	}
 
 	tiproxy := state.TiProxy()
+	if err := runtime.ValidateInstanceName(tiproxy.Name); err != nil {
+		return nil, err
+	}
 	addr := coreutil.InstanceAdvertiseAddress[scope.TiProxy](ck, tiproxy, coreutil.TiProxyAPIPort(tiproxy))
 	return tiproxyapi.NewTiProxyClient(addr, tiproxyRequestTimeout, tlsConfig), nil
 }

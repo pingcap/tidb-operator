@@ -183,6 +183,20 @@ func TestTaskContextClusterAllowsGroupName(t *testing.T) {
 	assert.Equal(t, cluster.Name, state.cluster.Name)
 }
 
+func TestTaskValidateInstanceName(t *testing.T) {
+	for _, name := range []string{"invalid", "-suffix", "prefix-", "valid-name"} {
+		t.Run(name, func(t *testing.T) {
+			state := newFakeObjectState(fake.FakeObj[v1alpha1.PD](name))
+			result, _ := task.RunTask(t.Context(), TaskValidateInstanceName(state))
+			expected := task.SFail
+			if name == "valid-name" {
+				expected = task.SComplete
+			}
+			assert.Equal(t, expected, result.Status())
+		})
+	}
+}
+
 func TestTaskContextPod(t *testing.T) {
 	const name = "bbb-abc"
 	cases := []struct {
@@ -195,9 +209,9 @@ func TestTaskContextPod(t *testing.T) {
 		expectedObj    *corev1.Pod
 	}{
 		{
-			desc:           "invalid instance name",
+			desc:           "invalid instance name without pod",
 			state:          newFakeObjectState(fake.FakeObj[v1alpha1.PD]("invalid")),
-			expectedResult: task.SFail,
+			expectedResult: task.SComplete,
 		},
 		{
 			desc: "success",

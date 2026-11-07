@@ -46,6 +46,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
 		// get pod and check whether the cluster is suspending
+		common.TaskValidateInstanceName(state),
 		common.TaskContextPod[scope.TiFlash](state, r.Client),
 
 		// get info from pd

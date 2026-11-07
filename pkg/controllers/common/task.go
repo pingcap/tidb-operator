@@ -167,17 +167,22 @@ type ContextPodNewer[
 	SetPod(pod *corev1.Pod)
 }
 
+// TaskValidateInstanceName guards tasks that derive names or addresses from an instance name.
+func TaskValidateInstanceName[F client.Object](state ObjectState[F]) task.Task {
+	return task.NameTaskFunc("ValidateInstanceName", func(ctx context.Context) task.Result {
+		if err := runtime.ValidateInstanceName(state.Object().GetName()); err != nil {
+			return task.Fail().With("invalid instance: %v", err)
+		}
+		return task.Complete().With("instance name is valid")
+	})
+}
+
 func TaskContextPod[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,
 ](state ContextPodNewer[F], c client.Client) task.Task {
 	return task.NameTaskFunc("ContextPod", func(ctx context.Context) task.Result {
-		// Cleanup that only needs labels must run before this name check.
-		// Pod/store-dependent cleanup still requires a resolvable identity.
-		if err := runtime.ValidateInstanceName(state.Object().GetName()); err != nil {
-			return task.Fail().With("invalid instance: %v", err)
-		}
 		pod, err := apicall.GetPod[S](ctx, c, state.Object())
 		if err != nil {
 			if errors.IsNotFound(err) {

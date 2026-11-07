@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -51,6 +52,9 @@ func TaskContextInfoFromTiProxy(state *ReconcileContext, c client.Client) task.T
 			}
 		}
 		tiproxy := state.TiProxy()
+		if err := runtime.ValidateInstanceName(tiproxy.Name); err != nil {
+			return task.Fail().With("invalid instance: %v", err)
+		}
 		addr := coreutil.InstanceAdvertiseAddress[scope.TiProxy](ck, tiproxy, coreutil.TiProxyAPIPort(tiproxy))
 		state.TiProxyClient = tiproxyapi.NewTiProxyClient(addr, tiproxyRequestTimeout, tlsConfig)
 		healthy, err := state.TiProxyClient.IsHealthy(ctx)

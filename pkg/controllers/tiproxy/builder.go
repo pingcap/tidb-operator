@@ -72,6 +72,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// See offline drain branch: avoid TaskStatus not-ready Retry during graceful delete.
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
+		common.TaskValidateInstanceName(state),
 		tasks.TaskClearHPAScaleInAnnotation(state, r.Client),
 		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),
 		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.TiProxy](state, r.Client),
