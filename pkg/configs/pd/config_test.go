@@ -186,3 +186,47 @@ level = "info"`),
 	assert.Equal(t, "/var/lib/pd-tls/tls.crt", cfg2.Security.CertPath)
 	assert.Equal(t, "/var/lib/pd-tls/tls.key", cfg2.Security.KeyPath)
 }
+
+func TestOverlayValidatesOnlyBootstrapPeers(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		joining, peerBoot bool
+		wantErr           bool
+	}{
+		{name: "joining ignores malformed peer", joining: true, peerBoot: true},
+		{name: "bootstrap ignores non-bootstrap peer"},
+		{name: "bootstrap rejects malformed member", peerBoot: true, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cluster := &v1alpha1.Cluster{}
+			cluster.Status.PD = "http://existing:2379"
+			current := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Name: "instance-abc", Namespace: "test"}}
+			current.Annotations = map[string]string{v1alpha1.AnnoKeyInitialClusterNum: "1"}
+			peer := current.DeepCopy()
+			peer.Name = "invalid"
+			if tc.peerBoot {
+				current.Annotations[v1alpha1.AnnoKeyInitialClusterNum] = "2"
+			} else {
+				peer.Annotations = nil
+			}
+			if tc.joining {
+				current.Annotations = nil
+			}
+			cfg := &Config{}
+			var err error
+			require.NotPanics(t, func() { err = cfg.Overlay(cluster, current, []*v1alpha1.PD{current, peer}) })
+			if tc.wantErr {
+				require.ErrorContains(t, err, "invalid bootstrap peer")
+				require.Empty(t, cfg.InitialCluster)
+			} else {
+				require.NoError(t, err)
+				if tc.joining {
+					require.NotEmpty(t, cfg.Join)
+				} else {
+					require.Contains(t, cfg.InitialCluster, "instance-abc=")
+					require.NotContains(t, cfg.InitialCluster, "invalid")
+				}
+			}
+		})
+	}
+}

@@ -37,11 +37,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiProxy](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
-		common.TaskContextPod[scope.TiProxy](state, r.Client),
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
 			common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, common.DefaultInstanceSubresourceLister),
 		),
+		common.TaskContextPod[scope.TiProxy](state, r.Client),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
@@ -72,6 +72,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// See offline drain branch: avoid TaskStatus not-ready Retry during graceful delete.
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
+		common.TaskValidateInstanceName(state),
 		tasks.TaskClearHPAScaleInAnnotation(state, r.Client),
 		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),
 		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.TiProxy](state, r.Client),

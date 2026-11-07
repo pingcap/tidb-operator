@@ -538,3 +538,12 @@ func TestTaskDrainPodForDeleteDeletesHPAScaleInAfterDelayFromDeletion(t *testing
 	err := fc.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{})
 	assert.True(t, apierrors.IsNotFound(err))
 }
+
+func TestTaskContextInfoFromTiProxyInvalidName(t *testing.T) {
+	tiproxy := &v1alpha1.TiProxy{ObjectMeta: metav1.ObjectMeta{Name: "invalid"}}
+	s := &ReconcileContext{State: &state{cluster: localTestCluster(), tiproxy: tiproxy}}
+	result, _ := task.RunTask(t.Context(), TaskContextInfoFromTiProxy(s, client.NewFakeClient()))
+	require.Equal(t, task.SFail, result.Status())
+	require.Contains(t, result.Message(), "invalid instance")
+	require.Nil(t, s.TiProxyClient)
+}

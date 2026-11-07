@@ -55,6 +55,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// get pod and check whether the cluster is suspending
+		common.TaskValidateInstanceName(state),
 		common.TaskContextPod[scope.TiKV](state, r.Client),
 		// get info from pd
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),

@@ -35,7 +35,7 @@ func TestSuspendedWithoutPDClient(t *testing.T) {
 	cluster := &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default", Generation: 1}}
 	cluster.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendCompute: true}
 	cluster.Status.PD = "http://pd:2379"
-	instance := &v1alpha1.TiFlash{ObjectMeta: metav1.ObjectMeta{Name: "instance", Namespace: "default", Generation: 1}}
+	instance := &v1alpha1.TiFlash{ObjectMeta: metav1.ObjectMeta{Name: "instance-abc", Namespace: "default", Generation: 1}}
 	instance.OwnerReferences = []metav1.OwnerReference{{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: "TiFlashGroup", Name: "group", Controller: ptr.To(true)}}
 	instance.Spec.Cluster.Name = cluster.Name
 	instance.Spec.Offline = ptr.To(true)

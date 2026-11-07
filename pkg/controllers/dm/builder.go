@@ -50,6 +50,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskFinalizerAdd[scope.DM](state, r.Client),
 
 		// get pod and check whether the cluster is suspending
+		common.TaskValidateInstanceName(state),
 		common.TaskContextPod[scope.DM](state, r.Client),
 		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.DM](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.DM](state),

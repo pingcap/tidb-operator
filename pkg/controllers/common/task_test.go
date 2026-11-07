@@ -99,7 +99,7 @@ func TestTaskContextObject(t *testing.T) {
 
 func TestTaskContextCluster(t *testing.T) {
 	const ns = "aaa"
-	const name = "bbb"
+	const name = "bbb-abc"
 	cases := []struct {
 		desc          string
 		state         *fakeObjectState[*v1alpha1.PD]
@@ -119,6 +119,13 @@ func TestTaskContextCluster(t *testing.T) {
 			objs: []client.Object{
 				fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 			},
+			expectedResult: task.SComplete,
+			expectedObj:    fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
+		},
+		{
+			desc:           "legacy invalid instance can reach deletion tasks",
+			state:          newFakeObjectState(fake.FakeObj("invalid", func(obj *v1alpha1.PD) *v1alpha1.PD { obj.Namespace = ns; obj.Spec.Cluster.Name = name; return obj })),
+			objs:           []client.Object{fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns))},
 			expectedResult: task.SComplete,
 			expectedObj:    fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 		},
@@ -164,8 +171,34 @@ func TestTaskContextCluster(t *testing.T) {
 	}
 }
 
+func TestTaskContextClusterAllowsGroupName(t *testing.T) {
+	group := &v1alpha1.PDGroup{}
+	group.Name, group.Namespace = "group", "test"
+	group.Spec.Cluster.Name = "cluster"
+	cluster := &v1alpha1.Cluster{}
+	cluster.Name, cluster.Namespace = "cluster", "test"
+	state := newFakeObjectState(group)
+	result, _ := task.RunTask(context.Background(), TaskContextCluster[scope.PDGroup](state, client.NewFakeClient(cluster)))
+	assert.Equal(t, task.SComplete, result.Status())
+	assert.Equal(t, cluster.Name, state.cluster.Name)
+}
+
+func TestTaskValidateInstanceName(t *testing.T) {
+	for _, name := range []string{"invalid", "-suffix", "prefix-", "valid-name"} {
+		t.Run(name, func(t *testing.T) {
+			state := newFakeObjectState(fake.FakeObj[v1alpha1.PD](name))
+			result, _ := task.RunTask(t.Context(), TaskValidateInstanceName(state))
+			expected := task.SFail
+			if name == "valid-name" {
+				expected = task.SComplete
+			}
+			assert.Equal(t, expected, result.Status())
+		})
+	}
+}
+
 func TestTaskContextPod(t *testing.T) {
-	const name = "bbb"
+	const name = "bbb-abc"
 	cases := []struct {
 		desc          string
 		state         *fakeObjectState[*v1alpha1.PD]
@@ -175,6 +208,11 @@ func TestTaskContextPod(t *testing.T) {
 		expectedResult task.Status
 		expectedObj    *corev1.Pod
 	}{
+		{
+			desc:           "invalid instance name without pod",
+			state:          newFakeObjectState(fake.FakeObj[v1alpha1.PD]("invalid")),
+			expectedResult: task.SComplete,
+		},
 		{
 			desc: "success",
 			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -550,6 +588,34 @@ func TestTaskServerLabels(t *testing.T) {
 				assert.True(tt, setLabelsCalled, c.desc)
 				assert.Equal(tt, c.expectedLabels, c.state.serverLabels, c.desc)
 			}
+		})
+	}
+}
+
+type peerSliceState struct {
+	*fakeObjectState[*v1alpha1.PD]
+	peers []*v1alpha1.PD
+}
+
+func (s *peerSliceState) SetInstanceSlice(peers []*v1alpha1.PD) { s.peers = peers }
+
+func TestTaskContextPeerSlicePreservesAllPeers(t *testing.T) {
+	for _, peerName := range []string{"pd-xyz", "invalid", "-suffix", "prefix-"} {
+		t.Run(peerName, func(t *testing.T) {
+			current := &v1alpha1.PD{ObjectMeta: metav1.ObjectMeta{Name: "pd-abc", Namespace: "test"}}
+			current.Spec.Cluster.Name = "cluster"
+			peer := current.DeepCopy()
+			peer.Name = peerName
+			peer.Labels = map[string]string{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyCluster:   "cluster",
+				v1alpha1.LabelKeyComponent: "pd",
+			}
+			state := &peerSliceState{fakeObjectState: newFakeObjectState(current)}
+			result, _ := task.RunTask(t.Context(), TaskContextPeerSlice[scope.PD](state, client.NewFakeClient(peer)))
+			assert.Equal(t, task.SComplete, result.Status())
+			assert.Len(t, state.peers, 1)
+			assert.Equal(t, peerName, state.peers[0].Name)
 		})
 	}
 }

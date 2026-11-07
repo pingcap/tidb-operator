@@ -45,6 +45,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 		common.TaskFinalizerAdd[scope.Router](state, r.Client),
 
+		common.TaskValidateInstanceName(state),
 		common.TaskContextPod[scope.Router](state, r.Client),
 		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.Router](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.Router](state),
