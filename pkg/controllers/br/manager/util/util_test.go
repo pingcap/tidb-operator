@@ -101,6 +101,11 @@ func TestGenerateStorageCertEnvCephEndpoint(t *testing.T) {
 		invalid              bool
 	}{
 		{name: "https", endpoint: "https://ceph.example:8443", want: "https://ceph.example:8443"},
+		{name: "https missing hostname", endpoint: "https://:8443", invalid: true},
+		{name: "https empty authority", endpoint: "https://", invalid: true},
+		{name: "https invalid escape", endpoint: "https://bad%ZZ", invalid: true},
+		{name: "https ipv6", endpoint: "https://[::1]:8443", want: "https://[::1]:8443"},
+		{name: "legacy http missing hostname", endpoint: "http://:8080", want: "http://:8080"},
 		{name: "http", endpoint: "http://ceph.example:8080", want: "http://ceph.example:8080"},
 		{name: "legacy no scheme", endpoint: "ceph.example:8080", want: "http://ceph.example:8080"},
 		{name: "legacy empty", endpoint: "", want: "http://"},

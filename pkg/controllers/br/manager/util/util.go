@@ -65,6 +65,12 @@ func generateS3CertEnvVar(s3 *brv1alpha1.S3StorageProvider, useKMS bool) ([]core
 		if !strings.HasPrefix(s3.Endpoint, "http://") && !strings.HasPrefix(s3.Endpoint, "https://") {
 			return envVars, "InvalidS3Endpoint", fmt.Errorf("ceph endpoint URI %s must start with http:// or https://", s3.Endpoint)
 		}
+		if strings.HasPrefix(s3.Endpoint, "https://") {
+			endpoint, err := url.Parse(s3.Endpoint)
+			if err != nil || endpoint.Hostname() == "" {
+				return envVars, "InvalidS3Endpoint", fmt.Errorf("ceph HTTPS endpoint URI %s must contain a valid hostname", s3.Endpoint)
+			}
+		}
 	case brv1alpha1.S3StorageProviderTypeAWS:
 		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
 		if s3.StorageClass == "" {
