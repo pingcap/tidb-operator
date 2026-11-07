@@ -36,6 +36,8 @@ func SASRedactorForArgs(args []string) *strings.Replacer {
 		if !ok {
 			continue
 		}
+		// URL fragments are not part of the SAS token parsed by BR.
+		query, _, _ = strings.Cut(query, "#")
 		// Diagnostics must also hide credentials in arguments BR will reject.
 		for _, field := range strings.FieldsFunc(query, func(r rune) bool { return r == '&' || r == ';' }) {
 			key, value, ok := strings.Cut(field, "=")

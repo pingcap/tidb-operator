@@ -86,3 +86,37 @@ func TestSASRedactorForNormalizedSignature(t *testing.T) {
 	}
 	require.Equal(t, "mixed+signature/value=", redactor.Replace("mixed+signature/value="), "literal signature characters are case-sensitive")
 }
+
+func TestSASRedactorForURLFragment(t *testing.T) {
+	for _, signature := range []string{"fragment-secret", "fragment-secret%23part"} {
+		t.Run(signature, func(t *testing.T) {
+			token := "sv=2025&sig=" + signature
+			storageURL := "azure://data/?sas-token=" + url.QueryEscape(token) + "#label"
+			parsed, err := url.Parse(storageURL)
+			require.NoError(t, err)
+			parsedToken := parsed.Query().Get("sas-token")
+			require.Equal(t, token, parsedToken)
+			fields, err := url.ParseQuery(parsedToken)
+			require.NoError(t, err)
+			for _, args := range [][]string{
+				{"--storage=" + storageURL},
+				{"--full-backup-storage", storageURL},
+			} {
+				original := append([]string(nil), args...)
+				redactor := SASRedactorForArgs(args)
+				for _, output := range []string{
+					strings.Join(args, " "),
+					parsedToken,
+					url.QueryEscape(parsedToken),
+					"https://account.blob.core.windows.net/data?" + fields.Encode(),
+					fields.Get("sig"),
+				} {
+					require.NotContains(t, redactor.Replace(output), "fragment-secret")
+					require.Contains(t, redactor.Replace(output), "[REDACTED]")
+				}
+				require.Equal(t, original, args)
+				require.Contains(t, redactor.Replace(storageURL), "#label")
+			}
+		})
+	}
+}

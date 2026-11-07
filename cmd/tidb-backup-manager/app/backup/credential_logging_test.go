@@ -63,7 +63,7 @@ func TestCredentialsNeverReachManagerLogs(t *testing.T) {
 	require.ErrorIs(t, m.ProcessBackup(), stop)
 	for _, mode := range []string{"success", "start failure", "child failure"} {
 		patches := gomonkey.ApplyFunc(exec.CommandContext, func(_ context.Context, _ string, args ...string) *exec.Cmd {
-			require.Contains(t, strings.Join(args, " "), url.QueryEscape(sentinel))
+			require.Contains(t, strings.Join(args, " "), url.QueryEscape(sentinel)+"#label")
 			if mode == "child failure" {
 				return exec.Command("/bin/sh", "-c", `printf '[ERROR] %s\n' "$1"; printf '%s\n' "$2" "$3" >&2; exit 1`, "br", sentinel, url.QueryEscape(sentinel), normalizedURL) //nolint:noctx
 			}
@@ -74,7 +74,7 @@ func TestCredentialsNeverReachManagerLogs(t *testing.T) {
 			return exec.Command(binary) //nolint:noctx // Isolated factory replacement avoids recursively calling the patched function.
 		})
 		var rawOutput strings.Builder
-		err := (&Options{}).brCommandRunWithLogCallback(context.Background(), []string{"backup", "full", "--storage=azure://data/?sas-token=" + url.QueryEscape(sentinel)}, func(line string) { rawOutput.WriteString(line) })
+		err := (&Options{}).brCommandRunWithLogCallback(context.Background(), []string{"backup", "full", "--storage=azure://data/?sas-token=" + url.QueryEscape(sentinel) + "#label"}, func(line string) { rawOutput.WriteString(line) })
 		if mode == "child failure" {
 			require.Contains(t, rawOutput.String(), sentinel)
 		}
