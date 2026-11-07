@@ -24,7 +24,7 @@ import (
 )
 
 func TestSASRedactorForArgs(t *testing.T) {
-	const token = "sv=2025-01-01&sig=secret%2Bsignature%3D"
+	const token = "sv=2025-01-01&sig=secret%2Bsignature%3D" //nolint:gosec // G101: synthetic SAS token used to verify redaction.
 	const fullToken = token + "&sp=rl"
 	args := []string{"restore", "point", "--storage=azure://logs/path?sas-token=" + url.QueryEscape(token), "--full-backup-storage", "azure://full/path?sas-token=" + url.QueryEscape(fullToken)}
 	original := append([]string(nil), args...)
@@ -42,7 +42,7 @@ func TestSASRedactorForArgs(t *testing.T) {
 }
 
 func TestSASRedactorForNativeBRFlags(t *testing.T) {
-	const token = "sv=2025-01-01&sig=native-flag-secret"
+	const token = "sv=2025-01-01&sig=native-flag-secret" //nolint:gosec // G101: synthetic SAS token used to verify redaction.
 	for _, flags := range [][]string{{"--azblob.sas-token=" + token}, {"--azblob.sas-token", token}} {
 		args := append([]string{"backup", "full", "--storage=azure://data/"}, flags...)
 		redactor := SASRedactorForArgs(args)
