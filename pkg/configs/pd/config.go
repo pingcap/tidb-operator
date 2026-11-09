@@ -24,7 +24,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
@@ -108,7 +107,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 			return fmt.Errorf("unexpected number of replicas, expected is %v, current is %v", num, len(peers))
 		}
 		for _, peer := range peers {
-			if err := runtime.ValidateInstanceName(peer.Name); err != nil {
+			if err := coreutil.ValidateInstanceName(peer.Name); err != nil {
 				return fmt.Errorf("invalid bootstrap peer: %w", err)
 			}
 		}

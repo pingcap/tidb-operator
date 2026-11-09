@@ -170,7 +170,7 @@ type ContextPodNewer[
 // TaskValidateInstanceName guards tasks that derive names or addresses from an instance name.
 func TaskValidateInstanceName[F client.Object](state ObjectState[F]) task.Task {
 	return task.NameTaskFunc("ValidateInstanceName", func(ctx context.Context) task.Result {
-		if err := runtime.ValidateInstanceName(state.Object().GetName()); err != nil {
+		if err := coreutil.ValidateInstanceName(state.Object().GetName()); err != nil {
 			return task.Fail().With("invalid instance: %v", err)
 		}
 		return task.Complete().With("instance name is valid")

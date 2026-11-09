@@ -16,7 +16,6 @@
 package runtime
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -115,15 +114,6 @@ func RemoveOfflineCondition(s Instance) bool {
 	removed := meta.RemoveStatusCondition(&conditions, v1alpha1.StoreOfflinedConditionType)
 	s.SetConditions(conditions)
 	return removed
-}
-
-// ValidateInstanceName checks the prefix-suffix naming required by instance resources.
-func ValidateInstanceName(name string) error {
-	index := strings.LastIndexByte(name, '-')
-	if index <= 0 || index == len(name)-1 {
-		return fmt.Errorf("instance name %q must contain a non-empty prefix and suffix separated by '-'", name)
-	}
-	return nil
 }
 
 func NamePrefixAndSuffix(name string) (prefix, suffix string) {

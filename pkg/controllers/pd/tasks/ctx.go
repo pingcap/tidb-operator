@@ -24,7 +24,6 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/compatibility"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
@@ -81,7 +80,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if state.FeatureGates().Enabled(metav1alpha1.UsePDReadyAPI) {
 			version := semver.MustParse(pd.Spec.Version)
 			if compatibility.Check(version, compatibility.PDReadyAPI) {
-				if err := runtime.ValidateInstanceName(pd.Name); err != nil {
+				if err := coreutil.ValidateInstanceName(pd.Name); err != nil {
 					if !pd.DeletionTimestamp.IsZero() {
 						return task.Complete().With("skip ready check for deleting instance with invalid name")
 					}
