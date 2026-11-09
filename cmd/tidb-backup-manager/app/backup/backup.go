@@ -228,7 +228,9 @@ func (bo *Options) brCommandRunWithLogCallback(
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
 	}
 	bin := filepath.Join(v1alpha1.DirPathBRBin, "br")
-	klog.Infof("Running br command: %s %v", bin, fullArgs)
+	redactor := backupUtil.SASRedactorForArgs(fullArgs)
+	safeArgs := redactor.Replace(fmt.Sprint(fullArgs))
+	klog.Infof("Running br command: %s %v", bin, safeArgs)
 
 	e2eTestSimulate(bo)
 
@@ -243,7 +245,7 @@ func (bo *Options) brCommandRunWithLogCallback(
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", bo, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", bo, safeArgs, err)
 	}
 
 	var errMsg string
@@ -254,13 +256,13 @@ func (bo *Options) brCommandRunWithLogCallback(
 	for {
 		line, err := reader.ReadString('\n')
 		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
+			errMsg += redactor.Replace(line)
 		}
 		if logCallback != nil {
 			logCallback(line)
 		}
 
-		klog.Info(strings.ReplaceAll(line, "\n", ""))
+		klog.Info(redactor.Replace(strings.ReplaceAll(line, "\n", "")))
 		if err != nil {
 			if err != io.EOF {
 				klog.Errorf("read stdout error: %s", err.Error())
@@ -270,15 +272,15 @@ func (bo *Options) brCommandRunWithLogCallback(
 	}
 	tmpErr := <-stdErrCh
 	if len(tmpErr) > 0 {
-		klog.Info(string(tmpErr))
-		errMsg += string(tmpErr)
+		klog.Info(redactor.Replace(string(tmpErr)))
+		errMsg += redactor.Replace(string(tmpErr))
 	}
 	err = cmd.Wait()
 	if err != nil {
 		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %w", bo, errMsg, err)
 	}
 
-	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
+	klog.Infof("Run br commond %v for cluster %s successfully", safeArgs, bo)
 	return nil
 }
 

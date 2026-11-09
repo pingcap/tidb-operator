@@ -16,7 +16,6 @@ package backup
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -82,12 +81,8 @@ func (bm *Manager) ProcessBackup() error {
 		return errorutils.NewAggregate(errs)
 	}
 
-	crData, err := json.Marshal(backup)
-	if err != nil {
-		klog.Errorf("failed to marshal backup %v to json, err: %v", backup, err)
-	} else {
-		klog.Infof("start to process backup: %s", string(crData))
-	}
+	klog.Infof("start to process backup %s/%s: mode=%s type=%s phase=%s",
+		backup.Namespace, backup.Name, backup.Spec.Mode, backup.Spec.Type, backup.Status.Phase)
 
 	// we treat snapshot backup as restarted if its status is not scheduled when backup pod just start to run
 	// we will clean backup data before run br command

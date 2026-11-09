@@ -160,7 +160,9 @@ fix/lint: bin/golangci-lint
 unit:
 	go test -race ./cmd/feature-gen ./cmd/feature-log-lint
 	cd $(VALIDATION_TEST_PATH) && go test -race ./...
-	go test -race $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests/e2e | grep -v third_party) \
+	go test -race ./cmd/tidb-backup-manager/app/util \
+		./cmd/tidb-backup-manager/app/backup ./cmd/tidb-backup-manager/app/restore \
+		$$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests/e2e | grep -v third_party) \
 		-cover -coverprofile=coverage.txt -covermode=atomic
 	sed -i.bak '/generated/d;/fake.go/d' coverage.txt && rm coverage.txt.bak
 
