@@ -51,6 +51,9 @@ func TaskContextInfoFromTiProxy(state *ReconcileContext, c client.Client) task.T
 			}
 		}
 		tiproxy := state.TiProxy()
+		if err := coreutil.ValidateInstanceName(tiproxy.Name); err != nil {
+			return task.Fail().With("invalid instance: %v", err)
+		}
 		addr := coreutil.InstanceAdvertiseAddress[scope.TiProxy](ck, tiproxy, coreutil.TiProxyAPIPort(tiproxy))
 		state.TiProxyClient = tiproxyapi.NewTiProxyClient(addr, tiproxyRequestTimeout, tlsConfig)
 		healthy, err := state.TiProxyClient.IsHealthy(ctx)

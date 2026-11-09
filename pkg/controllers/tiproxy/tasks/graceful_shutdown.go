@@ -496,6 +496,9 @@ func newTiProxyAPIClient(ctx context.Context, state State, c client.Client) (tip
 	}
 
 	tiproxy := state.TiProxy()
+	if err := coreutil.ValidateInstanceName(tiproxy.Name); err != nil {
+		return nil, err
+	}
 	addr := coreutil.InstanceAdvertiseAddress[scope.TiProxy](ck, tiproxy, coreutil.TiProxyAPIPort(tiproxy))
 	return tiproxyapi.NewTiProxyClient(addr, tiproxyRequestTimeout, tlsConfig), nil
 }

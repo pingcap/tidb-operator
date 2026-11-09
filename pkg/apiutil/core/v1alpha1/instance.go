@@ -15,6 +15,8 @@
 package coreutil
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -52,6 +54,15 @@ func IsAvailable[
 	T runtime.Instance,
 ](f F, minReadySeconds int64, now time.Time) (bool, time.Duration) {
 	return scope.From[S](f).IsAvailable(minReadySeconds, now)
+}
+
+// ValidateInstanceName checks the prefix-suffix naming required by instance resources.
+func ValidateInstanceName(name string) error {
+	index := strings.LastIndexByte(name, '-')
+	if index <= 0 || index == len(name)-1 {
+		return fmt.Errorf("instance name %q must contain a non-empty prefix and suffix separated by '-'", name)
+	}
+	return nil
 }
 
 func NamePrefixAndSuffix[

@@ -50,6 +50,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskFinalizerAdd[scope.PD](state, r.Client),
 
 		// get pod
+		common.TaskValidateInstanceName(state),
 		common.TaskContextPod[scope.PD](state, r.Client),
 		common.TaskInstanceConditionVolumeCapacityExceedsRequest[scope.PD](state, r.Client),
 		common.TaskInstanceConditionSuspended[scope.PD](state),

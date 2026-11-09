@@ -103,6 +103,11 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, dm *v1alpha1.DM, peers []*v1
 		if num != int64(len(peers)) {
 			return fmt.Errorf("unexpected number of replicas, expected is %v, current is %v", num, len(peers))
 		}
+		for _, peer := range peers {
+			if err := coreutil.ValidateInstanceName(peer.Name); err != nil {
+				return fmt.Errorf("invalid bootstrap peer: %w", err)
+			}
+		}
 		c.InitialCluster = getInitialCluster(cluster, peers)
 		c.InitialClusterState = InitialClusterStateNew
 	}

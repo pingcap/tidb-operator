@@ -80,6 +80,12 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if state.FeatureGates().Enabled(metav1alpha1.UsePDReadyAPI) {
 			version := semver.MustParse(pd.Spec.Version)
 			if compatibility.Check(version, compatibility.PDReadyAPI) {
+				if err := coreutil.ValidateInstanceName(pd.Name); err != nil {
+					if !pd.DeletionTimestamp.IsZero() {
+						return task.Complete().With("skip ready check for deleting instance with invalid name")
+					}
+					return task.Fail().With("invalid instance: %v", err)
+				}
 				var err error
 				ready, err = state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd), pd.Spec.Version)
 				if err != nil || !ready {
