@@ -15,6 +15,7 @@ package monitor
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"text/template"
 	"time"
@@ -1332,6 +1333,35 @@ func TestGetMonitorVolumes(t *testing.T) {
 	}
 }
 
+func TestPrometheusAdminAPIOptions(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		config   *v1alpha1.PrometheusConfiguration
+		adminAPI string
+	}{
+		{name: "default"},
+		{name: "other options", config: &v1alpha1.PrometheusConfiguration{CommandOptions: []string{"--web.read-timeout=5m"}}},
+		{name: "explicit opt-in", config: &v1alpha1.PrometheusConfiguration{CommandOptions: []string{"--web.enable-admin-api"}}, adminAPI: "--web.enable-admin-api"},
+		{name: "explicit opt-out", config: &v1alpha1.PrometheusConfiguration{CommandOptions: []string{"--no-web.enable-admin-api"}}, adminAPI: "--no-web.enable-admin-api"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			monitor := &v1alpha1.TidbMonitor{Spec: v1alpha1.TidbMonitorSpec{
+				Prometheus: v1alpha1.PrometheusSpec{Config: tc.config},
+			}}
+			container := getMonitorPrometheusContainer(monitor, 0)
+			command := container.Command[2]
+			if tc.adminAPI == "" {
+				g.Expect(command).NotTo(ContainSubstring("--web.enable-admin-api"))
+			} else {
+				g.Expect(strings.Count(command, "web.enable-admin-api")).To(Equal(1))
+				g.Expect(command).To(ContainSubstring(tc.adminAPI))
+			}
+			g.Expect(command).To(ContainSubstring("--web.enable-lifecycle"))
+		})
+	}
+}
+
 func TestGetMonitorPrometheusContainer(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -1375,7 +1405,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Command: []string{
 					"/bin/sh",
 					"-c",
-					"sed -e '5s/[()]//g' -e 's/SHARD//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$()/'$(SHARD)'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
+					"sed -e '5s/[()]//g' -e 's/SHARD//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$()/'$(SHARD)'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					{
@@ -1432,7 +1462,8 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
-						MountPath: "/data",
+						MountPath: "/data/prometheus",
+						SubPath:   "prometheus",
 					},
 					{
 						Name:      "prometheus-rules",
@@ -1557,7 +1588,8 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
-						MountPath: "/data",
+						MountPath: "/data/grafana",
+						SubPath:   "grafana",
 					},
 					{
 						Name:      "datasource",
@@ -1720,7 +1752,8 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
-						MountPath: "/data",
+						MountPath: "/data/prometheus",
+						SubPath:   "prometheus",
 					},
 				},
 			},
