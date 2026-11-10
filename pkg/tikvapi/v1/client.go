@@ -15,6 +15,7 @@
 package tikvapi
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -24,6 +25,8 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
+
+	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 )
 
 const (
@@ -51,7 +54,8 @@ func NewTiKVClient(url string, timeout time.Duration, tlsConfig *tls.Config, dis
 	return &tikvClient{
 		url: url,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			CheckRedirect: httputil.RejectRedirect,
+			Timeout:       timeout,
 			Transport: &http.Transport{
 				TLSClientConfig:       tlsConfig,
 				DisableKeepAlives:     disableKeepalive,
@@ -68,12 +72,28 @@ func NewTiKVClient(url string, timeout time.Duration, tlsConfig *tls.Config, dis
 func (c *tikvClient) GetLeaderCount() (int, error) {
 	// we need to get the region leader count via the metrics API.
 	apiURL := fmt.Sprintf("%s/%s", c.url, metricsPath)
-	transport := c.httpClient.Transport
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, apiURL, http.NoBody)
+	if err != nil {
+		return 0, fmt.Errorf("fail to fetch metric families from %s, error: %w", apiURL, err)
+	}
+	// Use the configured client so its timeout and redirect policy also apply
+	// to metrics requests.
+	req.Header.Set("Accept", "application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;"+
+		"encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3")
+	//nolint:bodyclose,gosec // bodyclose: handled by DeferClose; gosec: URL is constructed from internal config
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("fail to fetch metric families from %s, error: %w", apiURL, err)
+	}
+	defer httputil.DeferClose(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("fail to fetch metric families from %s: status %d", apiURL, resp.StatusCode)
+	}
 	mfChan := make(chan *dto.MetricFamily, metricChanSize)
 	errChan := make(chan error, 1)
 
 	go func() {
-		if err := prom2json.FetchMetricFamilies(apiURL, mfChan, transport); err != nil {
+		if err := prom2json.ParseResponse(resp, mfChan); err != nil {
 			errChan <- fmt.Errorf("fail to fetch metric families from %s, error: %w", apiURL, err)
 			return
 		}

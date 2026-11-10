@@ -24,6 +24,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -48,14 +49,15 @@ func TaskContextInfoFromDM(state *ReconcileContext, c client.Client) task.Task {
 				return task.Fail().With("cannot get tls config from secret: %v", err)
 			}
 			httpClient = &http.Client{
-				Timeout: healthCheckTimeout,
+				CheckRedirect: httputil.RejectRedirect,
+				Timeout:       healthCheckTimeout,
 				Transport: &http.Transport{
 					TLSClientConfig: tlsConfig,
 				},
 			}
 			scheme = "https"
 		} else {
-			httpClient = &http.Client{Timeout: healthCheckTimeout}
+			httpClient = &http.Client{Timeout: healthCheckTimeout, CheckRedirect: httputil.RejectRedirect}
 		}
 
 		url := fmt.Sprintf("%s://%s/api/v1/cluster/info", scheme, addr)

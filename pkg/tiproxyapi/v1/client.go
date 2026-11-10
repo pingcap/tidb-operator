@@ -77,7 +77,8 @@ func NewTiProxyClient(addr string, timeout time.Duration, tlsConfig *tls.Config)
 	return &tiproxyClient{
 		url: scheme + addr,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			CheckRedirect: httputil.RejectRedirect,
+			Timeout:       timeout,
 			Transport: &http.Transport{
 				TLSClientConfig:       tlsConfig,
 				DisableKeepAlives:     disableKeepalive,

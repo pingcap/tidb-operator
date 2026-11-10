@@ -53,8 +53,9 @@ func NewClient(url string, timeout time.Duration, tlsConfig *tls.Config) Client 
 	return &client{
 		url: url,
 		httpClient: &http.Client{
-			Timeout:   timeout,
-			Transport: &http.Transport{TLSClientConfig: tlsConfig},
+			CheckRedirect: httputil.RejectRedirect,
+			Timeout:       timeout,
+			Transport:     &http.Transport{TLSClientConfig: tlsConfig},
 		},
 		tlsConfig: tlsConfig,
 	}
