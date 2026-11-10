@@ -57,13 +57,27 @@ func TestTaskService(t *testing.T) {
 			expectedStatus: task.SComplete,
 		},
 		{
-			desc:  "internal svc has exists",
+			desc:  "internal svc already exists",
 			state: fakeState(),
 			objs: []client.Object{
-				fake.FakeObj[corev1.Service]("aaa-pd"),
+				newInternalService(fakePDGroup()),
 			},
 
 			expectedStatus: task.SComplete,
+		},
+		{
+			desc:  "internal svc is now controlled by the cluster",
+			state: fakeState(),
+			objs: []client.Object{
+				func() *corev1.Service {
+					svc := newInternalService(fakePDGroup())
+					svc.OwnerReferences[0].Kind = "Cluster"
+					svc.OwnerReferences[0].UID = "cluster"
+					return svc
+				}(),
+			},
+
+			expectedStatus: task.SFail,
 		},
 		{
 			desc:          "apply headless svc with unexpected err",
@@ -73,7 +87,7 @@ func TestTaskService(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc:  "apply internal svc with unexpected err",
+			desc:  "create internal svc with unexpected err",
 			state: fakeState(),
 			objs: []client.Object{
 				newHeadlessService(fakePDGroup()),
@@ -83,7 +97,7 @@ func TestTaskService(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc:  "all svcs are updated with unexpected err",
+			desc:  "patch existing internal svc with unexpected err",
 			state: fakeState(),
 			objs: []client.Object{
 				newHeadlessService(fakePDGroup()),
@@ -91,7 +105,7 @@ func TestTaskService(t *testing.T) {
 			},
 			unexpectedErr: true,
 
-			expectedStatus: task.SComplete,
+			expectedStatus: task.SFail,
 		},
 	}
 
@@ -107,11 +121,12 @@ func TestTaskService(t *testing.T) {
 			}
 
 			if c.unexpectedErr {
-				// cannot update svc
-				fc.WithError("patch", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+				err := errors.NewInternalError(fmt.Errorf("fake internal err"))
+				fc.WithError("patch", "*", err)
+				fc.WithError("create", "*", err)
 			}
 
-			res, done := task.RunTask(ctx, TaskService(c.state, fc))
+			res, done := task.RunTask(ctx, TaskService(c.state, fc, fc))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -126,6 +141,7 @@ func TestTaskService(t *testing.T) {
 
 func fakePDGroup() *v1alpha1.PDGroup {
 	return fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+		obj.UID = "pdgroup"
 		obj.Spec.Cluster.Name = "aaa"
 		return obj
 	})

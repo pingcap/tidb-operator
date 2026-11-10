@@ -18,6 +18,10 @@ import (
 	"context"
 
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -87,13 +91,17 @@ var _ = ginkgo.Describe("MultiPDGroup", label.Cluster, func() {
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
+			key := client.ObjectKey{Namespace: f.Namespace.Name, Name: pdg.Name + "-pd"}
+			var legacyService corev1.Service
+			f.Must(f.Client.Get(ctx, key, &legacyService))
+
 			fs := []metav1alpha1.Feature{
 				metav1alpha1.FeatureModification,
 				metav1alpha1.MultiPDGroup,
 			}
 			fs = append(fs, o.Features...)
 			action.MustUpdateCluster(ctx, f,
-				data.WithCustomizedPDServiceName(pdg.Name+"-pd"),
+				data.WithCustomizedPDServiceName(key.Name),
 				data.WithFeatureGates(fs...),
 			)
 
@@ -108,6 +116,12 @@ var _ = ginkgo.Describe("MultiPDGroup", label.Cluster, func() {
 
 			action.MustDelete(ctx, f, pdg)
 			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, pdg, waiter.LongTaskTimeout))
+
+			var service corev1.Service
+			f.Must(f.Client.Get(ctx, key, &service))
+			gomega.Expect(service.UID).To(gomega.Equal(legacyService.UID))
+			gomega.Expect(service.Spec.ClusterIP).To(gomega.Equal(legacyService.Spec.ClusterIP))
+			gomega.Expect(metav1.IsControlledBy(&service, f.Cluster)).To(gomega.BeTrue())
 
 			f.WaitForPDGroupReady(ctx, pdg2)
 

@@ -15,15 +15,9 @@
 package tasks
 
 import (
-	"fmt"
-
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/updater"
 )
-
-func InternalServiceName(groupName string) string {
-	return fmt.Sprintf("%s-pd", groupName)
-}
 
 func NotLeaderPolicy() updater.PreferPolicy[*runtime.PD] {
 	return updater.PreferPolicyFunc[*runtime.PD](func(pds []*runtime.PD) []*runtime.PD {
