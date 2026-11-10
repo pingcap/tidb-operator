@@ -67,8 +67,8 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		if err := common.ReconcilePDService(ctx, t.Client, t.APIReader, pd, rtx.PDGroups...); err != nil {
 			return task.Fail().With("can't reconcile pd service of cluster: %v", err)
 		}
-	} else if len(rtx.PDGroups) == 1 {
-		if err := t.returnPDGroupService(ctx, rtx.Cluster, rtx.PDGroups[0]); err != nil {
+	} else if group := singleActivePDGroup(rtx.PDGroups); group != nil {
+		if err := t.returnPDGroupService(ctx, rtx.Cluster, group); err != nil {
 			return task.Fail().With("can't return pd service to pd group: %v", err)
 		}
 	}
@@ -76,13 +76,23 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	return task.Complete().With("service of the cluster has been applied")
 }
 
+func singleActivePDGroup(groups []*v1alpha1.PDGroup) *v1alpha1.PDGroup {
+	var active *v1alpha1.PDGroup
+	for _, group := range groups {
+		if !group.DeletionTimestamp.IsZero() {
+			continue
+		}
+		if active != nil {
+			return nil
+		}
+		active = group
+	}
+	return active
+}
+
 // The Cluster controller handles both directions of the transfer. A PDGroup
 // reconcile that started before MultiPDGroup was enabled cannot take it back.
 func (t *TaskService) returnPDGroupService(ctx context.Context, cluster *v1alpha1.Cluster, group *v1alpha1.PDGroup) error {
-	if !group.DeletionTimestamp.IsZero() {
-		return nil
-	}
-
 	key := client.ObjectKey{Namespace: cluster.Namespace, Name: coreutil.InternalServiceName[scope.PDGroup](group)}
 	current, err := common.GetPDService(ctx, t.Client, t.APIReader, key)
 	if err != nil {
@@ -101,7 +111,7 @@ func (t *TaskService) returnPDGroupService(ctx context.Context, cluster *v1alpha
 		}
 	}
 	patch := ctrlclient.MergeFromWithOptions(current, ctrlclient.MergeFromWithOptimisticLock{})
-	return t.Client.Patch(ctx, updated, patch)
+	return t.Client.Patch(ctx, updated, patch, ctrlclient.FieldOwner(common.PDServiceUpdateManager))
 }
 
 func newHeadlessService(c *v1alpha1.Cluster) *corev1.Service {

@@ -24,14 +24,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
-func TestPDServiceOwnershipRoundTrip(t *testing.T) {
+func TestReturnPDServiceWhileAnotherGroupIsDeleting(t *testing.T) {
 	cluster := &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "default", UID: "cluster-uid"},
 	}
@@ -40,38 +38,26 @@ func TestPDServiceOwnershipRoundTrip(t *testing.T) {
 		Spec:       v1alpha1.PDGroupSpec{Cluster: v1alpha1.ClusterReference{Name: cluster.Name}},
 	}
 	cluster.Spec.CustomizedPDServiceName = ptr.To("group-pd")
-	cluster.Spec.FeatureGates = []metav1alpha1.FeatureGate{
-		{Name: metav1alpha1.FeatureModification},
-		{Name: metav1alpha1.MultiPDGroup},
-	}
 	svc := newPDService(cluster)
 	svc.UID = "service"
 	svc.ResourceVersion = "1"
 	svc.Spec.ClusterIP = "10.0.0.1"
-	svc.OwnerReferences = []metav1.OwnerReference{
-		*metav1.NewControllerRef(group, v1alpha1.SchemeGroupVersion.WithKind("PDGroup")),
-	}
+	svc.Labels = nil
+
+	// The cache does not contain the Service after its managed-by label was removed.
 	fc := client.NewFakeClient(svc)
-	task := NewTaskService(logr.Discard(), fc, fc)
-	ctx := &ReconcileContext{Context: t.Context(), Cluster: cluster, PDGroups: []*v1alpha1.PDGroup{group}}
-	key := ctrlclient.ObjectKeyFromObject(svc)
-
-	require.False(t, task.Sync(ctx).IsFailed())
-	var got corev1.Service
-	require.NoError(t, fc.Get(ctx, key, &got))
-	require.True(t, metav1.IsControlledBy(&got, cluster))
-
-	// A Service without the managed-by label is still readable directly from the API server.
-	got.Labels = nil
-	require.NoError(t, fc.Update(ctx, &got))
-	task = NewTaskService(logr.Discard(), fc, client.NewFakeClient(&got))
 	fc.WithError("get", "services", errors.NewNotFound(schema.GroupResource{Resource: "services"}, svc.Name))
-	cluster.Spec.FeatureGates = cluster.Spec.FeatureGates[:1]
+	task := NewTaskService(logr.Discard(), fc, client.NewFakeClient(svc))
+	deleting := group.DeepCopy()
+	deleting.Name = "deleting"
+	deleting.UID = "deleting-uid"
+	deleting.DeletionTimestamp = ptr.To(metav1.Now())
+	ctx := &ReconcileContext{Context: t.Context(), Cluster: cluster, PDGroups: []*v1alpha1.PDGroup{group, deleting}}
 	require.False(t, task.Sync(ctx).IsFailed())
 	var services corev1.ServiceList
 	require.NoError(t, fc.List(ctx, &services))
 	require.Len(t, services.Items, 1)
-	got = services.Items[0]
+	got := services.Items[0]
 	require.True(t, metav1.IsControlledBy(&got, group))
 	require.Equal(t, svc.UID, got.UID)
 	require.Equal(t, svc.Spec.ClusterIP, got.Spec.ClusterIP)

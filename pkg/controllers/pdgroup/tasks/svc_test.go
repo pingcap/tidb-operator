@@ -97,7 +97,7 @@ func TestTaskService(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc:  "all svcs are updated with unexpected err",
+			desc:  "patch existing internal svc with unexpected err",
 			state: fakeState(),
 			objs: []client.Object{
 				newHeadlessService(fakePDGroup()),
@@ -105,7 +105,7 @@ func TestTaskService(t *testing.T) {
 			},
 			unexpectedErr: true,
 
-			expectedStatus: task.SComplete,
+			expectedStatus: task.SFail,
 		},
 	}
 
