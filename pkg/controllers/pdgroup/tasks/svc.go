@@ -26,6 +26,7 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -42,8 +43,8 @@ func TaskService(state State, c client.Client) task.Task {
 		fg := state.FeatureGates()
 		if !fg.Enabled(metav1alpha1.MultiPDGroup) {
 			svc := newInternalService(pdg)
-			if err := c.Apply(ctx, svc); err != nil {
-				return task.Fail().With("%s", fmt.Sprintf("can't create internal service of pd: %v", err))
+			if err := common.ReconcilePDService(ctx, c, svc); err != nil {
+				return task.Fail().With("can't reconcile internal service of pd: %v", err)
 			}
 		}
 

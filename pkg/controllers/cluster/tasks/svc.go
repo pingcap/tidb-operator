@@ -20,12 +20,14 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
@@ -58,8 +60,12 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	if fg.Enabled(metav1alpha1.MultiPDGroup) {
 		pd := newPDService(rtx.Cluster)
-		if err := t.Client.Apply(ctx, pd); err != nil {
-			return task.Fail().With("%s", fmt.Sprintf("can't create pd service of cluster: %v", err))
+		legacyOwners := make([]types.UID, 0, len(rtx.PDGroups))
+		for _, pdg := range rtx.PDGroups {
+			legacyOwners = append(legacyOwners, pdg.UID)
+		}
+		if err := common.ReconcilePDService(ctx, t.Client, pd, legacyOwners...); err != nil {
+			return task.Fail().With("can't reconcile pd service of cluster: %v", err)
 		}
 	}
 
