@@ -171,10 +171,7 @@ func InstanceAnnotations[
 ](f F) map[string]string {
 	obj := scope.From[S](f)
 
-	annotations := maps.Clone(obj.TemplateAnnotations())
-	delete(annotations, v1alpha1.AnnoKeyDeferDelete)
-	delete(annotations, v1alpha1.AnnoKeyInitialClusterNum)
-	return annotations
+	return maps.Clone(obj.TemplateAnnotations())
 }
 
 func SetStatusSelector[
