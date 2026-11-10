@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -92,7 +93,8 @@ func TestReconcilePDService(t *testing.T) {
 				apiReader = client.NewFakeClient(current)
 				c.WithError("get", "services", errors.NewNotFound(schema.GroupResource{Resource: "services"}, current.Name))
 			}
-			err := ReconcilePDService(t.Context(), c, apiReader, desired, "legacy")
+			legacy := &v1alpha1.PDGroup{ObjectMeta: metav1.ObjectMeta{UID: "legacy"}}
+			err := ReconcilePDService(t.Context(), c, apiReader, desired, legacy)
 
 			var services corev1.ServiceList
 			require.NoError(t, c.List(t.Context(), &services))
@@ -161,4 +163,49 @@ type beforePDServicePatch struct {
 func (c *beforePDServicePatch) Patch(ctx context.Context, obj ctrlclient.Object, patch ctrlclient.Patch, opts ...ctrlclient.PatchOption) error {
 	c.run()
 	return c.Client.Patch(ctx, obj, patch, opts...)
+}
+
+func TestReconcilePDServiceKeepsUnmanagedPeerPort(t *testing.T) {
+	legacy := &v1alpha1.PDGroup{ObjectMeta: metav1.ObjectMeta{UID: "legacy"}}
+	for _, tc := range []struct {
+		name     string
+		owner    types.UID
+		peerPort int32
+		wantPeer bool
+	}{
+		{name: "regular reconcile preserves external peer", owner: "cluster", peerPort: 9000, wantPeer: true},
+		{name: "migration drops legacy peer", owner: legacy.UID, peerPort: v1alpha1.DefaultPDPortPeer},
+		{name: "migration preserves external peer", owner: legacy.UID, peerPort: 9000, wantPeer: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			desired := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pd", Namespace: "default",
+					OwnerReferences: []metav1.OwnerReference{{UID: "cluster", Controller: ptr.To(true)}},
+				},
+				Spec: corev1.ServiceSpec{
+					Type:  corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{{Name: "client", Port: 2379, Protocol: corev1.ProtocolTCP}},
+				},
+			}
+			current := desired.DeepCopy()
+			current.ResourceVersion = "1"
+			current.OwnerReferences[0].UID = tc.owner
+			peer := corev1.ServicePort{
+				Name: "peer", Port: tc.peerPort, Protocol: corev1.ProtocolTCP,
+				TargetPort: intstr.FromString("peer"),
+			}
+			current.Spec.Ports = append(current.Spec.Ports, peer)
+			c := client.NewFakeClient(current)
+
+			require.NoError(t, ReconcilePDService(t.Context(), c, c, desired, legacy))
+			var got corev1.Service
+			require.NoError(t, c.Get(t.Context(), client.ObjectKeyFromObject(desired), &got))
+			want := desired.Spec.Ports
+			if tc.wantPeer {
+				want = append(want, peer)
+			}
+			require.Equal(t, want, got.Spec.Ports)
+		})
+	}
 }

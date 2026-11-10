@@ -24,10 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 )
 
 // GetPDService checks the API server on a cache miss because the Service cache is label-filtered.
@@ -43,7 +44,8 @@ func GetPDService(ctx context.Context, cached, apiReader client.Reader, key clie
 // ReconcilePDService reconciles an internal PD Service with the desired controller owner.
 // It may transfer a Service from a legacy PDGroup to its Cluster in place.
 func ReconcilePDService(
-	ctx context.Context, c client.Client, apiReader client.Reader, desired *corev1.Service, legacyOwners ...types.UID,
+	ctx context.Context, c client.Client, apiReader client.Reader, desired *corev1.Service,
+	legacyGroups ...*v1alpha1.PDGroup,
 ) error {
 	key := client.ObjectKeyFromObject(desired)
 	current, err := GetPDService(ctx, c, apiReader, key)
@@ -57,9 +59,18 @@ func ReconcilePDService(
 
 	owner := metav1.GetControllerOf(current)
 	target := desired.OwnerReferences[0]
-	if owner == nil || owner.UID == "" ||
-		(owner.UID != target.UID && !slices.Contains(legacyOwners, owner.UID)) {
-		return fmt.Errorf("PD Service %s is not controlled by the desired owner or a permitted legacy PDGroup", key)
+	if owner == nil || owner.UID == "" {
+		return fmt.Errorf("PD Service %s has no controller owner", key)
+	}
+	var legacyPeerPort int32
+	if owner.UID != target.UID {
+		index := slices.IndexFunc(legacyGroups, func(group *v1alpha1.PDGroup) bool {
+			return group.UID == owner.UID
+		})
+		if index < 0 {
+			return fmt.Errorf("PD Service %s is not controlled by the desired owner or a permitted legacy PDGroup", key)
+		}
+		legacyPeerPort = coreutil.PDGroupPeerPort(legacyGroups[index])
 	}
 	if current.Spec.Type != corev1.ServiceTypeClusterIP ||
 		current.Spec.ClusterIP == corev1.ClusterIPNone || !current.DeletionTimestamp.IsZero() {
@@ -82,7 +93,7 @@ func ReconcilePDService(
 	}
 	updated.Spec.Selector = desired.Spec.Selector
 	updated.Spec.IPFamilyPolicy = desired.Spec.IPFamilyPolicy
-	updated.Spec.Ports = mergePDServicePorts(current.Spec.Ports, desired.Spec.Ports)
+	updated.Spec.Ports = mergePDServicePorts(current.Spec.Ports, desired.Spec.Ports, legacyPeerPort)
 
 	if equality.Semantic.DeepEqual(current, updated) {
 		return nil
@@ -91,7 +102,7 @@ func ReconcilePDService(
 	return c.Patch(ctx, updated, patch)
 }
 
-func mergePDServicePorts(current, desired []corev1.ServicePort) []corev1.ServicePort {
+func mergePDServicePorts(current, desired []corev1.ServicePort, legacyPeerPort int32) []corev1.ServicePort {
 	ports := slices.Clone(desired)
 	for _, port := range current {
 		index := slices.IndexFunc(desired, func(want corev1.ServicePort) bool {
@@ -102,9 +113,17 @@ func mergePDServicePorts(current, desired []corev1.ServicePort) []corev1.Service
 			if ports[index].AppProtocol == nil {
 				ports[index].AppProtocol = port.AppProtocol
 			}
-		} else if port.Name != v1alpha1.PDPortNameClient && port.Name != v1alpha1.PDPortNamePeer {
-			ports = append(ports, port)
+			continue
 		}
+		if slices.ContainsFunc(desired, func(want corev1.ServicePort) bool { return want.Name == port.Name }) {
+			continue
+		}
+		// The Cluster Service drops the old PDGroup's peer port during adoption.
+		if port.Name == v1alpha1.PDPortNamePeer && port.Port == legacyPeerPort && port.Protocol == corev1.ProtocolTCP &&
+			port.TargetPort == intstr.FromString(v1alpha1.PDPortNamePeer) {
+			continue
+		}
+		ports = append(ports, port)
 	}
 	return ports
 }

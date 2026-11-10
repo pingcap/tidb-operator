@@ -21,7 +21,6 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -65,11 +64,7 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	if fg.Enabled(metav1alpha1.MultiPDGroup) {
 		pd := newPDService(rtx.Cluster)
-		legacyOwners := make([]types.UID, 0, len(rtx.PDGroups))
-		for _, pdg := range rtx.PDGroups {
-			legacyOwners = append(legacyOwners, pdg.UID)
-		}
-		if err := common.ReconcilePDService(ctx, t.Client, t.APIReader, pd, legacyOwners...); err != nil {
+		if err := common.ReconcilePDService(ctx, t.Client, t.APIReader, pd, rtx.PDGroups...); err != nil {
 			return task.Fail().With("can't reconcile pd service of cluster: %v", err)
 		}
 	} else if len(rtx.PDGroups) == 1 {
