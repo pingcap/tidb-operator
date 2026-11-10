@@ -101,7 +101,7 @@ func newInternalService(pdg *v1alpha1.PDGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      InternalServiceName(pdg.Name),
+			Name:      coreutil.InternalServiceName[scope.PDGroup](pdg),
 			Namespace: pdg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

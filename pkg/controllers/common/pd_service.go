@@ -72,9 +72,15 @@ func ReconcilePDService(ctx context.Context, c client.Client, desired *corev1.Se
 	updated.Spec.IPFamilyPolicy = desired.Spec.IPFamilyPolicy
 	updated.Spec.Ports = slices.Clone(desired.Spec.Ports)
 	for _, port := range current.Spec.Ports {
-		if port.Name != v1alpha1.PDPortNameClient && port.Name != v1alpha1.PDPortNamePeer {
-			updated.Spec.Ports = append(updated.Spec.Ports, port)
+		if port.Name == v1alpha1.PDPortNameClient || port.Name == v1alpha1.PDPortNamePeer {
+			continue
 		}
+		if slices.ContainsFunc(desired.Spec.Ports, func(want corev1.ServicePort) bool {
+			return port.Port == want.Port && port.Protocol == want.Protocol
+		}) {
+			continue
+		}
+		updated.Spec.Ports = append(updated.Spec.Ports, port)
 	}
 
 	if equality.Semantic.DeepEqual(current, updated) {

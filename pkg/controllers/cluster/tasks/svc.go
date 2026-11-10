@@ -15,6 +15,7 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -22,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -29,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
 
@@ -67,9 +70,41 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		if err := common.ReconcilePDService(ctx, t.Client, pd, legacyOwners...); err != nil {
 			return task.Fail().With("can't reconcile pd service of cluster: %v", err)
 		}
+	} else if len(rtx.PDGroups) == 1 {
+		if err := t.returnPDGroupService(ctx, rtx.Cluster, rtx.PDGroups[0]); err != nil {
+			return task.Fail().With("can't return pd service to pd group: %v", err)
+		}
 	}
 
 	return task.Complete().With("service of the cluster has been applied")
+}
+
+// The Cluster controller handles both directions of the transfer. A PDGroup
+// reconcile that started before MultiPDGroup was enabled cannot take it back.
+func (t *TaskService) returnPDGroupService(ctx context.Context, cluster *v1alpha1.Cluster, group *v1alpha1.PDGroup) error {
+	if !group.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: coreutil.InternalServiceName[scope.PDGroup](group)}
+	current := &corev1.Service{}
+	if err := t.Client.Get(ctx, key, current); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	if !metav1.IsControlledBy(current, cluster) || !current.DeletionTimestamp.IsZero() ||
+		current.Spec.Type != corev1.ServiceTypeClusterIP || current.Spec.ClusterIP == corev1.ClusterIPNone {
+		return nil
+	}
+
+	updated := current.DeepCopy()
+	for i := range updated.OwnerReferences {
+		if updated.OwnerReferences[i].UID == cluster.UID {
+			updated.OwnerReferences[i] = *metav1.NewControllerRef(group, v1alpha1.SchemeGroupVersion.WithKind("PDGroup"))
+			break
+		}
+	}
+	patch := ctrlclient.MergeFromWithOptions(current, ctrlclient.MergeFromWithOptimisticLock{})
+	return t.Client.Patch(ctx, updated, patch)
 }
 
 func newHeadlessService(c *v1alpha1.Cluster) *corev1.Service {

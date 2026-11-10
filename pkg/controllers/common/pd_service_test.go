@@ -53,6 +53,7 @@ func TestReconcilePDService(t *testing.T) {
 				Spec: corev1.ServiceSpec{
 					Type:     corev1.ServiceTypeClusterIP,
 					Selector: map[string]string{"cluster": "target"},
+					Ports:    []corev1.ServicePort{{Name: "client", Port: 2379, Protocol: corev1.ProtocolTCP}},
 				},
 			}
 			current := desired.DeepCopy()
@@ -60,6 +61,11 @@ func TestReconcilePDService(t *testing.T) {
 			current.ResourceVersion = "1"
 			current.Spec.ClusterIP = "10.0.0.1"
 			current.Spec.Selector = map[string]string{"cluster": "original"}
+			current.Spec.Ports = []corev1.ServicePort{
+				{Name: "client", Port: 2381, Protocol: corev1.ProtocolTCP},
+				{Name: "metrics", Port: 2379, Protocol: corev1.ProtocolTCP},
+				{Name: "metrics-udp", Port: 2379, Protocol: corev1.ProtocolUDP},
+			}
 			current.OwnerReferences[0].UID = tc.owner
 			if tc.owner == "" {
 				current.OwnerReferences = nil
@@ -83,6 +89,7 @@ func TestReconcilePDService(t *testing.T) {
 			require.Equal(t, current.Spec.ClusterIP, got.Spec.ClusterIP)
 			require.Equal(t, desired.OwnerReferences, got.OwnerReferences)
 			require.Equal(t, desired.Spec.Selector, got.Spec.Selector)
+			require.Equal(t, []corev1.ServicePort{desired.Spec.Ports[0], current.Spec.Ports[2]}, got.Spec.Ports)
 		})
 	}
 }
