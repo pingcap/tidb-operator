@@ -59,7 +59,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 		tasks.TaskContextPDClient(state, r.PDClientManager),
 		tasks.TaskBoot(state, r.Client),
-		tasks.TaskService(state, r.Client),
+		tasks.TaskService(state, r.Client, r.APIReader),
 		tasks.TaskContextPDMSDependencies(state, r.Client),
 		tasks.TaskModeSwitch(state, r.TSOClientManager),
 		task.IfBreak(

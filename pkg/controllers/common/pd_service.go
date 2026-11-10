@@ -30,12 +30,24 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
+// GetPDService checks the API server on a cache miss because the Service cache is label-filtered.
+func GetPDService(ctx context.Context, cached, apiReader client.Reader, key client.ObjectKey) (*corev1.Service, error) {
+	service := &corev1.Service{}
+	err := cached.Get(ctx, key, service)
+	if errors.IsNotFound(err) {
+		err = apiReader.Get(ctx, key, service)
+	}
+	return service, err
+}
+
 // ReconcilePDService reconciles an internal PD Service with the desired controller owner.
 // It may transfer a Service from a legacy PDGroup to its Cluster in place.
-func ReconcilePDService(ctx context.Context, c client.Client, desired *corev1.Service, legacyOwners ...types.UID) error {
+func ReconcilePDService(
+	ctx context.Context, c client.Client, apiReader client.Reader, desired *corev1.Service, legacyOwners ...types.UID,
+) error {
 	key := client.ObjectKeyFromObject(desired)
-	current := &corev1.Service{}
-	if err := c.Get(ctx, key, current); err != nil {
+	current, err := GetPDService(ctx, c, apiReader, key)
+	if err != nil {
 		if errors.IsNotFound(err) {
 			// Create fails on a concurrent name collision; the next reconcile checks ownership.
 			return c.Create(ctx, desired)
@@ -70,22 +82,29 @@ func ReconcilePDService(ctx context.Context, c client.Client, desired *corev1.Se
 	}
 	updated.Spec.Selector = desired.Spec.Selector
 	updated.Spec.IPFamilyPolicy = desired.Spec.IPFamilyPolicy
-	updated.Spec.Ports = slices.Clone(desired.Spec.Ports)
-	for _, port := range current.Spec.Ports {
-		if port.Name == v1alpha1.PDPortNameClient || port.Name == v1alpha1.PDPortNamePeer {
-			continue
-		}
-		if slices.ContainsFunc(desired.Spec.Ports, func(want corev1.ServicePort) bool {
-			return port.Port == want.Port && port.Protocol == want.Protocol
-		}) {
-			continue
-		}
-		updated.Spec.Ports = append(updated.Spec.Ports, port)
-	}
+	updated.Spec.Ports = mergePDServicePorts(current.Spec.Ports, desired.Spec.Ports)
 
 	if equality.Semantic.DeepEqual(current, updated) {
 		return nil
 	}
 	patch := client.MergeFromWithOptions(current, client.MergeFromWithOptimisticLock{})
 	return c.Patch(ctx, updated, patch)
+}
+
+func mergePDServicePorts(current, desired []corev1.ServicePort) []corev1.ServicePort {
+	ports := slices.Clone(desired)
+	for _, port := range current {
+		index := slices.IndexFunc(desired, func(want corev1.ServicePort) bool {
+			return port.Port == want.Port && port.Protocol == want.Protocol
+		})
+		if index >= 0 {
+			// appProtocol is supplied by other managers on the matching port.
+			if ports[index].AppProtocol == nil {
+				ports[index].AppProtocol = port.AppProtocol
+			}
+		} else if port.Name != v1alpha1.PDPortNameClient && port.Name != v1alpha1.PDPortNamePeer {
+			ports = append(ports, port)
+		}
+	}
+	return ports
 }

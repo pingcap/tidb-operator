@@ -36,14 +36,16 @@ import (
 )
 
 type TaskService struct {
-	Logger logr.Logger
-	Client client.Client
+	APIReader ctrlclient.Reader
+	Logger    logr.Logger
+	Client    client.Client
 }
 
-func NewTaskService(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
+func NewTaskService(logger logr.Logger, c client.Client, apiReader ctrlclient.Reader) task.Task[ReconcileContext] {
 	return &TaskService{
-		Logger: logger,
-		Client: c,
+		APIReader: apiReader,
+		Logger:    logger,
+		Client:    c,
 	}
 }
 
@@ -67,7 +69,7 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		for _, pdg := range rtx.PDGroups {
 			legacyOwners = append(legacyOwners, pdg.UID)
 		}
-		if err := common.ReconcilePDService(ctx, t.Client, pd, legacyOwners...); err != nil {
+		if err := common.ReconcilePDService(ctx, t.Client, t.APIReader, pd, legacyOwners...); err != nil {
 			return task.Fail().With("can't reconcile pd service of cluster: %v", err)
 		}
 	} else if len(rtx.PDGroups) == 1 {
@@ -87,8 +89,8 @@ func (t *TaskService) returnPDGroupService(ctx context.Context, cluster *v1alpha
 	}
 
 	key := client.ObjectKey{Namespace: cluster.Namespace, Name: coreutil.InternalServiceName[scope.PDGroup](group)}
-	current := &corev1.Service{}
-	if err := t.Client.Get(ctx, key, current); err != nil {
+	current, err := common.GetPDService(ctx, t.Client, t.APIReader, key)
+	if err != nil {
 		return client.IgnoreNotFound(err)
 	}
 	if !metav1.IsControlledBy(current, cluster) || !current.DeletionTimestamp.IsZero() ||

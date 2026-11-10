@@ -20,7 +20,9 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -50,7 +52,7 @@ func TestPDServiceOwnershipRoundTrip(t *testing.T) {
 		*metav1.NewControllerRef(group, v1alpha1.SchemeGroupVersion.WithKind("PDGroup")),
 	}
 	fc := client.NewFakeClient(svc)
-	task := NewTaskService(logr.Discard(), fc)
+	task := NewTaskService(logr.Discard(), fc, fc)
 	ctx := &ReconcileContext{Context: t.Context(), Cluster: cluster, PDGroups: []*v1alpha1.PDGroup{group}}
 	key := ctrlclient.ObjectKeyFromObject(svc)
 
@@ -59,9 +61,17 @@ func TestPDServiceOwnershipRoundTrip(t *testing.T) {
 	require.NoError(t, fc.Get(ctx, key, &got))
 	require.True(t, metav1.IsControlledBy(&got, cluster))
 
+	// A Service without the managed-by label is still readable directly from the API server.
+	got.Labels = nil
+	require.NoError(t, fc.Update(ctx, &got))
+	task = NewTaskService(logr.Discard(), fc, client.NewFakeClient(&got))
+	fc.WithError("get", "services", errors.NewNotFound(schema.GroupResource{Resource: "services"}, svc.Name))
 	cluster.Spec.FeatureGates = cluster.Spec.FeatureGates[:1]
 	require.False(t, task.Sync(ctx).IsFailed())
-	require.NoError(t, fc.Get(ctx, key, &got))
+	var services corev1.ServiceList
+	require.NoError(t, fc.List(ctx, &services))
+	require.Len(t, services.Items, 1)
+	got = services.Items[0]
 	require.True(t, metav1.IsControlledBy(&got, group))
 	require.Equal(t, svc.UID, got.UID)
 	require.Equal(t, svc.Spec.ClusterIP, got.Spec.ClusterIP)

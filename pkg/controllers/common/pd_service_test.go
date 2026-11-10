@@ -22,11 +22,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
@@ -35,11 +37,13 @@ func TestReconcilePDService(t *testing.T) {
 		name      string
 		owner     types.UID
 		headless  bool
+		cacheMiss bool
 		wantError bool
 	}{
 		{name: "update", owner: "cluster"},
+		{name: "restore labels after cache miss", owner: "cluster", cacheMiss: true},
 		{name: "adopt legacy PDGroup", owner: "legacy"},
-		{name: "reject foreign owner", owner: "foreign", wantError: true},
+		{name: "reject foreign owner after cache miss", owner: "foreign", cacheMiss: true, wantError: true},
 		{name: "reject headless", owner: "cluster", headless: true, wantError: true},
 		{name: "reject ownerless", wantError: true},
 	} {
@@ -48,12 +52,16 @@ func TestReconcilePDService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            "pd",
 					Namespace:       "default",
+					Labels:          map[string]string{v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator},
 					OwnerReferences: []metav1.OwnerReference{{UID: "cluster", Controller: ptr.To(true)}},
 				},
 				Spec: corev1.ServiceSpec{
 					Type:     corev1.ServiceTypeClusterIP,
 					Selector: map[string]string{"cluster": "target"},
-					Ports:    []corev1.ServicePort{{Name: "client", Port: 2379, Protocol: corev1.ProtocolTCP}},
+					Ports: []corev1.ServicePort{
+						{Name: "client", Port: 2379, Protocol: corev1.ProtocolTCP},
+						{Name: "peer", Port: 2380, Protocol: corev1.ProtocolTCP},
+					},
 				},
 			}
 			current := desired.DeepCopy()
@@ -63,7 +71,8 @@ func TestReconcilePDService(t *testing.T) {
 			current.Spec.Selector = map[string]string{"cluster": "original"}
 			current.Spec.Ports = []corev1.ServicePort{
 				{Name: "client", Port: 2381, Protocol: corev1.ProtocolTCP},
-				{Name: "metrics", Port: 2379, Protocol: corev1.ProtocolTCP},
+				{Name: "metrics", Port: 2379, Protocol: corev1.ProtocolTCP, AppProtocol: ptr.To("metrics-protocol")},
+				{Name: "peer", Port: 2380, Protocol: corev1.ProtocolTCP, AppProtocol: ptr.To("peer-protocol")},
 				{Name: "metrics-udp", Port: 2379, Protocol: corev1.ProtocolUDP},
 			}
 			current.OwnerReferences[0].UID = tc.owner
@@ -74,11 +83,21 @@ func TestReconcilePDService(t *testing.T) {
 				current.Spec.ClusterIP = corev1.ClusterIPNone
 			}
 
+			if tc.cacheMiss {
+				current.Labels = nil
+			}
 			c := client.NewFakeClient(current)
-			err := ReconcilePDService(t.Context(), c, desired, "legacy")
+			apiReader := c
+			if tc.cacheMiss {
+				apiReader = client.NewFakeClient(current)
+				c.WithError("get", "services", errors.NewNotFound(schema.GroupResource{Resource: "services"}, current.Name))
+			}
+			err := ReconcilePDService(t.Context(), c, apiReader, desired, "legacy")
 
-			got := &corev1.Service{}
-			require.NoError(t, c.Get(t.Context(), client.ObjectKeyFromObject(desired), got))
+			var services corev1.ServiceList
+			require.NoError(t, c.List(t.Context(), &services))
+			require.Len(t, services.Items, 1)
+			got := &services.Items[0]
 			if tc.wantError {
 				require.Error(t, err)
 				require.Equal(t, current, got)
@@ -89,7 +108,11 @@ func TestReconcilePDService(t *testing.T) {
 			require.Equal(t, current.Spec.ClusterIP, got.Spec.ClusterIP)
 			require.Equal(t, desired.OwnerReferences, got.OwnerReferences)
 			require.Equal(t, desired.Spec.Selector, got.Spec.Selector)
-			require.Equal(t, []corev1.ServicePort{desired.Spec.Ports[0], current.Spec.Ports[2]}, got.Spec.Ports)
+			require.Equal(t, desired.Labels, got.Labels)
+			wantPorts := []corev1.ServicePort{desired.Spec.Ports[0], desired.Spec.Ports[1], current.Spec.Ports[3]}
+			wantPorts[0].AppProtocol = current.Spec.Ports[1].AppProtocol
+			wantPorts[1].AppProtocol = current.Spec.Ports[2].AppProtocol
+			require.Equal(t, wantPorts, got.Spec.Ports)
 		})
 	}
 }
@@ -122,7 +145,7 @@ func TestReconcilePDServiceRejectsStaleWrite(t *testing.T) {
 		},
 	}
 
-	err := ReconcilePDService(ctx, staleWriter, desired)
+	err := ReconcilePDService(ctx, staleWriter, c, desired)
 	require.True(t, errors.IsConflict(err), "expected conflict, got %v", err)
 	got := &corev1.Service{}
 	require.NoError(t, c.Get(ctx, key, got))

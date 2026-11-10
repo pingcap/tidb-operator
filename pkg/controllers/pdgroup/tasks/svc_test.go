@@ -126,7 +126,7 @@ func TestTaskService(t *testing.T) {
 				fc.WithError("create", "*", err)
 			}
 
-			res, done := task.RunTask(ctx, TaskService(c.state, fc))
+			res, done := task.RunTask(ctx, TaskService(c.state, fc, fc))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 

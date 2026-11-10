@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -31,7 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskService(state State, c client.Client) task.Task {
+func TaskService(state State, c client.Client, apiReader ctrlclient.Reader) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
 		pdg := state.PDGroup()
 
@@ -43,7 +44,7 @@ func TaskService(state State, c client.Client) task.Task {
 		fg := state.FeatureGates()
 		if !fg.Enabled(metav1alpha1.MultiPDGroup) {
 			svc := newInternalService(pdg)
-			if err := common.ReconcilePDService(ctx, c, svc); err != nil {
+			if err := common.ReconcilePDService(ctx, c, apiReader, svc); err != nil {
 				return task.Fail().With("can't reconcile internal service of pd: %v", err)
 			}
 		}
