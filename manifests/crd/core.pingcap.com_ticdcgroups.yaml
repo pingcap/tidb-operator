@@ -203,6 +203,13 @@ spec:
                           More info: http://kubernetes.io/docs/user-guide/identifiers#names
                         type: string
                     type: object
+                    x-kubernetes-validations:
+                    - fieldPath: .annotations
+                      message: defer-delete and initial-cluster-num are reserved for
+                        the operator
+                      rule: '!has(self.annotations) || !(''core.pingcap.com/defer-delete''
+                        in self.annotations || ''pd.core.pingcap.com/initial-cluster-num''
+                        in self.annotations)'
                   spec:
                     description: TiCDCTemplateSpec can only be specified in TiCDCGroup
                     properties:

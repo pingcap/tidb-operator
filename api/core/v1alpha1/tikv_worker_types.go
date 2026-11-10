@@ -136,6 +136,7 @@ type TiKVWorkerGroupSpec struct {
 }
 
 type TiKVWorkerTemplate struct {
+	// +kubebuilder:validation:XValidation:rule="!has(self.annotations) || !('core.pingcap.com/defer-delete' in self.annotations || 'pd.core.pingcap.com/initial-cluster-num' in self.annotations)",message="defer-delete and initial-cluster-num are reserved for the operator",fieldPath=".annotations"
 	ObjectMeta `json:"metadata,omitempty"`
 	Spec       TiKVWorkerTemplateSpec `json:"spec"`
 }
