@@ -139,6 +139,14 @@ type TiFlashGroupSpec struct {
 	// +optional
 	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
+	// MaxSurge specifies the maximum number of additional instances during rolling restart.
+	// It only takes effect when an update requires restarting TiFlash instances.
+	// Unset or zero preserves in-place rolling updates. Set a positive value for
+	// compute groups that can provision additional instances and their volumes.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxSurge *int32 `json:"maxSurge,omitempty"`
+
 	// Template defines tiflash instance template
 	Template TiFlashTemplate `json:"template"`
 }
