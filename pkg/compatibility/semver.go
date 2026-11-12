@@ -42,6 +42,19 @@ func (c *constraints) check(v *semver.Version) bool {
 	return c.Check(v)
 }
 
+// smoothUpgradeMinVersion is the minimum version that supports smooth upgrade DDL pause.
+var smoothUpgradeMinVersion = MustNewConstraints(">= 7.5.0")
+
+// SupportsSmoothUpgrade returns true if the given version string supports the smooth upgrade
+// DDL pause/resume mechanism (requires TiDB >= v7.5.0).
+func SupportsSmoothUpgrade(version string) bool {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false
+	}
+	return Check(v, smoothUpgradeMinVersion)
+}
+
 func MustNewConstraints(expr string) Constraints {
 	v, err := semver.NewConstraint(expr)
 	if err != nil {

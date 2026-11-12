@@ -33,6 +33,12 @@ type ActivateRequest struct {
 	TiDBEnableDDL bool `json:"tidb_enable_ddl"`
 }
 
+// UpgradeRequest is the request body for /upgrade/start.
+// KeyspaceName is optional: empty means global DDL pause (Dedicated), non-empty scopes the pause to that keyspace (Premium).
+type UpgradeRequest struct {
+	KeyspaceName string `json:"keyspace_name,omitempty"`
+}
+
 type PoolStatus struct {
 	State PoolState `json:"state"`
 	// unused
