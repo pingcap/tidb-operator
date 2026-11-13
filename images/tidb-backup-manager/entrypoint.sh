@@ -105,7 +105,12 @@ case "$1" in
     restore)
         shift 1
         echo "$BACKUP_BIN restore $@"
-        $EXEC_COMMAND $BACKUP_BIN restore "$@"
+        $EXEC_COMMAND $BACKUP_BIN restore "$@" &
+
+        # Forward SIGTERM so BR can release the log backup lock before exiting.
+        pid=$!
+        trap 'terminate_subprocesses $pid' SIGTERM
+        wait $pid
         ;;
     import)
         shift 1
