@@ -96,6 +96,10 @@ func TestComponentClientsRejectRedirects(t *testing.T) {
 			_, err := tiproxyapi.NewTiProxyClient(strings.TrimPrefix(strings.TrimPrefix(url, "http://"), "https://"), timeout, cfg).ConnectionCount(ctx)
 			return err
 		}},
+		{"TiProxy labels", http.MethodPut, func(url string, cfg *tls.Config) error {
+			return tiproxyapi.NewTiProxyClient(strings.TrimPrefix(strings.TrimPrefix(url, "http://"), "https://"), timeout, cfg).
+				SetLabels(ctx, map[string]string{"region": "us-west-1"})
+		}},
 		{"TiKV", http.MethodGet, func(url string, cfg *tls.Config) error {
 			_, err := tikvapi.NewTiKVClient(url, timeout, cfg, false).GetLeaderCount()
 			return err

@@ -33,8 +33,8 @@ import (
 
 const (
 	healthPath                   = "api/debug/health"
-	configPath                   = "api/admin/config"
-	metricsPath                  = "metrics"
+	configPath                   = "api/admin/config/"
+	metricsPath                  = "metrics/"
 	tiproxyConnectionsMetricName = "tiproxy_server_connections"
 )
 
