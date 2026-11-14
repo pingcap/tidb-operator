@@ -20,8 +20,11 @@ import (
 	"testing"
 	"time"
 
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protodelim"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestTiKVClient_GetLeaderCount(t *testing.T) {
@@ -44,6 +47,30 @@ tikv_raftstore_region_count{type="region"} 50
 	count, err := client.GetLeaderCount()
 	require.NoError(t, err)
 	assert.Equal(t, 20, count)
+}
+
+func TestTiKVClient_GetLeaderCountPartialResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.google.protobuf; proto=io.prometheus.client.MetricFamily; encoding=delimited")
+		_, err := protodelim.MarshalTo(w, &dto.MetricFamily{
+			Name: proto.String("tikv_raftstore_region_count"),
+			Type: dto.MetricType_GAUGE.Enum(),
+			Metric: []*dto.Metric{{
+				Label: []*dto.LabelPair{{Name: proto.String("type"), Value: proto.String("leader")}},
+				Gauge: &dto.Gauge{Value: proto.Float64(0)},
+			}},
+		})
+		assert.NoError(t, err)
+		// Start another metric family but truncate its payload. The parsed zero
+		// above must not make the caller consider leader eviction complete.
+		_, err = w.Write([]byte{10, 1})
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewTiKVClient(server.URL, 5*time.Second, nil, false)
+	_, err := client.GetLeaderCount()
+	require.ErrorContains(t, err, "reading metric family protocol buffer failed")
 }
 
 func TestTiKVClient_GetLeaderCountFetchError(t *testing.T) {

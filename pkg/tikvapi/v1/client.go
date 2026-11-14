@@ -111,6 +111,9 @@ func (c *tikvClient) GetLeaderCount() (int, error) {
 		fm := prom2json.NewFamily(mfc)
 		fms = append(fms, fm)
 	}
+	if fetchErr := <-errChan; fetchErr != nil {
+		return 0, fetchErr
+	}
 	for _, fm := range fms {
 		if fm.Name == metricNameRegionCount {
 			for _, m := range fm.Metrics {
@@ -121,8 +124,5 @@ func (c *tikvClient) GetLeaderCount() (int, error) {
 		}
 	}
 
-	if fetchErr := <-errChan; fetchErr != nil {
-		return 0, fetchErr
-	}
 	return 0, fmt.Errorf("metric %s{type=\"%s\"} not found for %s", metricNameRegionCount, metricLabelNameLeaderCount, apiURL)
 }
