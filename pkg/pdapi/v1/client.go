@@ -196,8 +196,9 @@ func NewPDClient(address string, timeout time.Duration, tlsConfig *tls.Config) P
 	return &pdClient{
 		url: address,
 		httpClient: &http.Client{
-			Timeout:   timeout,
-			Transport: &http.Transport{TLSClientConfig: tlsConfig},
+			CheckRedirect: httputil.RejectRedirect,
+			Timeout:       timeout,
+			Transport:     &http.Transport{TLSClientConfig: tlsConfig},
 		},
 		tlsConfig:     tlsConfig,
 		pdEtcdClients: make(map[string]PDEtcdClient),

@@ -125,7 +125,8 @@ func NewTiCDCClient(addr string, opts ...Option) TiCDCClient {
 		url:  options.url,
 		addr: addr,
 		httpClient: &http.Client{
-			Timeout: options.Timeout,
+			CheckRedirect: httputil.RejectRedirect,
+			Timeout:       options.Timeout,
 			Transport: &http.Transport{
 				TLSClientConfig:       options.TLS,
 				DisableKeepAlives:     options.DisableKeepAlives,

@@ -60,8 +60,9 @@ func NewTSOClient(url string, timeout time.Duration, tlsConfig *tls.Config) TSOC
 	return &client{
 		url: url,
 		httpClient: &http.Client{
-			Timeout:   timeout,
-			Transport: &http.Transport{TLSClientConfig: tlsConfig},
+			CheckRedirect: httputil.RejectRedirect,
+			Timeout:       timeout,
+			Transport:     &http.Transport{TLSClientConfig: tlsConfig},
 		},
 		tlsConfig: tlsConfig,
 	}

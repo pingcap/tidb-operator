@@ -136,7 +136,7 @@ func TestTiProxyClient_SetLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, "/api/admin/config", r.URL.Path)
+				assert.Equal(t, "/api/admin/config/", r.URL.Path)
 				assert.Equal(t, http.MethodPut, r.Method)
 				body, err := io.ReadAll(r.Body)
 				assert.NoError(t, err)
@@ -155,6 +155,32 @@ func TestTiProxyClient_SetLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TiProxy registers these routes with trailing slashes. Requests without the
+// slash are redirected, which component clients intentionally reject.
+func TestTiProxyClient_CanonicalPaths(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/admin/config/", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method)
+		body, err := io.ReadAll(r.Body)
+		assert.NoError(t, err)
+		assert.Contains(t, string(body), `region = "us-west-1"`)
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/metrics/", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		_, err := io.WriteString(w, "# TYPE tiproxy_server_connections gauge\ntiproxy_server_connections 7\n")
+		assert.NoError(t, err)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client := NewTiProxyClient(stringutil.RemoveHTTPPrefix(server.URL), 5*time.Second, nil)
+	require.NoError(t, client.SetLabels(context.Background(), map[string]string{"region": "us-west-1"}))
+	count, err := client.ConnectionCount(context.Background())
+	require.NoError(t, err)
+	assert.InDelta(t, 7, count, 0)
 }
 
 func TestTiProxyClient_MarkUnhealthy(t *testing.T) {
@@ -178,7 +204,7 @@ func TestTiProxyClient_MarkUnhealthy(t *testing.T) {
 
 func TestTiProxyClient_ConnectionCount(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/metrics", r.URL.Path)
+		assert.Equal(t, "/metrics/", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
 		_, err := w.Write([]byte(`# HELP tiproxy_server_connections Number of connections.
 # TYPE tiproxy_server_connections gauge

@@ -57,7 +57,8 @@ func NewTiFlashClient(url string, timeout time.Duration, tlsConfig *tls.Config) 
 	return &tiflashClient{
 		url: url,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			CheckRedirect: httputil.RejectRedirect,
+			Timeout:       timeout,
 			Transport: &http.Transport{
 				TLSClientConfig:       tlsConfig,
 				ResponseHeaderTimeout: 10 * time.Second,

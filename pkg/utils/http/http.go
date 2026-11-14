@@ -22,6 +22,13 @@ import (
 	"net/http"
 )
 
+// RejectRedirect prevents component responses from forwarding operator requests and
+// TLS client credentials to another endpoint. Return an error rather than
+// http.ErrUseLastResponse so callers cannot mistake a redirect for success.
+func RejectRedirect(_ *http.Request, _ []*http.Request) error {
+	return errors.New("component API redirects are not allowed")
+}
+
 // DeferClose captures and prints the error from closing (if an error occurs).
 // This is designed to be used in a defer statement.
 func DeferClose(c io.Closer) {

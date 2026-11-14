@@ -90,7 +90,7 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 		w.WriteHeader(s.healthStatus)
 		_, _ = w.Write([]byte(`{"config_checksum":1}`))
 	})
-	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/metrics/", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.metricsCalls++
