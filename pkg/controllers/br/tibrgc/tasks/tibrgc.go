@@ -28,6 +28,7 @@ import (
 func TaskEnsureSubResources(rtx *ReconcileContext) t.Task {
 	return t.Block(
 		TaskContextRefreshTiBRGC(rtx),
+		t.IfBreak(CondTiBRGCNotFound(rtx)),
 		t.IfNot(condTiBRGCOwnerReferencesExist(rtx), taskPatchTiBRGCWithOwnerReferences(rtx)),
 
 		t.If(condT2StrategyDefined(rtx), taskApplyT2CronJob(rtx)),
@@ -37,6 +38,7 @@ func TaskEnsureSubResources(rtx *ReconcileContext) t.Task {
 		t.IfNot(condT3StrategyDefined(rtx), taskDeleteT3CronJob(rtx)),
 
 		TaskContextRefreshTiBRGC(rtx),
+		t.IfBreak(CondTiBRGCNotFound(rtx)),
 		taskSetTiBRGCPhaseRunning(rtx),
 	)
 }

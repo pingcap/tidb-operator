@@ -28,6 +28,7 @@ import (
 func TaskEnsureSubResources(rtx *ReconcileContext) t.Task {
 	return t.Block(
 		t.IfNot(condTiBROwnerReferencesExist(rtx), taskPatchTiBRWithOwnerReferences(rtx), TaskContextRefreshTiBR(rtx)),
+		t.IfBreak(CondTiBRNotFound(rtx)),
 		t.IfNot(condConfigMapExist(rtx), taskCreateConfigMap(rtx), TaskContextRefreshConfigMap(rtx)),
 		t.IfNot(condStatefulSetExist(rtx), taskCreateStatefulSet(rtx), TaskContextRefreshStatefulSet(rtx)),
 		t.IfNot(condHeadlessSvcExist(rtx), taskCreateHeadlessSvc(rtx), TaskContextRefreshHeadlessSvc(rtx)),
