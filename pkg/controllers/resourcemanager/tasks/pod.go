@@ -45,6 +45,9 @@ const (
 
 func TaskPod(state *ReconcileContext, c client.Client, recorder ...record.EventRecorder) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
+		if err := image.ResourceManager.Validate(state.Object().Spec.Image, state.Object().Spec.Version); err != nil {
+			return task.Fail().With("invalid component image: %v", err)
+		}
 		ck := state.Cluster()
 		obj := state.Object()
 		logger := logr.FromContextOrDiscard(ctx)

@@ -75,6 +75,9 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 
 func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager, recorder ...record.EventRecorder) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
+		if err := image.TiKV.Validate(state.Object().Spec.Image, state.Object().Spec.Version); err != nil {
+			return task.Fail().With("invalid component image: %v", err)
+		}
 		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.TiKV(), state.Store, state.FeatureGates())
 
