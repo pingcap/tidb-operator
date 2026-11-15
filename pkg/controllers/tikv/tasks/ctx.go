@@ -82,6 +82,11 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			return task.Complete().With("store does not exist")
 		}
 
+		if s.Invalid {
+			state.PDSynced = false
+			return task.Fail().With("store info is invalid, waiting for a successful PD poll")
+		}
+
 		state.Store = s
 		state.SetStoreState(s.NodeState)
 		state.SetLeaderCount(s.LeaderCount)
