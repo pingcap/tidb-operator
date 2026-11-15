@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -43,6 +44,7 @@ import (
 )
 
 type Reconciler struct {
+	APIReader       ctrlclient.Reader
 	Order           order.Order[types.NamespacedName, string, *v1alpha1.TiKV]
 	Logger          logr.Logger
 	Client          client.Client
@@ -51,6 +53,7 @@ type Reconciler struct {
 
 func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error {
 	r := &Reconciler{
+		APIReader:       mgr.GetAPIReader(),
 		Order:           order.New[types.NamespacedName](tasks.CompareScaleIn, func(kv *v1alpha1.TiKV) string { return kv.Name }),
 		Logger:          mgr.GetLogger().WithName("Cluster"),
 		Client:          c,
@@ -136,7 +139,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		tasks.NewTaskFeatureGatesHash(r.Client),
 		tasks.NewTaskFinalizer(logger, r.Client, r.PDClientManager),
 		tasks.NewTaskFeatureGates(logger, r.Client),
-		tasks.NewTaskService(logger, r.Client),
+		tasks.NewTaskService(logger, r.Client, r.APIReader),
 		tasks.NewTaskSelectTiKV(r.Client, r.Order),
 		tasks.NewTaskStatus(logger, r.Client, r.PDClientManager),
 	)

@@ -21,16 +21,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskService(state State, c client.Client) task.Task {
+func TaskService(state State, c client.Client, apiReader ctrlclient.Reader) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
 		pdg := state.PDGroup()
 
@@ -42,8 +44,8 @@ func TaskService(state State, c client.Client) task.Task {
 		fg := state.FeatureGates()
 		if !fg.Enabled(metav1alpha1.MultiPDGroup) {
 			svc := newInternalService(pdg)
-			if err := c.Apply(ctx, svc); err != nil {
-				return task.Fail().With("%s", fmt.Sprintf("can't create internal service of pd: %v", err))
+			if err := common.ReconcilePDService(ctx, c, apiReader, svc); err != nil {
+				return task.Fail().With("can't reconcile internal service of pd: %v", err)
 			}
 		}
 
@@ -100,7 +102,7 @@ func newInternalService(pdg *v1alpha1.PDGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      InternalServiceName(pdg.Name),
+			Name:      coreutil.InternalServiceName[scope.PDGroup](pdg),
 			Namespace: pdg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

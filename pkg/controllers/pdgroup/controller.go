@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -44,6 +45,7 @@ import (
 )
 
 type Reconciler struct {
+	APIReader        ctrlclient.Reader
 	Logger           logr.Logger
 	Client           client.Client
 	PDClientManager  pdm.PDClientManager
@@ -59,6 +61,7 @@ func Setup(
 	af tracker.AllocateFactory,
 ) error {
 	r := &Reconciler{
+		APIReader:        mgr.GetAPIReader(),
 		Logger:           mgr.GetLogger().WithName("PDGroup"),
 		Client:           c,
 		PDClientManager:  pdcm,
