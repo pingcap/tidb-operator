@@ -108,6 +108,15 @@ spec:
                   - TiKVSequentialScaleIn
                   type: string
                 type: array
+              maxSurge:
+                description: |-
+                  MaxSurge specifies the maximum number of additional instances during rolling restart.
+                  It only takes effect when an update requires restarting TiFlash instances.
+                  Unset or zero preserves in-place rolling updates. Set a positive value for
+                  compute groups that can provision additional instances and their volumes.
+                format: int32
+                minimum: 0
+                type: integer
               minReadySeconds:
                 description: MinReadySeconds specifies the minimum number of seconds
                   for which a newly created pod be ready without any of its containers
