@@ -1753,6 +1753,13 @@ func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testin
 			phaseExpect:  v1alpha1.UpgradePhase,
 		},
 		{
+			name:         "pod is not ready and getting stores fails",
+			pod:          newPod(corev1.ConditionFalse),
+			errGetStores: fmt.Errorf("failed to get stores"),
+			errExpectFn:  errExpectContains("failed to get stores"),
+			phaseExpect:  v1alpha1.UpgradePhase,
+		},
+		{
 			name: "end evict leader succeeds",
 			pod:  newPod(corev1.ConditionTrue),
 			errExpectFn: func(g *GomegaWithT, err error) {
