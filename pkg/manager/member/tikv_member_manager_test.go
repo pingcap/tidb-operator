@@ -1843,6 +1843,11 @@ func TestTiKVMemberManagerSyncStatefulSetWhenEndEvictLeaderFails(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &pdapi.StoresInfo{}, nil
 		})
+		endEvictLeaderCalls := 0
+		pdClient.AddReaction(pdapi.EndEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
+			endEvictLeaderCalls++
+			return nil, nil
+		})
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"1": {ID: "1", PodName: TikvPodName(tc.Name, 0), State: v1alpha1.TiKVStateDown, LastTransitionTime: downSince},
@@ -1859,6 +1864,8 @@ func TestTiKVMemberManagerSyncStatefulSetWhenEndEvictLeaderFails(t *testing.T) {
 		g.Expect(*set.Spec.Replicas).To(Equal(int32(3)))
 		g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
 		g.Expect(tc.Status.TiKV.FailureStores).To(BeEmpty())
+		// The upgrader is not run for the pods that are already upgraded.
+		g.Expect(endEvictLeaderCalls).To(BeZero())
 		g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
 	}
 
