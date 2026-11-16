@@ -212,8 +212,6 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	oldSet := oldSetTmp.DeepCopy()
 
-	// A failure to end evict leader is returned after the statefulset is synced, otherwise it
-	// blocks a spec change that may be what makes the pod ready again.
 	endEvictLeaderErr, err := m.syncTiKVClusterStatus(tc, oldSet)
 	if err != nil {
 		return err
@@ -256,6 +254,22 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return nil
 	}
 
+	if endEvictLeaderErr != nil {
+		// Ending evict leader is retried until it succeeds. Meanwhile only a template change
+		// is applied, as it may be what makes the pod ready again; scaling and failover wait.
+		resetReplicas(newSet, oldSet)
+		if tc.Status.TiKV.VolReplaceInProgress || templateEqual(newSet, oldSet) {
+			return endEvictLeaderErr
+		}
+		if err := m.upgrader.Upgrade(tc, oldSet, newSet); err != nil {
+			return err
+		}
+		if err := mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiKVSTS", newSet, oldSet); err != nil {
+			return err
+		}
+		return endEvictLeaderErr
+	}
+
 	if _, err := m.setStoreLabelsForTiKV(tc); err != nil {
 		return err
 	}
@@ -296,11 +310,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	if err := mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiKVSTS", newSet, oldSet); err != nil {
-		return err
-	}
-
-	return endEvictLeaderErr
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiKVSTS", newSet, oldSet)
 }
 
 func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {

@@ -1798,6 +1798,130 @@ func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testin
 	}
 }
 
+func TestTiKVMemberManagerSyncStatefulSetWhenEndEvictLeaderFails(t *testing.T) {
+	type testcase struct {
+		name            string
+		modify          func(tc *v1alpha1.TidbCluster)
+		templateUpdated bool
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		g := NewGomegaWithT(t)
+		tc := newTidbClusterForPD()
+		tc.Spec.TiKV.Replicas = 3
+		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
+		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+			"pd-0": {Name: "pd-0", Health: true},
+			"pd-1": {Name: "pd-1", Health: true},
+			"pd-2": {Name: "pd-2", Health: true},
+		}
+		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+
+		tmm, setControl, _, pdClient, podIndexer, _ := newFakeTiKVMemberManager(tc)
+		tmm.scaler = NewTiKVScaler(tmm.deps)
+		tmm.upgrader = NewTiKVUpgrader(tmm.deps, tmm.podVolumeModifier)
+		tmm.failover = NewTiKVFailover(tmm.deps)
+		setControl.SetStatusChange(func(set *apps.StatefulSet) {
+			set.Status.Replicas = *set.Spec.Replicas
+			set.Status.CurrentRevision = "tikv-1"
+			set.Status.UpdateRevision = "tikv-1"
+		})
+		g.Expect(tmm.Sync(tc)).To(Succeed())
+
+		// All pods are upgraded, but tikv-0 is not ready and its store has been down for long.
+		downSince := metav1.NewTime(time.Now().Add(-time.Hour))
+		stores := &pdapi.StoresInfo{}
+		for i := int32(0); i < 3; i++ {
+			ready, state := corev1.ConditionTrue, v1alpha1.TiKVStateUp
+			if i == 0 {
+				ready, state = corev1.ConditionFalse, v1alpha1.TiKVStateDown
+			}
+			podLabels := label.New().Instance(tc.GetInstanceName()).TiKV().Labels()
+			podLabels[apps.ControllerRevisionHashLabelKey] = "tikv-1"
+			g.Expect(podIndexer.Add(&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: TikvPodName(tc.Name, i), Namespace: tc.Namespace, Labels: podLabels},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: ready, LastTransitionTime: downSince}},
+				},
+			})).To(Succeed())
+			stores.Stores = append(stores.Stores, &pdapi.StoreInfo{
+				Store: &pdapi.MetaStore{
+					Store: &metapb.Store{
+						Id:      uint64(i + 1),
+						Address: fmt.Sprintf("%s-tikv-%d.%s-tikv-peer.%s.svc:20160", tc.Name, i, tc.Name, tc.Namespace),
+					},
+					StateName: state,
+				},
+				Status: &pdapi.StoreStatus{LastHeartbeatTS: downSince.Time},
+			})
+		}
+		pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+			return stores, nil
+		})
+		pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &pdapi.StoresInfo{}, nil
+		})
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"1": {ID: "1", PodName: TikvPodName(tc.Name, 0), State: v1alpha1.TiKVStateDown, LastTransitionTime: downSince},
+		}
+		test.modify(tc)
+
+		err := tmm.Sync(tc)
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("is not ready"))
+
+		set, err := tmm.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(controller.TiKVMemberName(tc.Name))
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(set.Spec.Template.Spec.ServiceAccountName == "new-account").To(Equal(test.templateUpdated))
+		g.Expect(*set.Spec.Replicas).To(Equal(int32(3)))
+		g.Expect(tc.Status.TiKV.FailureStores).To(BeEmpty())
+		g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
+	}
+
+	tests := []testcase{
+		{
+			name: "template is changed",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.ServiceAccount = "new-account"
+			},
+			templateUpdated: true,
+		},
+		{
+			name: "template is changed and scale out",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.ServiceAccount = "new-account"
+				tc.Spec.TiKV.Replicas = 4
+			},
+			templateUpdated: true,
+		},
+		{
+			name: "template is changed while volume replace is in progress",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.ServiceAccount = "new-account"
+				tc.Spec.TiKV.SpareVolReplaceReplicas = pointer.Int32(1)
+				tc.Status.TiKV.VolReplaceInProgress = true
+			},
+		},
+		{
+			name: "scale in",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.Replicas = 2
+			},
+		},
+		{
+			name:   "nothing is changed",
+			modify: func(tc *v1alpha1.TidbCluster) {},
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			testFn(&tests[i], t)
+		})
+	}
+}
+
 func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
