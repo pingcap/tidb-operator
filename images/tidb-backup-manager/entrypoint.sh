@@ -105,12 +105,23 @@ case "$1" in
     restore)
         shift 1
         echo "$BACKUP_BIN restore $@"
-        $EXEC_COMMAND $BACKUP_BIN restore "$@" &
+        # SIGTERM can arrive after the child starts but before the TERM trap is
+        # installed. In that window, EXIT must stop the child before cleanup.
+        terminate_restore_on_startup_exit() {
+            if [[ -n "$!" ]]; then
+                # The child may have already exited; still run EXIT cleanup.
+                kill -TERM "$!" 2>/dev/null || true
+                wait "$!" || true
+            fi
+            cleanup
+        }
+        trap terminate_restore_on_startup_exit EXIT
 
-        # Forward SIGTERM so BR can release the log backup lock before exiting.
+        $EXEC_COMMAND $BACKUP_BIN restore "$@" &
         pid=$!
-        trap 'terminate_subprocesses $pid' SIGTERM
-        wait $pid
+        trap 'terminate_subprocesses "$pid"' SIGTERM
+        trap cleanup EXIT
+        wait "$pid"
         ;;
     import)
         shift 1
