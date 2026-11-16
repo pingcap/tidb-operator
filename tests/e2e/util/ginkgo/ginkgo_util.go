@@ -15,6 +15,7 @@ package ginkgo
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
@@ -22,16 +23,7 @@ import (
 
 // ItWhenFocus run It only when It is focused
 func ItWhenFocus(text string, body interface{}, timeout ...float64) bool {
-	skip := true
-
-	focusString := ginkgoconfig.GinkgoConfig.FocusString
-	filter := regexp.MustCompile(focusString)
-
-	if focusString != "" && filter.MatchString(text) {
-		skip = false
-	}
-
-	if skip {
+	if !matchesFocus(text, ginkgoconfig.GinkgoConfig.FocusStrings) {
 		return ginkgo.PIt(text, body)
 	}
 	return ginkgo.It(text, body)
@@ -39,17 +31,14 @@ func ItWhenFocus(text string, body interface{}, timeout ...float64) bool {
 
 // ContextWhenFocus run Context only when Context is focused
 func ContextWhenFocus(text string, body func()) bool {
-	skip := true
-
-	focusString := ginkgoconfig.GinkgoConfig.FocusString
-	filter := regexp.MustCompile(focusString)
-
-	if focusString != "" && filter.MatchString(text) {
-		skip = false
-	}
-
-	if skip {
+	if !matchesFocus(text, ginkgoconfig.GinkgoConfig.FocusStrings) {
 		return ginkgo.PContext(text, body)
 	}
 	return ginkgo.Context(text, body)
+}
+
+func matchesFocus(text string, focusStrings []string) bool {
+	// Ginkgo combines repeated --focus flags with OR.
+	focusString := strings.Join(focusStrings, "|")
+	return focusString != "" && regexp.MustCompile(focusString).MatchString(text)
 }
