@@ -1885,6 +1885,13 @@ func TestTiKVMemberManagerSyncStatefulSetWhenEndEvictLeaderFails(t *testing.T) {
 			},
 		},
 		{
+			name: "template is changed while the cluster is paused",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.ServiceAccount = "new-account"
+				tc.Spec.Paused = true
+			},
+		},
+		{
 			name: "template is changed while volume replace is in progress",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.ServiceAccount = "new-account"
