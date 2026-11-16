@@ -877,26 +877,28 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
+	// A failure keeps the phase and is returned after the store status is refreshed, so that
+	// the status does not go stale while ending evict leader is retried.
+	var endEvictLeaderErr error
 	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
-			return err
-		}
-
-		// end evict leader for all stores when upgrade is done
-		if err = endEvictLeaderForAllStore(m.deps, tc); err != nil {
-			return err
+		endEvictLeaderErr = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set))
+		if endEvictLeaderErr == nil {
+			// end evict leader for all stores when upgrade is done
+			endEvictLeaderErr = endEvictLeaderForAllStore(m.deps, tc)
 		}
 	}
 
-	// Scaling takes precedence over upgrading.
-	if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
-		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
-	} else if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
-		if !tc.IsComponentLeaderEvicting(v1alpha1.TiKVMemberType) { // skip upgrade if someone is evicting leader
-			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	if endEvictLeaderErr == nil {
+		// Scaling takes precedence over upgrading.
+		if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
+			tc.Status.TiKV.Phase = v1alpha1.ScalePhase
+		} else if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
+			if !tc.IsComponentLeaderEvicting(v1alpha1.TiKVMemberType) { // skip upgrade if someone is evicting leader
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+			}
+		} else {
+			tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		}
-	} else {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 
 	previousStores := tc.Status.TiKV.Stores
@@ -996,7 +998,7 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 		return fmt.Errorf("failed to sync volume status for tikv: %v", err)
 	}
 
-	return nil
+	return endEvictLeaderErr
 }
 
 func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {

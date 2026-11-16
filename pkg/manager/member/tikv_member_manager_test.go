@@ -1632,6 +1632,124 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
+func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testing.T) {
+	type testcase struct {
+		name             string
+		pod              *corev1.Pod
+		errGetSchedulers bool
+		errExpectFn      func(*GomegaWithT, error)
+		phaseExpect      v1alpha1.MemberPhase
+	}
+
+	newPod := func(ready corev1.ConditionStatus) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-tikv-0", Namespace: corev1.NamespaceDefault},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{{
+					Type:               corev1.PodReady,
+					Status:             ready,
+					LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)},
+				}},
+			},
+		}
+	}
+	errExpectContains := func(substr string) func(*GomegaWithT, error) {
+		return func(g *GomegaWithT, err error) {
+			g.Expect(err).To(HaveOccurred())
+			g.Expect(err.Error()).To(ContainSubstring(substr))
+		}
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		g := NewGomegaWithT(t)
+		tc := newTidbClusterForPD()
+		tc.Spec.TiKV.Replicas = 1
+		tc.Status.PD.Phase = v1alpha1.NormalPhase
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"1": {ID: "1", PodName: "test-tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		set := &apps.StatefulSet{
+			Spec:   apps.StatefulSetSpec{Replicas: pointer.Int32Ptr(1)},
+			Status: apps.StatefulSetStatus{Replicas: 1},
+		}
+
+		pmm, _, _, pdClient, podIndexer, _ := newFakeTiKVMemberManager(tc)
+		pmm.statefulSetIsUpgradingFn = func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error) {
+			return false, nil
+		}
+		if test.pod != nil {
+			g.Expect(podIndexer.Add(test.pod)).To(Succeed())
+		}
+		if test.errGetSchedulers {
+			pdClient.AddReaction(pdapi.GetEvictLeaderSchedulersActionType, func(action *pdapi.Action) (interface{}, error) {
+				return map[uint64]string(nil), fmt.Errorf("failed to get schedulers")
+			})
+		}
+		pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{{
+					Store: &pdapi.MetaStore{
+						Store: &metapb.Store{
+							Id:      1,
+							Address: fmt.Sprintf("%s-tikv-0.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
+						},
+						StateName: "Disconnected",
+					},
+					Status: &pdapi.StoreStatus{LastHeartbeatTS: time.Now()},
+				}},
+			}, nil
+		})
+		pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &pdapi.StoresInfo{}, nil
+		})
+
+		err := pmm.syncTiKVClusterStatus(tc, set)
+		test.errExpectFn(g, err)
+		// The store status must follow PD whether or not ending evict leader succeeds.
+		g.Expect(tc.Status.TiKV.Stores).To(HaveKey("1"))
+		g.Expect(tc.Status.TiKV.Stores["1"].State).To(Equal("Disconnected"))
+		g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+		g.Expect(tc.Status.TiKV.Phase).To(Equal(test.phaseExpect))
+	}
+
+	tests := []testcase{
+		{
+			name:        "pod is not ready",
+			pod:         newPod(corev1.ConditionFalse),
+			errExpectFn: errExpectContains("is not ready"),
+			phaseExpect: v1alpha1.UpgradePhase,
+		},
+		{
+			name:        "pod does not exist",
+			pod:         nil,
+			errExpectFn: errExpectContains("failed to get pods"),
+			phaseExpect: v1alpha1.UpgradePhase,
+		},
+		{
+			name:             "end evict leader for all stores fails",
+			pod:              newPod(corev1.ConditionTrue),
+			errGetSchedulers: true,
+			errExpectFn:      errExpectContains("failed to get schedulers"),
+			phaseExpect:      v1alpha1.UpgradePhase,
+		},
+		{
+			name: "end evict leader succeeds",
+			pod:  newPod(corev1.ConditionTrue),
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			phaseExpect: v1alpha1.NormalPhase,
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			testFn(&tests[i], t)
+		})
+	}
+}
+
 func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
