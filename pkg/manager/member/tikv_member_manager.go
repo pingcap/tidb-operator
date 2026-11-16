@@ -258,6 +258,11 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		// Ending evict leader is retried until it succeeds. Meanwhile only a template change
 		// is applied, as it may be what makes the pod ready again; scaling and failover wait.
 		resetReplicas(newSet, oldSet)
+		if newSet.Spec.UpdateStrategy.RollingUpdate != nil {
+			// The partition was derived from the desired replicas. Keep all pods above it
+			// and let the upgrader lower it.
+			mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.Replicas+int32(helper.GetDeleteSlots(oldSet).Len()))
+		}
 		if tc.Status.TiKV.VolReplaceInProgress || templateEqual(newSet, oldSet) {
 			return endEvictLeaderErr
 		}

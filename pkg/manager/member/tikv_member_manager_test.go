@@ -1857,6 +1857,7 @@ func TestTiKVMemberManagerSyncStatefulSetWhenEndEvictLeaderFails(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(set.Spec.Template.Spec.ServiceAccountName == "new-account").To(Equal(test.templateUpdated))
 		g.Expect(*set.Spec.Replicas).To(Equal(int32(3)))
+		g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
 		g.Expect(tc.Status.TiKV.FailureStores).To(BeEmpty())
 		g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
 	}
@@ -1874,6 +1875,14 @@ func TestTiKVMemberManagerSyncStatefulSetWhenEndEvictLeaderFails(t *testing.T) {
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.ServiceAccount = "new-account"
 				tc.Spec.TiKV.Replicas = 4
+			},
+			templateUpdated: true,
+		},
+		{
+			name: "template is changed and scale in",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.ServiceAccount = "new-account"
+				tc.Spec.TiKV.Replicas = 2
 			},
 			templateUpdated: true,
 		},
