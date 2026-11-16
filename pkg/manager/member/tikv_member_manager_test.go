@@ -1637,8 +1637,11 @@ func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testin
 		name             string
 		pod              *corev1.Pod
 		errGetSchedulers bool
+		errGetStores     error
 		errExpectFn      func(*GomegaWithT, error)
 		phaseExpect      v1alpha1.MemberPhase
+		// storeRefreshed is whether tc.Status.TiKV.Stores is expected to follow PD.
+		storeRefreshed bool
 	}
 
 	newPod := func(ready corev1.ConditionStatus) *corev1.Pod {
@@ -1687,6 +1690,9 @@ func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testin
 			})
 		}
 		pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+			if test.errGetStores != nil {
+				return nil, test.errGetStores
+			}
 			return &pdapi.StoresInfo{
 				Stores: []*pdapi.StoreInfo{{
 					Store: &pdapi.MetaStore{
@@ -1706,25 +1712,30 @@ func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testin
 
 		err := pmm.syncTiKVClusterStatus(tc, set)
 		test.errExpectFn(g, err)
-		// The store status must follow PD whether or not ending evict leader succeeds.
 		g.Expect(tc.Status.TiKV.Stores).To(HaveKey("1"))
-		g.Expect(tc.Status.TiKV.Stores["1"].State).To(Equal("Disconnected"))
-		g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+		if test.storeRefreshed {
+			g.Expect(tc.Status.TiKV.Stores["1"].State).To(Equal("Disconnected"))
+			g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+		} else {
+			g.Expect(tc.Status.TiKV.Stores["1"].State).To(Equal(v1alpha1.TiKVStateUp))
+		}
 		g.Expect(tc.Status.TiKV.Phase).To(Equal(test.phaseExpect))
 	}
 
 	tests := []testcase{
 		{
-			name:        "pod is not ready",
-			pod:         newPod(corev1.ConditionFalse),
-			errExpectFn: errExpectContains("is not ready"),
-			phaseExpect: v1alpha1.UpgradePhase,
+			name:           "pod is not ready",
+			pod:            newPod(corev1.ConditionFalse),
+			errExpectFn:    errExpectContains("is not ready"),
+			phaseExpect:    v1alpha1.UpgradePhase,
+			storeRefreshed: true,
 		},
 		{
-			name:        "pod does not exist",
-			pod:         nil,
-			errExpectFn: errExpectContains("failed to get pods"),
-			phaseExpect: v1alpha1.UpgradePhase,
+			name:           "pod does not exist",
+			pod:            nil,
+			errExpectFn:    errExpectContains("failed to get pods"),
+			phaseExpect:    v1alpha1.UpgradePhase,
+			storeRefreshed: true,
 		},
 		{
 			name:             "end evict leader for all stores fails",
@@ -1732,6 +1743,14 @@ func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testin
 			errGetSchedulers: true,
 			errExpectFn:      errExpectContains("failed to get schedulers"),
 			phaseExpect:      v1alpha1.UpgradePhase,
+			storeRefreshed:   true,
+		},
+		{
+			name:         "pod is not ready and tikv is not bootstrapped",
+			pod:          newPod(corev1.ConditionFalse),
+			errGetStores: pdapi.TiKVNotBootstrappedErrorf("not bootstrapped"),
+			errExpectFn:  errExpectContains("is not ready"),
+			phaseExpect:  v1alpha1.UpgradePhase,
 		},
 		{
 			name: "end evict leader succeeds",
@@ -1739,7 +1758,8 @@ func TestTiKVMemberManagerSyncTidbClusterStatusWhenEndEvictLeaderFails(t *testin
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
-			phaseExpect: v1alpha1.NormalPhase,
+			phaseExpect:    v1alpha1.NormalPhase,
+			storeRefreshed: true,
 		},
 	}
 

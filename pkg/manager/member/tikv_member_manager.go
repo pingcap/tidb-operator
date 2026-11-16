@@ -916,7 +916,7 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 			klog.Infof("TiKV of Cluster %s/%s not bootstrapped yet", tc.Namespace, tc.Name)
 			tc.Status.TiKV.Synced = true
 			tc.Status.TiKV.BootStrapped = false
-			return nil
+			return endEvictLeaderErr
 		}
 		tc.Status.TiKV.Synced = false
 		return err
