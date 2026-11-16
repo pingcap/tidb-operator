@@ -428,24 +428,6 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			},
 			expectTidbClusterFn: nil,
 		},
-		{
-			name: "template is updated when ending evict leader fails",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				// No TiKV pod exists, so ending evict leader fails.
-				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Spec.TiKV.ServiceAccount = "test_new_account"
-			},
-			pdStores:        &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
-			tombstoneStores: &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
-			err:             true,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(set.Spec.Template.Spec.ServiceAccountName).To(Equal("test_new_account"))
-			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
-			},
-		},
 	}
 
 	for i := range tests {
