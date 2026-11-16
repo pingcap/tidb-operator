@@ -882,10 +882,10 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	return label.New().Instance(instanceName).TiKV()
 }
 
-// syncTiKVClusterStatus syncs the status of TiKV. The first error is a failure to end evict
-// leader after an upgrade, which does not stop the status from being synced. The second error
-// means that the status is not synced.
-func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (error, error) {
+// syncTiKVClusterStatus syncs the status of TiKV. endEvictLeaderErr is a failure to end evict
+// leader after an upgrade, which does not stop the status from being synced; it is only set
+// when err is nil. err is any other failure.
+func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (endEvictLeaderErr, err error) {
 	if set == nil {
 		// skip if not created yet
 		return nil, nil
@@ -899,7 +899,6 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
 	// A failure keeps the phase, so that ending evict leader is retried, but the status is
 	// still refreshed.
-	var endEvictLeaderErr error
 	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		endEvictLeaderErr = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set))
 		if endEvictLeaderErr == nil {
