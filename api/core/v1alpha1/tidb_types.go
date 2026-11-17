@@ -51,6 +51,13 @@ const (
 	TiDBGroupAvailableReason = "TiDBGroupAvailable"
 )
 
+const (
+	// AnnoKeySmoothUpgradePhase is set on a TiDBGroup while a smooth upgrade (DDL pause) is in progress.
+	AnnoKeySmoothUpgradePhase = "tidb.core.pingcap.com/smooth-upgrade-phase"
+	// AnnoValSmoothUpgradePhaseInProgress is the value of AnnoKeySmoothUpgradePhase during an active smooth upgrade.
+	AnnoValSmoothUpgradePhaseInProgress = "in-progress"
+)
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
