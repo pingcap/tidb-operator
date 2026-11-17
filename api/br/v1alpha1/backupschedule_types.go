@@ -17,6 +17,8 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
 // +genclient
@@ -29,6 +31,8 @@ import (
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:categories=br
 // +kubebuilder:resource:shortName="bks"
+// +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
+// +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
 // +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
 // +kubebuilder:printcolumn:name="MaxReservedTime",type=string,JSONPath=`.spec.maxReservedTime`,description="How long backups we want to keep"
@@ -58,8 +62,13 @@ type BackupScheduleList struct {
 
 // +k8s:openapi-gen=true
 // BackupScheduleSpec contains the backup schedule specification for a tidb cluster.
+// +kubebuilder:validation:XValidation:rule="!has(self.backupTemplate.br) || self.backupTemplate.br.cluster == self.cluster.name",fieldPath=".backupTemplate.br.cluster",message="backupTemplate.br.cluster must equal cluster.name"
+// +kubebuilder:validation:XValidation:rule="!has(self.backupTemplate.br) || !has(self.backupTemplate.br.clusterNamespace) || size(self.backupTemplate.br.clusterNamespace) == 0",fieldPath=".backupTemplate.br.clusterNamespace",message="backupTemplate.br.clusterNamespace must be empty"
 type BackupScheduleSpec struct {
+	// Cluster is the TiDB cluster targeted by every generated Backup.
+	Cluster corev1alpha1.ClusterReference `json:"cluster"`
 	// Schedule specifies the cron string used for backup scheduling.
+	// +kubebuilder:validation:MinLength=1
 	Schedule string `json:"schedule"`
 	// Pause means paused backupSchedule
 	Pause bool `json:"pause,omitempty"`
@@ -67,6 +76,7 @@ type BackupScheduleSpec struct {
 	// 0 is magic number to indicate un-limited backups.
 	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
 	// and MaxBackups is ignored.
+	// +kubebuilder:validation:Minimum=0
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
@@ -99,6 +109,10 @@ type BackupScheduleSpec struct {
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
 type BackupScheduleStatus struct {
+	// LastScheduleTime is the latest UTC time through which scheduled Backup
+	// times have been handled. It can be initialized to the first observation
+	// time and advances for intentional skips such as a paused schedule.
+	LastScheduleTime *metav1.Time `json:"lastScheduleTime,omitempty"`
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup,omitempty"`
 	// LastCompact represents the last compact
@@ -115,4 +129,8 @@ type BackupScheduleStatus struct {
 	NextCompactEndTs *metav1.Time `json:"nextCompactEndTs,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
 	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
+	// Conditions represent the current scheduling and retention readiness.
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
