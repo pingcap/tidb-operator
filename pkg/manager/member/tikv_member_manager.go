@@ -212,13 +212,14 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	oldSet := oldSetTmp.DeepCopy()
 
-	if err := m.syncTiKVClusterStatus(tc, oldSet); err != nil {
+	endEvictLeaderErr, err := m.syncTiKVClusterStatus(tc, oldSet)
+	if err != nil {
 		return err
 	}
 
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for tikv statefulset", tc.GetNamespace(), tc.GetName())
-		return nil
+		return endEvictLeaderErr
 	}
 
 	cm, err := m.syncTiKVConfigMap(tc, oldSet)
@@ -251,6 +252,27 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
+	}
+
+	if endEvictLeaderErr != nil {
+		// Ending evict leader is retried until it succeeds. Meanwhile only a template change
+		// is applied, as it may be what makes the pod ready again; scaling and failover wait.
+		resetReplicas(newSet, oldSet)
+		if newSet.Spec.UpdateStrategy.RollingUpdate != nil {
+			// The partition was derived from the desired replicas. Keep all pods above it
+			// and let the upgrader lower it.
+			mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.Replicas+int32(helper.GetDeleteSlots(oldSet).Len()))
+		}
+		if tc.Status.TiKV.VolReplaceInProgress || templateEqual(newSet, oldSet) {
+			return endEvictLeaderErr
+		}
+		if err := m.upgrader.Upgrade(tc, oldSet, newSet); err != nil {
+			return err
+		}
+		if err := mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiKVSTS", newSet, oldSet); err != nil {
+			return err
+		}
+		return endEvictLeaderErr
 	}
 
 	if _, err := m.setStoreLabelsForTiKV(tc); err != nil {
@@ -865,38 +887,42 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	return label.New().Instance(instanceName).TiKV()
 }
 
-func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+// syncTiKVClusterStatus syncs the status of TiKV. endEvictLeaderErr is a failure to end evict
+// leader after an upgrade, which does not stop the status from being synced; it is only set
+// when err is nil. err is any other failure.
+func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (endEvictLeaderErr, err error) {
 	if set == nil {
 		// skip if not created yet
-		return nil
+		return nil, nil
 	}
 	tc.Status.TiKV.StatefulSet = &set.Status
 	upgrading, err := m.statefulSetIsUpgradingFn(m.deps.PodLister, m.deps.PDControl, set, tc)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
+	// A failure keeps the phase, so that ending evict leader is retried, but the status is
+	// still refreshed.
 	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
-			return err
-		}
-
-		// end evict leader for all stores when upgrade is done
-		if err = endEvictLeaderForAllStore(m.deps, tc); err != nil {
-			return err
+		endEvictLeaderErr = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set))
+		if endEvictLeaderErr == nil {
+			// end evict leader for all stores when upgrade is done
+			endEvictLeaderErr = endEvictLeaderForAllStore(m.deps, tc)
 		}
 	}
 
-	// Scaling takes precedence over upgrading.
-	if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
-		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
-	} else if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
-		if !tc.IsComponentLeaderEvicting(v1alpha1.TiKVMemberType) { // skip upgrade if someone is evicting leader
-			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	if endEvictLeaderErr == nil {
+		// Scaling takes precedence over upgrading.
+		if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
+			tc.Status.TiKV.Phase = v1alpha1.ScalePhase
+		} else if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
+			if !tc.IsComponentLeaderEvicting(v1alpha1.TiKVMemberType) { // skip upgrade if someone is evicting leader
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+			}
+		} else {
+			tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		}
-	} else {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 
 	previousStores := tc.Status.TiKV.Stores
@@ -914,15 +940,15 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 			klog.Infof("TiKV of Cluster %s/%s not bootstrapped yet", tc.Namespace, tc.Name)
 			tc.Status.TiKV.Synced = true
 			tc.Status.TiKV.BootStrapped = false
-			return nil
+			return endEvictLeaderErr, nil
 		}
 		tc.Status.TiKV.Synced = false
-		return err
+		return nil, err
 	}
 
 	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, store := range storesInfo.Stores {
 		status := getTiKVStore(store)
@@ -961,7 +987,7 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
 	if err != nil {
 		tc.Status.TiKV.Synced = false
-		return err
+		return nil, err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
@@ -993,10 +1019,10 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiKVMemberType)
 	if err != nil {
-		return fmt.Errorf("failed to sync volume status for tikv: %v", err)
+		return nil, fmt.Errorf("failed to sync volume status for tikv: %v", err)
 	}
 
-	return nil
+	return endEvictLeaderErr, nil
 }
 
 func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
