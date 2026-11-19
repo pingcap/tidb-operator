@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
       - uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
