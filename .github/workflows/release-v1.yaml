@@ -32,13 +32,13 @@ jobs:
   release-charts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.4.0
         with:
           ref: ${{ github.event.inputs.git_ref || github.ref }}
           persist-credentials: false
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v4.3.1
         with:
           version: '3.14.0'
 
@@ -89,7 +89,7 @@ jobs:
           helm repo index . --url https://charts.pingcap.com/ --merge index.yaml
 
       - name: Upload all charts and index.yaml to Tencent COS
-        uses: sylingd/tencent-cos-and-cdn-action@v1
+        uses: sylingd/tencent-cos-and-cdn-action@v1.5.2
         with:
           secret_id: ${{ secrets.TENCENT_COS_ACCESS_KEY }}
           secret_key: ${{ secrets.TENCENT_COS_SECRET_KEY }}

@@ -22,16 +22,16 @@ jobs:
   image:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.4.0
       with:
         persist-credentials: false
     - name: cache image builder
-      uses: actions/cache@v4
+      uses: actions/cache@v4.3.0
       with:
         path: ./_output/cache
         key: ${{ runner.os }}-image-cache
 
-    - uses: docker/setup-qemu-action@v3
+    - uses: docker/setup-qemu-action@v3.7.0
       with:
         image: gcr.io/pingcap-public/third-party/tonistiigi/binfmt:latest
 
@@ -39,7 +39,7 @@ jobs:
       run: |
         docker context create builder
 
-    - uses: docker/setup-buildx-action@v3
+    - uses: docker/setup-buildx-action@v3.12.0
       with:
         platforms: linux/arm64,linux/amd64
         endpoint: builder
@@ -53,11 +53,11 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.4.0
       with:
         persist-credentials: false
     - name: setup go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v6.5.0
       with:
         go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
@@ -68,17 +68,17 @@ jobs:
   lint:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.4.0
       with:
         persist-credentials: false
     - name: setup go
       id: setup-go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v6.5.0
       with:
         go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
     - name: cache golangci-lint
-      uses: actions/cache@v4
+      uses: actions/cache@v4.3.0
       with:
         path: ./_output/bin/golangci-lint
         key: ${{ runner.os }}-golangci-lint-${{ steps.setup-go.outputs.go-version }}
@@ -89,11 +89,11 @@ jobs:
   unit:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.4.0
       with:
         persist-credentials: false
     - name: setup go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v6.5.0
       with:
         go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
@@ -102,7 +102,7 @@ jobs:
         make unit
 
     - name: Upload test coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v5.5.5
       with:
         flags: unittest
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -112,11 +112,11 @@ jobs:
   verify:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.4.0
       with:
         persist-credentials: false
     - name: setup go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v6.5.0
       with:
         go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"

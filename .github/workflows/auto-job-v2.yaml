@@ -14,6 +14,6 @@ jobs:
     steps:
       - name: Add v2 label if target branch is main or release-2.x
         if: github.event.pull_request.base.ref == 'main' || startsWith(github.event.pull_request.base.ref, 'release-2.')
-        uses: actions-ecosystem/action-add-labels@v1
+        uses: actions-ecosystem/action-add-labels@v1.1.3
         with:
           labels: 'v2'

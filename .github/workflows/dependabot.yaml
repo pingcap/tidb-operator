@@ -13,12 +13,12 @@ jobs:
     steps:
       - name: Fetch Dependabot metadata
         id: dependabot-metadata
-        uses: dependabot/fetch-metadata@v2
-      - uses: actions/checkout@v6
+        uses: dependabot/fetch-metadata@v2.5.0
+      - uses: actions/checkout@v6.1.0
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: false
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6.5.0
         with:
           go-version-file: ./go.mod
           cache-dependency-path: "**/*.sum"
