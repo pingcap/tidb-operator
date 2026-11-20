@@ -14,11 +14,13 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.4.0
+        with:
+          persist-credentials: false
       - name: make release ${{ github.ref_name }}
         run: V_RELEASE=${{ github.ref_name }} make release
       - name: release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.6.2
         with:
           files: |
             _output/manifests/tidb-operator.crds.yaml
