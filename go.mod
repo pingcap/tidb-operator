@@ -2,7 +2,7 @@ module github.com/pingcap/tidb-operator/v2
 
 go 1.27.0
 
-toolchain go1.27.3
+toolchain go1.27.4
 
 replace github.com/pingcap/tidb-operator/api/v2 => ./api
 
