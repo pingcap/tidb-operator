@@ -316,7 +316,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 
 	e2eTestSimulate(bo)
 
-	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
+	klog.Infof("Run br commond %v for cluster %s successfully", backupUtil.RedactBRArgs(fullArgs), bo)
 	return nil
 }
 
@@ -342,7 +342,7 @@ func (bo *Options) brCommandRunWithLogObserver(
 
 	e2eTestSimulate(bo)
 
-	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
+	klog.Infof("Run br commond %v for cluster %s successfully", backupUtil.RedactBRArgs(fullArgs), bo)
 	return nil
 }
 

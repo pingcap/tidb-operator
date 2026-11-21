@@ -578,7 +578,7 @@ func RunBRCommandWithLineHandler(
 	if len(opts.Args) == 0 {
 		return fmt.Errorf("command is invalid, args: %v", opts.Args)
 	}
-	klog.Infof("Running br command with args: %v", opts.Args)
+	klog.Infof("Running br command with args: %v", RedactBRArgs(opts.Args))
 	bin := filepath.Join(opts.BRBinPath, "br")
 	cmd := exec.Command(bin, opts.Args...)
 
@@ -592,7 +592,7 @@ func RunBRCommandWithLineHandler(
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %v, err: %v", opts.Cluster, opts.Args, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %v, err: %v", opts.Cluster, RedactBRArgs(opts.Args), err)
 	}
 	if opts.GracefulShutdown {
 		go GracefullyShutDownSubProcess(ctx, cmd)

@@ -1556,7 +1556,7 @@ type TiDBServiceSpec struct {
 	// ExternalTrafficPolicy of the service
 	// Optional: Defaults to omitted
 	// +optional
-	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"`
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicy `json:"externalTrafficPolicy,omitempty"`
 
 	// Whether expose the status port
 	// Optional: Defaults to true
@@ -2100,10 +2100,26 @@ type S3StorageProvider struct {
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
 	SSE string `json:"sse,omitempty"`
+	// SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
+	// BR encodes these values for S3; do not Base64-encode them here.
+	// Requires BR and TiKV versions that support custom encryption context.
+	// Changing this field does not update an existing log backup task.
+	// +optional
+	SSEKMSEncryptionContext *S3EncryptionContext `json:"sseKmsEncryptionContext,omitempty"`
 	// Options Rclone options for backup and restore with dumpling and lightning.
 	Options []string `json:"options,omitempty"`
 	// ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).
 	ForcePathStyle *bool `json:"forcePathStyle,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// S3EncryptionContext contains the additional SSE-KMS encryption context for BR.
+type S3EncryptionContext struct {
+	// Values is a required object of string key-value pairs. An empty object sends
+	// an explicit empty context; omitting SSEKMSEncryptionContext sends no context.
+	// Encryption context is not secret and must not contain sensitive information.
+	// +kubebuilder:validation:Required
+	Values map[string]string `json:"values"`
 }
 
 // +k8s:openapi-gen=true
@@ -3326,7 +3342,7 @@ type MasterServiceSpec struct {
 	// ExternalTrafficPolicy of the service
 	// Optional: Defaults to omitted
 	// +optional
-	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"` // Expose the tidb cluster mysql port to MySQLNodePort
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicy `json:"externalTrafficPolicy,omitempty"` // Expose the tidb cluster mysql port to MySQLNodePort
 
 	// Optional: Defaults to 0
 	// +optional
