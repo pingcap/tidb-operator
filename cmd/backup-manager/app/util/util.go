@@ -654,7 +654,7 @@ func RunBRCommandWithLineHandler(
 
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait br command failed, errMsg %s, err: %v", opts.Cluster, errMsg, err)
+		return fmt.Errorf("cluster %s, wait br command failed, errMsg %s, err: %w", opts.Cluster, errMsg, err)
 	}
 	return nil
 }

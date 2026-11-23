@@ -153,6 +153,27 @@ func TestBackupControlUpdateBackup(t *testing.T) {
 	}
 }
 
+func TestRetainedLogBackupFinalizerWaitsForStop(t *testing.T) {
+	g := NewGomegaWithT(t)
+	backup := newBackup()
+	backup.Spec.Mode = v1alpha1.BackupModeLog
+	backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeRetain
+	backup.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+	backup.Finalizers = []string{label.BackupProtectionFinalizer}
+	backup.Status.Phase = v1alpha1.BackupFailed
+	backup.Status.LogSubCommandStatuses = map[v1alpha1.LogSubCommandType]v1alpha1.LogSubCommandStatus{
+		v1alpha1.LogStartCommand: {Phase: v1alpha1.BackupFailed},
+	}
+	g.Expect(needToRemoveFinalizer(backup)).To(BeFalse())
+	backup.Status.Phase = v1alpha1.BackupComplete
+	backup.Status.Conditions = []v1alpha1.BackupCondition{{
+		Command: v1alpha1.LogStopCommand,
+		Type:    v1alpha1.BackupComplete,
+		Status:  corev1.ConditionTrue,
+	}}
+	g.Expect(needToRemoveFinalizer(backup)).To(BeTrue())
+}
+
 func newFakeBackupControl() (ControlInterface, cache.Indexer, *backup.FakeBackupManager, *fake.Clientset) {
 	cli := &fake.Clientset{}
 

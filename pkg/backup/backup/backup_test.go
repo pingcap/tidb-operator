@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/stretchr/testify/require"
@@ -398,6 +399,209 @@ func TestClean(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 	}
 
+}
+
+func TestCleanLogBackupWaitsForStop(t *testing.T) {
+	for _, tc := range []struct {
+		name, startFailure, commitTS, region                  string
+		startPhase, historicalPhase                           v1alpha1.BackupConditionType
+		clusterExists, wantStop, alreadyStopped               bool
+		startInFlight, startJobFailed, stopSubcommandComplete bool
+	}{
+		{name: "never started"},
+		{name: "start metadata failed", startPhase: v1alpha1.BackupFailed, startFailure: "GetLogBackupMetadataFailed", clusterExists: true, wantStop: true},
+		{name: "start metadata failed and cluster deleted", startPhase: v1alpha1.BackupFailed, startFailure: "GetLogBackupMetadataFailed"},
+		{name: "start reached prepare", startPhase: v1alpha1.BackupPrepare, clusterExists: true, wantStop: true},
+		{name: "start reached running", startPhase: v1alpha1.BackupRetryTheFailed, historicalPhase: v1alpha1.BackupRunning, clusterExists: true, wantStop: true},
+		{name: "start reached complete", startPhase: v1alpha1.BackupComplete, clusterExists: true, wantStop: true},
+		{name: "start job exists before status was written", startInFlight: true, clusterExists: true, wantStop: true},
+		{name: "start job finished without start status", startJobFailed: true, clusterExists: true, wantStop: true},
+		{name: "missing secret before start job creation", startPhase: v1alpha1.BackupRetryTheFailed, startFailure: "SecretNotExist", clusterExists: true},
+		{name: "BR rejected start and no job remains", startPhase: v1alpha1.BackupFailed, historicalPhase: v1alpha1.BackupRunning, startFailure: "StartLogBackupFailed", clusterExists: true},
+		{name: "BR rejected start and job is terminal", startPhase: v1alpha1.BackupFailed, historicalPhase: v1alpha1.BackupRunning, startFailure: "StartLogBackupFailed", startJobFailed: true, clusterExists: true},
+		{name: "BR rejected start before the job became terminal", startPhase: v1alpha1.BackupFailed, historicalPhase: v1alpha1.BackupRunning, startFailure: "StartLogBackupFailed", startInFlight: true, clusterExists: true},
+		{name: "started", clusterExists: true, wantStop: true, commitTS: "100", region: "us-west-2"},
+		{name: "already stopped", commitTS: "100", alreadyStopped: true},
+		{name: "truncate replaced top-level stop completion", commitTS: "100", stopSubcommandComplete: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			helper := newHelper(t)
+			defer helper.Close()
+			deps := helper.Deps
+			backup := genValidBRBackups()[0]
+			backup.Spec.BR.ClusterNamespace = "cluster-ns"
+			backup.Spec.Mode = v1alpha1.BackupModeLog
+			backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			backup.Spec.From = nil
+			deletionTime := metav1.Now()
+			backup.DeletionTimestamp = &deletionTime
+			backup.Status.BackupPath = "s3://s3/prefix-"
+			backup.Status.CommitTs = tc.commitTS
+			backup.Spec.S3.Region = tc.region
+			if tc.startFailure == "SecretNotExist" {
+				backup.Spec.S3.SecretName = "missing-s3-secret"
+				backup.Status.BackupPath = ""
+			}
+			if tc.alreadyStopped {
+				backup.Status.Phase = v1alpha1.BackupStopped
+				backup.Status.Conditions = []v1alpha1.BackupCondition{{Type: v1alpha1.BackupStopped, Status: corev1.ConditionTrue}}
+			}
+			if tc.startPhase != "" {
+				conditions := []v1alpha1.BackupCondition{{Type: tc.startPhase, Reason: tc.startFailure, Status: corev1.ConditionTrue}}
+				if tc.historicalPhase != "" {
+					conditions = append(conditions, v1alpha1.BackupCondition{Type: tc.historicalPhase, Status: corev1.ConditionTrue})
+				}
+				backup.Status.LogSubCommandStatuses = map[v1alpha1.LogSubCommandType]v1alpha1.LogSubCommandStatus{
+					v1alpha1.LogStartCommand: {Phase: tc.startPhase, Conditions: conditions},
+				}
+			}
+			if tc.stopSubcommandComplete {
+				backup.Status.Phase = v1alpha1.BackupComplete
+				backup.Status.Conditions = []v1alpha1.BackupCondition{
+					{Command: v1alpha1.LogTruncateCommand, Type: v1alpha1.BackupComplete, Status: corev1.ConditionTrue},
+				}
+				backup.Status.LogSubCommandStatuses = map[v1alpha1.LogSubCommandType]v1alpha1.LogSubCommandStatus{
+					v1alpha1.LogStopCommand: {Phase: v1alpha1.BackupComplete},
+				}
+			}
+			ctx := context.Background()
+			backups := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace)
+			_, err := backups.Create(ctx, backup, metav1.CreateOptions{})
+			require.NoError(t, err)
+			require.Eventually(t, func() bool {
+				_, err := deps.BackupLister.Backups(backup.Namespace).Get(backup.Name)
+				return err == nil
+			}, time.Second*10, time.Millisecond*10)
+			if tc.clusterExists {
+				helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster, false, false)
+			}
+			statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
+			cleaner := NewBackupCleaner(deps, statusUpdater)
+			jobs := deps.KubeClientset.BatchV1().Jobs(backup.Namespace)
+			stopName := backup.GetStopLogBackupJobName()
+			if tc.startJobFailed {
+				helper.createJob(&batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{Name: backup.GetBackupJobName(), Namespace: backup.Namespace},
+					Status:     batchv1.JobStatus{Conditions: []batchv1.JobCondition{{Type: batchv1.JobFailed, Status: corev1.ConditionTrue}}},
+				})
+			}
+			if tc.startInFlight {
+				startJob := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: backup.GetBackupJobName(), Namespace: backup.Namespace}}
+				// Reconcile against the API without waiting for the informer or a Scheduled status.
+				_, err := jobs.Create(ctx, startJob, metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+			if (tc.startInFlight || tc.startJobFailed) && tc.startFailure == "" {
+				err = cleaner.Clean(backup)
+				require.True(t, controller.IsRequeueError(err), "observed start Job should be recorded before proceeding: %v", err)
+				require.Eventually(t, func() bool {
+					current, err := deps.BackupLister.Backups(backup.Namespace).Get(backup.Name)
+					if err != nil {
+						return false
+					}
+					start := current.Status.LogSubCommandStatuses[v1alpha1.LogStartCommand]
+					if len(start.Conditions) != 1 || start.Conditions[0].Reason != startLogBackupJobObserved {
+						return false
+					}
+					backup = current.DeepCopy()
+					return true
+				}, time.Second*10, time.Millisecond*10)
+			}
+			if tc.startInFlight {
+				err = cleaner.Clean(backup)
+				require.True(t, controller.IsRequeueError(err), "stop should wait for start Job deletion: %v", err)
+				_, err = jobs.Get(ctx, backup.GetBackupJobName(), metav1.GetOptions{})
+				require.True(t, errors.IsNotFound(err), "the running start Job should be deleted: %v", err)
+				_, err = jobs.Get(ctx, stopName, metav1.GetOptions{})
+				require.True(t, errors.IsNotFound(err), "stop should wait for start Job deletion: %v", err)
+				// The replacement cleaner should continue from the persisted status after the Job is gone.
+				cleaner = NewBackupCleaner(deps, statusUpdater)
+			}
+
+			err = cleaner.Clean(backup)
+			if tc.wantStop {
+				require.True(t, controller.IsRequeueError(err), "stop Job should be monitored after creation: %v", err)
+				stopJob, err := jobs.Get(ctx, stopName, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.EqualValues(t, constants.DefaultBackoffLimit, *stopJob.Spec.BackoffLimit)
+				podEnv := stopJob.Spec.Template.Spec.Containers[0].Env
+				if tc.region == "" {
+					for _, env := range podEnv {
+						require.NotEqual(t, constants.AWSRegionEnv, env.Name)
+					}
+				} else {
+					require.Contains(t, podEnv, corev1.EnvVar{Name: constants.AWSRegionEnv, Value: tc.region})
+				}
+				err = cleaner.Clean(backup)
+				require.True(t, controller.IsRequeueError(err), "nonterminal stop Job should remain monitored: %v", err)
+				_, err = jobs.Get(ctx, backup.GetCleanJobName(), metav1.GetOptions{})
+				require.True(t, errors.IsNotFound(err), "clean Job was created before stop completed: %v", err)
+				stopJob.Status.Conditions = []batchv1.JobCondition{{Type: batchv1.JobFailed, Status: corev1.ConditionTrue}}
+				helper.updateJob(stopJob, func(_, updated *batchv1.Job) bool {
+					return len(updated.Status.Conditions) == 1 && updated.Status.Conditions[0].Type == batchv1.JobFailed
+				})
+				err = cleaner.Clean(backup)
+				require.True(t, controller.IsRequeueError(err), "failed stop Job should be deleted and retried: %v", err)
+				_, err = jobs.Get(ctx, stopName, metav1.GetOptions{})
+				require.True(t, errors.IsNotFound(err), "failed stop Job should be deleted: %v", err)
+				_, err = jobs.Get(ctx, backup.GetCleanJobName(), metav1.GetOptions{})
+				require.True(t, errors.IsNotFound(err), "clean Job was created after a failed stop: %v", err)
+				require.Eventually(t, func() bool {
+					_, err := deps.JobLister.Jobs(backup.Namespace).Get(stopName)
+					return errors.IsNotFound(err)
+				}, time.Second*10, time.Millisecond*10)
+				err = cleaner.Clean(backup)
+				require.True(t, controller.IsRequeueError(err), "stop Job should be recreated and monitored: %v", err)
+				stopJob, err = jobs.Get(ctx, stopName, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Empty(t, stopJob.Status.Conditions)
+				require.NoError(t, statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Command: v1alpha1.LogStopCommand, Type: v1alpha1.BackupComplete, Status: corev1.ConditionTrue,
+				}, nil))
+				if tc.startInFlight {
+					require.Eventually(t, func() bool {
+						current, err := deps.BackupLister.Backups(backup.Namespace).Get(backup.Name)
+						return err == nil && current.Status.LogSubCommandStatuses[v1alpha1.LogStopCommand].Phase == v1alpha1.BackupComplete
+					}, time.Second*10, time.Millisecond*10)
+					truncatedUntil := "42"
+					require.NoError(t, statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+						Command: v1alpha1.LogTruncateCommand, Type: v1alpha1.BackupComplete, Status: corev1.ConditionTrue,
+					}, &controller.BackupUpdateStatus{LogSuccessTruncateUntil: &truncatedUntil}))
+					current, err := backups.Get(ctx, backup.Name, metav1.GetOptions{})
+					require.NoError(t, err)
+					_, complete := v1alpha1.GetBackupCondition(&current.Status, v1alpha1.BackupComplete)
+					require.NotNil(t, complete)
+					require.Equal(t, v1alpha1.LogTruncateCommand, complete.Command)
+					require.True(t, IsLogBackupStoppedForCleanup(current))
+				}
+			} else {
+				require.NoError(t, err)
+				_, err = jobs.Get(ctx, stopName, metav1.GetOptions{})
+				require.True(t, errors.IsNotFound(err), "unexpected stop Job: %v", err)
+			}
+			var stoppedBackup *v1alpha1.Backup
+			require.Eventually(t, func() bool {
+				current, err := deps.BackupLister.Backups(backup.Namespace).Get(backup.Name)
+				if err != nil || !IsLogBackupStoppedForCleanup(current) {
+					return false
+				}
+				stoppedBackup = current.DeepCopy()
+				return true
+			}, time.Second*10, time.Millisecond*10)
+			if !tc.alreadyStopped && !tc.stopSubcommandComplete {
+				require.NoError(t, cleaner.Clean(stoppedBackup))
+			}
+			stored, err := backups.Get(ctx, backup.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.True(t, IsLogBackupStoppedForCleanup(stored))
+			if tc.startFailure == "SecretNotExist" {
+				require.True(t, v1alpha1.IsBackupClean(stored))
+			} else {
+				_, err = jobs.Get(ctx, backup.GetCleanJobName(), metav1.GetOptions{})
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func genVolumeBackup() *v1alpha1.Backup {

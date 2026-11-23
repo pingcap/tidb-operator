@@ -226,10 +226,17 @@ func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
-	// DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
 	// LogCheckpointTs is not nil when just update checkpoint ts, no subcommand status needs to be updated
-	if backup.DeletionTimestamp != nil || (newStatus != nil && newStatus.LogCheckpointTs != nil) {
+	if newStatus != nil && newStatus.LogCheckpointTs != nil {
 		return isWholeStatusUpdate
+	}
+	if backup.DeletionTimestamp != nil {
+		// Keep start evidence after its Job is removed and stop completion
+		// after other subcommands update the top-level conditions.
+		if condition == nil || (condition.Command != v1alpha1.LogStartCommand &&
+			(condition.Command != v1alpha1.LogStopCommand || condition.Type != v1alpha1.BackupComplete)) {
+			return isWholeStatusUpdate
+		}
 	}
 	// update subcommand status
 	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
