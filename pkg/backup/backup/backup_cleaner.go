@@ -74,13 +74,21 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 	}
 	started := v1alpha1.IsLogBackupAlreadyStart(backup)
 	if !started {
-		needsStop, err := bc.logStartNeedsStop(backup)
+		current, needsStop, err := bc.logStartNeedsStop(backup)
 		if err != nil {
 			return err
 		}
+		backup = current
+		if IsLogBackupStoppedForCleanup(backup) {
+			return nil
+		}
 		if !needsStop {
+			if isLogBackupTaskAlreadyExists(backup) {
+				klog.Warningf("skip stopping log backup %s/%s because BR rejected start due to an existing log task", backup.Namespace, backup.Name)
+			}
 			return bc.markLogBackupStopped(backup)
 		}
+		started = v1alpha1.IsLogBackupAlreadyStart(backup)
 	}
 	if backup.Spec.BR == nil {
 		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
@@ -183,7 +191,26 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 	return waitForStop()
 }
 
-func (bc *backupCleaner) logStartNeedsStop(backup *v1alpha1.Backup) (bool, error) {
+func (bc *backupCleaner) logStartNeedsStop(backup *v1alpha1.Backup) (*v1alpha1.Backup, bool, error) {
+	// The start Job is the first entry, even if the CR now requests a different subcommand.
+	startJobName := backup.GetAllLogBackupJobName()[0]
+	job, err := bc.deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), startJobName, metav1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, false, fmt.Errorf("failed to fetch start job %s/%s: %w", backup.Namespace, startJobName, err)
+	}
+	if err != nil || !metav1.IsControlledBy(job, backup) {
+		job = nil
+	}
+
+	// The Backup status can reach the API server before the Job exits and the informer catches up.
+	backup, err = bc.getLatestBackup(backup)
+	if err != nil {
+		return nil, false, err
+	}
+	if IsLogBackupStoppedForCleanup(backup) || v1alpha1.IsLogBackupAlreadyStart(backup) {
+		return backup, v1alpha1.IsLogBackupAlreadyStart(backup), nil
+	}
+
 	start := backup.Status.LogSubCommandStatuses[v1alpha1.LogStartCommand]
 	reachedBR := logStartReachedBR(start.Phase)
 	var metadataFailed, startFailed, startJobObserved bool
@@ -204,43 +231,69 @@ func (bc *backupCleaner) logStartNeedsStop(backup *v1alpha1.Backup) (bool, error
 			checkCondition(condition)
 		}
 	}
-	if metadataFailed || (!startFailed && (reachedBR || startJobObserved)) {
-		return true, nil
+	taskAlreadyExists := isLogBackupTaskAlreadyExists(backup)
+	needsStop := !taskAlreadyExists && (metadataFailed || (!startFailed && (reachedBR || startJobObserved)))
+	if job == nil {
+		return backup, needsStop, nil
 	}
 
-	// The start Job is the first entry, even if the CR now requests a different subcommand.
-	startJobName := backup.GetAllLogBackupJobName()[0]
-	// The API sees Jobs created before the informer or Backup status caught up.
-	job, err := bc.deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), startJobName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to fetch start job %s/%s: %w", backup.Namespace, startJobName, err)
-	}
-	if startFailed {
-		// The rejected start can report failure before Kubernetes marks the Job terminal.
-		if bc.isJobDoneOrFailed(job) {
-			return false, nil
+	if !needsStop && !startFailed && !taskAlreadyExists {
+		// Preserve the evidence across reconciles before cancelling the start Job.
+		if err := bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: v1alpha1.LogStartCommand,
+			Type:    v1alpha1.BackupScheduled,
+			Status:  corev1.ConditionTrue,
+			Reason:  startLogBackupJobObserved,
+		}, nil); err != nil {
+			return nil, false, err
 		}
-		if job.DeletionTimestamp == nil {
+		return nil, false, controller.RequeueErrorf("backup %s/%s recorded start job %s for cleanup", backup.Namespace, backup.Name, startJobName)
+	}
+
+	if job.DeletionTimestamp == nil {
+		if bc.isJobDoneOrFailed(job) {
+			return backup, needsStop, nil
+		}
+		// Let a Job running BR report its outcome before deciding whether to stop the task.
+		if !reachedBR || startFailed || metadataFailed || taskAlreadyExists {
 			if err := bc.deps.JobControl.DeleteJob(backup, job); err != nil && !errors.IsNotFound(err) {
-				return false, err
+				return nil, false, err
 			}
 		}
-		return false, controller.RequeueErrorf("backup %s/%s is waiting for rejected start job %s to exit", backup.Namespace, backup.Name, startJobName)
 	}
+	return nil, false, controller.RequeueErrorf("backup %s/%s is waiting for start job %s to exit", backup.Namespace, backup.Name, startJobName)
+}
 
-	// Preserve the evidence across reconciles before cancelling the start Job.
-	if err := bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Command: v1alpha1.LogStartCommand,
-		Type:    v1alpha1.BackupScheduled,
-		Status:  corev1.ConditionTrue,
-		Reason:  startLogBackupJobObserved,
-	}, nil); err != nil {
-		return false, err
+func (bc *backupCleaner) getLatestBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
+	current, err := bc.deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Get(context.TODO(), backup.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh backup %s/%s: %w", backup.Namespace, backup.Name, err)
 	}
-	return false, controller.RequeueErrorf("backup %s/%s recorded start job %s for cleanup", backup.Namespace, backup.Name, startJobName)
+	if current.UID != backup.UID {
+		return nil, fmt.Errorf("backup %s/%s was replaced during cleanup", backup.Namespace, backup.Name)
+	}
+	return current, nil
+}
+
+func isLogBackupTaskAlreadyExists(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog || v1alpha1.IsLogBackupAlreadyStart(backup) {
+		return false
+	}
+	isTaskConflict := func(condition v1alpha1.BackupCondition) bool {
+		return condition.Reason == constants.LogBackupTaskAlreadyExists ||
+			(condition.Reason == "StartLogBackupFailed" && strings.Contains(condition.Message, constants.BRStreamLogTaskExistsErrorCode))
+	}
+	for _, condition := range backup.Status.LogSubCommandStatuses[v1alpha1.LogStartCommand].Conditions {
+		if isTaskConflict(condition) {
+			return true
+		}
+	}
+	for _, condition := range backup.Status.Conditions {
+		if (condition.Command == "" || condition.Command == v1alpha1.LogStartCommand) && isTaskConflict(condition) {
+			return true
+		}
+	}
+	return false
 }
 
 func logStartReachedBR(phase v1alpha1.BackupConditionType) bool {
@@ -277,11 +330,15 @@ func IsLogBackupStoppedForCleanup(backup *v1alpha1.Backup) bool {
 }
 
 func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
-	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) || v1alpha1.NeedRetainData(backup) {
-		// The backup object has not been deleted or we need to retain backup data，do nothing
+	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) {
 		return nil
 	}
-	if backup.Spec.Mode == v1alpha1.BackupModeLog && !IsLogBackupStoppedForCleanup(backup) {
+	logBackup := backup.Spec.Mode == v1alpha1.BackupModeLog
+	if logBackup && !IsLogBackupStoppedForCleanup(backup) {
+		return nil
+	}
+	checkLogStart := logBackup && !v1alpha1.IsLogBackupAlreadyStart(backup)
+	if !checkLogStart && v1alpha1.NeedRetainData(backup) {
 		return nil
 	}
 	ns := backup.GetNamespace()
@@ -296,6 +353,23 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	if !finished {
 		klog.Infof("wait for backup %s/%s jobs to finish", ns, name)
 		return nil
+	}
+
+	if checkLogStart {
+		backup, err = bc.getLatestBackup(backup)
+		if err != nil {
+			return err
+		}
+		if !IsLogBackupStoppedForCleanup(backup) {
+			return nil
+		}
+		if isLogBackupTaskAlreadyExists(backup) {
+			klog.Warningf("skip cleaning log backup %s/%s because BR rejected start due to an existing log task", ns, name)
+			return bc.markBackupClean(backup)
+		}
+		if v1alpha1.NeedRetainData(backup) {
+			return nil
+		}
 	}
 
 	klog.Infof("start to clean backup %s/%s", ns, name)
@@ -318,10 +392,7 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	// no found the clean job, we start to create the clean job.
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
-		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:   v1alpha1.BackupClean,
-			Status: corev1.ConditionTrue,
-		}, nil)
+		return bc.markBackupClean(backup)
 	}
 
 	// not found clean job, create it
@@ -350,6 +421,13 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionFalse,
+	}, nil)
+}
+
+func (bc *backupCleaner) markBackupClean(backup *v1alpha1.Backup) error {
+	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupClean,
+		Status: corev1.ConditionTrue,
 	}, nil)
 }
 
@@ -659,8 +737,9 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 	isAllFinished := true
 	var errs []error
 	getJob := bc.deps.JobLister.Jobs(ns).Get
-	if backup.Spec.Mode == v1alpha1.BackupModeLog && !IsLogBackupStoppedForCleanup(backup) {
-		// The Job informer can lag the Backup status that recorded the start attempt.
+	logBackup := backup.Spec.Mode == v1alpha1.BackupModeLog
+	if logBackup {
+		// Use the live Job status when checking whether a log backup can stop or clean.
 		jobs := bc.deps.KubeClientset.BatchV1().Jobs(ns)
 		getJob = func(jobName string) (*batchv1.Job, error) {
 			return jobs.Get(context.TODO(), jobName, metav1.GetOptions{})
@@ -674,6 +753,10 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 				continue
 			}
 			errs = append(errs, err)
+			continue
+		}
+
+		if logBackup && !metav1.IsControlledBy(job, backup) {
 			continue
 		}
 
