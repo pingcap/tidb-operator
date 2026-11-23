@@ -94,6 +94,47 @@ func TestStorageBackendUsesS3AssumeRole(t *testing.T) {
 	}
 }
 
+func TestSTSRegionAndEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name, specRegion, regionOption, envRegion, defaultRegion, endpointMode string
+		wantSTSHost, wantSTSRegion, wantS3Region                               string
+	}{
+		{name: "spec region", specRegion: "us-west-2", envRegion: "ap-southeast-1", wantSTSHost: "sts.us-west-2.amazonaws.com", wantSTSRegion: "us-west-2", wantS3Region: "us-west-2"},
+		{name: "BR option wins", specRegion: "us-west-2", regionOption: "--s3.region=ap-southeast-1", wantSTSHost: "sts.ap-southeast-1.amazonaws.com", wantSTSRegion: "ap-southeast-1", wantS3Region: "ap-southeast-1"},
+		{name: "legacy", specRegion: "us-west-2", endpointMode: "LeGaCy", wantSTSHost: "sts.amazonaws.com", wantSTSRegion: "us-east-1", wantS3Region: "us-west-2"},
+		{name: "environment only affects STS", envRegion: "ap-southeast-1", defaultRegion: "us-west-2", wantSTSHost: "sts.ap-southeast-1.amazonaws.com", wantSTSRegion: "ap-southeast-1", wantS3Region: "us-east-1"},
+		{name: "default environment region", defaultRegion: "us-west-2", wantSTSHost: "sts.us-west-2.amazonaws.com", wantSTSRegion: "us-west-2", wantS3Region: "us-east-1"},
+		{name: "no region", wantSTSHost: "sts.us-east-1.amazonaws.com", wantSTSRegion: "us-east-1", wantS3Region: "us-east-1"},
+		{name: "empty BR option uses spec for STS", specRegion: "us-west-2", regionOption: "--s3.region=", wantSTSHost: "sts.us-west-2.amazonaws.com", wantSTSRegion: "us-west-2", wantS3Region: "us-east-1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := s3auth.Install(t)
+			t.Setenv("AWS_REGION", tc.envRegion)
+			t.Setenv("AWS_DEFAULT_REGION", tc.defaultRegion)
+			t.Setenv("AWS_STS_REGIONAL_ENDPOINTS", tc.endpointMode)
+			f.Objects["prefix/backupmeta"] = []byte("metadata")
+			provider := v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+				Bucket: "bucket", Prefix: "prefix", Region: tc.specRegion, Endpoint: s3auth.Endpoint, Provider: "aws",
+			}}
+			options := []string{"--s3.role-arn=" + s3auth.RoleARN}
+			if tc.regionOption != "" {
+				options = append(options, tc.regionOption)
+			}
+			backend, err := NewStorageBackendWithBROptions(provider, nil, options)
+			require.NoError(t, err)
+			defer backend.Close()
+			_, err = backend.ReadAll(context.Background(), "backupmeta")
+			require.NoError(t, err)
+			require.Len(t, f.Requests, 2)
+			require.Equal(t, "sts", f.Requests[0].Service)
+			require.Equal(t, tc.wantSTSHost, f.Requests[0].Host)
+			require.Equal(t, tc.wantSTSRegion, f.Requests[0].Region)
+			require.Equal(t, "s3", f.Requests[1].Service)
+			require.Equal(t, tc.wantS3Region, f.Requests[1].Region)
+		})
+	}
+}
+
 func TestS3RoleDoesNotFallBack(t *testing.T) {
 	for _, denySTS := range []bool{true, false} {
 		t.Run("denied", func(t *testing.T) {

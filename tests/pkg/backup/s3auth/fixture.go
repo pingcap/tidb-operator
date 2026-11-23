@@ -56,12 +56,12 @@ func Install(t testing.TB) *Fixture {
 	t.Helper()
 	for name, value := range map[string]string{
 		"AWS_ACCESS_KEY_ID": SourceKey, "AWS_SECRET_ACCESS_KEY": "source-secret-key",
-		"AWS_SESSION_TOKEN": SourceToken, "AWS_REGION": "us-east-1",
+		"AWS_SESSION_TOKEN": SourceToken, "AWS_REGION": "us-east-1", "AWS_DEFAULT_REGION": "",
 		"AWS_SHARED_CREDENTIALS_FILE": filepath.Join(t.TempDir(), "missing"),
 		"AWS_CONFIG_FILE":             filepath.Join(t.TempDir(), "missing"),
 		"AWS_SDK_LOAD_CONFIG":         "0", "AWS_PROFILE": "", "AWS_DEFAULT_PROFILE": "",
 		"AWS_ROLE_ARN": "", "AWS_WEB_IDENTITY_TOKEN_FILE": "",
-		"AWS_EC2_METADATA_DISABLED": "true", "AWS_STS_REGIONAL_ENDPOINTS": "regional",
+		"AWS_EC2_METADATA_DISABLED": "true", "AWS_STS_REGIONAL_ENDPOINTS": "",
 	} {
 		t.Setenv(name, value)
 	}
