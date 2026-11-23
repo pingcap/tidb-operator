@@ -55,7 +55,7 @@ func (ro *Options) restoreData(
 	restore *v1alpha1.Restore,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
 	restoreControl controller.RestoreControlInterface,
-) error {
+) (uint64, error) {
 	clusterNamespace := restore.Spec.BR.ClusterNamespace
 	if restore.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = restore.Namespace
@@ -67,19 +67,15 @@ func (ro *Options) restoreData(
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
-	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
-	dataArgs, err := constructBROptions(restore)
+	restoreType, pitrArgs, err := ro.restoreTypeAndPITRArgs(restore)
 	if err != nil {
-		return err
+		return 0, err
+	}
+	dataArgs, err := constructBROptions(restore, pitrArgs...)
+	if err != nil {
+		return 0, err
 	}
 	args = append(args, dataArgs...)
-
-	var restoreType string
-	if restore.Spec.Type == "" {
-		restoreType = string(v1alpha1.BackupTypeFull)
-	} else {
-		restoreType = string(restore.Spec.Type)
-	}
 
 	var (
 		csbPath      string
@@ -89,23 +85,7 @@ func (ro *Options) restoreData(
 	progressFile := "progress.txt"
 	useProgressFile := false
 
-	// gen args PiTR and volume-snapshot.
-	switch ro.Mode {
-	case string(v1alpha1.RestoreModePiTR):
-		// init pitr restore args
-		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
-
-		fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage")
-		if err != nil {
-			if restore.Spec.LogRestoreStartTs == "" {
-				return fmt.Errorf("error: Either pitrFullBackupStorageProvider or logRestoreStartTs option needs to be passed in pitr mode")
-			}
-			args = append(args, fmt.Sprintf("--start-ts=%s", restore.Spec.LogRestoreStartTs))
-		} else {
-			args = append(args, fullBackupArgs...)
-		}
-		restoreType = "point"
-	case string(v1alpha1.RestoreModeVolumeSnapshot):
+	if ro.Mode == string(v1alpha1.RestoreModeVolumeSnapshot) {
 		// Currently, we only support aws ebs volume snapshot.
 		args = append(args, "--type=aws-ebs")
 		if ro.Prepare {
@@ -164,13 +144,13 @@ func (ro *Options) restoreData(
 		},
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if csbPath != "" {
 		err = ro.processCloudSnapBackup(ctx, restore, csbPath, restoreControl)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
@@ -191,12 +171,33 @@ func (ro *Options) restoreData(
 	}
 
 	klog.Infof("Restore data for cluster %s successfully", ro)
-	return nil
+	return observer.pitrRestoreTS, nil
+}
+
+func (ro *Options) restoreTypeAndPITRArgs(restore *v1alpha1.Restore) (string, []string, error) {
+	if ro.Mode != string(v1alpha1.RestoreModePiTR) {
+		restoreType := restore.Spec.Type
+		if restoreType == "" {
+			restoreType = v1alpha1.BackupTypeFull
+		}
+		return string(restoreType), nil, nil
+	}
+
+	args := []string{"--restored-ts=" + ro.PitrRestoredTs}
+	fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage")
+	if err == nil {
+		return "point", append(args, fullBackupArgs...), nil
+	}
+	if restore.Spec.LogRestoreStartTs != "" {
+		return "point", append(args, "--start-ts="+restore.Spec.LogRestoreStartTs), nil
+	}
+	return "", nil, fmt.Errorf("PITR requires pitrFullBackupStorageProvider or logRestoreStartTs: %w", err)
 }
 
 type restoreLogObserver struct {
 	restore       *v1alpha1.Restore
 	statusUpdater controller.RestoreConditionUpdaterInterface
+	pitrRestoreTS uint64
 }
 
 func newRestoreLogObserver(
@@ -210,6 +211,9 @@ func newRestoreLogObserver(
 }
 
 func (o *restoreLogObserver) observeLine(line string) {
+	if ts := brlog.ParsePITRRestoreTS(line); ts != 0 {
+		o.pitrRestoreTS = ts
+	}
 	operation, ok := brlog.ParseOperationStartedLine(line)
 	if !ok {
 		return
@@ -251,7 +255,7 @@ func (ro *Options) processCloudSnapBackup(
 	return nil
 }
 
-func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
+func constructBROptions(restore *v1alpha1.Restore, pitrArgs ...string) ([]string, error) {
 	args, err := backupUtil.ConstructBRGlobalOptionsForRestore(restore)
 	if err != nil {
 		return nil, err
@@ -272,6 +276,8 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 	if config.OnLine != nil {
 		args = append(args, fmt.Sprintf("--online=%t", *config.OnLine))
 	}
+	args = append(args, pitrArgs...)
+	// Options in the spec follow generated arguments so the user can override them.
 	args = append(args, config.Options...)
 	return args, nil
 }

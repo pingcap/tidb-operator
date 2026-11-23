@@ -1025,20 +1025,12 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 		},
 	})
 
-	// Additional volumes - skip for prune job to simplify setup
-	if !isPruneJob {
-		if len(restore.Spec.AdditionalVolumes) > 0 {
-			volumes = append(volumes, restore.Spec.AdditionalVolumes...)
-		}
-		if len(restore.Spec.AdditionalVolumeMounts) > 0 {
-			volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
-		}
+	volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+	volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
 
-		// mount volumes if specified
-		if restore.Spec.Local != nil {
-			volumes = append(volumes, restore.Spec.Local.Volume)
-			volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)
-		}
+	if !isPruneJob && restore.Spec.Local != nil {
+		volumes = append(volumes, restore.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName
