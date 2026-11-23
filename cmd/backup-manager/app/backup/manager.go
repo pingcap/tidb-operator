@@ -408,7 +408,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			}
 		}
 	default:
-		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
+		backupMeta, err := util.GetBRMetaDataWithBROptions(ctx, backup.Spec.StorageProvider, util.GetBROptions(backup.Spec.BR))
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
@@ -531,7 +531,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	klog.Infof("Start log backup of cluster %s to %s success", bm, backupFullPath)
 
 	// get Meta info
-	backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
+	backupMeta, err := util.GetBRMetaDataWithBROptions(ctx, backup.Spec.StorageProvider, util.GetBROptions(backup.Spec.BR))
 	if err != nil {
 		klog.Errorf("Get log backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
 		return nil, "GetLogBackupMetadataFailed", err
