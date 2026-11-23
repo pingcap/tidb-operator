@@ -1069,6 +1069,31 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 	}
 }
 
+func TestPruneJobMountsAdditionalVolumes(t *testing.T) {
+	helper := newHelper(t)
+	defer helper.Close()
+	restore := genValidBRRestores()[0]
+	helper.CreateSecret(restore)
+	helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false, false)
+	volume := corev1.Volume{
+		Name: "aws-profile",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{SecretName: "aws-profile"},
+		},
+	}
+	mount := corev1.VolumeMount{Name: volume.Name, MountPath: "/aws-profile", ReadOnly: true}
+	restore.Spec.AdditionalVolumes = []corev1.Volume{volume}
+	restore.Spec.AdditionalVolumeMounts = []corev1.VolumeMount{mount}
+
+	manager := NewRestoreManager(helper.Deps).(*restoreManager)
+	job, reason, err := manager.makePruneJob(restore)
+	require.NoError(t, err, reason)
+	pod := job.Spec.Template.Spec
+	require.Contains(t, pod.Volumes, volume)
+	require.Contains(t, pod.Containers[0].VolumeMounts, mount)
+	require.Contains(t, pod.Containers[0].Args, "--abort=true")
+}
+
 func TestPiTRRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
