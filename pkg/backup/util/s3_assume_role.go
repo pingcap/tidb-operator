@@ -16,9 +16,12 @@ package util
 import (
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/spf13/pflag"
@@ -52,10 +55,24 @@ func NewStorageBackendWithBROptions(provider v1alpha1.StorageProvider, source *S
 	if settings.endpointSet {
 		s3Provider.Endpoint = settings.endpoint
 	}
-	provider.S3 = &s3Provider
 	if settings.roleARN != "" {
-		region := makeS3Config(provider.S3, true).region
+		region := settings.region
+		if region == "" {
+			region = provider.S3.Region
+		}
+		if region == "" {
+			region = os.Getenv("AWS_REGION")
+		}
+		if region == "" {
+			region = os.Getenv("AWS_DEFAULT_REGION")
+		}
+		if region == "" {
+			region = "us-east-1"
+		}
 		config := aws.NewConfig().WithRegion(region)
+		if !strings.EqualFold(os.Getenv("AWS_STS_REGIONAL_ENDPOINTS"), "legacy") {
+			config.WithSTSRegionalEndpoint(endpoints.RegionalSTSEndpoint)
+		}
 		if source != nil && source.awsCred != nil {
 			config.WithCredentials(source.awsCred)
 		}
@@ -71,6 +88,7 @@ func NewStorageBackendWithBROptions(provider v1alpha1.StorageProvider, source *S
 		})
 		source = &StorageCredential{awsCred: roleCredentials}
 	}
+	provider.S3 = &s3Provider
 	return NewStorageBackend(provider, source)
 }
 
