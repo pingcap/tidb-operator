@@ -309,7 +309,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 			restoreType = v1alpha1.RestoreDataComplete
 		}
 	default:
-		ts, err := backuputil.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+		ts, err := backuputil.GetCommitTsFromBRMetaDataWithBROptions(ctx, restore.Spec.StorageProvider, backuputil.GetBROptions(restore.Spec.BR))
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)

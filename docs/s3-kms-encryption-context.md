@@ -172,6 +172,54 @@ header to S3 reads. Read access still depends on the existing S3/KMS permissions
   S3 schema also appears in compaction and federation CRDs; the schema alone
   does not guarantee support by every underlying tool.
 
+## S3 authentication for backup and restore tasks
+
+For BR-based snapshot and log backups, metadata reads after BR completes use the
+S3 role configured in `spec.br.options`. Restore metadata reads and BR backup
+cleanup use the corresponding Restore or Backup options as well. Configure the
+storage identity once for the task; separate permissions for BR and
+backup-manager are not required.
+
+```yaml
+br:
+  options:
+    - --s3.role-arn=arn:aws:iam::123456789012:role/backup
+    - --s3.external-id=customer-backup
+```
+
+The task's existing credentials are the source for AWS STS AssumeRole. The role
+must have the permissions required by the enabled backup, restore and cleanup
+operations. Environment credentials may include a session token. Temporary role
+credentials are refreshed by the AWS SDK; source credentials must remain valid
+or refreshable for the task's duration. When a role is specified, failures to
+assume it or access S3 are reported without retrying under the environment
+identity. Without a role, existing credential behavior is preserved.
+
+Both `--flag=value` and separate flag/value arguments are accepted. Repeated
+settings use the last value, as in BR. An empty role does not request AssumeRole;
+an external ID alone does not enable it. Metadata and cleanup clients also apply
+`--s3.region` and `--s3.endpoint` overrides without using an S3 endpoint for STS.
+
+This fix covers S3 settings from the task's StorageProvider plus these explicit
+BR options. It does not resolve replacement `--storage` URLs, URL-embedded
+credentials/profiles or all other BR options for backup-manager. Use the typed
+storage location and explicit role options for this configuration. Options must
+otherwise be valid for the selected BR command; backup-manager's parser is not
+a replacement for BR argument validation. Volume-snapshot, controller-owned
+storage writes and rclone paths are outside this fix.
+
+PITR's full-backup and log storage retain their separate locations and encryption
+settings. This change does not dynamically replace authentication persisted in
+existing log tasks; changing a Backup CR must not be assumed to update such
+tasks. Verify the stored task configuration and supported upgrade procedure
+before changing credentials or roles for an existing task.
+
+Deployments that previously used one identity for BR and another for metadata
+or cleanup now use the configured role for the operations listed above. Review
+that role's task permissions when upgrading. Validate with default source
+credentials that cannot directly read or delete the protected test data, so an
+omitted role cannot be hidden by environment permissions.
+
 ## Logging and validation scope
 
 [Encryption context is not encrypted](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingKMSEncryption.html#encryption-context) and is not a secret store. It remains visible in Kubernetes
