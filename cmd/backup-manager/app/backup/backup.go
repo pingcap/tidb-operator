@@ -15,8 +15,11 @@ package backup
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -30,6 +33,7 @@ import (
 	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -180,7 +184,7 @@ func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-// doStoplogBackup generates br args about log backup stop and runs br binary to do the real backup work.
+// doStopLogBackup stops the named BR log backup task.
 func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",
@@ -191,7 +195,30 @@ func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	if err != nil {
 		return err
 	}
-	return bo.brCommandRun(ctx, fullArgs)
+	flags := pflag.NewFlagSet("log stop", pflag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.ParseErrorsWhitelist.UnknownFlags = true
+	taskName := flags.String("task-name", backup.Name, "")
+	// A filter value can itself begin with "--".
+	flags.StringArrayP("filter", "f", nil, "")
+	parseErr := flags.Parse(backup.Spec.BR.Options)
+	if *taskName == "" {
+		*taskName = backup.Name
+	}
+	// BR v8.5.7 prints the GetTask error via Cobra and exits with status 1.
+	notFoundLine := fmt.Sprintf("Error: no such task %s: [BR:PiTR:ErrTaskNotFound]task not found", *taskName)
+	taskAbsent := false
+	err = bo.runBRCommand(ctx, fullArgs, false, func(stream backupUtil.BRLogStream, line string) {
+		if parseErr == nil && stream == backupUtil.BRLogStreamStderr && line == notFoundLine {
+			taskAbsent = true
+		}
+	})
+	var exitErr *exec.ExitError
+	if taskAbsent && errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+		klog.Infof("BR log backup task %s is already absent", *taskName)
+		return nil
+	}
+	return err
 }
 
 // doPauselogBackup generates br args about log backup pause and runs br binary to do the real backup work.
@@ -297,27 +324,13 @@ func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
 
 // brCommandRun run br binary to do backup work with log callback.
 func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []string, logCallback func(line string)) error {
-	err := backupUtil.RunBRCommandWithLineHandler(ctx, backupUtil.BRCommandOptions{
-		BRBinPath:        brBinPath,
-		Cluster:          fmt.Sprint(bo),
-		Args:             fullArgs,
-		GracefulShutdown: bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize,
-		LineHandler: func(stream backupUtil.BRLogStream, line string) {
-			if stream != backupUtil.BRLogStreamStdout || logCallback == nil {
-				return
-			}
+	gracefulShutdown := bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize
+	return bo.runBRCommand(ctx, fullArgs, gracefulShutdown, func(stream backupUtil.BRLogStream, line string) {
+		if stream == backupUtil.BRLogStreamStdout && logCallback != nil {
 			// The legacy callback read stdout with ReadString('\n'), so keep newline-suffixed lines for callers.
 			logCallback(line + "\n")
-		},
+		}
 	})
-	if err != nil {
-		return err
-	}
-
-	e2eTestSimulate(bo)
-
-	klog.Infof("Run br commond %v for cluster %s successfully", backupUtil.RedactBRArgs(fullArgs), bo)
-	return nil
 }
 
 func (bo *Options) brCommandRunWithLogObserver(
@@ -325,16 +338,20 @@ func (bo *Options) brCommandRunWithLogObserver(
 	fullArgs []string,
 	logObserver func(line string),
 ) error {
+	return bo.runBRCommand(ctx, fullArgs, true, func(_ backupUtil.BRLogStream, line string) {
+		if logObserver != nil {
+			logObserver(line)
+		}
+	})
+}
+
+func (bo *Options) runBRCommand(ctx context.Context, fullArgs []string, gracefulShutdown bool, lineHandler backupUtil.BRLogLineHandler) error {
 	err := backupUtil.RunBRCommandWithLineHandler(ctx, backupUtil.BRCommandOptions{
 		BRBinPath:        brBinPath,
 		Cluster:          fmt.Sprint(bo),
 		Args:             fullArgs,
-		GracefulShutdown: true,
-		LineHandler: func(_ backupUtil.BRLogStream, line string) {
-			if logObserver != nil {
-				logObserver(line)
-			}
-		},
+		GracefulShutdown: gracefulShutdown,
+		LineHandler:      lineHandler,
 	})
 	if err != nil {
 		return err

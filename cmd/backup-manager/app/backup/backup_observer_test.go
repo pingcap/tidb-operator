@@ -15,6 +15,7 @@ package backup
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,58 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestDoStopLogBackup(t *testing.T) {
+	const missing = "Error: no such task log-backup: [BR:PiTR:ErrTaskNotFound]task not found"
+	const overrideMissing = "Error: no such task override: [BR:PiTR:ErrTaskNotFound]task not found"
+	for _, tc := range []struct {
+		name, stderr string
+		options      []string
+		exitCode     int
+		wantError    bool
+	}{
+		{name: "stopped"},
+		{name: "task absent", stderr: missing, exitCode: 1},
+		{name: "task name with equals", options: []string{"--task-name=override"}, stderr: overrideMissing, exitCode: 1},
+		{name: "last task name with separate value", options: []string{"--task-name=first", "--log-format", "text", "--task-name", "override"}, stderr: overrideMissing, exitCode: 1},
+		{name: "empty task name uses backup name", options: []string{"--task-name=first", "--task-name="}, stderr: missing, exitCode: 1},
+		{name: "default task name does not match override", options: []string{"--task-name=override"}, stderr: missing, exitCode: 1, wantError: true},
+		{name: "PD connection failed", stderr: "Error: failed to connect to PD: context deadline exceeded", exitCode: 1, wantError: true},
+		{name: "different task absent", stderr: "Error: no such task other: [BR:PiTR:ErrTaskNotFound]task not found", exitCode: 1, wantError: true},
+		{name: "different exit code", stderr: missing, exitCode: 2, wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			previous := brBinPath
+			brBinPath = dir
+			t.Cleanup(func() { brBinPath = previous })
+			script := fmt.Sprintf(`#!/bin/sh
+[ "$1 $2 $3" = 'log stop --task-name=log-backup' ] || exit 99
+printf '%%s\n' '%s' >&2
+exit %d
+`, tc.stderr, tc.exitCode)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755))
+			backup := &v1alpha1.Backup{
+				ObjectMeta: metav1.ObjectMeta{Name: "log-backup", Namespace: "ns"},
+				Spec: v1alpha1.BackupSpec{
+					Mode:            v1alpha1.BackupModeLog,
+					BR:              &v1alpha1.BRConfig{Cluster: "target", Options: tc.options},
+					StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Bucket: "bucket", Prefix: "logs"}},
+				},
+			}
+			err := (&Options{}).doStopLogBackup(context.Background(), backup)
+			if tc.wantError {
+				require.ErrorContains(t, err, tc.stderr)
+				require.ErrorContains(t, err, fmt.Sprintf("exit status %d", tc.exitCode))
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
 
 func TestBackupLogTruncateObserverUpdatesOperationOnly(t *testing.T) {
 	backup := &v1alpha1.Backup{}
