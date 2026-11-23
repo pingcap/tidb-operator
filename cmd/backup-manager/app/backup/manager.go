@@ -16,6 +16,7 @@ package backup
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -23,7 +24,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/dustin/go-humanize"
-	"github.com/pingcap/errors"
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -307,7 +308,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		klog.Infof("clean snapshot backup %s data before run br command, backup path is %s", bm, backup.Status.BackupPath)
 		err := bm.cleanSnapshotBackupEnv(ctx, backup)
 		if err != nil {
-			return errors.Annotatef(err, "clean snapshot backup %s failed", bm)
+			return perrors.Annotatef(err, "clean snapshot backup %s failed", bm)
 		}
 	}
 
@@ -526,6 +527,9 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 
 	if backupErr != nil {
 		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)
+		if errors.Is(backupErr, errLogBackupTaskAlreadyExists) {
+			return nil, bkconstants.LogBackupTaskAlreadyExists, backupErr
+		}
 		return nil, "StartLogBackupFailed", backupErr
 	}
 	klog.Infof("Start log backup of cluster %s to %s success", bm, backupFullPath)

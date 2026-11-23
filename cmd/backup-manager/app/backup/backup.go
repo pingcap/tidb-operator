@@ -41,6 +41,8 @@ import (
 
 var brBinPath = util.BRBinPath
 
+var errLogBackupTaskAlreadyExists = errors.New("BR log backup task already exists")
+
 // Options contains the input arguments to the backup command
 type Options struct {
 	backupUtil.GenericOptions
@@ -167,7 +169,19 @@ func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup
 	if err != nil {
 		return err
 	}
-	return bo.brCommandRun(ctx, fullArgs)
+	// Cobra prints the returned error to stderr. BR can also log it to stdout.
+	taskExists := false
+	err = bo.runBRCommand(ctx, fullArgs, false, func(stream backupUtil.BRLogStream, line string) {
+		if strings.Contains(line, constants.BRStreamLogTaskExistsErrorCode) &&
+			(stream == backupUtil.BRLogStreamStderr || brlog.IsErrorLine(line)) {
+			taskExists = true
+		}
+	})
+	var exitErr *exec.ExitError
+	if taskExists && errors.As(err, &exitErr) && exitErr.ExitCode() > 0 {
+		return fmt.Errorf("%w: %w", errLogBackupTaskAlreadyExists, err)
+	}
+	return err
 }
 
 // doResumeLogBackup generates br args about log backup resume and runs br binary to do the real backup work.

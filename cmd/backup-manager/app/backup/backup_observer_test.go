@@ -25,8 +25,86 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestStartLogBackupFailureReason(t *testing.T) {
+	for _, tc := range []struct {
+		name, output, redirect, wantReason string
+		info                               string
+	}{
+		{
+			name:       "Cobra stderr",
+			output:     "Error: failed to start the log backup, allow only one running task: [BR:Stream:ErrStreamLogTaskExist]stream task already exists",
+			redirect:   ">&2",
+			wantReason: "LogBackupTaskAlreadyExists",
+		},
+		{
+			name:       "BR stdout log",
+			output:     `[2026/11/23 10:00:00.000 +00:00] [ERROR] [main.go:43] ["br failed"] [error="failed to start the log backup, allow only one running task: [BR:Stream:ErrStreamLogTaskExist]stream task already exists"]`,
+			wantReason: "LogBackupTaskAlreadyExists",
+		},
+		{
+			name:       "ordinary error",
+			output:     "Error: failed to connect to PD: context deadline exceeded",
+			redirect:   ">&2",
+			wantReason: "StartLogBackupFailed",
+		},
+		{
+			name:       "different error code with the same prefix",
+			output:     "Error: [BR:Stream:ErrStreamLogTaskExists]stream task already exists",
+			redirect:   ">&2",
+			wantReason: "StartLogBackupFailed",
+		},
+		{
+			name:       "error code echoed in a BR info log",
+			info:       `[2026/11/23 10:00:00.000 +00:00] [INFO] [context.go:122] [storage="s3://bucket/[BR:Stream:ErrStreamLogTaskExist]"]`,
+			output:     "Error: failed to connect to PD: context deadline exceeded",
+			redirect:   ">&2",
+			wantReason: "StartLogBackupFailed",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			previous := brBinPath
+			brBinPath = dir
+			t.Cleanup(func() { brBinPath = previous })
+			script := fmt.Sprintf(`#!/bin/sh
+[ "$1 $2 $3" = 'log start --task-name=log-backup' ] || exit 99
+printf '%%s\n' '%s'
+printf '%%s\n' '%s' %s
+exit 1
+`, tc.info, tc.output, tc.redirect)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755))
+			backup := &v1alpha1.Backup{
+				ObjectMeta: metav1.ObjectMeta{Name: "log-backup", Namespace: "ns"},
+				Spec: v1alpha1.BackupSpec{
+					Mode:            v1alpha1.BackupModeLog,
+					BR:              &v1alpha1.BRConfig{Cluster: "target"},
+					StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Bucket: "bucket", Prefix: "logs"}},
+				},
+			}
+			updater := &recordingBackupStatusUpdater{}
+			bm := NewManager(nil, updater, Options{})
+			bm.SubCommand = string(v1alpha1.LogStartCommand)
+			err := bm.performLogBackup(context.Background(), backup)
+			require.ErrorContains(t, err, "exit status 1")
+			require.ErrorContains(t, err, tc.output)
+			if tc.wantReason == "LogBackupTaskAlreadyExists" {
+				require.ErrorIs(t, err, errLogBackupTaskAlreadyExists)
+			} else {
+				require.NotErrorIs(t, err, errLogBackupTaskAlreadyExists)
+			}
+			failure := updater.conditions[len(updater.conditions)-1]
+			require.Equal(t, v1alpha1.LogStartCommand, failure.Command)
+			require.Equal(t, v1alpha1.BackupFailed, failure.Type)
+			require.Equal(t, corev1.ConditionTrue, failure.Status)
+			require.Equal(t, tc.wantReason, failure.Reason)
+			require.Contains(t, failure.Message, tc.output)
+		})
+	}
+}
 
 func TestDoStopLogBackup(t *testing.T) {
 	const missing = "Error: no such task log-backup: [BR:PiTR:ErrTaskNotFound]task not found"
@@ -342,10 +420,12 @@ wait "$child"
 }
 
 type recordingBackupStatusUpdater struct {
-	updates []*controller.BackupUpdateStatus
+	updates    []*controller.BackupUpdateStatus
+	conditions []*v1alpha1.BackupCondition
 }
 
-func (r *recordingBackupStatusUpdater) Update(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+func (r *recordingBackupStatusUpdater) Update(_ *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
 	r.updates = append(r.updates, newStatus)
+	r.conditions = append(r.conditions, condition)
 	return nil
 }
