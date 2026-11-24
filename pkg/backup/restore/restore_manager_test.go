@@ -1073,8 +1073,15 @@ func TestPruneJobMountsAdditionalVolumes(t *testing.T) {
 	helper := newHelper(t)
 	defer helper.Close()
 	restore := genValidBRRestores()[0]
-	helper.CreateSecret(restore)
-	helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false, false)
+	restore.Spec.S3 = nil
+	localVolume := corev1.Volume{
+		Name: "local-backup",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "backup"},
+		},
+	}
+	localMount := corev1.VolumeMount{Name: localVolume.Name, MountPath: "/local-backup"}
+	restore.Spec.Local = &v1alpha1.LocalStorageProvider{Volume: localVolume, VolumeMount: localMount}
 	volume := corev1.Volume{
 		Name: "aws-profile",
 		VolumeSource: corev1.VolumeSource{
@@ -1082,8 +1089,11 @@ func TestPruneJobMountsAdditionalVolumes(t *testing.T) {
 		},
 	}
 	mount := corev1.VolumeMount{Name: volume.Name, MountPath: "/aws-profile", ReadOnly: true}
+	additionalLocalMount := corev1.VolumeMount{Name: localVolume.Name, MountPath: "/additional-local-backup"}
 	restore.Spec.AdditionalVolumes = []corev1.Volume{volume}
-	restore.Spec.AdditionalVolumeMounts = []corev1.VolumeMount{mount}
+	restore.Spec.AdditionalVolumeMounts = []corev1.VolumeMount{mount, additionalLocalMount}
+	helper.CreateSecret(restore)
+	helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false, false)
 
 	manager := NewRestoreManager(helper.Deps).(*restoreManager)
 	job, reason, err := manager.makePruneJob(restore)
@@ -1092,6 +1102,30 @@ func TestPruneJobMountsAdditionalVolumes(t *testing.T) {
 	require.Contains(t, pod.Volumes, volume)
 	require.Contains(t, pod.Containers[0].VolumeMounts, mount)
 	require.Contains(t, pod.Containers[0].Args, "--abort=true")
+	volumeNames := make(map[string]struct{}, len(pod.Volumes))
+	for _, volume := range pod.Volumes {
+		volumeNames[volume.Name] = struct{}{}
+	}
+	require.NotContains(t, volumeNames, localVolume.Name)
+	for _, container := range append(pod.InitContainers, pod.Containers...) {
+		for _, mount := range container.VolumeMounts {
+			require.Contains(t, volumeNames, mount.Name)
+		}
+	}
+
+	job, reason, err = manager.makeRestoreJob(restore)
+	require.NoError(t, err, reason)
+	pod = job.Spec.Template.Spec
+	require.Subset(t, pod.Volumes, []corev1.Volume{volume, localVolume})
+	require.Subset(t, pod.Containers[0].VolumeMounts, []corev1.VolumeMount{mount, additionalLocalMount, localMount})
+
+	restore.Spec.AdditionalVolumes = append(restore.Spec.AdditionalVolumes, localVolume)
+	job, reason, err = manager.makePruneJob(restore)
+	require.NoError(t, err, reason)
+	pod = job.Spec.Template.Spec
+	require.Contains(t, pod.Volumes, localVolume)
+	require.Contains(t, pod.Containers[0].VolumeMounts, additionalLocalMount)
+	require.NotContains(t, pod.Containers[0].VolumeMounts, localMount)
 }
 
 func TestPiTRRestore(t *testing.T) {

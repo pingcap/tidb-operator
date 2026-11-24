@@ -122,6 +122,9 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 		return controller.RequeueErrorf("backup %s/%s is waiting for stop job %s", ns, name, stopLogJobName)
 	}
 	if err == nil {
+		if !metav1.IsControlledBy(stopJob, backup) {
+			return fmt.Errorf("stop log backup job %s/%s is not controlled by backup %s/%s", ns, stopLogJobName, ns, name)
+		}
 		if stopJob.DeletionTimestamp != nil {
 			return waitForStop()
 		}

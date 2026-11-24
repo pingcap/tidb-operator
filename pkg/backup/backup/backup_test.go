@@ -33,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -610,6 +611,77 @@ func TestCleanLogBackupWaitsForStop(t *testing.T) {
 				_, err = jobs.Get(ctx, backup.GetCleanJobName(), metav1.GetOptions{})
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestCleanLogBackupRejectsForeignStopJob(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		condition batchv1.JobConditionType
+		apiLookup bool
+	}{
+		{name: "failed job in informer", condition: batchv1.JobFailed},
+		{name: "completed job from API", condition: batchv1.JobComplete, apiLookup: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			helper := newHelper(t)
+			defer helper.Close()
+			deps := *helper.Deps
+			backup := genValidBRBackups()[0]
+			backup.UID = "log-backup"
+			backup.Spec.Mode = v1alpha1.BackupModeLog
+			backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			backup.Spec.From = nil
+			backup.Status.BackupPath = "s3://s3/logs"
+			backup.Status.CommitTs = "100"
+			deletionTime := metav1.Now()
+			backup.DeletionTimestamp = &deletionTime
+			helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster, false, false)
+
+			ctx := context.Background()
+			backups := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace)
+			_, err := backups.Create(ctx, backup, metav1.CreateOptions{})
+			require.NoError(t, err)
+			require.Eventually(t, func() bool {
+				_, err := deps.BackupLister.Backups(backup.Namespace).Get(backup.Name)
+				return err == nil
+			}, time.Second*10, time.Millisecond*10)
+
+			previousBackup := backup.DeepCopy()
+			previousBackup.UID = "previous-log-backup"
+			stopName := backup.GetStopLogBackupJobName()
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            stopName,
+					Namespace:       backup.Namespace,
+					OwnerReferences: []metav1.OwnerReference{controller.GetBackupOwnerRef(previousBackup)},
+				},
+				Status: batchv1.JobStatus{
+					Conditions: []batchv1.JobCondition{{Type: tc.condition, Status: corev1.ConditionTrue}},
+				},
+			}
+			helper.createJob(job)
+			if tc.apiLookup {
+				// Keep the Job in the API but simulate an informer that has not seen it.
+				deps.JobLister = batchlisters.NewJobLister(cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{}))
+			}
+
+			updater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
+			cleaner := NewBackupCleaner(&deps, updater)
+			require.EqualError(t, cleaner.Clean(backup),
+				fmt.Sprintf("stop log backup job %s/%s is not controlled by backup %s/%s", backup.Namespace, stopName, backup.Namespace, backup.Name))
+
+			jobs := deps.KubeClientset.BatchV1().Jobs(backup.Namespace)
+			remainingJob, err := jobs.Get(ctx, stopName, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.True(t, metav1.IsControlledBy(remainingJob, previousBackup))
+			require.Nil(t, remainingJob.DeletionTimestamp)
+			stored, err := backups.Get(ctx, backup.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.False(t, IsLogBackupStoppedForCleanup(stored))
+			_, err = jobs.Get(ctx, backup.GetCleanJobName(), metav1.GetOptions{})
+			require.True(t, errors.IsNotFound(err), "unexpected clean Job: %v", err)
 		})
 	}
 }
