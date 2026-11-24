@@ -216,14 +216,11 @@ func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	// A filter value can itself begin with "--".
 	flags.StringArrayP("filter", "f", nil, "")
 	parseErr := flags.Parse(backup.Spec.BR.Options)
-	if *taskName == "" {
-		*taskName = backup.Name
-	}
 	// BR v8.5.7 prints the GetTask error via Cobra and exits with status 1.
 	notFoundLine := fmt.Sprintf("Error: no such task %s: [BR:PiTR:ErrTaskNotFound]task not found", *taskName)
 	taskAbsent := false
 	err = bo.runBRCommand(ctx, fullArgs, false, func(stream backupUtil.BRLogStream, line string) {
-		if parseErr == nil && stream == backupUtil.BRLogStreamStderr && line == notFoundLine {
+		if parseErr == nil && *taskName != "" && stream == backupUtil.BRLogStreamStderr && line == notFoundLine {
 			taskAbsent = true
 		}
 	})

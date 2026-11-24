@@ -1026,8 +1026,20 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 	})
 
 	volumes = append(volumes, restore.Spec.AdditionalVolumes...)
-	volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
-
+	if isPruneJob && restore.Spec.Local != nil {
+		volumeNames := make(map[string]struct{}, len(volumes))
+		for _, volume := range volumes {
+			volumeNames[volume.Name] = struct{}{}
+		}
+		for _, mount := range restore.Spec.AdditionalVolumeMounts {
+			if _, exists := volumeNames[mount.Name]; mount.Name == restore.Spec.Local.Volume.Name && !exists {
+				continue
+			}
+			volumeMounts = append(volumeMounts, mount)
+		}
+	} else {
+		volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+	}
 	if !isPruneJob && restore.Spec.Local != nil {
 		volumes = append(volumes, restore.Spec.Local.Volume)
 		volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)

@@ -39,6 +39,7 @@ func TestRestoreManagerUsesS3RoleForMetadata(t *testing.T) {
 		mode           v1alpha1.RestoreMode
 		log            string
 		pitrRestoredTS string
+		extraOptions   []string
 		wantCommitTS   string
 	}{
 		{name: "snapshot", mode: v1alpha1.RestoreModeSnapshot, wantCommitTS: "202"},
@@ -47,6 +48,9 @@ func TestRestoreManagerUsesS3RoleForMetadata(t *testing.T) {
 		{name: "PITR JSON log", mode: v1alpha1.RestoreModePiTR, log: jsonLog, wantCommitTS: "456789"},
 		{name: "PITR numeric fallback", mode: v1alpha1.RestoreModePiTR, pitrRestoredTS: "123456", wantCommitTS: "123456"},
 		{name: "PITR datetime fallback", mode: v1alpha1.RestoreModePiTR, pitrRestoredTS: "2018-05-11 01:42:23+0800", wantCommitTS: strconv.FormatInt(time.Date(2018, 5, 10, 17, 42, 23, 0, time.UTC).UnixMilli()<<18, 10)},
+		{name: "PITR restored timestamp override", mode: v1alpha1.RestoreModePiTR, pitrRestoredTS: "700", extraOptions: []string{"--restored-ts=900"}, wantCommitTS: "900"},
+		{name: "PITR log takes precedence over restored timestamp override", mode: v1alpha1.RestoreModePiTR, log: startLog, pitrRestoredTS: "700", extraOptions: []string{"--restored-ts", "900"}, wantCommitTS: "456789"},
+		{name: "PITR empty restored timestamp override", mode: v1alpha1.RestoreModePiTR, pitrRestoredTS: "700", extraOptions: []string{"--restored-ts="}, wantCommitTS: "0"},
 		{name: "PITR legacy BR with no restore point", mode: v1alpha1.RestoreModePiTR, wantCommitTS: "0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -64,7 +68,7 @@ func TestRestoreManagerUsesS3RoleForMetadata(t *testing.T) {
 			t.Cleanup(func() { brBinPath = previous })
 			require.NoError(t, os.WriteFile(filepath.Join(dir, "br"), []byte("#!/bin/sh\n"+tc.log+"\nexit 0\n"), 0755))
 			restore := &v1alpha1.Restore{Spec: v1alpha1.RestoreSpec{
-				BR: &v1alpha1.BRConfig{Cluster: "target", Options: []string{"--s3.role-arn=" + s3auth.RoleARN}},
+				BR: &v1alpha1.BRConfig{Cluster: "target", Options: append([]string{"--s3.role-arn=" + s3auth.RoleARN}, tc.extraOptions...)},
 				StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
 					Bucket: "bucket", Prefix: "primary", Endpoint: s3auth.Endpoint, Region: "us-east-1", Provider: "aws",
 				}},

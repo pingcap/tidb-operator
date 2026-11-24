@@ -17,6 +17,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os/exec"
 	"path"
 	"strconv"
@@ -32,6 +33,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -345,6 +347,19 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	}, updateStatus)
 }
 
+func effectivePITRRestoredTS(defaultTS string, options []string) string {
+	flags := pflag.NewFlagSet("restore point", pflag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.ParseErrorsWhitelist.UnknownFlags = true
+	// A filter value can itself begin with "--".
+	flags.StringArrayP("filter", "f", nil, "")
+	restoredTS := flags.String("restored-ts", defaultTS, "")
+	if err := flags.Parse(options); err == nil && flags.Changed("restored-ts") {
+		return *restoredTS
+	}
+	return defaultTS
+}
+
 func (rm *Manager) restoreCommitTS(ctx context.Context, restore *v1alpha1.Restore, observedTS uint64) (uint64, error) {
 	options := backuputil.GetBROptions(restore.Spec.BR)
 	if rm.Mode != string(v1alpha1.RestoreModePiTR) {
@@ -358,7 +373,8 @@ func (rm *Manager) restoreCommitTS(ctx context.Context, restore *v1alpha1.Restor
 	if observedTS != 0 {
 		return observedTS, nil
 	}
-	if ts, err := config.ParseTSString(rm.PitrRestoredTs); err == nil && ts != 0 {
+	restoredTS := effectivePITRRestoredTS(rm.PitrRestoredTs, options)
+	if ts, err := config.ParseTSString(restoredTS); err == nil && ts != 0 {
 		return ts, nil
 	}
 	for _, layout := range []string{
@@ -369,7 +385,7 @@ func (rm *Manager) restoreCommitTS(ctx context.Context, restore *v1alpha1.Restor
 		"2006-01-02 15:04:05.999999999-07",
 		"2006-01-02T15:04:05.999999999-07",
 	} {
-		if restoredAt, err := time.Parse(layout, rm.PitrRestoredTs); err == nil {
+		if restoredAt, err := time.Parse(layout, restoredTS); err == nil {
 			return config.GoTimeToTS(restoredAt), nil
 		}
 	}
