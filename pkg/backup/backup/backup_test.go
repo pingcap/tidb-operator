@@ -663,7 +663,6 @@ func TestCleanLogBackupRejectsForeignStopJob(t *testing.T) {
 			}
 			helper.createJob(job)
 			if tc.apiLookup {
-				// Keep the Job in the API but simulate an informer that has not seen it.
 				deps.JobLister = batchlisters.NewJobLister(cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{}))
 			}
 
