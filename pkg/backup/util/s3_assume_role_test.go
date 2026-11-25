@@ -15,7 +15,12 @@ package util
 
 import (
 	"context"
+	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -197,6 +202,125 @@ func TestS3RoleCredentialsRefresh(t *testing.T) {
 		}
 	}
 	require.Equal(t, 2, assumeRoleCount)
+}
+
+const (
+	irsaRoleARN = "arn:aws:iam::111122223333:role/backup-manager"
+	irsaRegion  = "us-west-2"
+	irsaSTSHost = "sts.us-west-2.amazonaws.com"
+	irsaToken1  = "irsa-jwt-1"
+	irsaToken2  = "irsa-jwt-2"
+)
+
+func TestStorageBackendIRSAWithAssumeRoleAndRefresh(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f, tokenPath := installIRSAFixture(t)
+		f.ExpectedExternalID = "irsa-ext"
+		f.WebIdentityExpiry = time.Minute
+		backend, err := NewStorageBackendWithBROptions(irsaStorageProvider(), &StorageCredential{}, []string{
+			"--s3.role-arn=" + s3auth.RoleARN, "--s3.external-id=" + f.ExpectedExternalID,
+		})
+		require.NoError(t, err)
+		defer backend.Close()
+
+		data, err := backend.ReadAll(context.Background(), "backupmeta")
+		require.NoError(t, err)
+		require.Equal(t, "metadata", string(data))
+		firstRequests := irsaRoleRequests(irsaToken1, "irsa-access-key-1", f.ExpectedExternalID)
+		require.Equal(t, firstRequests, f.Requests)
+
+		require.NoError(t, os.WriteFile(tokenPath, []byte(irsaToken2), 0600))
+		f.ExpectedWebIdentityToken = irsaToken2
+		// The WebIdentity provider has no expiry window. Advance the test clock
+		// past the source credential expiry before expiring the final role.
+		time.Sleep(f.WebIdentityExpiry + time.Nanosecond)
+		client, ok := backend.AsS3()
+		require.True(t, ok)
+		client.Config.Credentials.Expire()
+
+		data, err = backend.ReadAll(context.Background(), "backupmeta")
+		require.NoError(t, err)
+		require.Equal(t, "metadata", string(data))
+		require.Equal(t, append(firstRequests, irsaRoleRequests(irsaToken2, "irsa-access-key-2", f.ExpectedExternalID)...), f.Requests)
+	})
+}
+
+func TestStorageBackendIRSAWithAssumeRoleDoesNotFallBack(t *testing.T) {
+	for _, tc := range []struct {
+		name, message                             string
+		denyWebIdentity, denyAssumeRole, denyRole bool
+		requestCount                              int
+	}{
+		{name: "web identity denied", message: "web identity denied", denyWebIdentity: true, requestCount: 1},
+		{name: "assume role denied", message: "role denied", denyAssumeRole: true, requestCount: 2},
+		{name: "S3 access denied", message: "storage identity denied", denyRole: true, requestCount: 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f, _ := installIRSAFixture(t)
+			f.DenyWebIdentity, f.DenyAssumeRole, f.DenyRole = tc.denyWebIdentity, tc.denyAssumeRole, tc.denyRole
+			f.AllowSource = true
+			backend, err := NewStorageBackendWithBROptions(irsaStorageProvider(), &StorageCredential{}, []string{
+				"--s3.role-arn=" + s3auth.RoleARN,
+			})
+			require.NoError(t, err)
+			defer backend.Close()
+
+			_, err = backend.ReadAll(context.Background(), "backupmeta")
+			require.ErrorContains(t, err, "AccessDenied")
+			require.ErrorContains(t, err, tc.message)
+			require.Equal(t, irsaRoleRequests(irsaToken1, "irsa-access-key-1", "")[:tc.requestCount], f.Requests)
+		})
+	}
+}
+
+func TestStorageBackendIRSAWithoutRoleUsesWebIdentity(t *testing.T) {
+	f, _ := installIRSAFixture(t)
+	f.AllowSource = true
+	backend, err := NewStorageBackendWithBROptions(irsaStorageProvider(), &StorageCredential{}, nil)
+	require.NoError(t, err)
+	defer backend.Close()
+
+	data, err := backend.ReadAll(context.Background(), "backupmeta")
+	require.NoError(t, err)
+	require.Equal(t, "metadata", string(data))
+	require.Len(t, f.Requests, 2)
+	stsHost := f.Requests[0].Host
+	require.Contains(t, []string{"sts.amazonaws.com", irsaSTSHost}, stsHost)
+	require.Equal(t, []s3auth.Request{
+		{Service: "sts", Method: http.MethodPost, Host: stsHost, Action: "AssumeRoleWithWebIdentity", RoleARN: irsaRoleARN, WebIdentityToken: irsaToken1},
+		{Service: "s3", Method: http.MethodGet, Host: "s3.unit.test", AccessKey: "irsa-access-key-1", Region: irsaRegion},
+	}, f.Requests)
+}
+
+func installIRSAFixture(t *testing.T) (*s3auth.Fixture, string) {
+	t.Helper()
+	f := s3auth.Install(t)
+	f.ExpectedWebIdentityRoleARN = irsaRoleARN
+	f.ExpectedWebIdentityToken = irsaToken1
+	f.Objects["prefix/backupmeta"] = []byte("metadata")
+	tokenPath := filepath.Join(t.TempDir(), "token")
+	require.NoError(t, os.WriteFile(tokenPath, []byte(irsaToken1), 0600))
+	for _, name := range []string{"AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SESSION_TOKEN"} {
+		t.Setenv(name, "")
+	}
+	t.Setenv("AWS_ROLE_ARN", irsaRoleARN)
+	t.Setenv("AWS_WEB_IDENTITY_TOKEN_FILE", tokenPath)
+	t.Setenv("AWS_REGION", irsaRegion)
+	return f, tokenPath
+}
+
+func irsaStorageProvider() v1alpha1.StorageProvider {
+	return v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+		Bucket: "bucket", Prefix: "prefix", Region: irsaRegion, Endpoint: s3auth.Endpoint, Provider: "aws",
+	}}
+}
+
+func irsaRoleRequests(token, sourceKey, externalID string) []s3auth.Request {
+	return []s3auth.Request{
+		{Service: "sts", Method: http.MethodPost, Host: irsaSTSHost, Action: "AssumeRoleWithWebIdentity", RoleARN: irsaRoleARN, WebIdentityToken: token},
+		{Service: "sts", Method: http.MethodPost, Host: irsaSTSHost, Action: "AssumeRole", RoleARN: s3auth.RoleARN, ExternalID: externalID, AccessKey: sourceKey, Region: irsaRegion},
+		{Service: "s3", Method: http.MethodGet, Host: "s3.unit.test", AccessKey: s3auth.RoleKey, Region: irsaRegion},
+	}
 }
 
 func TestS3RoleMetadataRead(t *testing.T) {

@@ -35,20 +35,28 @@ const (
 	SourceToken = "source-session-token" // #nosec G101 -- synthetic test token
 )
 
-// Request records identifiers, never secret keys or tokens.
+const irsaAccessKeyPrefix = "irsa-access-key-"
+
+// Request records identifiers, never secret keys or real tokens.
 type Request struct {
 	Service, Method, Host, AccessKey, RoleARN, ExternalID, Region string
+	Action, WebIdentityToken                                      string
 }
 
 // Fixture accepts S3 access only with STS-issued credentials unless AllowSource is set.
 // Install must not be used from parallel tests because the AWS SDK reads http.DefaultClient.
 type Fixture struct {
-	mu                                     sync.Mutex
-	Objects                                map[string][]byte
-	Requests                               []Request
-	AllowSource, DenyRole, DenyAssumeRole  bool
-	ExpectedExternalID                     string
-	ExpectedSourceKey, ExpectedSourceToken string
+	mu                                                   sync.Mutex
+	Objects                                              map[string][]byte
+	Requests                                             []Request
+	AllowSource, DenyRole, DenyAssumeRole                bool
+	ExpectedExternalID                                   string
+	ExpectedSourceKey, ExpectedSourceToken               string
+	ExpectedWebIdentityRoleARN, ExpectedWebIdentityToken string
+	DenyWebIdentity                                      bool
+	WebIdentityExpiry                                    time.Duration
+	webIdentitySeq                                       int
+	webIdentityKey, webIdentitySessionToken              string
 }
 
 // Install redirects every AWS request to this transport; unexpected hosts fail locally.
@@ -72,12 +80,14 @@ func Install(t testing.TB) *Fixture {
 	return f
 }
 
-// RoundTrip implements STS AssumeRole, S3 Head/Get/List/Delete without network I/O.
+// RoundTrip implements STS AssumeRole and AssumeRoleWithWebIdentity, and S3 Head/Get/List/Delete without network I/O.
 func (f *Fixture) RoundTrip(req *http.Request) (*http.Response, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	authorization := req.Header.Get("Authorization")
+	sessionToken := req.Header.Get("X-Amz-Security-Token")
 	accessKey, region := "", ""
-	if _, credential, ok := strings.Cut(req.Header.Get("Authorization"), "Credential="); ok {
+	if _, credential, ok := strings.Cut(authorization, "Credential="); ok {
 		parts := strings.Split(credential, "/")
 		accessKey = parts[0]
 		if len(parts) > 2 {
@@ -85,14 +95,27 @@ func (f *Fixture) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 	record := Request{Method: req.Method, Host: req.URL.Host, AccessKey: accessKey, Region: region}
+	irsaMode := f.ExpectedWebIdentityRoleARN != "" || f.webIdentitySeq > 0
 	if strings.HasPrefix(req.URL.Host, "sts.") {
 		record.Service = "sts"
 		if err := req.ParseForm(); err != nil {
 			return nil, err
 		}
 		record.RoleARN, record.ExternalID = req.Form.Get("RoleArn"), req.Form.Get("ExternalId")
+		record.Action = req.Form.Get("Action")
+		if record.Action == "AssumeRoleWithWebIdentity" {
+			return f.assumeRoleWithWebIdentity(req, record, authorization)
+		}
 		f.Requests = append(f.Requests, record)
-		if accessKey != f.ExpectedSourceKey || req.Header.Get("X-Amz-Security-Token") != f.ExpectedSourceToken {
+		if record.Action != "AssumeRole" {
+			return nil, fmt.Errorf("unexpected STS action")
+		}
+		key, token := f.ExpectedSourceKey, f.ExpectedSourceToken
+		// Default sources in IRSA mode and any explicit IRSA keys must use the latest session.
+		if strings.HasPrefix(key, irsaAccessKeyPrefix) || (irsaMode && (key == "" || key == SourceKey)) {
+			key, token = f.webIdentityKey, f.webIdentitySessionToken
+		}
+		if key == "" || accessKey != key || sessionToken != token {
 			return nil, fmt.Errorf("STS did not receive source session credentials")
 		}
 		if f.DenyAssumeRole || record.RoleARN != RoleARN || record.ExternalID != f.ExpectedExternalID {
@@ -106,11 +129,15 @@ func (f *Fixture) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	record.Service = "s3"
 	f.Requests = append(f.Requests, record)
-	authorized := accessKey == RoleKey && !f.DenyRole || accessKey == f.ExpectedSourceKey && f.AllowSource
+	allowedSource := accessKey != "" && accessKey == f.ExpectedSourceKey
+	if irsaMode {
+		allowedSource = accessKey != "" && accessKey == f.webIdentityKey && sessionToken == f.webIdentitySessionToken
+	}
+	authorized := accessKey == RoleKey && !f.DenyRole || allowedSource && f.AllowSource
 	if !authorized {
 		return response(req, 403, `<Error><Code>AccessDenied</Code><Message>storage identity denied</Message></Error>`), nil
 	}
-	if accessKey == RoleKey && req.Header.Get("X-Amz-Security-Token") != "role-session-token" {
+	if accessKey == RoleKey && sessionToken != "role-session-token" {
 		return nil, fmt.Errorf("S3 did not receive role session token")
 	}
 	key := strings.TrimPrefix(req.URL.Path, "/bucket/")
@@ -155,6 +182,38 @@ func (f *Fixture) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 	return nil, fmt.Errorf("unexpected S3 operation %s", req.Method)
+}
+
+func (f *Fixture) assumeRoleWithWebIdentity(req *http.Request, record Request, authorization string) (*http.Response, error) {
+	token := req.Form.Get("WebIdentityToken")
+	switch token {
+	case "irsa-jwt-1", "irsa-jwt-2":
+		record.WebIdentityToken = token
+	}
+	f.Requests = append(f.Requests, record)
+	if authorization != "" {
+		return nil, fmt.Errorf("STS web identity request was signed")
+	}
+	if f.DenyWebIdentity || (f.ExpectedWebIdentityRoleARN != "" && record.RoleARN != f.ExpectedWebIdentityRoleARN) ||
+		token == "" || (f.ExpectedWebIdentityToken != "" && token != f.ExpectedWebIdentityToken) {
+		return response(req, 403, `<ErrorResponse><Error><Code>AccessDenied</Code><Message>web identity denied</Message></Error></ErrorResponse>`), nil
+	}
+	expiry := f.WebIdentityExpiry
+	if expiry == 0 {
+		expiry = time.Hour
+	}
+	f.webIdentitySeq++
+	f.webIdentityKey = irsaAccessKeyPrefix + strconv.Itoa(f.webIdentitySeq)
+	f.webIdentitySessionToken = fmt.Sprintf("irsa-session-token-%d", f.webIdentitySeq)
+	body := fmt.Sprintf(`<AssumeRoleWithWebIdentityResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
+	<AssumeRoleWithWebIdentityResult>
+		<Credentials><AccessKeyId>%s</AccessKeyId><SecretAccessKey>irsa-secret-key</SecretAccessKey><SessionToken>%s</SessionToken><Expiration>%s</Expiration></Credentials>
+		<SubjectFromWebIdentityToken>system:serviceaccount:backup:backup-manager</SubjectFromWebIdentityToken>
+		<AssumedRoleUser><AssumedRoleId>id:backup-manager</AssumedRoleId><Arn>arn:aws:sts::111122223333:assumed-role/backup-manager/session</Arn></AssumedRoleUser>
+	</AssumeRoleWithWebIdentityResult>
+	<ResponseMetadata><RequestId>test</RequestId></ResponseMetadata>
+</AssumeRoleWithWebIdentityResponse>`, f.webIdentityKey, f.webIdentitySessionToken, time.Now().Add(expiry).UTC().Format(time.RFC3339))
+	return response(req, 200, body), nil
 }
 
 func response(req *http.Request, status int, body string) *http.Response {
