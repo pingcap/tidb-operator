@@ -15,9 +15,11 @@ package restore
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,9 +43,11 @@ func TestRestoreManagerUsesS3RoleForMetadata(t *testing.T) {
 		pitrRestoredTS string
 		extraOptions   []string
 		wantCommitTS   string
+		useS3Fields    bool
 	}{
 		{name: "snapshot", mode: v1alpha1.RestoreModeSnapshot, wantCommitTS: "202"},
 		{name: "PITR log", mode: v1alpha1.RestoreModePiTR, log: startLog, pitrRestoredTS: "123456", wantCommitTS: "456789"},
+		{name: "PITR S3 fields", mode: v1alpha1.RestoreModePiTR, log: startLog, pitrRestoredTS: "123456", wantCommitTS: "456789", useS3Fields: true},
 		{name: "PITR registry override", mode: v1alpha1.RestoreModePiTR, log: startLog + "\n" + registryLog + "\n" + malformedLog, wantCommitTS: "345678"},
 		{name: "PITR JSON log", mode: v1alpha1.RestoreModePiTR, log: jsonLog, wantCommitTS: "456789"},
 		{name: "PITR numeric fallback", mode: v1alpha1.RestoreModePiTR, pitrRestoredTS: "123456", wantCommitTS: "123456"},
@@ -66,15 +70,27 @@ func TestRestoreManagerUsesS3RoleForMetadata(t *testing.T) {
 			previous := brBinPath
 			brBinPath = dir
 			t.Cleanup(func() { brBinPath = previous })
-			require.NoError(t, os.WriteFile(filepath.Join(dir, "br"), []byte("#!/bin/sh\n"+tc.log+"\nexit 0\n"), 0755))
+			argv := filepath.Join(dir, "argv")
+			t.Setenv("BR_ARGV_FILE", argv)
+			script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$BR_ARGV_FILE\"\n" + tc.log + "\nexit 0\n"
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755))
 			restore := &v1alpha1.Restore{Spec: v1alpha1.RestoreSpec{
-				BR: &v1alpha1.BRConfig{Cluster: "target", Options: append([]string{"--s3.role-arn=" + s3auth.RoleARN}, tc.extraOptions...)},
+				BR: &v1alpha1.BRConfig{Cluster: "target"},
 				StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
 					Bucket: "bucket", Prefix: "primary", Endpoint: s3auth.Endpoint, Region: "us-east-1", Provider: "aws",
 				}},
 			}}
 			if tc.mode == v1alpha1.RestoreModePiTR {
 				restore.Spec.PitrFullBackupStorageProvider = v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Bucket: "bucket", Prefix: "full"}}
+			}
+			if tc.useS3Fields {
+				f.ExpectedExternalID = "log+backup"
+				restore.Spec.S3.RoleARN = s3auth.RoleARN
+				restore.Spec.S3.ExternalID = f.ExpectedExternalID
+				restore.Spec.PitrFullBackupStorageProvider.S3.RoleARN = "arn:aws:iam::123456789012:role/full"
+				restore.Spec.PitrFullBackupStorageProvider.S3.ExternalID = "full+backup"
+			} else {
+				restore.Spec.BR.Options = append([]string{"--s3.role-arn=" + s3auth.RoleARN}, tc.extraOptions...)
 			}
 			updater := &recordingRestoreStatusUpdater{}
 			manager := &Manager{StatusUpdater: updater}
@@ -87,6 +103,27 @@ func TestRestoreManagerUsesS3RoleForMetadata(t *testing.T) {
 			require.NotNil(t, last)
 			require.NotNil(t, last.CommitTs)
 			require.Equal(t, tc.wantCommitTS, *last.CommitTs)
+			if tc.useS3Fields {
+				wantArgs := []string{
+					"--storage=s3://bucket/primary",
+					"--s3.role-arn=" + s3auth.RoleARN,
+					"--s3.external-id=" + f.ExpectedExternalID,
+					"--full-backup-storage=s3://bucket/full?role-arn=arn%3Aaws%3Aiam%3A%3A123456789012%3Arole%2Ffull&external-id=full%2Bbackup",
+				}
+				args, err := os.ReadFile(argv)
+				require.NoError(t, err)
+				require.Subset(t, strings.Split(string(args), "\n"), wantArgs)
+				abortArgs, err := manager.constructBRAbortArgs(restore)
+				require.NoError(t, err)
+				require.Subset(t, abortArgs, wantArgs)
+				require.Equal(t, []s3auth.Request{
+					{Service: "sts", Method: http.MethodPost, Host: "sts.us-east-1.amazonaws.com", Action: "AssumeRole", RoleARN: s3auth.RoleARN,
+						ExternalID: f.ExpectedExternalID, AccessKey: s3auth.SourceKey, Region: "us-east-1"},
+					{Service: "s3", Method: http.MethodHead, Host: "s3.unit.test", AccessKey: s3auth.RoleKey, Region: "us-east-1"},
+					{Service: "s3", Method: http.MethodGet, Host: "s3.unit.test", AccessKey: s3auth.RoleKey, Region: "us-east-1"},
+				}, f.Requests)
+				return
+			}
 			s3Requests := 0
 			for _, request := range f.Requests {
 				if request.Service == "s3" {

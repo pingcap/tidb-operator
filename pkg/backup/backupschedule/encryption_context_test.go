@@ -37,3 +37,28 @@ func TestScheduleEncryptionContext(t *testing.T) {
 		require.Equal(t, "original", template.S3.SSEKMSEncryptionContext.Values["tenant"], "scheduled backups must not share the template's map")
 	}
 }
+
+func TestScheduleS3Role(t *testing.T) {
+	snapshot := &v1alpha1.S3StorageProvider{RoleARN: "arn:aws:iam::123456789012:role/snapshot", ExternalID: "snapshot"}
+	log := &v1alpha1.S3StorageProvider{RoleARN: "arn:aws:iam::123456789012:role/log", ExternalID: "log"}
+	schedule := &v1alpha1.BackupSchedule{Spec: v1alpha1.BackupScheduleSpec{
+		BackupTemplate: v1alpha1.BackupSpec{
+			BR: &v1alpha1.BRConfig{Cluster: "test"}, StorageProvider: v1alpha1.StorageProvider{S3: snapshot},
+		},
+		LogBackupTemplate: &v1alpha1.BackupSpec{
+			BR: &v1alpha1.BRConfig{Cluster: "test"}, StorageProvider: v1alpha1.StorageProvider{S3: log},
+		},
+	}}
+	now := time.Now()
+	for _, tc := range []struct {
+		backup   *v1alpha1.Backup
+		template *v1alpha1.S3StorageProvider
+	}{
+		{backup: buildBackup(schedule, now), template: snapshot},
+		{backup: buildLogBackup(schedule, now), template: log},
+	} {
+		require.Equal(t, tc.template.RoleARN, tc.backup.Spec.S3.RoleARN)
+		require.Equal(t, tc.template.ExternalID, tc.backup.Spec.S3.ExternalID)
+		require.NotSame(t, tc.template, tc.backup.Spec.S3)
+	}
+}
