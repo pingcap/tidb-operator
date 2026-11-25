@@ -742,7 +742,6 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 	getJob := bc.deps.JobLister.Jobs(ns).Get
 	logBackup := backup.Spec.Mode == v1alpha1.BackupModeLog
 	if logBackup {
-		// Use the live Job status when checking whether a log backup can stop or clean.
 		jobs := bc.deps.KubeClientset.BatchV1().Jobs(ns)
 		getJob = func(jobName string) (*batchv1.Job, error) {
 			return jobs.Get(context.TODO(), jobName, metav1.GetOptions{})

@@ -198,7 +198,6 @@ func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-// doStopLogBackup stops the named BR log backup task.
 func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",

@@ -515,7 +515,6 @@ func (rm *Manager) constructBRAbortArgs(restore *v1alpha1.Restore) ([]string, er
 	}
 	args = append(args, dataArgs...)
 	args = append(args, pitrArgs...)
-	// Keep the same override order as restoreData.
 	args = append(args, restore.Spec.BR.Options...)
 
 	return args, nil
