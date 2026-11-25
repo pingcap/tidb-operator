@@ -28,12 +28,14 @@ import (
 )
 
 type s3BROptions struct {
-	roleARN     string
-	externalID  string
-	region      string
-	endpoint    string
-	regionSet   bool
-	endpointSet bool
+	roleARN       string
+	externalID    string
+	region        string
+	endpoint      string
+	roleARNSet    bool
+	externalIDSet bool
+	regionSet     bool
+	endpointSet   bool
 }
 
 // NewStorageBackendWithBROptions applies BR's S3 assume-role settings to storage
@@ -55,7 +57,15 @@ func NewStorageBackendWithBROptions(provider v1alpha1.StorageProvider, source *S
 	if settings.endpointSet {
 		s3Provider.Endpoint = settings.endpoint
 	}
-	if settings.roleARN != "" {
+	roleARN := s3Provider.RoleARN
+	if settings.roleARNSet {
+		roleARN = settings.roleARN
+	}
+	externalID := s3Provider.ExternalID
+	if settings.externalIDSet {
+		externalID = settings.externalID
+	}
+	if roleARN != "" {
 		region := settings.region
 		if region == "" {
 			region = provider.S3.Region
@@ -81,9 +91,9 @@ func NewStorageBackendWithBROptions(provider v1alpha1.StorageProvider, source *S
 		if err != nil {
 			return nil, fmt.Errorf("create S3 assume-role session: %w", err)
 		}
-		roleCredentials := stscreds.NewCredentials(sess, settings.roleARN, func(p *stscreds.AssumeRoleProvider) {
-			if settings.externalID != "" {
-				p.ExternalID = aws.String(settings.externalID)
+		roleCredentials := stscreds.NewCredentials(sess, roleARN, func(p *stscreds.AssumeRoleProvider) {
+			if externalID != "" {
+				p.ExternalID = aws.String(externalID)
 			}
 		})
 		source = &StorageCredential{awsCred: roleCredentials}
@@ -108,9 +118,11 @@ func parseS3BROptions(options []string) (s3BROptions, error) {
 		// pflag errors can contain option values. Never include raw BR options.
 		return s3BROptions{}, fmt.Errorf("invalid BR S3 role, external-id, region or endpoint options")
 	}
-	result.regionSet = flags.Changed("s3.region")
-	result.endpointSet = flags.Changed("s3.endpoint")
 	// Match BR: an empty role disables AssumeRole, and external-id by itself
 	// does not introduce a new validation error.
+	result.roleARNSet = flags.Changed("s3.role-arn")
+	result.externalIDSet = flags.Changed("s3.external-id")
+	result.regionSet = flags.Changed("s3.region")
+	result.endpointSet = flags.Changed("s3.endpoint")
 	return result, nil
 }

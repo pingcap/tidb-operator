@@ -64,8 +64,74 @@ func TestParseS3BROptions(t *testing.T) {
 			require.NoError(t, parseErr)
 			require.Equal(t, *role, actual.roleARN)
 			require.Equal(t, *external, actual.externalID)
+			require.Equal(t, flags.Changed("s3.role-arn"), actual.roleARNSet)
+			require.Equal(t, flags.Changed("s3.external-id"), actual.externalIDSet)
 			require.Equal(t, *region, actual.region)
 			require.Equal(t, *endpoint, actual.endpoint)
+		})
+	}
+}
+
+func TestStorageBackendS3RoleFields(t *testing.T) {
+	const externalID = "customer+backup"
+	for _, tc := range []struct {
+		name, roleARN, wantExternalID string
+		options                       []string
+		useSource, denySTS, denyS3    bool
+		wantError                     string
+	}{
+		{name: "CR fields only", roleARN: s3auth.RoleARN, wantExternalID: externalID},
+		{
+			name: "override role only", roleARN: "arn:aws:iam::123456789012:role/other", wantExternalID: externalID,
+			options: []string{"--s3.role-arn=" + s3auth.RoleARN},
+		},
+		{
+			name: "override external ID only", roleARN: s3auth.RoleARN, wantExternalID: "overridden+id",
+			options: []string{"--s3.external-id", "overridden+id"},
+		},
+		{name: "clear role", roleARN: s3auth.RoleARN, options: []string{"--s3.role-arn="}, useSource: true},
+		{name: "clear external ID", roleARN: s3auth.RoleARN, options: []string{"--s3.external-id="}},
+		{name: "external ID without role", useSource: true},
+		{name: "STS denial", roleARN: s3auth.RoleARN, wantExternalID: externalID, denySTS: true, wantError: "role denied"},
+		{name: "S3 denial", roleARN: s3auth.RoleARN, wantExternalID: externalID, denyS3: true, wantError: "storage identity denied"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const region = "us-east-1"
+			f := s3auth.Install(t)
+			f.ExpectedExternalID = tc.wantExternalID
+			f.AllowSource = tc.useSource || tc.wantError != ""
+			f.DenyAssumeRole, f.DenyRole = tc.denySTS, tc.denyS3
+			f.Objects["prefix/backupmeta"] = []byte("metadata")
+			provider := v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+				Bucket: "bucket", Prefix: "prefix", Endpoint: s3auth.Endpoint, Region: region, Provider: "aws",
+				RoleARN: tc.roleARN, ExternalID: externalID,
+			}}
+			original := *provider.S3
+			backend, err := NewStorageBackendWithBROptions(provider, nil, tc.options)
+			require.NoError(t, err)
+			defer backend.Close()
+			data, err := backend.ReadAll(context.Background(), "backupmeta")
+			if tc.wantError == "" {
+				require.NoError(t, err)
+				require.Equal(t, "metadata", string(data))
+			} else {
+				require.ErrorContains(t, err, tc.wantError)
+			}
+			s3Request := s3auth.Request{Service: "s3", Method: http.MethodGet, Host: "s3.unit.test", AccessKey: s3auth.RoleKey, Region: region}
+			var wantRequests []s3auth.Request
+			if tc.useSource {
+				s3Request.AccessKey = s3auth.SourceKey
+			} else {
+				wantRequests = append(wantRequests, s3auth.Request{
+					Service: "sts", Method: http.MethodPost, Host: "sts.us-east-1.amazonaws.com", Action: "AssumeRole",
+					RoleARN: s3auth.RoleARN, ExternalID: tc.wantExternalID, AccessKey: s3auth.SourceKey, Region: region,
+				})
+			}
+			if !tc.denySTS {
+				wantRequests = append(wantRequests, s3Request)
+			}
+			require.Equal(t, wantRequests, f.Requests)
+			require.Equal(t, original, *provider.S3)
 		})
 	}
 }
@@ -290,6 +356,40 @@ func TestStorageBackendIRSAWithoutRoleUsesWebIdentity(t *testing.T) {
 		{Service: "sts", Method: http.MethodPost, Host: stsHost, Action: "AssumeRoleWithWebIdentity", RoleARN: irsaRoleARN, WebIdentityToken: irsaToken1},
 		{Service: "s3", Method: http.MethodGet, Host: "s3.unit.test", AccessKey: "irsa-access-key-1", Region: irsaRegion},
 	}, f.Requests)
+}
+
+func TestStorageBackendIRSAS3RoleFields(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		denyRole bool
+	}{
+		{name: "successful role assumption"},
+		{name: "denied role assumption", denyRole: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f, _ := installIRSAFixture(t)
+			f.ExpectedExternalID = "irsa+backup"
+			f.DenyAssumeRole = tc.denyRole
+			// A successful read with source credentials would hide a fallback.
+			f.AllowSource = tc.denyRole
+			provider := irsaStorageProvider()
+			provider.S3.RoleARN = s3auth.RoleARN
+			provider.S3.ExternalID = f.ExpectedExternalID
+			backend, err := NewStorageBackendWithBROptions(provider, nil, nil)
+			require.NoError(t, err)
+			defer backend.Close()
+			data, err := backend.ReadAll(context.Background(), "backupmeta")
+			wantRequests := irsaRoleRequests(irsaToken1, "irsa-access-key-1", f.ExpectedExternalID)
+			if tc.denyRole {
+				require.ErrorContains(t, err, "role denied")
+				wantRequests = wantRequests[:2]
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, "metadata", string(data))
+			}
+			require.Equal(t, wantRequests, f.Requests)
+		})
+	}
 }
 
 func installIRSAFixture(t *testing.T) (*s3auth.Fixture, string) {

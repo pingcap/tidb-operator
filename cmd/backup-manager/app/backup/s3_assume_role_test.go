@@ -15,8 +15,10 @@ package backup
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -27,8 +29,17 @@ import (
 )
 
 func TestBackupManagerUsesS3RoleForMetadata(t *testing.T) {
-	for _, mode := range []v1alpha1.BackupMode{v1alpha1.BackupModeSnapshot, v1alpha1.BackupModeLog} {
-		t.Run(string(mode), func(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		mode      v1alpha1.BackupMode
+		useFields bool
+	}{
+		{name: "snapshot BR options", mode: v1alpha1.BackupModeSnapshot},
+		{name: "log BR options", mode: v1alpha1.BackupModeLog},
+		{name: "snapshot S3 fields", mode: v1alpha1.BackupModeSnapshot, useFields: true},
+		{name: "log S3 fields", mode: v1alpha1.BackupModeLog, useFields: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			f := s3auth.Install(t)
 			f.ExpectedExternalID = "external-id"
 			data, err := proto.Marshal(&kvbackup.BackupMeta{StartVersion: 101, EndVersion: 202, BackupSize: 303})
@@ -42,18 +53,23 @@ func TestBackupManagerUsesS3RoleForMetadata(t *testing.T) {
 			t.Setenv("BR_ARGV_FILE", argv)
 			require.NoError(t, os.WriteFile(filepath.Join(dir, "br"), []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$BR_ARGV_FILE\"\n"), 0755))
 			backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{
-				Mode: mode,
-				BR: &v1alpha1.BRConfig{Cluster: "source", Options: []string{
-					"--s3.role-arn=" + s3auth.RoleARN, "--s3.external-id=" + f.ExpectedExternalID,
-				}},
+				Mode: tc.mode,
+				BR:   &v1alpha1.BRConfig{Cluster: "source"},
 				StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
 					Bucket: "bucket", Prefix: "prefix", Endpoint: s3auth.Endpoint, Region: "us-east-1", Provider: "aws",
 				}},
 			}}
+			roleArgs := []string{"--s3.role-arn=" + s3auth.RoleARN, "--s3.external-id=" + f.ExpectedExternalID}
+			if tc.useFields {
+				backup.Spec.S3.RoleARN = s3auth.RoleARN
+				backup.Spec.S3.ExternalID = f.ExpectedExternalID
+			} else {
+				backup.Spec.BR.Options = roleArgs
+			}
 			updater := &recordingBackupStatusUpdater{}
 			manager := &Manager{StatusUpdater: updater}
-			manager.Mode = string(mode)
-			if mode == v1alpha1.BackupModeLog {
+			manager.Mode = string(tc.mode)
+			if tc.mode == v1alpha1.BackupModeLog {
 				manager.SubCommand = string(v1alpha1.LogStartCommand)
 				err = manager.performLogBackup(context.Background(), backup)
 			} else {
@@ -62,20 +78,24 @@ func TestBackupManagerUsesS3RoleForMetadata(t *testing.T) {
 			require.NoError(t, err)
 			args, err := os.ReadFile(argv)
 			require.NoError(t, err)
-			require.Contains(t, string(args), "--s3.role-arn="+s3auth.RoleARN)
+			for _, arg := range roleArgs {
+				require.Contains(t, strings.Split(string(args), "\n"), arg)
+			}
+			require.NotEmpty(t, updater.updates)
 			last := updater.updates[len(updater.updates)-1]
 			require.NotNil(t, last)
-			if mode == v1alpha1.BackupModeLog {
+			if tc.mode == v1alpha1.BackupModeLog {
 				require.Equal(t, "101", *last.CommitTs)
 			} else {
 				require.Equal(t, "202", *last.CommitTs)
 				require.EqualValues(t, 303, *last.BackupSize)
 			}
-			for _, request := range f.Requests {
-				if request.Service == "s3" {
-					require.Equal(t, s3auth.RoleKey, request.AccessKey)
-				}
-			}
+			require.Equal(t, []s3auth.Request{
+				{Service: "sts", Method: http.MethodPost, Host: "sts.us-east-1.amazonaws.com", Action: "AssumeRole", RoleARN: s3auth.RoleARN,
+					ExternalID: f.ExpectedExternalID, AccessKey: s3auth.SourceKey, Region: "us-east-1"},
+				{Service: "s3", Method: http.MethodHead, Host: "s3.unit.test", AccessKey: s3auth.RoleKey, Region: "us-east-1"},
+				{Service: "s3", Method: http.MethodGet, Host: "s3.unit.test", AccessKey: s3auth.RoleKey, Region: "us-east-1"},
+			}, f.Requests)
 		})
 	}
 }

@@ -16124,6 +16124,35 @@ Changing this field does not update an existing log backup task.</p>
 </tr>
 <tr>
 <td>
+<code>roleArn</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RoleARN is the ARN of the IAM role to assume when accessing AWS S3 in BR and backup-manager.
+In Backup and Restore, an explicit <code>--s3.role-arn</code> in <code>spec.br.options</code> overrides this field for the main storage.
+Existing log backup tasks keep the settings they started with.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalId</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ExternalID is the external ID used together with RoleARN when assuming an IAM role for AWS S3.
+In Backup and Restore, an explicit <code>--s3.external-id</code> in <code>spec.br.options</code> overrides this field for the main storage.
+Keep credentials and other sensitive values out of this field.
+Existing log backup tasks keep the settings they started with.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>options</code></br>
 <em>
 []string
