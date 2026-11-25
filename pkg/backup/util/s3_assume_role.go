@@ -102,6 +102,17 @@ func NewStorageBackendWithBROptions(provider v1alpha1.StorageProvider, source *S
 	return NewStorageBackend(provider, source)
 }
 
+// RegisterCommonBRShorthandFlags lets partial BR parsers consume the values of
+// common shorthand flags. An attached value could otherwise be parsed as flags.
+func RegisterCommonBRShorthandFlags(flags *pflag.FlagSet) {
+	// Filter values can start with "--".
+	flags.StringArrayP("filter", "f", nil, "")
+	// Consume PD values without interpreting their CSV syntax.
+	flags.StringArrayP("pd", "u", nil, "")
+	flags.StringP("storage", "s", "", "")
+	flags.StringP("log-level", "L", "", "")
+}
+
 func parseS3BROptions(options []string) (s3BROptions, error) {
 	var result s3BROptions
 	flags := pflag.NewFlagSet("S3 storage authentication", pflag.ContinueOnError)
@@ -111,9 +122,7 @@ func parseS3BROptions(options []string) (s3BROptions, error) {
 	flags.StringVar(&result.externalID, "s3.external-id", "", "")
 	flags.StringVar(&result.region, "s3.region", "", "")
 	flags.StringVar(&result.endpoint, "s3.endpoint", "", "")
-	// A filter is a string value even if it starts with "--". BR validates
-	// filter expressions; consume it here rather than misreading it as a role.
-	flags.StringArrayP("filter", "f", nil, "")
+	RegisterCommonBRShorthandFlags(flags)
 	if err := flags.Parse(options); err != nil {
 		// pflag errors can contain option values. Never include raw BR options.
 		return s3BROptions{}, fmt.Errorf("invalid BR S3 role, external-id, region or endpoint options")

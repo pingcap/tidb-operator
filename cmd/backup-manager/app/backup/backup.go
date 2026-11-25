@@ -213,8 +213,7 @@ func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	flags.SetOutput(io.Discard)
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	taskName := flags.String("task-name", backup.Name, "")
-	// A filter value can itself begin with "--".
-	flags.StringArrayP("filter", "f", nil, "")
+	pkgutil.RegisterCommonBRShorthandFlags(flags)
 	parseErr := flags.Parse(backup.Spec.BR.Options)
 	// BR v8.5.7 prints the GetTask error via Cobra and exits with status 1.
 	notFoundLine := fmt.Sprintf("Error: no such task %s: [BR:PiTR:ErrTaskNotFound]task not found", *taskName)

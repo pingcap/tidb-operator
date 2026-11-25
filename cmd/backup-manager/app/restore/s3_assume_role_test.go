@@ -31,6 +31,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEffectivePITRRestoredTSWithBRShorthand(t *testing.T) {
+	t.Run("PD shorthand after restored timestamp", func(t *testing.T) {
+		require.Equal(t, "900", effectivePITRRestoredTS("700", []string{"--restored-ts=900", "-uhttp://target-pd:2379"}))
+	})
+	t.Run("storage shorthand before restored timestamp", func(t *testing.T) {
+		require.Equal(t, "900", effectivePITRRestoredTS("700", []string{"-ss3://bucket/path", "--restored-ts=900"}))
+	})
+}
+
 func TestRestoreManagerUsesS3RoleForMetadata(t *testing.T) {
 	const startLog = `printf '%s\n' '[2026/11/23 10:00:00.000 +00:00] [INFO] [stream.go:1385] ["start point in time restore"] [restore-from=100] [restore-to=456789] [log-min-ts=100] [log-max-ts=999999]'`
 	const registryLog = `printf '%s\n' '[2026/11/23 10:00:01.000 +00:00] [INFO] [stream.go:2456] ["registry resolved a different RestoreTS, updating config"] [original_restored_ts=456789] [resolved_restored_ts=345678] [restore_id=42]'`
