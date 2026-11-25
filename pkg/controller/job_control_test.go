@@ -20,7 +20,9 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -64,21 +66,43 @@ func TestJobControlCreatesJobFailed(t *testing.T) {
 }
 
 func TestJobControlDeleteJobSuccess(t *testing.T) {
-	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
-	backup := newBackup()
-	job := newJobFromBackup(backup)
-	fakeClient := &fake.Clientset{}
-	control := NewRealJobControl(fakeClient, recorder)
-	fakeClient.AddReactor("delete", "jobs", func(action core.Action) (bool, runtime.Object, error) {
-		return true, nil, nil
-	})
-	err := control.DeleteJob(backup, job)
-	g.Expect(err).To(Succeed())
+	for _, tc := range []struct {
+		name string
+		uid  types.UID
+	}{
+		{name: "with UID", uid: "job-uid"},
+		{name: "without UID"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			recorder := record.NewFakeRecorder(10)
+			backup := newBackup()
+			job := newJobFromBackup(backup)
+			job.UID = tc.uid
+			fakeClient := &fake.Clientset{}
+			control := NewRealJobControl(fakeClient, recorder)
+			fakeClient.AddReactor("delete", "jobs", func(_ core.Action) (bool, runtime.Object, error) {
+				return true, nil, nil
+			})
+			err := control.DeleteJob(backup, job)
+			g.Expect(err).To(Succeed())
 
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+			actions := fakeClient.Actions()
+			g.Expect(actions).To(HaveLen(1))
+			opts := actions[0].(core.DeleteAction).GetDeleteOptions()
+			propagation := metav1.DeletePropagationForeground
+			g.Expect(opts.PropagationPolicy).To(Equal(&propagation))
+			if tc.uid == "" {
+				g.Expect(opts.Preconditions).To(BeNil())
+			} else {
+				g.Expect(opts.Preconditions).To(Equal(&metav1.Preconditions{UID: &tc.uid}))
+			}
+
+			events := collectEvents(recorder.Events)
+			g.Expect(events).To(HaveLen(1))
+			g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+		})
+	}
 }
 
 func TestJobControlDeleteJobFailed(t *testing.T) {

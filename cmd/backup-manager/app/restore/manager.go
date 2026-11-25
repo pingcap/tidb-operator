@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
+	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -351,8 +352,7 @@ func effectivePITRRestoredTS(defaultTS string, options []string) string {
 	flags := pflag.NewFlagSet("restore point", pflag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.ParseErrorsWhitelist.UnknownFlags = true
-	// A filter value can itself begin with "--".
-	flags.StringArrayP("filter", "f", nil, "")
+	pkgutil.RegisterCommonBRShorthandFlags(flags)
 	restoredTS := flags.String("restored-ts", defaultTS, "")
 	if err := flags.Parse(options); err == nil && flags.Changed("restored-ts") {
 		return *restoredTS

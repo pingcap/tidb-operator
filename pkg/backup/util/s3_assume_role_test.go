@@ -72,6 +72,17 @@ func TestParseS3BROptions(t *testing.T) {
 	}
 }
 
+func TestParseS3BROptionsWithBRShorthand(t *testing.T) {
+	for _, shorthand := range []string{"-uhttp://target-pd:2379", "-ss3://bucket/path"} {
+		t.Run(shorthand, func(t *testing.T) {
+			options, err := parseS3BROptions([]string{shorthand, "--s3.role-arn=" + s3auth.RoleARN})
+			require.NoError(t, err)
+			require.True(t, options.roleARNSet)
+			require.Equal(t, s3auth.RoleARN, options.roleARN)
+		})
+	}
+}
+
 func TestStorageBackendS3RoleFields(t *testing.T) {
 	const externalID = "customer+backup"
 	for _, tc := range []struct {

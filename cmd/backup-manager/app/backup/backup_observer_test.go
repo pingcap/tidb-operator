@@ -118,6 +118,7 @@ func TestDoStopLogBackup(t *testing.T) {
 		{name: "stopped"},
 		{name: "task absent", stderr: missing, exitCode: 1},
 		{name: "task name with equals", options: []string{"--task-name=override"}, stderr: overrideMissing, exitCode: 1},
+		{name: "task name after PD shorthand", options: []string{"-uhttp://target-pd:2379", "--task-name=override"}, stderr: overrideMissing, exitCode: 1},
 		{name: "last task name with separate value", options: []string{"--task-name=first", "--log-format", "text", "--task-name", "override"}, stderr: overrideMissing, exitCode: 1},
 		{name: "empty task name override returns error", options: []string{"--task-name=first", "--task-name="}, stderr: "Error: Miss parameters task-name: [BR:Common:ErrInvalidArgument]invalid argument", exitCode: 1, wantError: true},
 		{name: "empty task name does not match backup name", options: []string{"--task-name="}, stderr: missing, exitCode: 1, wantError: true},

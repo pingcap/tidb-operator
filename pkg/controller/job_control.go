@@ -79,6 +79,10 @@ func (c *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) erro
 	opts := metav1.DeleteOptions{
 		PropagationPolicy: &propForeground,
 	}
+	if job.UID != "" {
+		uid := job.UID
+		opts.Preconditions = &metav1.Preconditions{UID: &uid}
+	}
 	err := c.kubeCli.BatchV1().Jobs(ns).Delete(context.TODO(), jobName, opts)
 	if err != nil {
 		klog.Errorf("failed to delete %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
