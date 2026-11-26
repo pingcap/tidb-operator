@@ -117,48 +117,6 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	return nil
 }
 
-func gracefulResignOwnerTiCDC(
-	tc *v1alpha1.TidbCluster,
-	cdcCtl controller.TiCDCControlInterface,
-	podCtl controller.PodControlInterface,
-	pod *corev1.Pod,
-	ownerPodName string,
-	ownerOrdinal int32,
-	action string,
-) error {
-	isTimeout, err := checkTiCDCGracefulShutdownTimeout(tc, podCtl, pod, action)
-	if err != nil {
-		return err
-	}
-	if isTimeout {
-		return nil
-	}
-
-	// To graceful resign the owner from the TiCDC pod, we need to
-	//
-	// 1. Remove ownership from the capture.
-	resigned, err := cdcCtl.ResignOwner(tc, ownerOrdinal)
-	if err != nil {
-		return err
-	}
-	if !resigned {
-		return controller.RequeueErrorf(
-			"ticdc.%s: cluster %s/%s %s is still the owner, try resign owner again",
-			action, tc.GetNamespace(), tc.GetName(), ownerPodName)
-	}
-	// 2. Wait for TiCDC cluster becomes healthy.
-	healthy, err := cdcCtl.IsHealthy(tc, ownerOrdinal)
-	if err != nil {
-		return err
-	}
-	if !healthy {
-		return controller.RequeueErrorf(
-			"ticdc.%s: cluster %s/%s %s is resigned, wait for TiCDC cluster become healthy",
-			action, tc.GetNamespace(), tc.GetName(), ownerPodName)
-	}
-	return nil
-}
-
 func gracefulDrainTiCDC(
 	tc *v1alpha1.TidbCluster,
 	cdcCtl controller.TiCDCControlInterface,
