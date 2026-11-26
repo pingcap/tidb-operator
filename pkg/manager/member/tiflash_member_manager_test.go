@@ -180,6 +180,79 @@ func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
 	}
 }
 
+func TestTiFlashMemberManagerSyncBeforeTiKVBootstrap(t *testing.T) {
+	notBootstrapped := pdapi.TiKVNotBootstrappedErrorf("TiKV cluster not bootstrapped, please start TiKV first")
+	pdUnavailable := fmt.Errorf("PD is unavailable")
+	tests := []struct {
+		name         string
+		failOnCall   int
+		pdErr        error
+		bootstrapped bool
+		noTiKV       bool
+		zeroTiKV     bool
+		paused       bool
+		wantErr      error
+	}{
+		{name: "status read", failOnCall: 1, pdErr: notBootstrapped},
+		{name: "label read", failOnCall: 2, pdErr: notBootstrapped},
+		{name: "other status error", failOnCall: 1, pdErr: pdUnavailable, wantErr: pdUnavailable},
+		{name: "other label error", failOnCall: 2, pdErr: pdUnavailable, wantErr: pdUnavailable},
+		{name: "already bootstrapped", failOnCall: 1, pdErr: notBootstrapped, bootstrapped: true, wantErr: notBootstrapped},
+		{name: "no managed TiKV", failOnCall: 1, pdErr: notBootstrapped, noTiKV: true, wantErr: notBootstrapped},
+		{name: "zero desired TiKV replicas", failOnCall: 1, pdErr: notBootstrapped, zeroTiKV: true, wantErr: notBootstrapped},
+		{name: "paused cluster", failOnCall: 1, pdErr: notBootstrapped, paused: true, wantErr: notBootstrapped},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			tc := newTidbClusterForTiflash()
+			tc.Status.TiKV.BootStrapped = tt.bootstrapped
+			tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+				"pd-0": {Name: "pd-0", Health: true},
+				"pd-1": {Name: "pd-1", Health: true},
+				"pd-2": {Name: "pd-2", Health: true},
+			}
+			tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+			if tt.zeroTiKV {
+				tc.Spec.TiKV.Replicas = 0
+			}
+			if tt.noTiKV {
+				tc.Spec.TiKV = nil
+			}
+
+			m, _, _, pdClient, _, _ := newFakeTiFlashMemberManager(tc)
+			pdClient.AddReaction(pdapi.GetConfigActionType, func(*pdapi.Action) (interface{}, error) {
+				return &pdapi.PDConfigFromAPI{Replication: &pdapi.PDReplicationConfig{}}, nil
+			})
+			pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(*pdapi.Action) (interface{}, error) {
+				return &pdapi.StoresInfo{}, nil
+			})
+			g.Expect(m.Sync(tc)).To(Succeed())
+			_, err := m.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(controller.TiFlashMemberName(tc.Name))
+			g.Expect(err).NotTo(HaveOccurred())
+			tc.Status.TiFlash.Synced = true
+			tc.Spec.Paused = tt.paused
+
+			storesCalls := 0
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(*pdapi.Action) (interface{}, error) {
+				storesCalls++
+				if storesCalls == tt.failOnCall {
+					return nil, tt.pdErr
+				}
+				return &pdapi.StoresInfo{}, nil
+			})
+			err = m.Sync(tc)
+			g.Expect(storesCalls).To(Equal(tt.failOnCall))
+			if tt.wantErr != nil {
+				g.Expect(err).To(MatchError(tt.wantErr))
+				return
+			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(tc.Status.TiFlash.Synced).To(BeFalse())
+		})
+	}
+}
+
 func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
