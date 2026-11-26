@@ -116,7 +116,14 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 
-	return m.syncStatefulSet(tc)
+	err = m.syncStatefulSet(tc)
+	if pdapi.IsTiKVNotBootstrappedError(err) && tc.Spec.TiKV != nil && tc.Spec.TiKV.Replicas > 0 &&
+		!tc.Status.TiKV.BootStrapped && !tc.Spec.RecoveryMode && !tc.Spec.Paused {
+		// TiKV sync runs after TiFlash sync and must create the TiKV StatefulSet before PD can list stores.
+		tc.Status.TiFlash.Synced = false
+		return nil
+	}
+	return err
 }
 
 func (m *tiflashMemberManager) syncRecoveryForTiFlash(tc *v1alpha1.TidbCluster) error {

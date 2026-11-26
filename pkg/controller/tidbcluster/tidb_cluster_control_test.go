@@ -25,10 +25,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -280,6 +283,76 @@ func TestTidbClusterControlUpdateTidbCluster(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i], t)
 	}
+}
+
+func TestTidbClusterControlBootstrapsTiKVWithTiFlash(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbClusterForTidbClusterControl()
+	tc.Spec.Version = "v8.5.0"
+	tc.Spec.PD.Mode = "ms"
+	pdImage := "pingcap/pd"
+	tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+		{Name: "tso", Replicas: 1, BaseImage: &pdImage},
+		{Name: "scheduling", Replicas: 1, BaseImage: &pdImage},
+	}
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		Replicas: 1,
+		StorageClaims: []v1alpha1.StorageClaim{{
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("10Gi")},
+			},
+		}},
+	}
+	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+		"pd-0": {Name: "pd-0", Health: true},
+		"pd-1": {Name: "pd-1", Health: true},
+		"pd-2": {Name: "pd-2", Health: true},
+	}
+	tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+
+	deps := controller.NewFakeDependencies()
+	pdControl := deps.PDControl.(*pdapi.FakePDControl)
+	pdClient := controller.NewFakePDClient(pdControl, tc)
+	pdClient.AddReaction(pdapi.GetConfigActionType, func(*pdapi.Action) (interface{}, error) {
+		return &pdapi.PDConfigFromAPI{Replication: &pdapi.PDReplicationConfig{}}, nil
+	})
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(*pdapi.Action) (interface{}, error) {
+		return nil, pdapi.TiKVNotBootstrappedErrorf("TiKV cluster not bootstrapped")
+	})
+	pdMSReady := false
+	for _, service := range tc.Spec.PDMS {
+		client := controller.NewFakePDMSClient(pdControl, tc, service.Name)
+		client.AddReaction(pdapi.GetHealthActionType, func(*pdapi.Action) (interface{}, error) {
+			if !pdMSReady {
+				return nil, fmt.Errorf("PD microservice not ready")
+			}
+			return nil, nil
+		})
+	}
+
+	control, _, _, _, _, _, _, _, _ := newFakeTidbClusterControl()
+	c := control.(*defaultTidbClusterControl)
+	sp := suspender.NewFakeSuspender()
+	pvm := &volumes.FakePodVolumeModifier{}
+	c.tiflashMemberManager = mm.NewTiFlashMemberManager(deps,
+		mm.NewFakeTiFlashFailover(), mm.NewFakeTiFlashScaler(), mm.NewFakeTiFlashUpgrader(), sp, pvm)
+	c.tikvMemberManager = mm.NewTiKVMemberManager(deps,
+		mm.NewFakeTiKVFailover(), mm.NewFakeTiKVScaler(), mm.NewFakeTiKVUpgrader(), sp, pvm)
+	sets := deps.StatefulSetLister.StatefulSets(tc.Namespace)
+	tiKVName := controller.TiKVMemberName(tc.Name)
+
+	g.Expect(control.UpdateTidbCluster(tc)).To(MatchError(ContainSubstring("waiting for PD microservice cluster running")))
+	_, err := sets.Get(controller.TiFlashMemberName(tc.Name))
+	g.Expect(err).NotTo(HaveOccurred())
+	_, err = sets.Get(tiKVName)
+	g.Expect(apierrors.IsNotFound(err)).To(BeTrue(), "expected TiKV StatefulSet to be absent, got %v", err)
+
+	pdMSReady = true
+	g.Expect(control.UpdateTidbCluster(tc)).To(Succeed())
+	set, err := sets.Get(tiKVName)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(*set.Spec.Replicas).To(Equal(tc.Spec.TiKV.Replicas))
+	g.Expect(tc.Status.TiFlash.Synced).To(BeFalse())
 }
 
 func TestTidbClusterStatusEquality(t *testing.T) {
