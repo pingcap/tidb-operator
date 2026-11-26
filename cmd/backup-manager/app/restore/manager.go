@@ -17,6 +17,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os/exec"
 	"path"
 	"strconv"
@@ -27,10 +28,13 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backuputil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
+	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -254,7 +258,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		}
 	}
 
-	restoreErr := rm.restoreData(ctx, restore, rm.StatusUpdater, rm.RestoreControl)
+	observedRestoreTS, restoreErr := rm.restoreData(ctx, restore, rm.StatusUpdater, rm.RestoreControl)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -309,7 +313,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 			restoreType = v1alpha1.RestoreDataComplete
 		}
 	default:
-		ts, err := backuputil.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+		ts, err := rm.restoreCommitTS(ctx, restore, observedRestoreTS)
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
@@ -342,6 +346,51 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		Type:   restoreType,
 		Status: corev1.ConditionTrue,
 	}, updateStatus)
+}
+
+func effectivePITRRestoredTS(defaultTS string, options []string) string {
+	flags := pflag.NewFlagSet("restore point", pflag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.ParseErrorsWhitelist.UnknownFlags = true
+	pkgutil.RegisterCommonBRShorthandFlags(flags)
+	restoredTS := flags.String("restored-ts", defaultTS, "")
+	if err := flags.Parse(options); err == nil && flags.Changed("restored-ts") {
+		return *restoredTS
+	}
+	return defaultTS
+}
+
+func (rm *Manager) restoreCommitTS(ctx context.Context, restore *v1alpha1.Restore, observedTS uint64) (uint64, error) {
+	options := backuputil.GetBROptions(restore.Spec.BR)
+	if rm.Mode != string(v1alpha1.RestoreModePiTR) {
+		return backuputil.GetCommitTsFromBRMetaDataWithBROptions(ctx, restore.Spec.StorageProvider, options)
+	}
+	// Log backup metadata carries the start version. Read it with the BR credentials
+	// to verify access, then use the actual restore point for status.commitTs.
+	if _, err := backuputil.GetBRMetaDataWithBROptions(ctx, restore.Spec.StorageProvider, options); err != nil {
+		return 0, err
+	}
+	if observedTS != 0 {
+		return observedTS, nil
+	}
+	restoredTS := effectivePITRRestoredTS(rm.PitrRestoredTs, options)
+	if ts, err := config.ParseTSString(restoredTS); err == nil && ts != 0 {
+		return ts, nil
+	}
+	for _, layout := range []string{
+		time.RFC3339Nano,
+		"2006-01-02 15:04:05.999999999-07:00",
+		"2006-01-02 15:04:05.999999999-0700",
+		"2006-01-02T15:04:05.999999999-0700",
+		"2006-01-02 15:04:05.999999999-07",
+		"2006-01-02T15:04:05.999999999-07",
+	} {
+		if restoredAt, err := time.Parse(layout, restoredTS); err == nil {
+			return config.GoTimeToTS(restoredAt), nil
+		}
+	}
+	klog.Warningf("restore %s/%s has no PITR restore point in BR output or usable pitrRestoredTs, recording commitTs as 0", restore.Namespace, restore.Name)
+	return 0, nil
 }
 
 // performAbort executes br abort restore command to cleanup failed restore
@@ -430,11 +479,12 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 
 // constructBRAbortArgs constructs arguments for br abort restore command
 func (rm *Manager) constructBRAbortArgs(restore *v1alpha1.Restore) ([]string, error) {
-	var restoreType string
-	if restore.Spec.Type == "" {
-		restoreType = string(v1alpha1.BackupTypeFull)
-	} else {
-		restoreType = string(restore.Spec.Type)
+	if restore.Spec.BR == nil {
+		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
+	}
+	restoreType, pitrArgs, err := rm.restoreTypeAndPITRArgs(restore)
+	if err != nil {
+		return nil, err
 	}
 
 	// Start with abort restore command
@@ -464,6 +514,8 @@ func (rm *Manager) constructBRAbortArgs(restore *v1alpha1.Restore) ([]string, er
 		return nil, err
 	}
 	args = append(args, dataArgs...)
+	args = append(args, pitrArgs...)
+	args = append(args, restore.Spec.BR.Options...)
 
 	return args, nil
 }

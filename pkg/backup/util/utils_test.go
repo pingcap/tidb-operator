@@ -116,6 +116,39 @@ func TestGenerateS3CertEnvVar(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 }
 
+func TestGenerateS3CertEnvVarRegion(t *testing.T) {
+	for _, tc := range []struct {
+		name, region string
+		useKMS       bool
+	}{
+		{name: "omitted"},
+		{name: "omitted with KMS", useKMS: true},
+		{name: "configured", region: "ap-southeast-1"},
+		{name: "configured with KMS", region: "ap-southeast-1", useKMS: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			s3 := &v1alpha1.S3StorageProvider{Provider: v1alpha1.S3StorageProviderTypeAWS, Region: tc.region}
+			env, _, err := generateS3CertEnvVar(s3, tc.useKMS)
+			g.Expect(err).Should(Succeed())
+			regions := make(map[string]string)
+			for _, variable := range env {
+				if variable.Name == constants.AWSRegionEnv || variable.Name == "AWS_DEFAULT_REGION" {
+					regions[variable.Name] = variable.Value
+				}
+			}
+			expected := make(map[string]string)
+			if tc.region != "" {
+				expected[constants.AWSRegionEnv] = tc.region
+				if tc.useKMS {
+					expected["AWS_DEFAULT_REGION"] = tc.region
+				}
+			}
+			g.Expect(regions).Should(Equal(expected))
+		})
+	}
+}
+
 func TestGetPasswordKey(t *testing.T) {
 	g := NewGomegaWithT(t)
 	var key string
