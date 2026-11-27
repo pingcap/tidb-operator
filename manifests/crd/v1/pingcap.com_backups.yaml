@@ -2354,6 +2354,8 @@ spec:
                     type: string
                   endpoint:
                     type: string
+                  externalId:
+                    type: string
                   forcePathStyle:
                     type: boolean
                   options:
@@ -2367,6 +2369,8 @@ spec:
                   provider:
                     type: string
                   region:
+                    type: string
+                  roleArn:
                     type: string
                   secretName:
                     type: string

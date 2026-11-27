@@ -1025,20 +1025,24 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 		},
 	})
 
-	// Additional volumes - skip for prune job to simplify setup
-	if !isPruneJob {
-		if len(restore.Spec.AdditionalVolumes) > 0 {
-			volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+	volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+	if isPruneJob && restore.Spec.Local != nil {
+		volumeNames := make(map[string]struct{}, len(volumes))
+		for _, volume := range volumes {
+			volumeNames[volume.Name] = struct{}{}
 		}
-		if len(restore.Spec.AdditionalVolumeMounts) > 0 {
-			volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+		for _, mount := range restore.Spec.AdditionalVolumeMounts {
+			if _, exists := volumeNames[mount.Name]; mount.Name == restore.Spec.Local.Volume.Name && !exists {
+				continue
+			}
+			volumeMounts = append(volumeMounts, mount)
 		}
-
-		// mount volumes if specified
-		if restore.Spec.Local != nil {
-			volumes = append(volumes, restore.Spec.Local.Volume)
-			volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)
-		}
+	} else {
+		volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+	}
+	if !isPruneJob && restore.Spec.Local != nil {
+		volumes = append(volumes, restore.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName

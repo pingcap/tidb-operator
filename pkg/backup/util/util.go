@@ -94,10 +94,6 @@ func generateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1
 			Value: s3.Endpoint,
 		},
 		{
-			Name:  "AWS_REGION",
-			Value: s3.Region,
-		},
-		{
 			Name:  "AWS_ACL",
 			Value: s3.Acl,
 		},
@@ -107,13 +103,15 @@ func generateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1
 		},
 	}
 
-	if useKMS {
-		envVars = append(envVars, []corev1.EnvVar{
-			{
+	// Leave region injection to the EKS webhook when the spec omits it.
+	if s3.Region != "" {
+		envVars = append(envVars, corev1.EnvVar{Name: constants.AWSRegionEnv, Value: s3.Region})
+		if useKMS {
+			envVars = append(envVars, corev1.EnvVar{
 				Name:  "AWS_DEFAULT_REGION",
 				Value: s3.Region,
-			},
-		}...)
+			})
+		}
 	}
 
 	if s3.SecretName != "" {

@@ -70,6 +70,8 @@ type s3Config struct {
 	sse                    string
 	acl                    string
 	storageClass           string
+	roleARN                string
+	externalID             string
 	forcePathStyle         bool
 	forcePathStyleOverride bool
 }
@@ -387,25 +389,35 @@ func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]st
 	case v1alpha1.BackupStorageTypeS3:
 		qs := makeS3Config(provider.S3, false)
 		s := newS3StorageOptionForFlag(qs, flag)
+		primary := flag == "" || flag == defaultStorageFlag
+		var queryParams []string
 		if encryptionContext := provider.S3.SSEKMSEncryptionContext; encryptionContext != nil {
 			if encryptionContext.Values == nil {
 				return nil, fmt.Errorf("s3.sseKmsEncryptionContext.values must be an object of string key-value pairs")
 			}
 			// A map of strings contains no unsupported JSON values.
 			encoded, _ := json.Marshal(encryptionContext.Values)
-			if flag == "" || flag == defaultStorageFlag {
+			if primary {
 				// exec.Command receives this JSON as one argument, without shell quoting.
 				s = append(s, "--s3.sse-kms-context="+string(encoded))
 			} else {
-				// A secondary storage (e.g. PITR's full backup) has its own URL,
-				// rather than a separate set of global S3 flags.
-				// BR treats '+' literally in storage URLs, so encode spaces as %20.
-				s[0] += "?sse-kms-context=" + strings.ReplaceAll(url.QueryEscape(string(encoded)), "+", "%20")
+				queryParams = append(queryParams, "sse-kms-context="+encodeBRQueryValue(string(encoded)))
 				// BR rejects a context without SSE-KMS on AWS. Carry this storage's
 				// own SSE mode instead of inheriting the main storage's --s3.sse.
 				if provider.S3.SSE != "" {
-					s[0] += "&sse=" + url.QueryEscape(provider.S3.SSE)
+					queryParams = append(queryParams, "sse="+encodeBRQueryValue(qs.sse))
 				}
+			}
+		}
+		if !primary {
+			if qs.roleARN != "" {
+				queryParams = append(queryParams, "role-arn="+encodeBRQueryValue(qs.roleARN))
+			}
+			if qs.externalID != "" {
+				queryParams = append(queryParams, "external-id="+encodeBRQueryValue(qs.externalID))
+			}
+			if len(queryParams) != 0 {
+				s[0] += "?" + strings.Join(queryParams, "&")
 			}
 		}
 		return s, nil
@@ -429,6 +441,11 @@ func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]st
 	}
 }
 
+func encodeBRQueryValue(value string) string {
+	// BR treats '+' literally in storage URLs, so encode spaces as %20.
+	return strings.ReplaceAll(url.QueryEscape(value), "+", "%20")
+}
+
 // newLocalStorageOption constructs `--flag local://$PATH` arg for br
 func newLocalStorageOptionForFlag(conf *localConfig, flag string) ([]string, error) {
 	if flag != "" && flag != defaultStorageFlag {
@@ -443,7 +460,6 @@ func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
 	var s3options []string
 	path := fmt.Sprintf("s3://%s", path.Join(conf.bucket, conf.prefix))
 	if flag != "" && flag != defaultStorageFlag {
-		// now just set path to special flag
 		s3options = append(s3options, fmt.Sprintf("--%s=%s", flag, path))
 		return s3options
 	}
@@ -471,6 +487,12 @@ func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
 	}
 	if conf.storageClass != "" {
 		s3options = append(s3options, fmt.Sprintf("--s3.storage-class=%s", conf.storageClass))
+	}
+	if conf.roleARN != "" {
+		s3options = append(s3options, "--s3.role-arn="+conf.roleARN)
+	}
+	if conf.externalID != "" {
+		s3options = append(s3options, "--s3.external-id="+conf.externalID)
 	}
 
 	return s3options
@@ -735,6 +757,8 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	conf.sse = s3.SSE
 	conf.acl = s3.Acl
 	conf.storageClass = s3.StorageClass
+	conf.roleARN = s3.RoleARN
+	conf.externalID = s3.ExternalID
 	conf.forcePathStyle = true
 	// In some cases, we need to set ForcePathStyle to false.
 	// Refer to: https://rclone.org/s3/#s3-force-path-style

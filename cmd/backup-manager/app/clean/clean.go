@@ -150,7 +150,7 @@ func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta, deleteRati
 func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
 	opt := backup.GetCleanOption()
 
-	backend, err := bkutil.NewStorageBackend(backup.Spec.StorageProvider, &bkutil.StorageCredential{})
+	backend, err := bkutil.NewStorageBackendWithBROptions(backup.Spec.StorageProvider, &bkutil.StorageCredential{}, util.GetBROptions(backup.Spec.BR))
 	if err != nil {
 		return err
 	}
