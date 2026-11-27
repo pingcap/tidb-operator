@@ -1238,11 +1238,12 @@ func (tidb *TiDBSpec) GetScaleOutParallelism() int {
 	return int(*(tidb.ScalePolicy.ScaleOutParallelism))
 }
 
-// GetUpgradeMaxUnavailable returns how many TiDB pods may be unavailable at
-// the same time during a rolling update, resolving a percentage value against
-// the given number of replicas (rounded down, as the native Kubernetes
-// maxUnavailable does). 1 (the default) is the classic strictly-serial
-// rolling update; an unparsable value falls back to 1 as well.
+// GetUpgradeMaxUnavailable returns how many serving TiDB pods a rolling
+// update may take out of service at the same time, resolving a percentage
+// value against the given number of replicas (rounded down, as the native
+// Kubernetes maxUnavailable does). 1 (the default) is the classic
+// strictly-serial rolling update; an unparsable value falls back to 1 as well.
+// The caller caps the result at replicas-1.
 func (tidb *TiDBSpec) GetUpgradeMaxUnavailable(replicas int) int {
 	mu := tidb.UpgradePolicy.MaxUnavailable
 	if mu == nil {

@@ -109,10 +109,11 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 
-	// how many pods may be down at the same time during the rolling update;
-	// at least one pod is always kept out of the restart window. The budget is
-	// based on the StatefulSet replica count, like the native maxUnavailable,
-	// not on the number of ordinals (which delete-slots can inflate).
+	// how many serving pods the rolling update may take out of service at the
+	// same time; at least one pod is always kept out of the restart window.
+	// The budget is based on the StatefulSet replica count, like the native
+	// maxUnavailable, not on the number of ordinals (which delete-slots can
+	// inflate).
 	replicas := int(*oldSet.Spec.Replicas)
 	maxUnavailable := 1
 	if replicas > 1 {
