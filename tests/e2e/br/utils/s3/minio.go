@@ -37,6 +37,8 @@ const (
 
 	minioBucket = "local" // the bucket for e2e test
 	minioSecret = "minio-secret"
+
+	minioDataVolume = "data"
 )
 
 type minioStorage struct {
@@ -247,6 +249,14 @@ func getMinioPod(ns string) *corev1.Pod {
 							},
 						},
 					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      minioDataVolume,
+							MountPath: "/data",
+						},
+					},
+					// The default 1s probe timeout is too short on a busy e2e node, and a
+					// failed liveness probe restarts minio in the middle of a test.
 					ReadinessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
@@ -254,6 +264,7 @@ func getMinioPod(ns string) *corev1.Pod {
 								Port: intstr.FromInt(9000),
 							},
 						},
+						TimeoutSeconds: 10,
 					},
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
@@ -262,6 +273,17 @@ func getMinioPod(ns string) *corev1.Pod {
 								Port: intstr.FromInt(9000),
 							},
 						},
+						TimeoutSeconds:   10,
+						FailureThreshold: 6,
+					},
+				},
+			},
+			// Keep the stored objects across container restarts.
+			Volumes: []corev1.Volume{
+				{
+					Name: minioDataVolume,
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 			},
