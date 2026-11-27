@@ -3999,13 +3999,17 @@ type ScalePolicy struct {
 }
 
 type UpgradePolicy struct {
-	// MaxUnavailable is how many pods of the component may be down at the
-	// same time during a rolling update, as an absolute number (e.g. 2) or a
-	// percentage of replicas (e.g. "10%", rounded down). Values above 1
-	// restart up to that many pods in parallel; out-of-service pods of any
-	// revision count against the budget. The resolved value is clamped at runtime to
-	// [1, replicas-1], so the update always makes progress and a
-	// single-replica component is updated serially.
+	// MaxUnavailable is how many pods of the component a rolling update may
+	// restart at the same time, as an absolute number (e.g. 2) or a
+	// percentage of replicas (e.g. "10%", rounded down). The resolved value
+	// is clamped at runtime to [1, replicas-1], so the update always makes
+	// progress and a single-replica component is updated serially.
+	// With a value above 1, up to that many pods are restarted in parallel,
+	// and pods of any revision that are already out of service count against
+	// the budget.
+	// With 1, pods are restarted one at a time: the update waits for each
+	// restarted pod to be available again, and does not count not-yet-updated
+	// pods that are out of service for another reason.
 	// Optional: Defaults to 1, the classic one-pod-at-a-time rolling update.
 	// +kubebuilder:validation:XIntOrString
 	// +optional

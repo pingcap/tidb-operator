@@ -336,6 +336,17 @@ func TestTiDBUpgraderParallelUpgrade(t *testing.T) {
 			expectRemaining: []int32{0, 1, 2},
 		},
 		{
+			name:           "default does not count a down outdated pod",
+			maxUnavailable: nil,
+			oldPartition:   4,
+			pods: []*corev1.Pod{
+				newPod(0, "1", false, false), newPod(1, "1", true, false),
+				newPod(2, "1", true, false), newPod(3, "1", true, false),
+			},
+			expectPartition: 3,
+			expectRemaining: []int32{0, 1, 2, 3},
+		},
+		{
 			name:           "maxUnavailable=2: first sync only lowers the partition",
 			maxUnavailable: iosPtr(intstr.FromInt(2)),
 			oldPartition:   4,
