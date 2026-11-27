@@ -3999,14 +3999,15 @@ type ScalePolicy struct {
 }
 
 type UpgradePolicy struct {
-	// MaxUnavailable is how many pods of the component a rolling update may
-	// restart at the same time, as an absolute number (e.g. 2) or a
-	// percentage of replicas (e.g. "10%", rounded down). The resolved value
-	// is clamped at runtime to [1, replicas-1], so the update always makes
-	// progress and a single-replica component is updated serially.
-	// With a value above 1, up to that many pods are restarted in parallel,
-	// and pods of any revision that are already out of service count against
-	// the budget.
+	// MaxUnavailable is how many serving pods of the component a rolling
+	// update may take out of service at the same time, as an absolute number
+	// (e.g. 2) or a percentage of replicas (e.g. "10%", rounded down). The
+	// resolved value is clamped at runtime to [1, replicas-1], so the update
+	// always makes progress and a single-replica component is updated
+	// serially.
+	// With a value above 1, pods are restarted in parallel: pods of any
+	// revision that are already out of service count against the budget, and
+	// restarting a not-yet-updated pod that is already down consumes nothing.
 	// With 1, pods are restarted one at a time: the update waits for each
 	// restarted pod to be available again, and does not count not-yet-updated
 	// pods that are out of service for another reason.
