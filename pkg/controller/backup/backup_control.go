@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
+	backupmanager "github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -114,6 +115,9 @@ func needToAddFinalizer(backup *v1alpha1.Backup) bool {
 }
 
 func needToRemoveFinalizer(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode == v1alpha1.BackupModeLog && !backupmanager.IsLogBackupStoppedForCleanup(backup) {
+		return false
+	}
 	return v1alpha1.IsCleanCandidate(backup) && isDeletionCandidate(backup) && v1alpha1.IsBackupClean(backup)
 }
 

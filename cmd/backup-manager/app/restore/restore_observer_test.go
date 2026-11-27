@@ -22,6 +22,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/spf13/pflag"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -82,7 +84,7 @@ exit 0
 	t.Setenv("BR_ARGV_FILE", argvFile)
 
 	statusUpdater := &recordingRestoreStatusUpdater{}
-	err := (&Options{}).restoreData(context.Background(), newRestoreForObserverTest(), statusUpdater, nil)
+	_, err := (&Options{}).restoreData(context.Background(), newRestoreForObserverTest(), statusUpdater, nil)
 	if err != nil {
 		t.Fatalf("expected restore to succeed, got %v", err)
 	}
@@ -152,7 +154,7 @@ exit 1
 	}
 
 	statusUpdater := &recordingRestoreStatusUpdater{}
-	err := (&Options{}).restoreData(context.Background(), newRestoreForObserverTest(), statusUpdater, nil)
+	_, err := (&Options{}).restoreData(context.Background(), newRestoreForObserverTest(), statusUpdater, nil)
 	if err == nil {
 		t.Fatal("expected restore to fail")
 	}
@@ -172,6 +174,46 @@ exit 1
 		if update.BROperation == nil && update.Progress == nil && update.CommitTs == nil {
 			t.Fatalf("expected restore failure not to write lock blocker status, got %#v", statusUpdater.updates)
 		}
+	}
+}
+
+func TestPITRRestoreAndAbortUseSameTimestampOverrides(t *testing.T) {
+	dir := t.TempDir()
+	previous := brBinPath
+	brBinPath = dir
+	t.Cleanup(func() { brBinPath = previous })
+
+	argvFile := filepath.Join(dir, "argv")
+	t.Setenv("BR_ARGV_FILE", argvFile)
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$BR_ARGV_FILE\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "br"), []byte(script), 0755))
+
+	restore := newRestoreForObserverTest()
+	restore.Spec.LogRestoreStartTs = "100"
+	restore.Spec.BR.Options = append(restore.Spec.BR.Options, "--restored-ts=800", "--restored-ts", "900", "--start-ts", "150", "--start-ts=200")
+	manager := &Manager{}
+	manager.Mode = string(v1alpha1.RestoreModePiTR)
+	manager.PitrRestoredTs = "700"
+	_, err := manager.restoreData(context.Background(), restore, &recordingRestoreStatusUpdater{}, nil)
+	require.NoError(t, err)
+	recorded, err := os.ReadFile(argvFile)
+	require.NoError(t, err)
+	restoreArgs := strings.Split(strings.TrimSuffix(string(recorded), "\n"), "\n")
+
+	abortArgs, err := manager.constructBRAbortArgs(restore)
+	require.NoError(t, err)
+	require.Equal(t, []string{"restore", "point"}, restoreArgs[:2])
+	require.Equal(t, []string{"abort", "restore", "point"}, abortArgs[:3])
+	for _, args := range [][]string{restoreArgs[2:], abortArgs[3:]} {
+		require.Contains(t, args, "--restored-ts=700")
+		require.Contains(t, args, "--start-ts=100")
+		flags := pflag.NewFlagSet("BR PITR", pflag.ContinueOnError)
+		flags.ParseErrorsWhitelist.UnknownFlags = true
+		restoredTS := flags.String("restored-ts", "", "")
+		startTS := flags.String("start-ts", "", "")
+		require.NoError(t, flags.Parse(args))
+		require.Equal(t, "900", *restoredTS)
+		require.Equal(t, "200", *startTS)
 	}
 }
 
@@ -215,10 +257,14 @@ func newRestoreForObserverTest() *v1alpha1.Restore {
 }
 
 type recordingRestoreStatusUpdater struct {
-	updates []*controller.RestoreUpdateStatus
+	updates    []*controller.RestoreUpdateStatus
+	conditions []v1alpha1.RestoreConditionType
 }
 
-func (r *recordingRestoreStatusUpdater) Update(_ *v1alpha1.Restore, _ *v1alpha1.RestoreCondition, newStatus *controller.RestoreUpdateStatus) error {
+func (r *recordingRestoreStatusUpdater) Update(_ *v1alpha1.Restore, condition *v1alpha1.RestoreCondition, newStatus *controller.RestoreUpdateStatus) error {
 	r.updates = append(r.updates, newStatus)
+	if condition != nil {
+		r.conditions = append(r.conditions, condition.Type)
+	}
 	return nil
 }

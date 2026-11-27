@@ -2354,6 +2354,17 @@ type S3StorageProvider struct {
 	// Changing this field does not update an existing log backup task.
 	// +optional
 	SSEKMSEncryptionContext *S3EncryptionContext `json:"sseKmsEncryptionContext,omitempty"`
+	// RoleARN is the ARN of the IAM role to assume when accessing AWS S3 in BR and backup-manager.
+	// In Backup and Restore, an explicit `--s3.role-arn` in `spec.br.options` overrides this field for the main storage.
+	// Existing log backup tasks keep the settings they started with.
+	// +optional
+	RoleARN string `json:"roleArn,omitempty"`
+	// ExternalID is the external ID used together with RoleARN when assuming an IAM role for AWS S3.
+	// In Backup and Restore, an explicit `--s3.external-id` in `spec.br.options` overrides this field for the main storage.
+	// Keep credentials and other sensitive values out of this field.
+	// Existing log backup tasks keep the settings they started with.
+	// +optional
+	ExternalID string `json:"externalId,omitempty"`
 	// Options Rclone options for backup and restore with dumpling and lightning.
 	Options []string `json:"options,omitempty"`
 	// ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).

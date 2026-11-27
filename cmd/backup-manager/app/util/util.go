@@ -367,7 +367,20 @@ func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
 
 // GetBRMetaData get backup metadata from cloud storage
 func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
-	s, err := util.NewStorageBackend(provider, &util.StorageCredential{})
+	return GetBRMetaDataWithBROptions(ctx, provider, nil)
+}
+
+// GetBROptions returns optional BR arguments, including for cleanup of incomplete CRs.
+func GetBROptions(config *v1alpha1.BRConfig) []string {
+	if config == nil {
+		return nil
+	}
+	return config.Options
+}
+
+// GetBRMetaDataWithBROptions reads metadata using the task's S3 assume-role configuration.
+func GetBRMetaDataWithBROptions(ctx context.Context, provider v1alpha1.StorageProvider, options []string) (*kvbackup.BackupMeta, error) {
+	s, err := util.NewStorageBackendWithBROptions(provider, &util.StorageCredential{}, options)
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +426,12 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 
 // GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta
 func GetCommitTsFromBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (uint64, error) {
-	backupMeta, err := GetBRMetaData(ctx, provider)
+	return GetCommitTsFromBRMetaDataWithBROptions(ctx, provider, nil)
+}
+
+// GetCommitTsFromBRMetaDataWithBROptions reads the commit timestamp with the task's S3 role.
+func GetCommitTsFromBRMetaDataWithBROptions(ctx context.Context, provider v1alpha1.StorageProvider, options []string) (uint64, error) {
+	backupMeta, err := GetBRMetaDataWithBROptions(ctx, provider, options)
 	if err != nil {
 		return 0, err
 	}
@@ -636,7 +654,7 @@ func RunBRCommandWithLineHandler(
 
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait br command failed, errMsg %s, err: %v", opts.Cluster, errMsg, err)
+		return fmt.Errorf("cluster %s, wait br command failed, errMsg %s, err: %w", opts.Cluster, errMsg, err)
 	}
 	return nil
 }

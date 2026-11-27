@@ -26,6 +26,12 @@ const (
 	// DefaultBackoffLimit specifies the number of retries before marking this job failed.
 	DefaultBackoffLimit = 6
 
+	// LogBackupTaskAlreadyExists is the condition reason for a BR log start conflict.
+	LogBackupTaskAlreadyExists = "LogBackupTaskAlreadyExists"
+
+	// BRStreamLogTaskExistsErrorCode is the BR error code for an existing log task.
+	BRStreamLogTaskExistsErrorCode = "[BR:Stream:ErrStreamLogTaskExist]"
+
 	// TidbPasswordKey represents the password key in tidb secret
 	TidbPasswordKey = "password"
 
