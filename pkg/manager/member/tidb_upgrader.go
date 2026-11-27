@@ -250,7 +250,10 @@ func (u *tidbUpgrader) upgradeParallel(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	// Expose the largest outdated ordinals: taking down an available pod
 	// costs one unit of the budget, one that is already down is free, even
 	// when more pods are down than the budget allows (otherwise pods broken
-	// at the old revision could never receive a fixed one).
+	// at the old revision at the top of the range could never receive a
+	// fixed one). The partition exposes a contiguous range, so a down
+	// outdated pod below an available one waits until the budget has room
+	// for the available pods above it.
 	selected := 0
 	for _, c := range pending {
 		cost := 0
