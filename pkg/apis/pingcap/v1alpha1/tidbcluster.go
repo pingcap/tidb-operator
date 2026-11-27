@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
@@ -1235,6 +1236,24 @@ func (tidb *TiDBSpec) GetScaleOutParallelism() int {
 		return 1
 	}
 	return int(*(tidb.ScalePolicy.ScaleOutParallelism))
+}
+
+// GetUpgradeMaxUnavailable returns how many serving TiDB pods a rolling
+// update may take out of service at the same time, resolving a percentage
+// value against the given number of replicas (rounded down, as the native
+// Kubernetes maxUnavailable does). 1 (the default) is the classic
+// strictly-serial rolling update; an unparsable value falls back to 1 as well.
+// The caller caps the result at replicas-1.
+func (tidb *TiDBSpec) GetUpgradeMaxUnavailable(replicas int) int {
+	mu := tidb.UpgradePolicy.MaxUnavailable
+	if mu == nil {
+		return 1
+	}
+	v, err := intstr.GetScaledValueFromIntOrPercent(mu, replicas, false)
+	if err != nil || v < 1 {
+		return 1
+	}
+	return v
 }
 
 func (tikv *TiKVSpec) ShouldSeparateRocksDBLog() bool {
