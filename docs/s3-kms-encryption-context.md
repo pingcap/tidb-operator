@@ -140,7 +140,7 @@ is configured, its context belongs under
 Operator URL-encodes this JSON in `--full-backup-storage`, so it does not overwrite
 the main storage's context. When a context is set, the URL also carries that
 provider's `sse`, so set `spec.pitrFullBackupStorageProvider.s3.sse: aws:kms`
-as well. Other S3 settings of that URL are not added.
+as well.
 
 These settings configure BR storage; they do not add an encryption-context
 header to S3 reads. Read access still depends on the existing S3/KMS permissions. See the
@@ -171,6 +171,72 @@ header to S3 reads. Read access still depends on the existing S3/KMS permissions
   Dumpling/rclone, Lightning, or Operator's own cloud storage clients. The shared
   S3 schema also appears in compaction and federation CRDs; the schema alone
   does not guarantee support by every underlying tool.
+
+## S3 authentication for backup and restore tasks
+
+On a BR-based Backup or Restore, set `spec.s3.roleArn` to the IAM role for
+the main S3 storage. Set `spec.s3.externalId` when the role's trust policy
+requires an external ID. BR uses the role for storage access, and backup-manager
+uses it for backup metadata reads, restore metadata reads, and BR backup cleanup.
+The fields also work under `spec.backupTemplate.s3` and `spec.logBackupTemplate.s3`
+in a BackupSchedule. Keep credentials and other sensitive values out of `externalId`.
+
+```yaml
+spec:
+  br:
+    sendCredToTikv: false
+  s3:
+    provider: aws
+    region: us-east-1
+    bucket: my-backup-bucket
+    prefix: snapshots/example
+    roleArn: arn:aws:iam::123456789012:role/backup
+    externalId: customer-backup
+```
+
+The task's existing credentials are the source for AWS STS AssumeRole. The role
+must have the permissions required by the enabled backup, restore and cleanup
+operations. Environment credentials may include a session token. Temporary role
+credentials are refreshed by the AWS SDK; source credentials must remain valid
+or refreshable for the task's duration. When a role is specified, failures to
+assume it or access S3 are reported without retrying under the environment
+identity. Without a role, existing credential behavior is preserved.
+
+Set `spec.br.sendCredToTikv: false` when the target role's trust policy does
+not allow it to assume itself or when running a long-running log backup.
+Every participating TiKV node then needs refreshable source credentials,
+network access to AWS STS, and `sts:AssumeRole` permission for the target role.
+
+The existing `spec.br.options` flags `--s3.role-arn` and `--s3.external-id`
+override their matching fields independently for main storage. Both `--flag=value`
+and separate flag/value arguments are accepted. Repeated flags use the last
+value. `--s3.role-arn=` disables AssumeRole, and `--s3.external-id=` clears the
+external ID while keeping the selected role. An external ID takes effect only
+when a role is selected. Metadata and cleanup clients also apply `--s3.region`
+and `--s3.endpoint` overrides. STS uses its own endpoint.
+
+Backup-manager reads the location from the task's storage fields. BR handles
+any replacement `--storage` URL and credentials or profiles embedded in it.
+Configure the location and role through the task's storage fields and the
+documented BR flags so that both tools can use the same settings. EBS
+volume-snapshot workflows use their existing credentials to read and write cloud
+snapshot metadata. Controller-owned storage operations, Dumpling, Lightning and
+rclone keep their existing authentication configuration.
+
+For PITR, `spec.s3` configures log storage. Put the full backup's role and
+external ID under `spec.pitrFullBackupStorageProvider.s3`. Operator encodes
+those fields in the `--full-backup-storage` URL. BR applies the full-backup
+URL fields to that storage alone. Omitted fields use BR's existing defaults,
+which can inherit the main S3 flags. Existing log backup tasks keep their
+saved authentication settings. Verify the stored task configuration and
+supported upgrade procedure before changing credentials or roles for an
+existing task.
+
+Deployments that previously used one identity for BR and another for metadata
+or cleanup now use the configured role for the operations listed above. Review
+that role's task permissions when upgrading. Validate with default source
+credentials that cannot directly read or delete the protected test data, so an
+omitted role cannot be hidden by environment permissions.
 
 ## Logging and validation scope
 

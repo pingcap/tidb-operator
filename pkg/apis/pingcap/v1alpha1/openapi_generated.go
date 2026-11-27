@@ -8864,6 +8864,20 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext"),
 						},
 					},
+					"roleArn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RoleARN is the ARN of the IAM role to assume when accessing AWS S3 in BR and backup-manager. In Backup and Restore, an explicit `--s3.role-arn` in `spec.br.options` overrides this field for the main storage. Existing log backup tasks keep the settings they started with.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"externalId": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExternalID is the external ID used together with RoleARN when assuming an IAM role for AWS S3. In Backup and Restore, an explicit `--s3.external-id` in `spec.br.options` overrides this field for the main storage. Keep credentials and other sensitive values out of this field. Existing log backup tasks keep the settings they started with.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"options": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Options Rclone options for backup and restore with dumpling and lightning.",

@@ -14,6 +14,7 @@
 package brlog
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +25,8 @@ import (
 
 const (
 	messageOperationStarted = "BR operation started"
+	messagePITRStarted      = "start point in time restore"
+	messagePITRTSResolved   = "registry resolved a different RestoreTS, updating config"
 
 	fieldMessage = "message"
 	fieldTime    = "time"
@@ -40,6 +43,44 @@ func ParseOperationStartedLine(line string) (*v1alpha1.BROperation, bool) {
 		return nil, false
 	}
 	return parseOperationStarted(fields)
+}
+
+// ParsePITRRestoreTS reads the initial or registry-resolved restore TSO from a BR log line.
+func ParsePITRRestoreTS(line string) uint64 {
+	if !strings.Contains(line, messagePITRStarted) && !strings.Contains(line, messagePITRTSResolved) {
+		return 0
+	}
+	if strings.HasPrefix(strings.TrimSpace(line), "{") {
+		var record struct {
+			Message    string `json:"message"`
+			RestoreTo  uint64 `json:"restore-to"`
+			ResolvedTS uint64 `json:"resolved_restored_ts"`
+		}
+		if err := json.Unmarshal([]byte(line), &record); err == nil {
+			switch record.Message {
+			case messagePITRStarted:
+				return record.RestoreTo
+			case messagePITRTSResolved:
+				return record.ResolvedTS
+			}
+		}
+		return 0
+	}
+	fields := parseTextFields(line)
+	var key string
+	switch fields[fieldMessage] {
+	case messagePITRStarted:
+		key = "restore-to"
+	case messagePITRTSResolved:
+		key = "resolved_restored_ts"
+	default:
+		return 0
+	}
+	ts, err := strconv.ParseUint(fields[key], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return ts
 }
 
 // IsErrorLine reports whether a BR log line should be included in command error output.
@@ -73,7 +114,8 @@ func parseTextFields(line string) map[string]string {
 			fields[key] = unquoteLogValue(strings.TrimSpace(value))
 			continue
 		}
-		if message := unquoteLogValue(strings.TrimSpace(token)); message == messageOperationStarted {
+		switch message := unquoteLogValue(strings.TrimSpace(token)); message {
+		case messageOperationStarted, messagePITRStarted, messagePITRTSResolved:
 			fields[fieldMessage] = message
 			continue
 		}
@@ -129,7 +171,7 @@ func isFieldKey(value string) bool {
 		return false
 	}
 	for _, r := range value {
-		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' {
 			continue
 		}
 		return false
