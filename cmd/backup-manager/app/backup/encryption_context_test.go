@@ -71,7 +71,7 @@ func TestBackupServerSideEncryption(t *testing.T) {
 	}
 }
 
-func TestStopLogBackupArgsWithInvalidServerSideEncryption(t *testing.T) {
+func TestLogBackupRejectsInvalidServerSideEncryption(t *testing.T) {
 	previous := brBinPath
 	brBinPath = t.TempDir()
 	t.Cleanup(func() { brBinPath = previous })
@@ -81,13 +81,11 @@ func TestStopLogBackupArgsWithInvalidServerSideEncryption(t *testing.T) {
 		name       string
 		encryption v1alpha1.S3ServerSideEncryption
 		options    []string
-		taskName   string
 		wantError  string
 	}{
 		{
 			name:       "conflicting algorithms",
 			encryption: v1alpha1.S3ServerSideEncryption{Algorithm: "AES256", KMSKeyID: "alias/backup"},
-			taskName:   "log-backup",
 			wantError:  "s3.sse (\"aws:kms\") conflicts with s3.serverSideEncryption.algorithm (\"AES256\")",
 		},
 		{
@@ -96,7 +94,6 @@ func TestStopLogBackupArgsWithInvalidServerSideEncryption(t *testing.T) {
 				Algorithm: "aws:kms", KMSKeyID: "alias/backup", KMSEncryptionContext: &v1alpha1.S3EncryptionContext{},
 			},
 			options:   []string{"--task-name", "existing-task"},
-			taskName:  "existing-task",
 			wantError: "s3.serverSideEncryption.kmsEncryptionContext.values must be an object of string key-value pairs",
 		},
 	} {
@@ -112,28 +109,8 @@ func TestStopLogBackupArgsWithInvalidServerSideEncryption(t *testing.T) {
 			}
 			original := backup.DeepCopy()
 			options := &Options{}
-			args, err := options.stopLogBackupArgs(backup)
-			require.NoError(t, err)
-			require.Equal(t, []string{"log", "stop", "--task-name=log-backup"}, args[:3])
-			require.Contains(t, args, "--pd=source-pd.backup-ns:2379")
-			require.Contains(t, args, "--storage=s3://bucket/prefix")
-			if len(tc.options) > 0 {
-				require.Equal(t, tc.options, args[len(args)-len(tc.options):])
-			}
-
-			flags := pflag.NewFlagSet("log stop", pflag.ContinueOnError)
-			flags.ParseErrorsWhitelist.UnknownFlags = true
-			taskName := flags.String("task-name", "", "")
-			flags.String("s3.sse", "", "")
-			flags.String("s3.sse-kms-key-id", "", "")
-			flags.String("s3.sse-kms-context", "", "")
-			require.NoError(t, flags.Parse(args[2:]))
-			require.Equal(t, tc.taskName, *taskName)
-			require.False(t, flags.Changed("s3.sse"))
-			require.False(t, flags.Changed("s3.sse-kms-key-id"))
-			require.False(t, flags.Changed("s3.sse-kms-context"))
-			require.NoError(t, options.doStopLogBackup(context.Background(), backup))
-			require.ErrorContains(t, options.doStartLogBackup(context.Background(), backup), tc.wantError)
+			require.EqualError(t, options.doStopLogBackup(context.Background(), backup), tc.wantError)
+			require.EqualError(t, options.doStartLogBackup(context.Background(), backup), tc.wantError)
 			require.Equal(t, original, backup)
 		})
 	}
