@@ -2325,6 +2325,8 @@ type LocalStorageProvider struct {
 
 // S3StorageProvider represents a S3 compliant storage for storing backups.
 // +k8s:openapi-gen=true
+// +kubebuilder:validation:XValidation:rule="!has(self.sse) || self.sse == \"\" || !has(self.serverSideEncryption) || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm == \"\" || self.sse in [self.serverSideEncryption.algorithm]",message="s3.sse conflicts with s3.serverSideEncryption.algorithm"
+// +kubebuilder:validation:XValidation:rule="!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption) || !has(self.serverSideEncryption.kmsEncryptionContext) || self.sseKmsEncryptionContext.values in [self.serverSideEncryption.kmsEncryptionContext.values]",message="s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext"
 type S3StorageProvider struct {
 	// Provider represents the specific storage provider that implements the S3 interface
 	Provider S3StorageProviderType `json:"provider"`
@@ -2351,6 +2353,12 @@ type S3StorageProvider struct {
 	// Deprecated: use ServerSideEncryption.Algorithm instead.
 	// Must not conflict with ServerSideEncryption.Algorithm when both are set.
 	SSE string `json:"sse,omitempty"`
+	// SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
+	//
+	// Deprecated: use ServerSideEncryption.KMSEncryptionContext instead.
+	// Must not conflict with ServerSideEncryption.KMSEncryptionContext when both are set.
+	// +optional
+	SSEKMSEncryptionContext *S3EncryptionContext `json:"sseKmsEncryptionContext,omitempty"`
 	// ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup.
 	// In Backup and Restore, explicit `--s3.sse`, `--s3.sse-kms-key-id`, and `--s3.sse-kms-context`
 	// flags in `spec.br.options` override these fields for the main storage.
@@ -2381,7 +2389,7 @@ type S3ServerSideEncryption struct {
 	// Must not conflict with the deprecated `s3.sse` field when both are set.
 	// +optional
 	Algorithm string `json:"algorithm,omitempty"`
-	// KMSKeyID is the AWS KMS key ID or ARN used with SSE-KMS.
+	// KMSKeyID is the AWS KMS key ID, ARN, or alias used with SSE-KMS.
 	// +optional
 	KMSKeyID string `json:"kmsKeyId,omitempty"`
 	// KMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
@@ -2395,7 +2403,8 @@ type S3ServerSideEncryption struct {
 // S3EncryptionContext contains the additional SSE-KMS encryption context for BR.
 type S3EncryptionContext struct {
 	// Values is a required object of string key-value pairs. An empty object sends
-	// an explicit empty context; omitting KMSEncryptionContext sends no context.
+	// an explicit empty context. Omitting both KMSEncryptionContext and the
+	// deprecated SSEKMSEncryptionContext sends no context.
 	// Encryption context is not secret and must not contain sensitive information.
 	// +kubebuilder:validation:Required
 	Values map[string]string `json:"values"`

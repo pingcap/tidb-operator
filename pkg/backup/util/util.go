@@ -598,6 +598,9 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string, acrossK8s bool
 		}
 
 		if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+			if err := ValidateS3ServerSideEncryption(restore.Spec.PitrFullBackupStorageProvider.S3); err != nil {
+				return err
+			}
 			_, err := GetStoragePath(restore.Spec.PitrFullBackupStorageProvider)
 			// err is nil when there is a valid storage provider
 			if err == nil && restore.Spec.LogRestoreStartTs != "" {
@@ -656,7 +659,7 @@ func validateS3(ns, name string, s3 *v1alpha1.S3StorageProvider) error {
 			return fmt.Errorf("host not found in endpoint %s %s", s3.Endpoint, configuredForBR)
 		}
 	}
-	return nil
+	return ValidateS3ServerSideEncryption(s3)
 }
 
 func validateGcs(ns, name string, gcs *v1alpha1.GcsStorageProvider) error {

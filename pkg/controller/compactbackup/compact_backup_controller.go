@@ -623,6 +623,9 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	if spec.Mode != v1alpha1.CompactModeSharded && spec.ShardCount != nil {
 		return perrors.NewNoStackError("shardCount can only be set when mode is sharded")
 	}
+	if err := backuputil.ValidateS3ServerSideEncryption(spec.S3); err != nil {
+		return perrors.NewNoStackError(err.Error())
+	}
 	return nil
 }
 

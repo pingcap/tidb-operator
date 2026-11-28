@@ -170,6 +170,22 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		return err
 	}
 
+	// Validate BR storage settings before changing the GC lifetime.
+	_, storageErr := pkgutil.GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
+	if provider := restore.Spec.PitrFullBackupStorageProvider; storageErr == nil &&
+		rm.Mode == string(v1alpha1.RestoreModePiTR) && pkgutil.GetStorageType(provider) != v1alpha1.BackupStorageTypeUnknown {
+		_, storageErr = pkgutil.GenStorageArgsForFlag(provider, "full-backup-storage")
+	}
+	if storageErr != nil {
+		updateErr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "RestoreDataFromRemoteFailed",
+			Message: storageErr.Error(),
+		}, nil)
+		return errorutils.NewAggregate([]error{storageErr, updateErr})
+	}
+
 	var errs []error
 
 	var (

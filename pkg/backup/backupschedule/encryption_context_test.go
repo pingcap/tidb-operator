@@ -19,6 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestScheduleServerSideEncryption(t *testing.T) {
@@ -81,4 +82,35 @@ func TestScheduleS3Role(t *testing.T) {
 		require.Equal(t, tc.template.ExternalID, tc.backup.Spec.S3.ExternalID)
 		require.NotSame(t, tc.template, tc.backup.Spec.S3)
 	}
+}
+
+func TestScheduleCompactBackupCopiesServerSideEncryption(t *testing.T) {
+	template := &v1alpha1.S3StorageProvider{
+		Bucket: "bucket", SSE: "aws:kms",
+		SSEKMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "original"}},
+		ServerSideEncryption: &v1alpha1.S3ServerSideEncryption{
+			Algorithm: "aws:kms", KMSKeyID: "alias/backup",
+			KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "original"}},
+		},
+	}
+	now := time.Now()
+	start := metav1.NewTime(now.Add(-time.Hour))
+	schedule := &v1alpha1.BackupSchedule{
+		Spec: v1alpha1.BackupScheduleSpec{
+			CompactBackupTemplate: &v1alpha1.CompactSpec{StorageProvider: v1alpha1.StorageProvider{S3: template}},
+		},
+		Status: v1alpha1.BackupScheduleStatus{LogBackupStartTs: &start},
+	}
+	copied := buildCompactBackup(schedule, now.Add(-time.Hour), now, now).Spec.S3
+
+	require.NotSame(t, template, copied)
+	require.Equal(t, template.ServerSideEncryption, copied.ServerSideEncryption)
+	require.NotSame(t, template.ServerSideEncryption, copied.ServerSideEncryption)
+	require.NotSame(t, template.ServerSideEncryption.KMSEncryptionContext, copied.ServerSideEncryption.KMSEncryptionContext)
+	require.Equal(t, template.SSEKMSEncryptionContext, copied.SSEKMSEncryptionContext)
+	require.NotSame(t, template.SSEKMSEncryptionContext, copied.SSEKMSEncryptionContext)
+	copied.ServerSideEncryption.KMSEncryptionContext.Values["tenant"] = "changed"
+	copied.SSEKMSEncryptionContext.Values["tenant"] = "changed"
+	require.Equal(t, "original", template.ServerSideEncryption.KMSEncryptionContext.Values["tenant"])
+	require.Equal(t, "original", template.SSEKMSEncryptionContext.Values["tenant"])
 }

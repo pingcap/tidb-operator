@@ -8760,7 +8760,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3EncryptionContext(ref common.ReferenceCa
 				Properties: map[string]spec.Schema{
 					"values": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Values is a required object of string key-value pairs. An empty object sends an explicit empty context; omitting KMSEncryptionContext sends no context. Encryption context is not secret and must not contain sensitive information.",
+							Description: "Values is a required object of string key-value pairs. An empty object sends an explicit empty context. Omitting both KMSEncryptionContext and the deprecated SSEKMSEncryptionContext sends no context. Encryption context is not secret and must not contain sensitive information.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -8797,7 +8797,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3ServerSideEncryption(ref common.Referenc
 					},
 					"kmsKeyId": {
 						SchemaProps: spec.SchemaProps{
-							Description: "KMSKeyID is the AWS KMS key ID or ARN used with SSE-KMS.",
+							Description: "KMSKeyID is the AWS KMS key ID, ARN, or alias used with SSE-KMS.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -8894,6 +8894,12 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"sseKmsEncryptionContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.\n\nDeprecated: use ServerSideEncryption.KMSEncryptionContext instead. Must not conflict with ServerSideEncryption.KMSEncryptionContext when both are set.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext"),
+						},
+					},
 					"serverSideEncryption": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup. In Backup and Restore, explicit `--s3.sse`, `--s3.sse-kms-key-id`, and `--s3.sse-kms-context` flags in `spec.br.options` override these fields for the main storage. Existing log backup tasks keep the settings they started with.",
@@ -8941,7 +8947,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3ServerSideEncryption"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3ServerSideEncryption"},
 	}
 }
 

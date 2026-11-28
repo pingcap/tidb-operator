@@ -16220,7 +16220,8 @@ Set by the controller when creating each phase&rsquo;s Job.</p>
 <h3 id="s3encryptioncontext">S3EncryptionContext</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#s3serversideencryption">S3ServerSideEncryption</a>)
+<a href="#s3serversideencryption">S3ServerSideEncryption</a>, 
+<a href="#s3storageprovider">S3StorageProvider</a>)
 </p>
 <p>
 <p>S3EncryptionContext contains the additional SSE-KMS encryption context for BR.</p>
@@ -16242,7 +16243,8 @@ map[string]string
 </td>
 <td>
 <p>Values is a required object of string key-value pairs. An empty object sends
-an explicit empty context; omitting KMSEncryptionContext sends no context.
+an explicit empty context. Omitting both KMSEncryptionContext and the
+deprecated SSEKMSEncryptionContext sends no context.
 Encryption context is not secret and must not contain sensitive information.</p>
 </td>
 </tr>
@@ -16286,7 +16288,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>KMSKeyID is the AWS KMS key ID or ARN used with SSE-KMS.</p>
+<p>KMSKeyID is the AWS KMS key ID, ARN, or alias used with SSE-KMS.</p>
 </td>
 </tr>
 <tr>
@@ -16437,6 +16439,22 @@ string
 <p>SSE Server-Side Encryption.</p>
 <p>Deprecated: use ServerSideEncryption.Algorithm instead.
 Must not conflict with ServerSideEncryption.Algorithm when both are set.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sseKmsEncryptionContext</code></br>
+<em>
+<a href="#s3encryptioncontext">
+S3EncryptionContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.</p>
+<p>Deprecated: use ServerSideEncryption.KMSEncryptionContext instead.
+Must not conflict with ServerSideEncryption.KMSEncryptionContext when both are set.</p>
 </td>
 </tr>
 <tr>

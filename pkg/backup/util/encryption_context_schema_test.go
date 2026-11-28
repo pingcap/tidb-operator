@@ -24,8 +24,12 @@ import (
 	"github.com/stretchr/testify/require"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	crdvalidation "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/validation"
+	structuralschema "k8s.io/apiextensions-apiserver/pkg/apiserver/schema"
+	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	celconfig "k8s.io/apiserver/pkg/apis/cel"
 	"k8s.io/kube-openapi/pkg/validation/spec"
 )
 
@@ -33,6 +37,7 @@ func TestS3SSEOpenAPIDeprecationParagraph(t *testing.T) {
 	definitions := v1alpha1.GetOpenAPIDefinitions(func(string) spec.Ref { return spec.Ref{} })
 	s3 := definitions["github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"].Schema
 	require.Contains(t, s3.Properties["sse"].Description, "\n\nDeprecated: use ServerSideEncryption.Algorithm instead.")
+	require.Contains(t, s3.Properties["sseKmsEncryptionContext"].Description, "\n\nDeprecated: use ServerSideEncryption.KMSEncryptionContext instead.")
 }
 
 // Check the shipped schemas, including every occurrence of the shared S3 type.
@@ -51,16 +56,27 @@ func TestS3ServerSideEncryptionCRDSchema(t *testing.T) {
 			require.NoError(t, err)
 			var crd apiextensionsv1.CustomResourceDefinition
 			require.NoError(t, yaml.Unmarshal(content, &crd))
+
+			// Checking the whole CRD covers CEL's static budget in the unbounded
+			// Federation VolumeRestore clusters array. Singleton-list membership
+			// compares values once and keeps the Kubernetes cost estimate within budget.
+			apiextensionsv1.SetDefaults_CustomResourceDefinition(&crd)
+			var internalCRD apiextensions.CustomResourceDefinition
+			require.NoError(t, apiextensionsv1.Convert_v1_CustomResourceDefinition_To_apiextensions_CustomResourceDefinition(&crd, &internalCRD, nil))
+			require.Empty(t, crdvalidation.ValidateCustomResourceDefinition(t.Context(), &internalCRD))
+
 			found := 0
 			var walk func(apiextensionsv1.JSONSchemaProps)
 			walk = func(schema apiextensionsv1.JSONSchemaProps) {
 				// The legacy sse field identifies each occurrence independently of the new schema.
 				if _, ok := schema.Properties["sse"]; ok {
 					found++
-					require.NotContains(t, schema.Properties, "sseKmsEncryptionContext")
+					require.Contains(t, schema.Properties, "sseKmsEncryptionContext")
 					require.Contains(t, schema.Properties, "serverSideEncryption")
+					require.Len(t, schema.XValidations, 2)
 					var internal apiextensions.JSONSchemaProps
 					require.NoError(t, apiextensionsv1.Convert_v1_JSONSchemaProps_To_apiextensions_JSONSchemaProps(&schema, &internal, nil))
+					testS3EncryptionCEL(t, &internal)
 					validator, _, err := validation.NewSchemaValidator(&internal)
 					require.NoError(t, err)
 					for _, test := range []struct {
@@ -75,6 +91,14 @@ func TestS3ServerSideEncryptionCRDSchema(t *testing.T) {
 						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":"租户"}}}}`, true},
 						{`{"provider":"aws","serverSideEncryption":{"algorithm":"aws:kms","kmsKeyId":"alias/backup","kmsEncryptionContext":{"values":{"tenant":"租户"}}}}`, true},
 						{`{"provider":"aws","sse":"aws:kms","serverSideEncryption":{"algorithm":"aws:kms"}}`, true},
+						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{}}}`, true},
+						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":"租户"}}}`, true},
+						{`{"provider":"aws","sseKmsEncryptionContext":"invalid"}`, false},
+						{`{"provider":"aws","sseKmsEncryptionContext":{}}`, false},
+						{`{"provider":"aws","sseKmsEncryptionContext":{"values":null}}`, false},
+						{`{"provider":"aws","sseKmsEncryptionContext":{"values":[]}}`, false},
+						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":123}}}`, false},
+						{`{"provider":"aws","serverSideEncryption":true}`, false},
 						{`{"provider":"aws","serverSideEncryption":{"algorithm":123}}`, false},
 						{`{"provider":"aws","serverSideEncryption":{"kmsKeyId":true}}`, false},
 						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{}}}`, false},
@@ -103,5 +127,47 @@ func TestS3ServerSideEncryptionCRDSchema(t *testing.T) {
 			}
 			require.Equal(t, count, found)
 		})
+	}
+}
+
+func testS3EncryptionCEL(t *testing.T, schema *apiextensions.JSONSchemaProps) {
+	t.Helper()
+	structural, err := structuralschema.NewStructural(schema)
+	require.NoError(t, err)
+	validator := cel.NewValidator(structural, false, celconfig.PerCallLimit)
+	require.NotNil(t, validator)
+	for _, tc := range []struct {
+		json    string
+		message string
+	}{
+		{json: `{"provider":"aws","sse":"aws:kms","serverSideEncryption":{"algorithm":"aws:kms"}}`},
+		{
+			json:    `{"provider":"aws","sse":"aws:kms","serverSideEncryption":{"algorithm":"AES256"}}`,
+			message: "s3.sse conflicts with s3.serverSideEncryption.algorithm",
+		},
+		{json: `{"provider":"aws","sse":"","serverSideEncryption":{"algorithm":"aws:kms"}}`},
+		{json: `{"provider":"aws","sse":"aws:kms","serverSideEncryption":{"algorithm":""}}`},
+		{json: `{"provider":"aws","sse":"aws:kms","serverSideEncryption":{"kmsKeyId":"alias/backup"}}`},
+		{json: `{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":"value"}},"serverSideEncryption":{"algorithm":"aws:kms"}}`},
+		{json: `{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":"value"}},"serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":"value"}}}}`},
+		{json: `{"provider":"aws","sseKmsEncryptionContext":{"values":{}},"serverSideEncryption":{"kmsEncryptionContext":{"values":{}}}}`},
+		{
+			json:    `{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":"legacy-value"}},"serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":"nested-value"}}}}`,
+			message: "s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext",
+		},
+		{
+			json:    `{"provider":"aws","sseKmsEncryptionContext":{"values":{"legacy":""}},"serverSideEncryption":{"kmsEncryptionContext":{"values":{"nested":""}}}}`,
+			message: "s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext",
+		},
+	} {
+		var object map[string]interface{}
+		require.NoError(t, json.Unmarshal([]byte(tc.json), &object))
+		errs, _ := validator.Validate(t.Context(), field.NewPath("s3"), structural, object, nil, celconfig.RuntimeCELCostBudget)
+		if tc.message == "" {
+			require.Empty(t, errs, "%s: %v", tc.json, errs)
+		} else {
+			require.Len(t, errs, 1, "%s: %v", tc.json, errs)
+			require.Equal(t, tc.message, errs[0].Detail)
+		}
 	}
 }

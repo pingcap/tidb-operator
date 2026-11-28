@@ -16,15 +16,20 @@ package restore
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"errors"
+	"net"
 	"net/url"
 	"strings"
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -116,9 +121,76 @@ func TestPITRFullBackupServerSideEncryption(t *testing.T) {
 		"sse": {"aws:kms:dsse"}, "sse-kms-key-id": {fullKeyID}, "sse-kms-context": {`{"purpose":"full + backup"}`},
 	}, parsed.Query())
 
-	restore.Spec.PitrFullBackupStorageProvider.S3.SSE = "AES256"
-	_, _, err = options.restoreTypeAndPITRArgs(restore)
-	require.ErrorContains(t, err, `s3.sse ("AES256") conflicts with s3.serverSideEncryption.algorithm ("aws:kms:dsse")`)
+	full := restore.Spec.PitrFullBackupStorageProvider.S3
+	full.ServerSideEncryption = &v1alpha1.S3ServerSideEncryption{Algorithm: "AES256"}
+	_, pitrArgs, err = options.restoreTypeAndPITRArgs(restore)
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"--restored-ts=900",
+		"--full-backup-storage=s3://bucket/full?sse-kms-context=&sse-kms-key-id=&sse=AES256",
+	}, pitrArgs)
+
+	full.SSE = "aws:kms"
+	for _, startTS := range []string{"", "800"} {
+		restore.Spec.LogRestoreStartTs = startTS
+		_, _, err = options.restoreTypeAndPITRArgs(restore)
+		require.EqualError(t, err, `s3.sse ("aws:kms") conflicts with s3.serverSideEncryption.algorithm ("AES256")`)
+	}
+}
+
+func TestPerformRestoreValidatesEncryptionBeforeGC(t *testing.T) {
+	const protocol = "restore-gc-encryption-test"
+	var connections int
+	mysql.RegisterDialContext(protocol, func(context.Context, string) (net.Conn, error) {
+		connections++
+		return nil, errors.New("unexpected SQL connection")
+	})
+	t.Cleanup(func() { mysql.DeregisterDialContext(protocol) })
+	db, err := sql.Open("mysql", "user@"+protocol+"(unused)/")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	for _, tc := range []struct {
+		name      string
+		mode      v1alpha1.RestoreMode
+		wantError string
+	}{
+		{name: "main storage", mode: v1alpha1.RestoreModeSnapshot, wantError: `s3.sse ("aws:kms") conflicts with s3.serverSideEncryption.algorithm ("AES256")`},
+		{name: "PITR full backup storage", mode: v1alpha1.RestoreModePiTR, wantError: "s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			restore := &v1alpha1.Restore{ObjectMeta: metav1.ObjectMeta{Name: "restore", Namespace: "test"}, Spec: v1alpha1.RestoreSpec{
+				BR: &v1alpha1.BRConfig{Cluster: "test"}, Mode: tc.mode,
+				StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Bucket: "main"}},
+			}}
+			if tc.mode == v1alpha1.RestoreModePiTR {
+				restore.Spec.PitrFullBackupStorageProvider = v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+					Bucket: "full", SSEKMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "legacy"}},
+					ServerSideEncryption: &v1alpha1.S3ServerSideEncryption{
+						KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "nested"}},
+					},
+				}}
+			} else {
+				restore.Spec.S3.SSE = "aws:kms"
+				restore.Spec.S3.ServerSideEncryption = &v1alpha1.S3ServerSideEncryption{Algorithm: "AES256"}
+			}
+
+			indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+			require.NoError(t, indexer.Add(restore))
+			manager := &Manager{StatusUpdater: &controller.FakeRestoreConditionUpdater{RestoreIndexer: indexer}}
+			manager.Mode = string(tc.mode)
+			require.EqualError(t, manager.performRestore(t.Context(), restore, db), tc.wantError)
+			require.Zero(t, connections)
+			updated, err := listers.NewRestoreLister(indexer).Restores(restore.Namespace).Get(restore.Name)
+			require.NoError(t, err)
+			require.Equal(t, v1alpha1.RestoreFailed, updated.Status.Phase)
+			_, condition := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreFailed)
+			require.NotNil(t, condition)
+			require.Equal(t, corev1.ConditionTrue, condition.Status)
+			require.Equal(t, "RestoreDataFromRemoteFailed", condition.Reason)
+			require.Equal(t, tc.wantError, condition.Message)
+		})
+	}
 }
 
 func TestAbortRestoreRedactsStorageArgs(t *testing.T) {

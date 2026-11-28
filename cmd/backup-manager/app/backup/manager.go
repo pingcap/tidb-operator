@@ -218,19 +218,26 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		return err
 	}
 
-	needsSnapshotCleanup := backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint()
-	if needsSnapshotCleanup {
-		// Validate BR storage settings before changing the GC lifetime or deleting backup data.
-		if _, err := bkutil.GenStorageArgsForFlag(backup.Spec.StorageProvider, ""); err != nil {
-			updateErr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "BackupDataToRemoteFailed",
-				Message: err.Error(),
-			}, nil)
-			return errorutils.NewAggregate([]error{err, updateErr})
+	failedCondition := v1alpha1.BackupFailed
+	if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) {
+		if bm.Initialize {
+			failedCondition = v1alpha1.VolumeBackupInitializeFailed
+		} else {
+			failedCondition = v1alpha1.VolumeBackupFailed
 		}
 	}
+	// Validate BR storage settings before changing the GC lifetime or deleting backup data.
+	if _, err := bkutil.GenStorageArgsForFlag(backup.Spec.StorageProvider, ""); err != nil {
+		updateErr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    failedCondition,
+			Status:  corev1.ConditionTrue,
+			Reason:  "BackupDataToRemoteFailed",
+			Message: err.Error(),
+		}, nil)
+		return errorutils.NewAggregate([]error{err, updateErr})
+	}
+
+	needsSnapshotCleanup := backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint()
 
 	var (
 		oldTikvGCTime, tikvGCLifeTime             string
@@ -391,14 +398,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	if backupErr != nil {
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
-		failedCondition := v1alpha1.BackupFailed
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) {
-			if bm.Initialize {
-				failedCondition = v1alpha1.VolumeBackupInitializeFailed
-			} else {
-				failedCondition = v1alpha1.VolumeBackupFailed
-			}
-		}
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    failedCondition,
 			Status:  corev1.ConditionTrue,

@@ -15,11 +15,15 @@ package backup
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/pkg/backup/s3auth"
 	"github.com/spf13/pflag"
@@ -175,4 +179,39 @@ func TestRestartedSnapshotBackupValidatesEncryptionBeforeCleanup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFirstSnapshotBackupValidatesEncryptionBeforeGC(t *testing.T) {
+	const protocol = "backup-gc-encryption-test"
+	var connections int
+	mysql.RegisterDialContext(protocol, func(context.Context, string) (net.Conn, error) {
+		connections++
+		return nil, errors.New("unexpected SQL connection")
+	})
+	t.Cleanup(func() { mysql.DeregisterDialContext(protocol) })
+	db, err := sql.Open("mysql", "user@"+protocol+"(unused)/")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{
+		Mode: v1alpha1.BackupModeSnapshot,
+		BR:   &v1alpha1.BRConfig{Cluster: "source"},
+		StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+			Bucket: "bucket", SSE: "aws:kms", ServerSideEncryption: &v1alpha1.S3ServerSideEncryption{Algorithm: "AES256"},
+		}},
+	}, Status: v1alpha1.BackupStatus{Phase: v1alpha1.BackupScheduled}}
+	updater := &recordingBackupStatusUpdater{}
+	manager := &Manager{StatusUpdater: updater}
+	manager.Mode = string(v1alpha1.BackupModeSnapshot)
+	manager.TiKVVersion = "v8.5.7"
+
+	const wantError = `s3.sse ("aws:kms") conflicts with s3.serverSideEncryption.algorithm ("AES256")`
+	require.EqualError(t, manager.performBackup(t.Context(), backup, db), wantError)
+	require.Zero(t, connections)
+	require.Len(t, updater.conditions, 2)
+	require.Equal(t, v1alpha1.BackupPrepare, updater.conditions[0].Type)
+	require.Equal(t, &v1alpha1.BackupCondition{
+		Type: v1alpha1.BackupFailed, Status: corev1.ConditionTrue,
+		Reason: "BackupDataToRemoteFailed", Message: wantError,
+	}, updater.conditions[1])
 }
