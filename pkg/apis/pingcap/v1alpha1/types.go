@@ -2346,14 +2346,17 @@ type S3StorageProvider struct {
 	SecretName string `json:"secretName,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
-	// SSE Sever-Side Encryption.
+	// SSE Server-Side Encryption.
+	//
+	// Deprecated: use ServerSideEncryption.Algorithm instead.
+	// Must not conflict with ServerSideEncryption.Algorithm when both are set.
 	SSE string `json:"sse,omitempty"`
-	// SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
-	// BR encodes these values for S3; do not Base64-encode them here.
-	// Requires BR and TiKV versions that support custom encryption context.
-	// Changing this field does not update an existing log backup task.
+	// ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup.
+	// In Backup and Restore, explicit `--s3.sse`, `--s3.sse-kms-key-id`, and `--s3.sse-kms-context`
+	// flags in `spec.br.options` override these fields for the main storage.
+	// Existing log backup tasks keep the settings they started with.
 	// +optional
-	SSEKMSEncryptionContext *S3EncryptionContext `json:"sseKmsEncryptionContext,omitempty"`
+	ServerSideEncryption *S3ServerSideEncryption `json:"serverSideEncryption,omitempty"`
 	// RoleARN is the ARN of the IAM role to assume when accessing AWS S3 in BR and backup-manager.
 	// In Backup and Restore, an explicit `--s3.role-arn` in `spec.br.options` overrides this field for the main storage.
 	// Existing log backup tasks keep the settings they started with.
@@ -2372,10 +2375,27 @@ type S3StorageProvider struct {
 }
 
 // +k8s:openapi-gen=true
+// S3ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup.
+type S3ServerSideEncryption struct {
+	// Algorithm specifies the server-side encryption algorithm, such as `AES256`, `aws:kms`, or `aws:kms:dsse`.
+	// Must not conflict with the deprecated `s3.sse` field when both are set.
+	// +optional
+	Algorithm string `json:"algorithm,omitempty"`
+	// KMSKeyID is the AWS KMS key ID or ARN used with SSE-KMS.
+	// +optional
+	KMSKeyID string `json:"kmsKeyId,omitempty"`
+	// KMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
+	// BR encodes these values for S3; do not Base64-encode them here.
+	// Requires BR and TiKV versions that support custom encryption context.
+	// +optional
+	KMSEncryptionContext *S3EncryptionContext `json:"kmsEncryptionContext,omitempty"`
+}
+
+// +k8s:openapi-gen=true
 // S3EncryptionContext contains the additional SSE-KMS encryption context for BR.
 type S3EncryptionContext struct {
 	// Values is a required object of string key-value pairs. An empty object sends
-	// an explicit empty context; omitting SSEKMSEncryptionContext sends no context.
+	// an explicit empty context; omitting KMSEncryptionContext sends no context.
 	// Encryption context is not secret and must not contain sensitive information.
 	// +kubebuilder:validation:Required
 	Values map[string]string `json:"values"`

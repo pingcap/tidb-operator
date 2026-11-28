@@ -68,6 +68,7 @@ type s3Config struct {
 	prefix                 string
 	provider               string
 	sse                    string
+	sseKMSKeyID            string
 	acl                    string
 	storageClass           string
 	roleARN                string
@@ -381,20 +382,51 @@ func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLi
 	return &StorageCredential{}
 }
 
-// genStorageArgs returns the arg for --flag option and the remote/local path for br, default flag is storage.
-// TODO: add unit test
+type resolvedS3SSE struct {
+	algorithm         string
+	explicitAlgorithm bool
+	kmsKeyID          string
+	encryptionContext *v1alpha1.S3EncryptionContext
+}
+
+func resolveS3ServerSideEncryption(s3 *v1alpha1.S3StorageProvider) (resolvedS3SSE, error) {
+	resolved := resolvedS3SSE{algorithm: s3.SSE}
+	if s3.ServerSideEncryption == nil {
+		return resolved, nil
+	}
+	if algo := s3.ServerSideEncryption.Algorithm; algo != "" {
+		if s3.SSE != "" && s3.SSE != algo {
+			return resolvedS3SSE{}, fmt.Errorf("s3.sse (%q) conflicts with s3.serverSideEncryption.algorithm (%q)", s3.SSE, algo)
+		}
+		resolved.algorithm = algo
+		resolved.explicitAlgorithm = true
+	}
+	resolved.kmsKeyID = s3.ServerSideEncryption.KMSKeyID
+	if ctx := s3.ServerSideEncryption.KMSEncryptionContext; ctx != nil {
+		if ctx.Values == nil {
+			return resolvedS3SSE{}, fmt.Errorf("s3.serverSideEncryption.kmsEncryptionContext.values must be an object of string key-value pairs")
+		}
+		resolved.encryptionContext = ctx
+	}
+	return resolved, nil
+}
+
+// GenStorageArgsForFlag returns the BR storage arguments. An empty flag defaults to storage.
 func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]string, error) {
 	st := GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
+		resolvedSSE, err := resolveS3ServerSideEncryption(provider.S3)
+		if err != nil {
+			return nil, err
+		}
 		qs := makeS3Config(provider.S3, false)
+		qs.sse = resolvedSSE.algorithm
+		qs.sseKMSKeyID = resolvedSSE.kmsKeyID
 		s := newS3StorageOptionForFlag(qs, flag)
 		primary := flag == "" || flag == defaultStorageFlag
 		var queryParams []string
-		if encryptionContext := provider.S3.SSEKMSEncryptionContext; encryptionContext != nil {
-			if encryptionContext.Values == nil {
-				return nil, fmt.Errorf("s3.sseKmsEncryptionContext.values must be an object of string key-value pairs")
-			}
+		if encryptionContext := resolvedSSE.encryptionContext; encryptionContext != nil {
 			// A map of strings contains no unsupported JSON values.
 			encoded, _ := json.Marshal(encryptionContext.Values)
 			if primary {
@@ -402,14 +434,16 @@ func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]st
 				s = append(s, "--s3.sse-kms-context="+string(encoded))
 			} else {
 				queryParams = append(queryParams, "sse-kms-context="+encodeBRQueryValue(string(encoded)))
-				// BR rejects a context without SSE-KMS on AWS. Carry this storage's
-				// own SSE mode instead of inheriting the main storage's --s3.sse.
-				if provider.S3.SSE != "" {
-					queryParams = append(queryParams, "sse="+encodeBRQueryValue(qs.sse))
-				}
 			}
 		}
 		if !primary {
+			if resolvedSSE.kmsKeyID != "" {
+				queryParams = append(queryParams, "sse-kms-key-id="+encodeBRQueryValue(resolvedSSE.kmsKeyID))
+			}
+			// Preserve the legacy URL when only s3.sse is configured.
+			if resolvedSSE.algorithm != "" && (resolvedSSE.explicitAlgorithm || resolvedSSE.encryptionContext != nil || resolvedSSE.kmsKeyID != "") {
+				queryParams = append(queryParams, "sse="+encodeBRQueryValue(resolvedSSE.algorithm))
+			}
 			if qs.roleARN != "" {
 				queryParams = append(queryParams, "role-arn="+encodeBRQueryValue(qs.roleARN))
 			}
@@ -481,6 +515,9 @@ func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
 	}
 	if conf.sse != "" {
 		s3options = append(s3options, fmt.Sprintf("--s3.sse=%s", conf.sse))
+	}
+	if conf.sseKMSKeyID != "" {
+		s3options = append(s3options, "--s3.sse-kms-key-id="+conf.sseKMSKeyID)
 	}
 	if conf.acl != "" {
 		s3options = append(s3options, fmt.Sprintf("--s3.acl=%s", conf.acl))
@@ -755,6 +792,12 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	conf.prefix = fields[1]
 	conf.endpoint = s3.Endpoint
 	conf.sse = s3.SSE
+	if s3.ServerSideEncryption != nil {
+		if conf.sse == "" {
+			conf.sse = s3.ServerSideEncryption.Algorithm
+		}
+		conf.sseKMSKeyID = s3.ServerSideEncryption.KMSKeyID
+	}
 	conf.acl = s3.Acl
 	conf.storageClass = s3.StorageClass
 	conf.roleARN = s3.RoleARN

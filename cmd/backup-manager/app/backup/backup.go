@@ -198,13 +198,27 @@ func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+func (bo *Options) stopLogBackupArgs(backup *v1alpha1.Backup) ([]string, error) {
 	specificArgs := []string{
 		"log",
 		"stop",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
-	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
+
+	// Log stop only uses PD to remove the task, so invalid S3 encryption settings
+	// must not prevent it from stopping.
+	backupCopy := *backup
+	if backup.Spec.S3 != nil {
+		s3Copy := *backup.Spec.S3
+		s3Copy.SSE = ""
+		s3Copy.ServerSideEncryption = nil
+		backupCopy.Spec.S3 = &s3Copy
+	}
+	return bo.backupCommandTemplate(&backupCopy, specificArgs, false)
+}
+
+func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+	fullArgs, err := bo.stopLogBackupArgs(backup)
 	if err != nil {
 		return err
 	}

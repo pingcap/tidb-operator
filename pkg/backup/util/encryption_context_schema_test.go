@@ -20,15 +20,23 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/stretchr/testify/require"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/kube-openapi/pkg/validation/spec"
 )
 
+func TestS3SSEOpenAPIDeprecationParagraph(t *testing.T) {
+	definitions := v1alpha1.GetOpenAPIDefinitions(func(string) spec.Ref { return spec.Ref{} })
+	s3 := definitions["github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"].Schema
+	require.Contains(t, s3.Properties["sse"].Description, "\n\nDeprecated: use ServerSideEncryption.Algorithm instead.")
+}
+
 // Check the shipped schemas, including every occurrence of the shared S3 type.
-func TestS3EncryptionContextCRDSchema(t *testing.T) {
+func TestS3ServerSideEncryptionCRDSchema(t *testing.T) {
 	for file, count := range map[string]int{
 		"v1/pingcap.com_backups.yaml":                                     1,
 		"v1/pingcap.com_backupschedules.yaml":                             4,
@@ -46,8 +54,11 @@ func TestS3EncryptionContextCRDSchema(t *testing.T) {
 			found := 0
 			var walk func(apiextensionsv1.JSONSchemaProps)
 			walk = func(schema apiextensionsv1.JSONSchemaProps) {
-				if _, ok := schema.Properties["sseKmsEncryptionContext"]; ok {
+				// The legacy sse field identifies each occurrence independently of the new schema.
+				if _, ok := schema.Properties["sse"]; ok {
 					found++
+					require.NotContains(t, schema.Properties, "sseKmsEncryptionContext")
+					require.Contains(t, schema.Properties, "serverSideEncryption")
 					var internal apiextensions.JSONSchemaProps
 					require.NoError(t, apiextensionsv1.Convert_v1_JSONSchemaProps_To_apiextensions_JSONSchemaProps(&schema, &internal, nil))
 					validator, _, err := validation.NewSchemaValidator(&internal)
@@ -57,14 +68,22 @@ func TestS3EncryptionContextCRDSchema(t *testing.T) {
 						valid bool
 					}{
 						{`{"provider":"aws"}`, true},
-						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{}}}`, true},
-						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":"租户"}}}`, true},
-						{`{"provider":"aws","sseKmsEncryptionContext":{}}`, false},
-						{`{"provider":"aws","sseKmsEncryptionContext":{"values":null}}`, false},
-						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":123}}}`, false},
-						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":true}}}`, false},
-						{`{"provider":"aws","sseKmsEncryptionContext":{"values":{"tenant":{"nested":"value"}}}}`, false},
-						{`{"provider":"aws","sseKmsEncryptionContext":{"values":[]}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{}}`, true},
+						{`{"provider":"aws","serverSideEncryption":{"algorithm":"AES256"}}`, true},
+						{`{"provider":"aws","serverSideEncryption":{"kmsKeyId":"alias/backup"}}`, true},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":{}}}}`, true},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":"租户"}}}}`, true},
+						{`{"provider":"aws","serverSideEncryption":{"algorithm":"aws:kms","kmsKeyId":"alias/backup","kmsEncryptionContext":{"values":{"tenant":"租户"}}}}`, true},
+						{`{"provider":"aws","sse":"aws:kms","serverSideEncryption":{"algorithm":"aws:kms"}}`, true},
+						{`{"provider":"aws","serverSideEncryption":{"algorithm":123}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsKeyId":true}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{}}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":null}}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":123}}}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":true}}}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":{"nested":"value"}}}}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":{"tenant":[]}}}}`, false},
+						{`{"provider":"aws","serverSideEncryption":{"kmsEncryptionContext":{"values":[]}}}`, false},
 					} {
 						var object interface{}
 						require.NoError(t, json.Unmarshal([]byte(test.json), &object))

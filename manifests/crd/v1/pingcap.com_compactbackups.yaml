@@ -2263,17 +2263,24 @@ spec:
                     type: string
                   secretName:
                     type: string
+                  serverSideEncryption:
+                    properties:
+                      algorithm:
+                        type: string
+                      kmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
+                      kmsKeyId:
+                        type: string
+                    type: object
                   sse:
                     type: string
-                  sseKmsEncryptionContext:
-                    properties:
-                      values:
-                        additionalProperties:
-                          type: string
-                        type: object
-                    required:
-                    - values
-                    type: object
                   storageClass:
                     type: string
                 required:
