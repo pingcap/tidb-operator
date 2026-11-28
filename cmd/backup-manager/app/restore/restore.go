@@ -222,14 +222,17 @@ func (ro *Options) restoreTypeAndPITRArgs(restore *v1alpha1.Restore) (string, []
 	}
 
 	args := []string{"--restored-ts=" + ro.PitrRestoredTs}
-	fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage")
-	if err == nil {
+	if provider := restore.Spec.PitrFullBackupStorageProvider; pkgutil.GetStorageType(provider) != v1alpha1.BackupStorageTypeUnknown {
+		fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(provider, "full-backup-storage")
+		if err != nil {
+			return "", nil, err
+		}
 		return "point", append(args, fullBackupArgs...), nil
 	}
 	if restore.Spec.LogRestoreStartTs != "" {
 		return "point", append(args, "--start-ts="+restore.Spec.LogRestoreStartTs), nil
 	}
-	return "", nil, fmt.Errorf("PITR requires pitrFullBackupStorageProvider or logRestoreStartTs: %w", err)
+	return "", nil, fmt.Errorf("PITR requires pitrFullBackupStorageProvider or logRestoreStartTs")
 }
 
 type restoreLogObserver struct {

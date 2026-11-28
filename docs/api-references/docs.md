@@ -16220,6 +16220,7 @@ Set by the controller when creating each phase&rsquo;s Job.</p>
 <h3 id="s3encryptioncontext">S3EncryptionContext</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#s3serversideencryption">S3ServerSideEncryption</a>, 
 <a href="#s3storageprovider">S3StorageProvider</a>)
 </p>
 <p>
@@ -16242,8 +16243,68 @@ map[string]string
 </td>
 <td>
 <p>Values is a required object of string key-value pairs. An empty object sends
-an explicit empty context; omitting SSEKMSEncryptionContext sends no context.
+an explicit empty context. Omitting both KMSEncryptionContext and the
+deprecated SSEKMSEncryptionContext sends no context.
 Encryption context is not secret and must not contain sensitive information.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s3serversideencryption">S3ServerSideEncryption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#s3storageprovider">S3StorageProvider</a>)
+</p>
+<p>
+<p>S3ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>algorithm</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Algorithm specifies the server-side encryption algorithm, such as <code>AES256</code>, <code>aws:kms</code>, or <code>aws:kms:dsse</code>.
+Must not conflict with the deprecated <code>s3.sse</code> field when both are set.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>kmsKeyId</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KMSKeyID is the AWS KMS key ID, ARN, or alias used with SSE-KMS.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>kmsEncryptionContext</code></br>
+<em>
+<a href="#s3encryptioncontext">
+S3EncryptionContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
+BR encodes these values for S3; do not Base64-encode them here.
+Requires BR and TiKV versions that support custom encryption context.</p>
 </td>
 </tr>
 </tbody>
@@ -16375,7 +16436,9 @@ string
 </em>
 </td>
 <td>
-<p>SSE Sever-Side Encryption.</p>
+<p>SSE Server-Side Encryption.</p>
+<p>Deprecated: use ServerSideEncryption.Algorithm instead.
+Must not conflict with ServerSideEncryption.Algorithm when both are set.</p>
 </td>
 </tr>
 <tr>
@@ -16389,10 +16452,26 @@ S3EncryptionContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.
-BR encodes these values for S3; do not Base64-encode them here.
-Requires BR and TiKV versions that support custom encryption context.
-Changing this field does not update an existing log backup task.</p>
+<p>SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.</p>
+<p>Deprecated: use ServerSideEncryption.KMSEncryptionContext instead.
+Must not conflict with ServerSideEncryption.KMSEncryptionContext when both are set.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serverSideEncryption</code></br>
+<em>
+<a href="#s3serversideencryption">
+S3ServerSideEncryption
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup.
+In Backup and Restore, explicit <code>--s3.sse</code>, <code>--s3.sse-kms-key-id</code>, and <code>--s3.sse-kms-context</code>
+flags in <code>spec.br.options</code> override these fields for the main storage.
+Existing log backup tasks keep the settings they started with.</p>
 </td>
 </tr>
 <tr>

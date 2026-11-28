@@ -31,8 +31,8 @@ func TestRestoreControllerUpdateRestoreRedactsContext(t *testing.T) {
 	restore := &v1alpha1.Restore{
 		ObjectMeta: metav1.ObjectMeta{Name: "restore", Namespace: "test"},
 		Spec: v1alpha1.RestoreSpec{StorageProvider: v1alpha1.StorageProvider{
-			S3: &v1alpha1.S3StorageProvider{SSEKMSEncryptionContext: &v1alpha1.S3EncryptionContext{
-				Values: map[string]string{"tenant": marker},
+			S3: &v1alpha1.S3StorageProvider{ServerSideEncryption: &v1alpha1.S3ServerSideEncryption{
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": marker}},
 			}},
 		}},
 		// Return after logging without contacting a cluster or enqueueing work.

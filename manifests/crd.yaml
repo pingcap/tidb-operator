@@ -2374,6 +2374,22 @@ spec:
                     type: string
                   secretName:
                     type: string
+                  serverSideEncryption:
+                    properties:
+                      algorithm:
+                        type: string
+                      kmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
+                      kmsKeyId:
+                        type: string
+                    type: object
                   sse:
                     type: string
                   sseKmsEncryptionContext:
@@ -2390,6 +2406,15 @@ spec:
                 required:
                 - provider
                 type: object
+                x-kubernetes-validations:
+                - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                  rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                    == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                  rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.kmsEncryptionContext) || self.sseKmsEncryptionContext.values
+                    in [self.serverSideEncryption.kmsEncryptionContext.values]'
               serviceAccount:
                 type: string
               storageClassName:
@@ -4962,6 +4987,22 @@ spec:
                         type: string
                       secretName:
                         type: string
+                      serverSideEncryption:
+                        properties:
+                          algorithm:
+                            type: string
+                          kmsEncryptionContext:
+                            properties:
+                              values:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            required:
+                            - values
+                            type: object
+                          kmsKeyId:
+                            type: string
+                        type: object
                       sse:
                         type: string
                       sseKmsEncryptionContext:
@@ -4978,6 +5019,15 @@ spec:
                     required:
                     - provider
                     type: object
+                    x-kubernetes-validations:
+                    - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                      rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                        == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                    - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                      rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.kmsEncryptionContext) ||
+                        self.sseKmsEncryptionContext.values in [self.serverSideEncryption.kmsEncryptionContext.values]'
                   serviceAccount:
                     type: string
                   storageClassName:
@@ -7279,6 +7329,22 @@ spec:
                         type: string
                       secretName:
                         type: string
+                      serverSideEncryption:
+                        properties:
+                          algorithm:
+                            type: string
+                          kmsEncryptionContext:
+                            properties:
+                              values:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            required:
+                            - values
+                            type: object
+                          kmsKeyId:
+                            type: string
+                        type: object
                       sse:
                         type: string
                       sseKmsEncryptionContext:
@@ -7295,6 +7361,15 @@ spec:
                     required:
                     - provider
                     type: object
+                    x-kubernetes-validations:
+                    - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                      rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                        == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                    - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                      rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.kmsEncryptionContext) ||
+                        self.sseKmsEncryptionContext.values in [self.serverSideEncryption.kmsEncryptionContext.values]'
                   serviceAccount:
                     type: string
                   shardCount:
@@ -10416,6 +10491,22 @@ spec:
                         type: string
                       secretName:
                         type: string
+                      serverSideEncryption:
+                        properties:
+                          algorithm:
+                            type: string
+                          kmsEncryptionContext:
+                            properties:
+                              values:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            required:
+                            - values
+                            type: object
+                          kmsKeyId:
+                            type: string
+                        type: object
                       sse:
                         type: string
                       sseKmsEncryptionContext:
@@ -10432,6 +10523,15 @@ spec:
                     required:
                     - provider
                     type: object
+                    x-kubernetes-validations:
+                    - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                      rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                        == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                    - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                      rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.kmsEncryptionContext) ||
+                        self.sseKmsEncryptionContext.values in [self.serverSideEncryption.kmsEncryptionContext.values]'
                   serviceAccount:
                     type: string
                   storageClassName:
@@ -10514,6 +10614,22 @@ spec:
                     type: string
                   secretName:
                     type: string
+                  serverSideEncryption:
+                    properties:
+                      algorithm:
+                        type: string
+                      kmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
+                      kmsKeyId:
+                        type: string
+                    type: object
                   sse:
                     type: string
                   sseKmsEncryptionContext:
@@ -10530,6 +10646,15 @@ spec:
                 required:
                 - provider
                 type: object
+                x-kubernetes-validations:
+                - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                  rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                    == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                  rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.kmsEncryptionContext) || self.sseKmsEncryptionContext.values
+                    in [self.serverSideEncryption.kmsEncryptionContext.values]'
               schedule:
                 type: string
               storageClassName:
@@ -12838,6 +12963,22 @@ spec:
                     type: string
                   secretName:
                     type: string
+                  serverSideEncryption:
+                    properties:
+                      algorithm:
+                        type: string
+                      kmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
+                      kmsKeyId:
+                        type: string
+                    type: object
                   sse:
                     type: string
                   sseKmsEncryptionContext:
@@ -12854,6 +12995,15 @@ spec:
                 required:
                 - provider
                 type: object
+                x-kubernetes-validations:
+                - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                  rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                    == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                  rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.kmsEncryptionContext) || self.sseKmsEncryptionContext.values
+                    in [self.serverSideEncryption.kmsEncryptionContext.values]'
               serviceAccount:
                 type: string
               shardCount:
@@ -25514,6 +25664,22 @@ spec:
                         type: string
                       secretName:
                         type: string
+                      serverSideEncryption:
+                        properties:
+                          algorithm:
+                            type: string
+                          kmsEncryptionContext:
+                            properties:
+                              values:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            required:
+                            - values
+                            type: object
+                          kmsKeyId:
+                            type: string
+                        type: object
                       sse:
                         type: string
                       sseKmsEncryptionContext:
@@ -25530,6 +25696,15 @@ spec:
                     required:
                     - provider
                     type: object
+                    x-kubernetes-validations:
+                    - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                      rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                        == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                    - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                      rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                        || !has(self.serverSideEncryption.kmsEncryptionContext) ||
+                        self.sseKmsEncryptionContext.values in [self.serverSideEncryption.kmsEncryptionContext.values]'
                 type: object
               pitrRestoredTs:
                 type: string
@@ -25674,6 +25849,22 @@ spec:
                     type: string
                   secretName:
                     type: string
+                  serverSideEncryption:
+                    properties:
+                      algorithm:
+                        type: string
+                      kmsEncryptionContext:
+                        properties:
+                          values:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        required:
+                        - values
+                        type: object
+                      kmsKeyId:
+                        type: string
+                    type: object
                   sse:
                     type: string
                   sseKmsEncryptionContext:
@@ -25690,6 +25881,15 @@ spec:
                 required:
                 - provider
                 type: object
+                x-kubernetes-validations:
+                - message: s3.sse conflicts with s3.serverSideEncryption.algorithm
+                  rule: '!has(self.sse) || self.sse == "" || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.algorithm) || self.serverSideEncryption.algorithm
+                    == "" || self.sse in [self.serverSideEncryption.algorithm]'
+                - message: s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext
+                  rule: '!has(self.sseKmsEncryptionContext) || !has(self.serverSideEncryption)
+                    || !has(self.serverSideEncryption.kmsEncryptionContext) || self.sseKmsEncryptionContext.values
+                    in [self.serverSideEncryption.kmsEncryptionContext.values]'
               serviceAccount:
                 type: string
               storageClassName:
