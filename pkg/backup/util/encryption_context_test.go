@@ -15,6 +15,7 @@ package util
 
 import (
 	"encoding/json"
+	"maps"
 	"net/url"
 	"strings"
 	"testing"
@@ -23,49 +24,147 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestS3EncryptionContextArgs(t *testing.T) {
-	values := map[string]string{"tenant": "租户 a", "punctuation": "\"quoted\" & + = \\ $()\n"}
-	for _, flag := range []string{"", "storage", "full-backup-storage"} {
-		t.Run(flag, func(t *testing.T) {
+func TestMakeS3ConfigKeepsKMSKeyIDWithLegacyAlgorithm(t *testing.T) {
+	const keyID = "alias/backup"
+	config := makeS3Config(&v1alpha1.S3StorageProvider{
+		SSE:                  "aws:kms",
+		ServerSideEncryption: &v1alpha1.S3ServerSideEncryption{Algorithm: "AES256", KMSKeyID: keyID},
+	}, false)
+	require.Equal(t, "aws:kms", config.sse)
+	require.Equal(t, keyID, config.sseKMSKeyID)
+}
+
+func TestS3ServerSideEncryptionArgsForMainStorage(t *testing.T) {
+	const keyARN = "arn:aws:kms:us-east-1:123456789012:key/backup"
+	const keyAlias = "alias/backup"
+	encryptionContext := &v1alpha1.S3EncryptionContext{
+		Values: map[string]string{"tenant": "租户 a", "punctuation": "\"quoted\" & + = \\ $()\n"},
+	}
+	contextJSON, err := json.Marshal(encryptionContext.Values)
+	require.NoError(t, err)
+	contextArg := "--s3.sse-kms-context=" + string(contextJSON)
+
+	for _, tc := range []struct {
+		name       string
+		legacy     string
+		legacyCtx  *v1alpha1.S3EncryptionContext
+		encryption *v1alpha1.S3ServerSideEncryption
+		wantFlags  []string
+		wantError  string
+	}{
+		{name: "omitted"},
+		{name: "empty encryption", encryption: &v1alpha1.S3ServerSideEncryption{}},
+		{name: "legacy algorithm", legacy: "aws:kms", wantFlags: []string{"--s3.sse=aws:kms"}},
+		{name: "legacy context only", legacyCtx: encryptionContext, wantFlags: []string{contextArg}},
+		{
+			name: "equal contexts", legacyCtx: encryptionContext,
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: maps.Clone(encryptionContext.Values)},
+			},
+			wantFlags: []string{contextArg},
+		},
+		{
+			name: "equal empty contexts", legacyCtx: &v1alpha1.S3EncryptionContext{Values: map[string]string{}},
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{}},
+			},
+			wantFlags: []string{"--s3.sse-kms-context={}"},
+		},
+		{
+			name: "conflicting contexts", legacyCtx: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "legacy-probe"}},
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "nested-probe"}},
+			},
+			wantError: "s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext",
+		},
+		{
+			name: "different keys with equal empty values", legacyCtx: &v1alpha1.S3EncryptionContext{Values: map[string]string{"legacy": ""}},
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"nested": ""}},
+			},
+			wantError: "s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext",
+		},
+		{
+			name: "missing legacy context values", legacyCtx: &v1alpha1.S3EncryptionContext{},
+			wantError: "s3.sseKmsEncryptionContext.values must be an object of string key-value pairs",
+		},
+		{
+			name:       "algorithm only",
+			encryption: &v1alpha1.S3ServerSideEncryption{Algorithm: "AES256"},
+			wantFlags:  []string{"--s3.sse=AES256"},
+		},
+		{
+			name:       "key ARN only",
+			encryption: &v1alpha1.S3ServerSideEncryption{KMSKeyID: keyARN},
+			wantFlags:  []string{"--s3.sse-kms-key-id=" + keyARN},
+		},
+		{
+			name:       "key alias only",
+			encryption: &v1alpha1.S3ServerSideEncryption{KMSKeyID: keyAlias},
+			wantFlags:  []string{"--s3.sse-kms-key-id=" + keyAlias},
+		},
+		{
+			name:       "context only",
+			encryption: &v1alpha1.S3ServerSideEncryption{KMSEncryptionContext: encryptionContext},
+			wantFlags:  []string{contextArg},
+		},
+		{
+			name: "explicit empty context",
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{}},
+			},
+			wantFlags: []string{"--s3.sse-kms-context={}"},
+		},
+		{
+			name: "all fields",
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				Algorithm: "aws:kms:dsse", KMSKeyID: keyARN, KMSEncryptionContext: encryptionContext,
+			},
+			wantFlags: []string{"--s3.sse=aws:kms:dsse", "--s3.sse-kms-key-id=" + keyARN, contextArg},
+		},
+		{
+			name:       "equal algorithms",
+			legacy:     "aws:kms",
+			encryption: &v1alpha1.S3ServerSideEncryption{Algorithm: "aws:kms"},
+			wantFlags:  []string{"--s3.sse=aws:kms"},
+		},
+		{
+			name:       "conflicting algorithms",
+			legacy:     "AES256",
+			encryption: &v1alpha1.S3ServerSideEncryption{Algorithm: "aws:kms", KMSEncryptionContext: encryptionContext},
+			wantError:  `s3.sse ("AES256") conflicts with s3.serverSideEncryption.algorithm ("aws:kms")`,
+		},
+		{
+			name:   "legacy algorithm with nested key and context",
+			legacy: "aws:kms",
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				KMSKeyID: keyAlias, KMSEncryptionContext: encryptionContext,
+			},
+			wantFlags: []string{"--s3.sse=aws:kms", "--s3.sse-kms-key-id=" + keyAlias, contextArg},
+		},
+		{
+			name:       "missing context values",
+			encryption: &v1alpha1.S3ServerSideEncryption{KMSEncryptionContext: &v1alpha1.S3EncryptionContext{}},
+			wantError:  "s3.serverSideEncryption.kmsEncryptionContext.values must be an object of string key-value pairs",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			provider := v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
-				Bucket: "backup-bucket", Prefix: "test", SSE: "aws:kms",
+				Bucket: "backup-bucket", Prefix: "test", SSE: tc.legacy,
+				SSEKMSEncryptionContext: tc.legacyCtx, ServerSideEncryption: tc.encryption,
 			}}
-			without, err := GenStorageArgsForFlag(provider, flag)
-			require.NoError(t, err)
-			if flag == "full-backup-storage" {
-				require.Equal(t, []string{"--full-backup-storage=s3://backup-bucket/test"}, without)
-			} else {
-				require.Equal(t, []string{"--storage=s3://backup-bucket/test", "--s3.sse=aws:kms"}, without)
-			}
-			for _, contextValues := range []map[string]string{values, {}} {
-				provider.S3.SSEKMSEncryptionContext = &v1alpha1.S3EncryptionContext{Values: contextValues}
+			for _, flag := range []string{"", "storage"} {
 				args, err := GenStorageArgsForFlag(provider, flag)
-				require.NoError(t, err)
-				var raw string
-				if flag == "full-backup-storage" {
-					require.Len(t, args, 1)
-					// BR's ParseRawURL preserves literal '+' instead of treating it
-					// as a form-encoded space. Check that both spaces and '+' survive.
-					rawURL := strings.TrimPrefix(args[0], "--full-backup-storage=")
-					u, err := url.Parse(strings.ReplaceAll(rawURL, "+", "%2B"))
-					require.NoError(t, err)
-					require.Equal(t, "backup-bucket", u.Host)
-					require.Equal(t, "/test", u.Path)
-					raw = u.Query().Get("sse-kms-context")
-					require.Equal(t, "aws:kms", u.Query().Get("sse"))
-				} else {
-					require.Equal(t, without, args[:len(without)])
-					require.Len(t, args, len(without)+1)
-					require.True(t, strings.HasPrefix(args[len(without)], "--s3.sse-kms-context="))
-					raw = strings.TrimPrefix(args[len(without)], "--s3.sse-kms-context=")
+				if tc.wantError != "" {
+					require.EqualError(t, err, tc.wantError, "storage flag %q", flag)
+					require.NotContains(t, err.Error(), "legacy-probe")
+					require.NotContains(t, err.Error(), "nested-probe")
+					require.Nil(t, args)
+					continue
 				}
-				var actual map[string]string
-				require.NoError(t, json.Unmarshal([]byte(raw), &actual), "context must be JSON, not Base64 or shell-quoted JSON")
-				require.Equal(t, contextValues, actual)
+				require.NoError(t, err, "storage flag %q", flag)
+				require.Equal(t, append([]string{"--storage=s3://backup-bucket/test"}, tc.wantFlags...), args)
 			}
-			provider.S3.SSEKMSEncryptionContext = &v1alpha1.S3EncryptionContext{}
-			_, err = GenStorageArgsForFlag(provider, flag)
-			require.EqualError(t, err, "s3.sseKmsEncryptionContext.values must be an object of string key-value pairs")
 		})
 	}
 }
@@ -95,51 +194,189 @@ func TestS3RoleArgsForMainStorage(t *testing.T) {
 	}
 }
 
-func TestS3RoleArgsForSecondaryStorage(t *testing.T) {
+func TestValidateBackupAndRestoreS3Encryption(t *testing.T) {
+	for _, tc := range []struct {
+		name, nestedAlgorithm, nestedTenant string
+		wantError                           string
+	}{
+		{name: "equal fields", nestedAlgorithm: "aws:kms", nestedTenant: "legacy"},
+		{name: "algorithm conflict", nestedAlgorithm: "AES256", nestedTenant: "legacy", wantError: `s3.sse ("aws:kms") conflicts with s3.serverSideEncryption.algorithm ("AES256")`},
+		{name: "context conflict", nestedAlgorithm: "aws:kms", nestedTenant: "nested", wantError: "s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			provider := v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+				Bucket: "bucket", SSE: "aws:kms",
+				SSEKMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "legacy"}},
+				ServerSideEncryption: &v1alpha1.S3ServerSideEncryption{
+					Algorithm: tc.nestedAlgorithm, KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": tc.nestedTenant}},
+				},
+			}}
+			br := &v1alpha1.BRConfig{Cluster: "test"}
+			backup := &v1alpha1.Backup{Spec: v1alpha1.BackupSpec{BR: br, StorageProvider: provider}}
+			restore := &v1alpha1.Restore{Spec: v1alpha1.RestoreSpec{BR: br, StorageProvider: provider}}
+			pitr := &v1alpha1.Restore{Spec: v1alpha1.RestoreSpec{
+				BR: br, Mode: v1alpha1.RestoreModePiTR, PitrFullBackupStorageProvider: provider,
+				StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Bucket: "logs"}},
+			}}
+			const image = "tikv:v8.5.7"
+			for _, check := range []struct {
+				name string
+				err  error
+			}{
+				{name: "backup", err: ValidateBackup(backup, image, nil)},
+				{name: "restore primary storage", err: ValidateRestore(restore, image, false)},
+				{name: "PITR full backup storage", err: ValidateRestore(pitr, image, false)},
+			} {
+				if tc.wantError == "" {
+					require.NoError(t, check.err, check.name)
+				} else {
+					require.EqualError(t, check.err, tc.wantError, check.name)
+				}
+			}
+		})
+	}
+}
+
+func TestS3ServerSideEncryptionAndRoleArgsForSecondaryStorage(t *testing.T) {
 	const roleARN = "arn:aws:iam::123456789012:role/full"
 	const externalID = "customer + backup&scope=full"
-	contextValues := map[string]string{"purpose": "full + PITR"}
+	const keyARN = "arn:aws:kms:us-east-1:123456789012:key/backup"
+	contextValues := map[string]string{"tenant": "租户 a", "purpose": "\"full\" + backup&scope=PITR\n"}
 	contextJSON, err := json.Marshal(contextValues)
 	require.NoError(t, err)
+	overrideKeys := []string{"sse-kms-context", "sse-kms-key-id", "sse"}
+
 	for _, tc := range []struct {
-		name, prefix, wantPath, externalID string
-		context                            *v1alpha1.S3EncryptionContext
-		wantQuery                          url.Values
+		name, legacy, role, externalID string
+		legacyCtx                      *v1alpha1.S3EncryptionContext
+		encryption                     *v1alpha1.S3ServerSideEncryption
+		wantQuery                      url.Values
+		wantQueryKeys                  []string
+		wantError                      string
 	}{
-		{name: "role", prefix: "full", wantPath: "/full", wantQuery: url.Values{"role-arn": {roleARN}}},
+		{name: "omitted encryption", wantQuery: url.Values{}},
+		{name: "legacy algorithm", legacy: "aws:kms", wantQuery: url.Values{}},
 		{
-			name: "role and external ID", prefix: "full", wantPath: "/full", externalID: externalID,
-			wantQuery: url.Values{"role-arn": {roleARN}, "external-id": {externalID}},
+			name: "legacy context only", legacyCtx: &v1alpha1.S3EncryptionContext{Values: contextValues},
+			wantQuery: url.Values{"sse-kms-context": {string(contextJSON)}}, wantQueryKeys: []string{"sse-kms-context"},
 		},
 		{
-			name: "role, external ID and encryption context", prefix: "full", wantPath: "/full", externalID: externalID,
-			context: &v1alpha1.S3EncryptionContext{Values: contextValues},
-			wantQuery: url.Values{
-				"sse-kms-context": {string(contextJSON)}, "sse": {"aws:kms"}, "role-arn": {roleARN}, "external-id": {externalID},
+			name: "legacy algorithm and context", legacy: "aws:kms", legacyCtx: &v1alpha1.S3EncryptionContext{Values: contextValues},
+			wantQuery: url.Values{"sse-kms-context": {string(contextJSON)}, "sse": {"aws:kms"}}, wantQueryKeys: []string{"sse-kms-context", "sse"},
+		},
+		{
+			name:          "explicit empty block",
+			encryption:    &v1alpha1.S3ServerSideEncryption{},
+			wantQuery:     url.Values{"sse-kms-context": {""}, "sse-kms-key-id": {""}, "sse": {""}},
+			wantQueryKeys: overrideKeys,
+		},
+		{
+			name:          "algorithm only",
+			encryption:    &v1alpha1.S3ServerSideEncryption{Algorithm: "AES256"},
+			wantQuery:     url.Values{"sse-kms-context": {""}, "sse-kms-key-id": {""}, "sse": {"AES256"}},
+			wantQueryKeys: overrideKeys,
+		},
+		{
+			name:          "key only",
+			encryption:    &v1alpha1.S3ServerSideEncryption{KMSKeyID: keyARN},
+			wantQuery:     url.Values{"sse-kms-context": {""}, "sse-kms-key-id": {keyARN}, "sse": {""}},
+			wantQueryKeys: overrideKeys,
+		},
+		{
+			name:          "algorithm and key",
+			encryption:    &v1alpha1.S3ServerSideEncryption{Algorithm: "aws:kms", KMSKeyID: keyARN},
+			wantQuery:     url.Values{"sse-kms-context": {""}, "sse-kms-key-id": {keyARN}, "sse": {"aws:kms"}},
+			wantQueryKeys: overrideKeys,
+		},
+		{
+			name:          "role",
+			legacy:        "aws:kms",
+			role:          roleARN,
+			wantQuery:     url.Values{"role-arn": {roleARN}},
+			wantQueryKeys: []string{"role-arn"},
+		},
+		{
+			name:          "role and external ID",
+			legacy:        "aws:kms",
+			role:          roleARN,
+			externalID:    externalID,
+			wantQuery:     url.Values{"role-arn": {roleARN}, "external-id": {externalID}},
+			wantQueryKeys: []string{"role-arn", "external-id"},
+		},
+		{
+			name: "nested encryption with role and external ID", legacy: "aws:kms", role: roleARN, externalID: externalID,
+			encryption: &v1alpha1.S3ServerSideEncryption{
+				Algorithm: "aws:kms", KMSKeyID: keyARN,
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: contextValues},
 			},
+			wantQuery: url.Values{
+				"sse-kms-context": {string(contextJSON)}, "sse-kms-key-id": {keyARN}, "sse": {"aws:kms"},
+				"role-arn": {roleARN}, "external-id": {externalID},
+			},
+			wantQueryKeys: []string{"sse-kms-context", "sse-kms-key-id", "sse", "role-arn", "external-id"},
+		},
+		{
+			name:          "legacy algorithm with nested context",
+			legacy:        "aws:kms",
+			encryption:    &v1alpha1.S3ServerSideEncryption{KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{}}},
+			wantQuery:     url.Values{"sse-kms-context": {"{}"}, "sse-kms-key-id": {""}, "sse": {"aws:kms"}},
+			wantQueryKeys: overrideKeys,
+		},
+		{
+			name: "conflicting contexts", legacyCtx: &v1alpha1.S3EncryptionContext{Values: map[string]string{}},
+			encryption: &v1alpha1.S3ServerSideEncryption{KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: contextValues}},
+			wantError:  "s3.sseKmsEncryptionContext conflicts with s3.serverSideEncryption.kmsEncryptionContext",
+		},
+		{
+			name:       "conflicting algorithms",
+			legacy:     "AES256",
+			encryption: &v1alpha1.S3ServerSideEncryption{Algorithm: "aws:kms"},
+			wantError:  `s3.sse ("AES256") conflicts with s3.serverSideEncryption.algorithm ("aws:kms")`,
+		},
+		{
+			name:       "missing context values",
+			encryption: &v1alpha1.S3ServerSideEncryption{KMSEncryptionContext: &v1alpha1.S3EncryptionContext{}},
+			wantError:  "s3.serverSideEncryption.kmsEncryptionContext.values must be an object of string key-value pairs",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
-				Bucket: "backup-bucket", Prefix: tc.prefix, SSE: "aws:kms",
-				RoleARN: roleARN, ExternalID: tc.externalID, SSEKMSEncryptionContext: tc.context,
+				Bucket: "backup-bucket", Prefix: "full", SSE: tc.legacy,
+				RoleARN: tc.role, ExternalID: tc.externalID, ServerSideEncryption: tc.encryption, SSEKMSEncryptionContext: tc.legacyCtx,
 			}}
 			args, err := GenStorageArgsForFlag(provider, "full-backup-storage")
+			if tc.wantError != "" {
+				require.EqualError(t, err, tc.wantError)
+				require.Nil(t, args)
+				return
+			}
 			require.NoError(t, err)
 			require.Len(t, args, 1)
 			rawURL, ok := strings.CutPrefix(args[0], "--full-backup-storage=")
 			require.True(t, ok)
-			require.Equal(t, 1, strings.Count(rawURL, "?"))
+			if len(tc.wantQuery) == 0 {
+				require.Equal(t, "s3://backup-bucket/full", rawURL)
+			} else {
+				require.Equal(t, 1, strings.Count(rawURL, "?"))
+			}
 			// BR escapes literal '+' before parsing the storage URL.
 			parsed, err := url.Parse(strings.ReplaceAll(rawURL, "+", "%2B"))
 			require.NoError(t, err)
 			require.Equal(t, "s3", parsed.Scheme)
 			require.Equal(t, "backup-bucket", parsed.Host)
-			require.Equal(t, tc.wantPath, parsed.Path)
+			require.Equal(t, "/full", parsed.Path)
 			require.Empty(t, parsed.Fragment)
 			query, err := url.ParseQuery(parsed.RawQuery)
 			require.NoError(t, err)
 			require.Equal(t, tc.wantQuery, query)
+
+			var queryKeys []string
+			for _, parameter := range strings.Split(parsed.RawQuery, "&") {
+				if key, _, found := strings.Cut(parameter, "="); found {
+					queryKeys = append(queryKeys, key)
+				}
+			}
+			require.Equal(t, tc.wantQueryKeys, queryKeys)
 		})
 	}
 }

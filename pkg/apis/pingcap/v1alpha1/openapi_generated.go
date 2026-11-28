@@ -110,6 +110,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreList":                   schema_pkg_apis_pingcap_v1alpha1_RestoreList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreSpec":                   schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext":           schema_pkg_apis_pingcap_v1alpha1_S3EncryptionContext(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3ServerSideEncryption":        schema_pkg_apis_pingcap_v1alpha1_S3ServerSideEncryption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider":             schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SafeTLSConfig":                 schema_pkg_apis_pingcap_v1alpha1_SafeTLSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Security":                      schema_pkg_apis_pingcap_v1alpha1_Security(ref),
@@ -8676,7 +8677,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3EncryptionContext(ref common.ReferenceCa
 				Properties: map[string]spec.Schema{
 					"values": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Values is a required object of string key-value pairs. An empty object sends an explicit empty context; omitting SSEKMSEncryptionContext sends no context. Encryption context is not secret and must not contain sensitive information.",
+							Description: "Values is a required object of string key-value pairs. An empty object sends an explicit empty context. Omitting both KMSEncryptionContext and the deprecated SSEKMSEncryptionContext sends no context. Encryption context is not secret and must not contain sensitive information.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -8694,6 +8695,41 @@ func schema_pkg_apis_pingcap_v1alpha1_S3EncryptionContext(ref common.ReferenceCa
 				Required: []string{"values"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_S3ServerSideEncryption(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "S3ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"algorithm": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Algorithm specifies the server-side encryption algorithm, such as `AES256`, `aws:kms`, or `aws:kms:dsse`. Must not conflict with the deprecated `s3.sse` field when both are set.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kmsKeyId": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KMSKeyID is the AWS KMS key ID, ARN, or alias used with SSE-KMS.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kmsEncryptionContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KMSEncryptionContext specifies additional SSE-KMS encryption context for BR. BR encodes these values for S3; do not Base64-encode them here. Requires BR and TiKV versions that support custom encryption context.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext"},
 	}
 }
 
@@ -8770,15 +8806,21 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					},
 					"sse": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SSE Sever-Side Encryption.",
+							Description: "SSE Server-Side Encryption.\n\nDeprecated: use ServerSideEncryption.Algorithm instead. Must not conflict with ServerSideEncryption.Algorithm when both are set.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"sseKmsEncryptionContext": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR. BR encodes these values for S3; do not Base64-encode them here. Requires BR and TiKV versions that support custom encryption context. Changing this field does not update an existing log backup task.",
+							Description: "SSEKMSEncryptionContext specifies additional SSE-KMS encryption context for BR.\n\nDeprecated: use ServerSideEncryption.KMSEncryptionContext instead. Must not conflict with ServerSideEncryption.KMSEncryptionContext when both are set.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext"),
+						},
+					},
+					"serverSideEncryption": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerSideEncryption configures S3 server-side encryption for BR and CompactBackup. In Backup and Restore, explicit `--s3.sse`, `--s3.sse-kms-key-id`, and `--s3.sse-kms-context` flags in `spec.br.options` override these fields for the main storage. Existing log backup tasks keep the settings they started with.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3ServerSideEncryption"),
 						},
 					},
 					"roleArn": {
@@ -8822,7 +8864,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3EncryptionContext", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3ServerSideEncryption"},
 	}
 }
 

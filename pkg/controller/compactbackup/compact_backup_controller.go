@@ -542,6 +542,9 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	if spec.MaxRetryTimes < 0 {
 		return perrors.NewNoStackError("maxRetryTimes must be greater than or equal to 0")
 	}
+	if err := backuputil.ValidateS3ServerSideEncryption(spec.S3); err != nil {
+		return perrors.NewNoStackError(err.Error())
+	}
 	return nil
 }
 

@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
+	bkutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	pkgutil "github.com/pingcap/tidb-operator/pkg/util"
@@ -217,6 +218,27 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		return err
 	}
 
+	failedCondition := v1alpha1.BackupFailed
+	if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) {
+		if bm.Initialize {
+			failedCondition = v1alpha1.VolumeBackupInitializeFailed
+		} else {
+			failedCondition = v1alpha1.VolumeBackupFailed
+		}
+	}
+	// Validate BR storage settings before changing the GC lifetime or deleting backup data.
+	if _, err := bkutil.GenStorageArgsForFlag(backup.Spec.StorageProvider, ""); err != nil {
+		updateErr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    failedCondition,
+			Status:  corev1.ConditionTrue,
+			Reason:  "BackupDataToRemoteFailed",
+			Message: err.Error(),
+		}, nil)
+		return errorutils.NewAggregate([]error{err, updateErr})
+	}
+
+	needsSnapshotCleanup := backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint()
+
 	var (
 		oldTikvGCTime, tikvGCLifeTime             string
 		oldTikvGCTimeDuration, tikvGCTimeDuration time.Duration
@@ -304,7 +326,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	// clean snapshot backup data if it was restarted
-	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint() {
+	if needsSnapshotCleanup {
 		klog.Infof("clean snapshot backup %s data before run br command, backup path is %s", bm, backup.Status.BackupPath)
 		err := bm.cleanSnapshotBackupEnv(ctx, backup)
 		if err != nil {
@@ -376,14 +398,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	if backupErr != nil {
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
-		failedCondition := v1alpha1.BackupFailed
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) {
-			if bm.Initialize {
-				failedCondition = v1alpha1.VolumeBackupInitializeFailed
-			} else {
-				failedCondition = v1alpha1.VolumeBackupFailed
-			}
-		}
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    failedCondition,
 			Status:  corev1.ConditionTrue,

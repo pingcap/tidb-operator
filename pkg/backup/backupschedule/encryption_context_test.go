@@ -19,22 +19,43 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestScheduleEncryptionContext(t *testing.T) {
-	template := v1alpha1.BackupSpec{
-		BR: &v1alpha1.BRConfig{Cluster: "test"},
-		StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
-			Bucket: "bucket", SSEKMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "original"}},
-		}},
-	}
-	schedule := &v1alpha1.BackupSchedule{Spec: v1alpha1.BackupScheduleSpec{
-		BackupTemplate: template, LogBackupTemplate: &template,
-	}}
-	for _, backup := range []*v1alpha1.Backup{buildBackup(schedule, time.Now()), buildLogBackup(schedule, time.Now())} {
-		require.Equal(t, "original", backup.Spec.S3.SSEKMSEncryptionContext.Values["tenant"])
-		backup.Spec.S3.SSEKMSEncryptionContext.Values["tenant"] = "changed"
-		require.Equal(t, "original", template.S3.SSEKMSEncryptionContext.Values["tenant"], "scheduled backups must not share the template's map")
+func TestScheduleServerSideEncryption(t *testing.T) {
+	for _, tc := range []struct {
+		name, algorithm, keyID string
+		build                  func(*v1alpha1.BackupSchedule, time.Time) *v1alpha1.Backup
+	}{
+		{name: "snapshot", algorithm: "aws:kms", keyID: "alias/snapshot", build: buildBackup},
+		{name: "log", algorithm: "aws:kms:dsse", keyID: "alias/log", build: buildLogBackup},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			encryption := &v1alpha1.S3ServerSideEncryption{
+				Algorithm: tc.algorithm, KMSKeyID: tc.keyID,
+				KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": tc.name}},
+			}
+			template := v1alpha1.BackupSpec{
+				BR: &v1alpha1.BRConfig{Cluster: "test"},
+				StorageProvider: v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{
+					Bucket: "bucket", ServerSideEncryption: encryption,
+				}},
+			}
+			schedule := &v1alpha1.BackupSchedule{}
+			if tc.name == "snapshot" {
+				schedule.Spec.BackupTemplate = template
+			} else {
+				schedule.Spec.LogBackupTemplate = &template
+			}
+			backup := tc.build(schedule, time.Now())
+			require.NotSame(t, template.S3, backup.Spec.S3)
+			copied := backup.Spec.S3.ServerSideEncryption
+			require.Equal(t, encryption, copied)
+			require.NotSame(t, encryption, copied)
+			require.NotSame(t, encryption.KMSEncryptionContext, copied.KMSEncryptionContext)
+			copied.KMSEncryptionContext.Values["tenant"] = "changed"
+			require.Equal(t, tc.name, encryption.KMSEncryptionContext.Values["tenant"], "scheduled backups must not share the template's map")
+		})
 	}
 }
 
@@ -61,4 +82,35 @@ func TestScheduleS3Role(t *testing.T) {
 		require.Equal(t, tc.template.ExternalID, tc.backup.Spec.S3.ExternalID)
 		require.NotSame(t, tc.template, tc.backup.Spec.S3)
 	}
+}
+
+func TestScheduleCompactBackupCopiesServerSideEncryption(t *testing.T) {
+	template := &v1alpha1.S3StorageProvider{
+		Bucket: "bucket", SSE: "aws:kms",
+		SSEKMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "original"}},
+		ServerSideEncryption: &v1alpha1.S3ServerSideEncryption{
+			Algorithm: "aws:kms", KMSKeyID: "alias/backup",
+			KMSEncryptionContext: &v1alpha1.S3EncryptionContext{Values: map[string]string{"tenant": "original"}},
+		},
+	}
+	now := time.Now()
+	start := metav1.NewTime(now.Add(-time.Hour))
+	schedule := &v1alpha1.BackupSchedule{
+		Spec: v1alpha1.BackupScheduleSpec{
+			CompactBackupTemplate: &v1alpha1.CompactSpec{StorageProvider: v1alpha1.StorageProvider{S3: template}},
+		},
+		Status: v1alpha1.BackupScheduleStatus{LogBackupStartTs: &start},
+	}
+	copied := buildCompactBackup(schedule, now.Add(-time.Hour), now, now).Spec.S3
+
+	require.NotSame(t, template, copied)
+	require.Equal(t, template.ServerSideEncryption, copied.ServerSideEncryption)
+	require.NotSame(t, template.ServerSideEncryption, copied.ServerSideEncryption)
+	require.NotSame(t, template.ServerSideEncryption.KMSEncryptionContext, copied.ServerSideEncryption.KMSEncryptionContext)
+	require.Equal(t, template.SSEKMSEncryptionContext, copied.SSEKMSEncryptionContext)
+	require.NotSame(t, template.SSEKMSEncryptionContext, copied.SSEKMSEncryptionContext)
+	copied.ServerSideEncryption.KMSEncryptionContext.Values["tenant"] = "changed"
+	copied.SSEKMSEncryptionContext.Values["tenant"] = "changed"
+	require.Equal(t, "original", template.ServerSideEncryption.KMSEncryptionContext.Values["tenant"])
+	require.Equal(t, "original", template.SSEKMSEncryptionContext.Values["tenant"])
 }

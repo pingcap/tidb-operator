@@ -1,29 +1,44 @@
-# S3 SSE-KMS encryption context for BR
+# S3 server-side encryption for BR
 
-`spec.s3.sseKmsEncryptionContext.values` supplies additional encryption context
-as string key-value pairs. Operator serializes the map to JSON and passes it as
-one BR argument. BR validates the JSON and performs the Base64 encoding for S3.
-Do not Base64-encode values or add shell quoting to them.
+The `spec.s3.serverSideEncryption` object has three fields.
+
+- `algorithm` selects the S3 encryption algorithm, for example `AES256`,
+  `aws:kms`, or `aws:kms:dsse`.
+- `kmsKeyId` selects the AWS KMS key for SSE-KMS. Use a key ID, ARN, or alias.
+- `kmsEncryptionContext.values` supplies additional encryption context as
+  string key-value pairs. Operator serializes the map to JSON and passes it as
+  one BR argument. BR validates the JSON and Base64-encodes it for S3. Enter the
+  original strings in the map.
 
 ## Prerequisites
 
-Install the updated Operator CRDs and use the corresponding backup-manager image.
-The BR image selected by `spec.toolImage` and all participating TiKV instances
-must support custom SSE-KMS encryption context. This change does not upgrade
-those components or add support to an old binary. No released minimum version
-has been assigned yet; the corresponding changes are
+Install the updated Operator CRDs and upgrade `tidb-controller-manager` and
+the backup-manager image together. The `algorithm` and `kmsKeyId` fields use
+existing BR flags. Use a tool image that supports the configured algorithm.
+
+If you set `kmsEncryptionContext`, the BR image selected by `spec.toolImage`
+and all participating TiKV instances must support custom SSE-KMS encryption
+context. Older BR versions can reject the context flag. Older TiKV versions
+can ignore the context protocol field. Upgrade both components before enabling
+custom context. No released minimum version for context support has been
+assigned yet. The corresponding changes are
 [TiDB #71983](https://github.com/pingcap/tidb/pull/71983),
 [TiKV #20193](https://github.com/tikv/tikv/pull/20193), and
 [kvproto #1552](https://github.com/pingcap/kvproto/pull/1552).
-An old BR can reject the new flag; an old TiKV does not consume the new protocol
-field. Upgrade all participating components before enabling this option.
 
-Use an S3 bucket and KMS key that the backup/restore identities are authorized to
-access. With provider `aws` or no provider, BR rejects a context unless `sse` is
-`aws:kms` or `aws:kms:dsse`, because S3 rejects the context header without an
-explicit SSE-KMS mode. This applies to Backup and Restore alike. Operator does not
-infer the SSE mode or a KMS key ID from the context. The key ID remains available
-through `spec.br.options`.
+Use an S3 bucket and KMS key that the backup and restore identities are
+authorized to access. When the provider is `aws` or unset, BR requires
+`aws:kms` or `aws:kms:dsse` with a context because S3 requires an explicit
+SSE-KMS algorithm for the context header. Configure the desired algorithm and
+key explicitly. Operator leaves omitted fields unset.
+
+For cross-account SSE-KMS, specify the complete ARN of a customer-managed KMS
+key. An alias can resolve to a key in the requester's account. When S3 Bucket
+Keys are enabled, S3 uses the bucket ARN for the default `aws:s3:arn`
+encryption-context pair and makes fewer calls to KMS. Review any key policy
+conditions written for object ARNs before enabling S3 Bucket Keys. See
+[Using SSE-KMS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingKMSEncryption.html)
+and [S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html).
 
 ## Backup
 
@@ -40,18 +55,18 @@ spec:
   toolImage: your-registry/br:sse-kms-context
   br:
     cluster: source-tidb
-    options:
-      - --s3.sse-kms-key-id=arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
   s3:
     provider: aws
     region: us-east-1
     bucket: my-backup-bucket
     prefix: snapshots/example
-    sse: aws:kms
-    sseKmsEncryptionContext:
-      values:
-        tenant: tenant-a
-        purpose: backup
+    serverSideEncryption:
+      algorithm: aws:kms
+      kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
+      kmsEncryptionContext:
+        values:
+          tenant: tenant-a
+          purpose: backup
 ```
 
 ## BackupSchedule and log backup
@@ -72,39 +87,39 @@ spec:
     toolImage: your-registry/br:sse-kms-context
     br:
       cluster: source-tidb
-      options:
-        - --s3.sse-kms-key-id=arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
     s3:
       provider: aws
       bucket: my-backup-bucket
       region: us-east-1
       prefix: scheduled-snapshots
-      sse: aws:kms
-      sseKmsEncryptionContext:
-        values:
-          tenant: tenant-a
+      serverSideEncryption:
+        algorithm: aws:kms
+        kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
+        kmsEncryptionContext:
+          values:
+            tenant: tenant-a
   logBackupTemplate:
     backupMode: log
     toolImage: your-registry/br:sse-kms-context
     br:
       cluster: source-tidb
-      options:
-        - --s3.sse-kms-key-id=arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
     s3:
       provider: aws
       bucket: my-backup-bucket
       region: us-east-1
       prefix: logs
-      sse: aws:kms
-      sseKmsEncryptionContext:
-        values:
-          tenant: tenant-a
+      serverSideEncryption:
+        algorithm: aws:kms
+        kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
+        kmsEncryptionContext:
+          values:
+            tenant: tenant-a
 ```
 
-Context is saved by BR when the log backup task is created. Editing an existing
-Backup or BackupSchedule, upgrading its binaries, or pausing/resuming a task
-does not replace that task's saved context. Plan any transition for an existing
-task separately; do not assume uninterrupted log coverage after recreating it.
+BR saves the encryption settings when it starts a log backup task. Existing
+tasks keep those settings when you edit a Backup or BackupSchedule, upgrade its
+binaries, or pause and resume the task. Plan for log coverage when recreating a
+task to change its settings.
 
 ## Restore and PITR
 
@@ -120,57 +135,116 @@ spec:
   toolImage: your-registry/br:sse-kms-context
   br:
     cluster: target-tidb
-    options:
-      - --s3.sse-kms-key-id=arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
   s3:
     provider: aws
     bucket: my-backup-bucket
     region: us-east-1
     prefix: snapshots/example
-    sse: aws:kms
-    sseKmsEncryptionContext:
-      values:
-        tenant: tenant-a
-        purpose: backup
+    serverSideEncryption:
+      algorithm: aws:kms
+      kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/REPLACE-ME
+      kmsEncryptionContext:
+        values:
+          tenant: tenant-a
+          purpose: backup
 ```
 
-For PITR, `spec.s3` describes the log storage. If a separate full backup storage
-is configured, its context belongs under
-`spec.pitrFullBackupStorageProvider.s3.sseKmsEncryptionContext.values`.
-Operator URL-encodes this JSON in `--full-backup-storage`, so it does not overwrite
-the main storage's context. When a context is set, the URL also carries that
-provider's `sse`, so set `spec.pitrFullBackupStorageProvider.s3.sse: aws:kms`
-as well.
+For PITR, configure the log storage under `spec.s3` and any separate full backup
+storage under `spec.pitrFullBackupStorageProvider.s3`. Operator passes the log
+storage settings as `--s3.*` flags. It encodes the full backup storage settings
+in the `--full-backup-storage` URL as `sse`, `sse-kms-key-id`, and
+`sse-kms-context` query parameters. When the full backup storage explicitly
+sets `serverSideEncryption`, Operator emits all three URL parameters. An
+unset field becomes an empty parameter after resolving deprecated fields and
+clears the matching main storage flag for the full backup storage. When the
+full backup storage has no deprecated encryption fields, `algorithm: AES256`
+clears any inherited KMS key and context and `serverSideEncryption: {}` clears
+all three encryption settings.
 
-These settings configure BR storage; they do not add an encryption-context
-header to S3 reads. Read access still depends on the existing S3/KMS permissions. See the
+If the full backup storage omits `serverSideEncryption`, matching main storage
+flags can still be inherited. A standalone legacy `s3.sse` adds no URL
+parameter. Legacy `s3.sseKmsEncryptionContext` sets the context parameter and
+also passes the legacy algorithm if supplied.
+
+```yaml
+spec:
+  s3:
+    provider: aws
+    bucket: my-log-bucket
+    prefix: logs
+    serverSideEncryption:
+      algorithm: aws:kms
+      kmsKeyId: alias/log-backup
+      kmsEncryptionContext:
+        values:
+          purpose: logs
+  pitrFullBackupStorageProvider:
+    s3:
+      provider: aws
+      bucket: my-snapshot-bucket
+      prefix: snapshots
+      serverSideEncryption:
+        algorithm: aws:kms
+        kmsKeyId: alias/snapshot-backup
+        kmsEncryptionContext:
+          values:
+            purpose: snapshots
+```
+
+Read access still depends on the existing S3 and KMS permissions. These settings
+configure BR storage. S3 reads use the existing read path without an
+encryption-context request header. See the
 [AWS GetObject documentation](https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html).
 
-## Validation and precedence
+## CompactBackup
 
-- Omitted `sseKmsEncryptionContext`: no new parameter, preserving existing behavior.
-- A context requires `sse: aws:kms` or `sse: aws:kms:dsse` when the provider is
-  `aws` or unset; otherwise BR fails while parsing the storage configuration.
-- `sseKmsEncryptionContext: {values: {}}`: explicit empty JSON object (`{}`).
-- `values` is required when the field is present. Numbers, booleans, nested
-  objects and arrays are not accepted as string values. Quote numeric strings
-  in YAML, for example `tenant: "123"`.
-- Kubernetes removes null fields before validation: `values: {tenant: null}`
-  becomes `values: {}`, and `sseKmsEncryptionContext: null` is omitted.
-  `sseKmsEncryptionContext: {values: null}` is rejected because the required
-  `values` field is missing after that removal. Use strings for every context
-  value. Raw JSON passed through `spec.br.options` is validated by BR, which
-  rejects null context values.
-- `spec.br.options` retains its existing highest priority over generated CLI
-  flags. A later `--s3.sse-kms-context=...` (or two-element flag/value pair)
-  overrides the generated main-storage argument. An explicit storage URL can
-  also carry context; BR's URL option precedence continues to apply. Prefer one
-  configuration source for each storage to avoid ambiguity.
-- `spec.s3.options` contains rclone options and is not the BR passthrough.
-- This field applies to BR-based operations. It does not enable context in
-  Dumpling/rclone, Lightning, or Operator's own cloud storage clients. The shared
-  S3 schema also appears in compaction and federation CRDs; the schema alone
-  does not guarantee support by every underlying tool.
+Set `spec.s3.serverSideEncryption` on a CompactBackup to pass its algorithm,
+KMS key, and context to `br operator base64ify`. Operator passes the resulting
+storage configuration to `tikv-ctl compact-log-backup`. The compaction tool
+images must support the configured encryption settings.
+For scheduled compaction, put the same S3 configuration under
+`spec.compactBackupTemplate.s3` in the BackupSchedule.
+
+## Compatibility and validation
+
+- The deprecated `spec.s3.sse` and `spec.s3.sseKmsEncryptionContext` fields
+  still supply the algorithm and context during an upgrade. Migrate to
+  `serverSideEncryption.algorithm` and
+  `serverSideEncryption.kmsEncryptionContext`. Kubernetes CEL admission and
+  the Operator controllers reject differing nonempty algorithms or differing
+  context maps when both context fields are set. Equal algorithms and equal
+  context maps are accepted, including two empty maps. A legacy algorithm
+  can be combined with a structured key or context, and a legacy context can
+  be combined with a structured algorithm or key.
+- With no deprecated fields set, omitting `serverSideEncryption` or setting
+  it to `{}` adds no flags for the main storage.
+  `kmsEncryptionContext: {values: {}}` sends the explicit empty JSON object
+  `{}`.
+- `values` is required when `kmsEncryptionContext` or its deprecated
+  counterpart is present. Every context value must be a string. Quote numeric
+  strings in YAML, for example `tenant: "123"`.
+- Kubernetes removes null fields before validation. `values: {tenant: null}`
+  becomes `values: {}`, and `kmsEncryptionContext: null` is treated as absent.
+  `kmsEncryptionContext: {values: null}` fails validation because the required
+  `values` field is missing after pruning. BR rejects null values in raw JSON
+  supplied through `spec.br.options`.
+- For the main storage in Backup and Restore, `spec.br.options` has the highest
+  priority over generated flags. Explicit `--s3.sse`, `--s3.sse-kms-key-id`,
+  and `--s3.sse-kms-context` flags override the corresponding generated flags.
+  Both `--flag=value` and separate flag/value arguments work. BR applies its
+  existing URL option precedence if an explicit storage URL carries encryption
+  settings.
+
+## Workflows that do not use these fields
+
+- EBS VolumeSnapshot metadata is written directly with `s3blob.WriteAll`.
+  Those metadata writes carry no SSE headers from these fields. A bucket
+  policy requiring explicit SSE headers or a custom KMS context can reject
+  the metadata write and fail the backup.
+- Dumpling and rclone exports and Lightning imports do not use these fields.
+  `spec.s3.options` continues to configure rclone.
+- Federation VolumeBackup, VolumeRestore, and VolumeBackupSchedule share the
+  S3 schema but their metadata I/O does not use these fields.
 
 ## S3 authentication for backup and restore tasks
 
@@ -247,10 +321,10 @@ command logs and startup errors, including context supplied through options or
 storage URLs. It still forwards BR/TiKV output; those binaries must independently
 handle their own log redaction.
 
-Unit tests validate the generated CRD schemas, string escaping, explicit empty
-context, omitted configuration, option precedence, scheduled backup copying and
-command-log redaction. Before deployment, also run an Operator-managed snapshot
-backup/restore and log backup/PITR against a dedicated S3/KMS test setup. Verify
-restored data, task continuation after restart, and policy rejection when the
-required context is absent or wrong. Passing local argument/schema tests is not
-an Operator Kubernetes/AWS E2E result.
+Unit tests cover the generated CRD schemas, legacy compatibility, conflicting
+algorithms, context serialization, BR option precedence, scheduled backup
+copying, compaction argument generation, and command-log redaction. Before
+deployment, also run an Operator-managed snapshot backup and restore and a log
+backup and PITR against a dedicated S3/KMS test setup. Verify restored data,
+task continuation after restart, and policy rejection when the required context
+is absent or wrong. These checks require a Kubernetes and AWS environment.
