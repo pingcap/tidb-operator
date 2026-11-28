@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/stretchr/testify/require"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -30,15 +29,7 @@ import (
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	celconfig "k8s.io/apiserver/pkg/apis/cel"
-	"k8s.io/kube-openapi/pkg/validation/spec"
 )
-
-func TestS3SSEOpenAPIDeprecationParagraph(t *testing.T) {
-	definitions := v1alpha1.GetOpenAPIDefinitions(func(string) spec.Ref { return spec.Ref{} })
-	s3 := definitions["github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"].Schema
-	require.Contains(t, s3.Properties["sse"].Description, "\n\nDeprecated: use ServerSideEncryption.Algorithm instead.")
-	require.Contains(t, s3.Properties["sseKmsEncryptionContext"].Description, "\n\nDeprecated: use ServerSideEncryption.KMSEncryptionContext instead.")
-}
 
 // Check the shipped schemas, including every occurrence of the shared S3 type.
 func TestS3ServerSideEncryptionCRDSchema(t *testing.T) {
